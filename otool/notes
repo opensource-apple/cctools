@@ -3,6 +3,16 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.25 release (the cctools-693 release):
+- Added support for printing the objc 2.0 metadata in 32-bit Mach-O files.
+  Radar bug #5739542.
+  - Moved print_objc2.c to print_objc2_64bit.c and changed print_objc2() to
+    print_objc2_64bit()
+  - Copied print_objc2_64bit.c to print_objc2_32bit.c and changed every where
+    a 64-bit, pointer, name or value was used to used a 32-bit version.
+  - In print_objc2_32bit.c removed the reserved field from the class_ro_t
+    as it is a 64-bit only padding field.
+
 Changes for the 5.25 release (the cctools-691 release):
 - Added support for the LC_ENCRYPTION_INFO load command.  Radar bug #5811994.
   - Added print_encryption_info_command() in ofile_print.[ch] .

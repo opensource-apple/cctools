@@ -1037,7 +1037,7 @@ const char *format,
 
 #else /* defined(LIBRARY_API) */
 #include <setjmp.h>
-#include <objc/zone.h>
+#include <malloc/malloc.h>
 #include <errno.h>
 #include <mach/mach_error.h>
 /*
@@ -9833,7 +9833,7 @@ void)
 
     addr_target__dyld = find__dyld_section_addr(arch->object->mh);
 
-    if(addr_target__dyld != 0){
+    if(addr_target__dyld != 0 && arch->object->mh_cputype != CPU_TYPE_ARM){
 	/* find __DATA,__dyld section in image being prebound */
 	target__dyld =  (uint32_t *)
 			contents_pointer_for_vmaddr(addr_target__dyld, 8);

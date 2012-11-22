@@ -417,7 +417,7 @@ extern void print_objc_segment(
     unsigned long nsorted_symbols,
     enum bool verbose);
 
-extern void print_objc2(
+extern void print_objc2_64bit(
     cpu_type_t cputype,
     struct load_command *load_commands,
     uint32_t ncmds,
@@ -426,6 +426,26 @@ extern void print_objc2(
     char *object_addr,
     unsigned long object_size,
     struct nlist_64 *symbols64,
+    unsigned long nsymbols,
+    char *strings,
+    unsigned long strings_size,
+    struct symbol *sorted_symbols,
+    unsigned long nsorted_symbols,
+    struct relocation_info *ext_relocs,
+    unsigned long next_relocs,
+    struct relocation_info *loc_relocs,
+    unsigned long nloc_relocs,
+    enum bool verbose);
+
+extern void print_objc2_32bit(
+    cpu_type_t cputype,
+    struct load_command *load_commands,
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    enum byte_sex object_byte_sex,
+    char *object_addr,
+    unsigned long object_size,
+    struct nlist *symbols,
     unsigned long nsymbols,
     char *strings,
     unsigned long strings_size,
