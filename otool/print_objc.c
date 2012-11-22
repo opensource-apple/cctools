@@ -311,6 +311,7 @@ struct section_info {
     char *contents;
     uint32_t addr;
     uint32_t size;
+    enum bool protected;
 };
 
 static void get_objc_sections(
@@ -1183,6 +1184,10 @@ uint32_t *sect_size)
 				*sect_addr = s.addr;
 			    }
 			}
+			if(sg.flags & SG_PROTECTED_VERSION_1)
+			    (*objc_sections)[*nobjc_sections].protected = TRUE;
+			else
+			    (*objc_sections)[*nobjc_sections].protected = FALSE;
 			(*nobjc_sections)++;
 		    }
 
@@ -1284,6 +1289,10 @@ struct section_info *cstring_section)
 			}
 			else
 			    cstring_section->size = s.size;
+			if(sg.flags & SG_PROTECTED_VERSION_1)
+			    cstring_section->protected = TRUE;
+			else
+			    cstring_section->protected = FALSE;
 			return;
 		    }
 
@@ -1664,8 +1673,11 @@ struct section_info *cstring_section_ptr)
 	   addr < cstring_section_ptr->addr + cstring_section_ptr->size){
 	    *left = cstring_section_ptr->size -
 	    (addr - cstring_section_ptr->addr);
-	    returnValue = (cstring_section_ptr->contents +
-			   (addr - cstring_section_ptr->addr));
+	    if(cstring_section_ptr->protected == TRUE)
+		returnValue = "some string from a protected section";
+	    else
+		returnValue = (cstring_section_ptr->contents +
+			       (addr - cstring_section_ptr->addr));
 	}
 	for(i = 0; returnValue != NULL && i < nobjc_sections; i++){
 	    if(addr >= objc_sections[i].addr &&

@@ -17997,7 +17997,8 @@ md_begin (void)
       case CPU_SUBTYPE_ARM_V7:
 	{
 	  static const arm_feature_set arm_arch_v7_vfp_v3_plus_neon_v1 =
-	    ARM_FEATURE (ARM_AEXT_V7_ARM, FPU_VFP_V3 | FPU_NEON_EXT_V1);
+	    ARM_FEATURE (ARM_AEXT_V7_ARM | ARM_EXT_DIV,
+			 FPU_VFP_V3 | FPU_NEON_EXT_V1);
 	  cpu_variant = arm_arch_v7_vfp_v3_plus_neon_v1;
 	}
 	break;

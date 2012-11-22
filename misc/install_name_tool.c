@@ -351,7 +351,7 @@ void
 usage(
 void)
 {
-	fprintf(stderr, "Usage: %s [-change old new] ... [-rpaths old new] ... "
+	fprintf(stderr, "Usage: %s [-change old new] ... [-rpath old new] ... "
 			"[-add_rpath new] ... [-delete_rpath old] ... "
 			"[-id name] input"
 #ifdef OUTPUT_OPTION

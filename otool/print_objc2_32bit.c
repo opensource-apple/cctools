@@ -307,6 +307,7 @@ struct section_info_32 {
     uint32_t size;
     struct relocation_info *relocs;
     uint32_t nrelocs;
+    enum bool protected;
 };
 
 static void walk_pointer_list(
@@ -1269,6 +1270,10 @@ uint32_t *database)
 				(*sections)[*nsections].nrelocs,
 				host_byte_sex);
 		    }
+		    if(sg.flags & SG_PROTECTED_VERSION_1)
+			(*sections)[*nsections].protected = TRUE;
+		    else
+			(*sections)[*nsections].protected = FALSE;
 		    (*nsections)++;
 
 		    if(p + sizeof(struct section) >
@@ -1334,7 +1339,10 @@ uint32_t nsections)
 		    *offset = addr - sections[i].addr;
 		if(left != NULL)
 		    *left = sections[i].size - (addr - sections[i].addr);
-		r = sections[i].contents + (addr - sections[i].addr);
+		if(sections[i].protected == TRUE)
+		    r = "some string from a protected section";
+		else
+		    r = sections[i].contents + (addr - sections[i].addr);
 		return(r);
 	    }
 	}

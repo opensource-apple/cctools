@@ -330,6 +330,8 @@ struct section_info_64 {
     uint64_t size;
     struct relocation_info *relocs;
     uint32_t nrelocs;
+    enum bool cstring;
+    enum bool protected;
 };
 
 static void walk_pointer_list(
@@ -1788,6 +1790,14 @@ uint64_t *database)
 				(*sections)[*nsections].nrelocs,
 				host_byte_sex);
 		    }
+		    if(sg64.flags & SG_PROTECTED_VERSION_1)
+			(*sections)[*nsections].protected = TRUE;
+		    else
+			(*sections)[*nsections].protected = FALSE;
+		    if((s64.flags & SECTION_TYPE) == S_CSTRING_LITERALS)
+			(*sections)[*nsections].cstring = TRUE;
+		    else
+			(*sections)[*nsections].cstring = FALSE;
 		    (*nsections)++;
 
 		    if(p + sizeof(struct section_64) >
@@ -1907,6 +1917,11 @@ struct section_info_64 *cstring_section)
 			}
 			else
 			    cstring_section->size = s64.size;
+			if(sg64.flags & SG_PROTECTED_VERSION_1)
+			    cstring_section->protected = TRUE;
+			else
+			    cstring_section->protected = FALSE;
+			cstring_section->cstring = TRUE;
 			return;
 		    }
 
@@ -1952,7 +1967,10 @@ uint32_t nsections)
 		    *offset = addr - sections[i].addr;
 		if(left != NULL)
 		    *left = sections[i].size - (addr - sections[i].addr);
-		r = sections[i].contents + (addr - sections[i].addr);
+		if(sections[i].protected == TRUE && sections[i].cstring == TRUE)
+		    r = "some string from a protected section";
+		else
+		    r = sections[i].contents + (addr - sections[i].addr);
 		return(r);
 	    }
 	}
