@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -72,9 +74,10 @@ static char *mkstr(
 #endif /* !defined(RLD) */
 #include "specs.h"
 #include "pass1.h"
+#include "live_refs.h"
 #include "objects.h"
-#include "fvmlibs.h"
 #include "sections.h"
+#include "fvmlibs.h"
 #include "symbols.h"
 #include "layout.h"
 #include "pass2.h"
@@ -194,6 +197,11 @@ static enum bool static_specified = FALSE;
 __private_extern__ enum strip_levels strip_level = STRIP_DUP_INCLS;
 /* Strip the base file symbols (the -A argument's symbols) */
 __private_extern__ enum bool strip_base_symbols = FALSE;
+
+/* strip dead blocks */
+__private_extern__ enum bool dead_strip = FALSE;
+/* don't strip module init and term sections */
+__private_extern__ enum bool no_dead_strip_inits_and_terms = FALSE;
 
 #ifndef RLD
 /*
@@ -434,6 +442,9 @@ static enum bool ispoweroftwo(unsigned long x);
 static vm_prot_t getprot(char *prot, char **endp);
 static enum bool check_max_init_prot(vm_prot_t maxprot, vm_prot_t initprot);
 
+/* apple_version is in ld_vers.c which is created by the Makefile */
+extern char apple_version[];
+
 /*
  * main() parses the command line arguments and drives the link-edit process.
  */
@@ -467,11 +478,14 @@ char *envp[])
     struct symbol_list *sp;
     char *exported_symbols_list, *unexported_symbols_list;
     enum bool missing_syms;
+    enum bool vflag;
 
 #ifdef __MWERKS__
     char **dummy;
         dummy = envp;
 #endif
+
+	vflag = FALSE;
 	exported_symbols_list = NULL;
 	unexported_symbols_list = NULL;
 
@@ -805,6 +819,9 @@ char *envp[])
 			dylinker_install_name = argv[i + 1];
 			i += 1;
 		    }
+		    else if(strcmp(p, "dead_strip") == 0){
+			dead_strip = TRUE;
+		    }
 #ifdef DEBUG
 		    else if(strcmp(p, "debug") == 0){
 			if(++i >= argc)
@@ -855,6 +872,9 @@ char *envp[])
 				  "specified");
 			prebind_all_twolevel_modules = FALSE;
 			prebind_all_twolevel_modules_specified = TRUE;
+		    }
+		    else if(strcmp(p, "no_dead_strip_inits_and_terms") == 0){
+			no_dead_strip_inits_and_terms = TRUE;
 		    }
 		    else
 			goto unknown_flag;
@@ -1498,8 +1518,11 @@ char *envp[])
 			    new_undefined_flag = UNDEFINED_SUPPRESS;
 			else if(strcmp(argv[i], "dynamic_lookup") == 0)
 			    new_undefined_flag = UNDEFINED_DYNAMIC_LOOKUP;
-			else if(strcmp(argv[i], "define_a_way") == 0)
+			else if(strcmp(argv[i], "define_a_way") == 0){
 			    new_undefined_flag = UNDEFINED_DEFINE_A_WAY;
+			    warning("suggest the use of -dead_strip instead of "
+				    "-undefined define_a_way");
+			}
 			else{
 			    fatal("-undefined: unknown argument: %s", argv[i]);
 			    new_undefined_flag = UNDEFINED_ERROR;
@@ -1750,6 +1773,16 @@ char *envp[])
 			goto unknown_flag;
 		    break;
 
+		case 'v':
+		    if(strcmp(p, "v") == 0){
+			vflag = TRUE;
+			printf("Apple Computer, Inc. version %s\n",
+			       apple_version);
+		    }
+		    else
+			goto unknown_flag;
+		    break;
+
 		default:
 unknown_flag:
 		    fatal("unknown flag: %s", argv[i]);
@@ -1793,6 +1826,15 @@ unknown_flag:
 	   bundle_loader != NULL)
 	    print("[Logging for XBS] Referenced bundle loader: %s\n",
 		  bundle_loader);
+
+	if(save_reloc == FALSE){
+	    if(getenv("LD_DEAD_STRIP") != NULL)
+		dead_strip = TRUE;
+	    if(getenv("LD_NO_DEAD_STRIP_INITS_AND_TERMS") != NULL)
+		no_dead_strip_inits_and_terms = TRUE;
+	}
+	if(getenv("LD_DEAD_STRIP_DYLIB") != NULL && filetype == MH_DYLIB)
+	    dead_strip = TRUE;
 
 	/*
 	 * The LD_FORCE_NO_PREBIND environment variable overrides the command
@@ -1891,6 +1933,9 @@ unknown_flag:
 	if(save_reloc && strip_base_symbols == TRUE)
 	    fatal("can't use -b with -r (resulting file would not be "
 		  "relocatable)");
+	if(save_reloc && dead_strip == TRUE)
+	    fatal("can't use -dead_strip with -r (only allowed for fully "
+		  "linked images)");
 	if(keep_private_externs == TRUE){
 	    if(save_symbols != NULL)
 		fatal("can't use both -keep_private_externs and "
@@ -2576,7 +2621,8 @@ unknown_flag:
 		    if(strcmp(p, "d") == 0 ||
 		       strcmp(p, "dylib") == 0 ||
 		       strcmp(p, "dylinker") == 0 ||
-		       strcmp(p, "dynamic") == 0)
+		       strcmp(p, "dynamic") == 0 ||
+		       strcmp(p, "dead_strip") == 0)
 			break;
 		    i++;
 		    break;
@@ -2632,8 +2678,11 @@ unknown_flag:
 		    target_byte_sex = host_byte_sex;
 		segalign = host_pagesize;
 	    }
-	    else
+	    else{
+		if(vflag == TRUE)
+		    ld_exit(0);
 		fatal("no object files specified");
+	    }
 	}
 	else if(base_obj != NULL && nobjects == 1){
 	    if(symbols_created != 0 || sections_created != 0)
@@ -2641,16 +2690,22 @@ unknown_flag:
 			"additional command line created symbols and/or "
 			"sections created from files will appear in the output "
 			"file");
-	    else
+	    else{
+		if(vflag == TRUE)
+		    ld_exit(0);
 		fatal("no object files loaded other than base file");
+	    }
 	}
 	else if(nobjects == 0){
 	    if(symbols_created != 0 || sections_created != 0)
 		warning("no object files loaded, only command line created "
 			"symbols and/or sections created from files will "
 			"appear in the output file");
-	    else
+	    else{
+		if(vflag == TRUE)
+		    ld_exit(0);
 		fatal("no object files loaded");
+	    }
 	}
 
 #ifdef DEBUG

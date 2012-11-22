@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -28,7 +30,7 @@
 #include <stdarg.h>
 
 /*
- * These API's are in libkld.  Both kmodload(8) and /mach_kernel should
+ * These API's are in libkld.  Both kextload(8) and /mach_kernel should
  * link with -lkld and then ld(1) will expand -lkld to libkld.dylib or
  * libkld.a depending on if -dynamic or -static is in effect.
  *
@@ -43,7 +45,7 @@
 extern void kld_error_vprintf(const char *format, va_list ap);
 
 /*
- * These two are only in libkld.dylib for use by kmodload(8) (user code compiled
+ * These two are only in libkld.dylib for use by kextload(8) (user code compiled
  * with the default -dynamic).
  */
 #ifdef __DYNAMIC__

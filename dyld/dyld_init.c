@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -48,6 +50,14 @@ extern const struct section *getsectbynamefromheader(
 #import "lock.h"
 #import "debug.h"
 #import "trace.h"
+
+/*
+ * dyld_progname is the filename for dyld as used by the executable from its
+ * LC_LOAD_DYLINKER load command.  It is set by the routine set_dyld_progname()
+ * and used by the _NSGetProgname() routine which is used by libc code.
+ */
+static char *dyld_progname = "dyld";
+static void set_dyld_progname(struct mach_header *mh);
 
 /*
  * This is set in _dyld_init() and used for the cputype and cpusubtype.
@@ -228,9 +238,13 @@ char **envp)
 #endif
 #ifdef MALLOC_DEBUG
     extern void cthread_init(void);
+#endif /* MALLOC_DEBUG */
 
+	set_dyld_progname(mh);
+
+#ifdef MALLOC_DEBUG
 	cthread_init();
-#endif
+#endif /* MALLOC_DEBUG */
 	
 	/* set lock for dyld data structures */
 	set_lock();
@@ -669,6 +683,43 @@ void)
 	return(&pp);
 }
 
+/*
+ * set_dyld_progname() is called first thing in dyld_init() and pass the mach
+ * header of the executable's mach_header.  It looks for the LC_LOAD_DYLINKER
+ * load command and sets dyld_progname to the name in that load command.
+ */
+static
+void
+set_dyld_progname(
+struct mach_header *mh)
+{
+    unsigned long i;
+    struct load_command *lc;
+    struct dylinker_command *dyld;
+
+    	lc = (struct load_command *)((char *)mh + sizeof(struct mach_header));
+	for(i = 0; i < mh->ncmds; i++){
+      	    if(lc->cmd == LC_LOAD_DYLINKER){
+		dyld = (struct dylinker_command *)lc;
+          	dyld_progname = (char *)dyld + dyld->name.offset;
+		return;
+	    }
+	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	}
+}
+
+/*
+ * _NSGetProgname() returns the name of the program and is used in error
+ * reports, such as for memory allocation failure by libc code.  So this is to
+ * return the filename for dyld as used by the executable.
+ */
+char **
+_NSGetProgname(
+void)
+{
+	return(&dyld_progname);
+}
+
 #ifdef DYLD_PROFILING
 /*
  * profiling_exit is used as the symbol "__exit" in the routines
@@ -764,6 +815,12 @@ void)
 	    mach_error(r, "can't vm_(un)protect data segment of dyld");
 	    link_edit_error(DYLD_MACH_RESOURCE, r, "dyld");
 	}
+}
+
+/* To avoid linking in atexit-related junk. */
+void
+__cxa_finalize (void *dso)
+{
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -22,23 +22,29 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-extern void * dlopen(
-    const char *path,
-    int mode);
-extern void * dlsym(
-    void * handle,
-    const char *symbol);
-extern const char * dlerror(
-    void);
-extern int dlclose(
-    void * handle);
+#if defined(__MWERKS__) && !defined(__private_extern__)
+#define __private_extern__ __declspec(private_extern)
+#endif
 
-#define RTLD_LAZY	0x1
-#define RTLD_NOW	0x2
-#define RTLD_LOCAL	0x4
-#define RTLD_GLOBAL	0x8
-#define RTLD_NOLOAD	0x10
-#define RTLD_SHARED	0x20	/* not used, the default */
-#define RTLD_UNSHARED	0x40
-#define RTLD_NODELETE	0x80
-#define RTLD_LAZY_UNDEF	0x100
+/*
+ * For dead stipping the routine mark_fine_relocs_references_live() calls a
+ * machine dependent *_get_reloc_refs() routine that fills in the live_refs
+ * structure for a relocation entry in a section.
+ */
+enum live_ref_type {
+    LIVE_REF_NONE,	/* there is no reference */
+    LIVE_REF_VALUE,	/* the reference is in value, an address in on one
+			   of the object's sections */
+    LIVE_REF_SYMBOL	/* the reference is in the merged_symbol */
+};
+    
+struct live_ref {
+    enum live_ref_type ref_type;
+    unsigned long value;
+    struct merged_symbol *merged_symbol;
+};
+
+struct live_refs {
+   struct live_ref ref1;
+   struct live_ref ref2;
+};

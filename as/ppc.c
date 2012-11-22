@@ -65,8 +65,13 @@ int flag_gregs[32] = { 0 };
 /*
  * These are the default cputype and cpusubtype for the ppc architecture.
  */
+#ifdef INTERIM_PPC64
+const cpu_type_t md_cputype = CPU_TYPE_POWERPC64;
+cpu_subtype_t md_cpusubtype = CPU_SUBTYPE_POWERPC64_ALL;
+#else
 const cpu_type_t md_cputype = CPU_TYPE_POWERPC;
 cpu_subtype_t md_cpusubtype = CPU_SUBTYPE_POWERPC_ALL;
+#endif /* INTERIM_PPC64 */
 
 /* This is the byte sex for the ppc architecture */
 const enum byte_sex md_target_byte_sex = BIG_ENDIAN_BYTE_SEX;
@@ -854,6 +859,7 @@ char *op)
 		as_warn("Invalid form of the instruction (RT must not the same "
 			"as RB)");
 	}
+#ifndef INTERIM_PPC64
 	/*
 	 * The 64-bit compares are invalid on 32-bit implementations.  Since
 	 * we don't expect to ever use the 620 all 64-bit instructions require
@@ -869,6 +875,7 @@ char *op)
 	    as_warn("Invalid form of the instruction (64-bit compares not "
 		    "allowed without -force_cpusubtype_ALL option)");
 	}
+#endif /* !defined(INTERIM_PPC64) */
 	/*
 	 * For branch conditional instructions certian BO fields are reserved.
 	 * These are flagged as invalid forms unless the -force_cpusubtype_ALL
@@ -918,12 +925,15 @@ char *op)
 	if(format->cpus != 0 && !force_cpusubtype_ALL){
 	    if(no_ppc601 == 1 && format->cpus == CPU601)
 		as_warning("not allowed 601 instruction \"%s\"", format->name);
-	    if((format->cpus & IMPL64) == IMPL64 &&
-	        archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970){
+#ifndef INTERIM_PPC64
+	    if((format->cpus & IMPL64) == IMPL64
+		&& archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970
+		){
 		as_bad("%s instruction is only for 64-bit implementations (not "
 		       "allowed without -force_cpusubtype_ALL option)",
 		       format->name);
 	    }
+#endif /* !defined(INTERIM_PPC64) */
 	    if((format->cpus & OPTIONAL) == OPTIONAL){
 		if((format->cpus & CPU970) == CPU970 &&
 		   archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970)
@@ -2198,10 +2208,21 @@ unsigned long parcnt)
 void
 md_number_to_chars(
 char *buf,
+#ifdef INTERIM_PPC64
+long long val,
+#else
 long val,
+#endif /* INTERIM_PPC64 */
 int nbytes)
 {
 	switch(nbytes){
+#ifdef INTERIM_PPC64
+	case 8:
+	    *buf++ = val >> 56;
+	    *buf++ = val >> 48;
+	    *buf++ = val >> 40;
+	    *buf++ = val >> 32;
+#endif /* INTERIM_PPC64 */
 	case 4:
 	    *buf++ = val >> 24;
 	    *buf++ = val >> 16;
@@ -2227,7 +2248,11 @@ int nbytes)
 void
 md_number_to_imm(
 unsigned char *buf,
+#ifdef INTERIM_PPC64
+long long val,
+#else
 long val,
+#endif /* INTERIM_PPC64 */
 int nbytes,
 fixS *fixP,
 int nsect)
@@ -2237,6 +2262,13 @@ int nsect)
 	if(fixP->fx_r_type == NO_RELOC ||
 	   fixP->fx_r_type == PPC_RELOC_VANILLA){
 	    switch(nbytes){
+#ifdef INTERIM_PPC64
+            case 8:
+                *buf++ = val >> 56;
+                *buf++ = val >> 48;
+                *buf++ = val >> 40;
+                *buf++ = val >> 32;
+#endif /* INTERIM_PPC64 */
 	    case 4:
 		*buf++ = val >> 24;
 		*buf++ = val >> 16;
@@ -2270,7 +2302,7 @@ int nsect)
 
 	case PPC_RELOC_LO14:
 	    buf[2] = val >> 8;
-	    buf[3] = val & 0xfc;
+	    buf[3] |= val & 0xfc;
 	    break;
 
 	case PPC_RELOC_BR14:
@@ -2280,13 +2312,24 @@ int nsect)
 	    if((val & 0xffff8000) && ((val & 0xffff8000) != 0xffff8000)){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of %ld too large for field width of 16 bits",
-                        val);
+		as_warn("Fixup of "
+#ifdef INTERIM_PPC64
+			"%lld "
+#else
+			"%ld "
+#endif /* INTERIM_PPC64 */
+			"too large for field width of 16 bits", val);
 	    }
 	    if((val & 0x3) != 0){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of %ld is not to a 4 byte address", val);
+		as_warn("Fixup of "
+#ifdef INTERIM_PPC64
+			"%lld "
+#else
+			"%ld "
+#endif /* INTERIM_PPC64 */
+			"is not to a 4 byte address", val);
 	    }
 	    /*
 	     * Note PPC_RELOC_BR14 are only used with bc, "branch conditional"
@@ -2325,13 +2368,24 @@ int nsect)
 	    if((val & 0xfc000000) && ((val & 0xfc000000) != 0xfc000000)){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of %ld too large for field width of 26 bits",
-                        val);
+		as_warn("Fixup of "
+#ifdef INTERIM_PPC64
+			"%lld "
+#else
+			"%ld "
+#endif /* INTERIM_PPC64 */
+			"too large for field width of 26 bits", val);
 	    }
 	    if((val & 0x3) != 0){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of %ld is not to a 4 byte address", val);
+		as_warn("Fixup of "
+#ifdef INTERIM_PPC64
+			"%lld "
+#else
+			"%ld "
+#endif /* INTERIM_PPC64 */
+			"is not to a 4 byte address", val);
 	    }
 	    buf[0] |= (val >> 24) & 0x03;
 	    buf[1] = val >> 16;

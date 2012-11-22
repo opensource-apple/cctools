@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
- *
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -218,8 +220,21 @@ struct nlist {
 #define EXECUTABLE_ORDINAL 0xff
 
 /*
- * The N_DESC_DISCARDED bit of the n_desc field never appears in an object file
- * but is used in very rare cases by the dynamic link editor.
+ * The bit 0x0020 of the n_desc field is used for two non-overlapping purposes
+ * and has two different symbolic names, N_NO_DEAD_STRIP and N_DESC_DISCARDED.
+ */
+
+/*
+ * The N_NO_DEAD_STRIP bit of the n_desc field only ever appears in a 
+ * relocatable .o file (MH_OBJECT filetype). And is used to indicate to the
+ * static link editor it is never to dead strip the symbol.
+ */
+#define N_NO_DEAD_STRIP 0x0020 /* symbol is not to be dead stripped */
+
+/*
+ * The N_DESC_DISCARDED bit of the n_desc field never appears in linked image.
+ * But is used in very rare cases by the dynamic link editor to mark an in
+ * memory symbol as discared and longer used for linking.
  */
 #define N_DESC_DISCARDED 0x0020	/* symbol is discarded */
 

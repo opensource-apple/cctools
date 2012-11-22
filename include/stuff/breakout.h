@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -165,6 +167,14 @@ __private_extern__ struct ofile * breakout(
     unsigned long *narchs,
     enum bool calculate_input_prebind_cksum);
 
+__private_extern__ struct ofile * breakout_mem(
+    void *membuf,
+    unsigned long length,
+    char *filename,
+    struct arch **archs,
+    unsigned long *narchs,
+    enum bool calculate_input_prebind_cksum);
+
 __private_extern__ void free_archs(
     struct arch *archs,
     unsigned long narchs);
@@ -178,6 +188,17 @@ __private_extern__ void writeout(
     enum bool commons_in_toc,
     enum bool library_warnings,
     unsigned long *throttle);
+
+__private_extern__ void writeout_to_mem(
+    struct arch *archs,
+    unsigned long narchs,
+    char *filename,
+    void **outputbuf,
+    unsigned long *length,
+    enum bool sort_toc,
+    enum bool commons_in_toc,
+    enum bool library_warning,
+    enum bool *seen_archive);
 
 __private_extern__ void checkout(
     struct arch *archs,

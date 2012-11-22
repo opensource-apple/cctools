@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -1447,6 +1449,17 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+	    switch(fat_arch->cpusubtype){
+	    case CPU_SUBTYPE_POWERPC64_ALL:
+		printf("ppc64");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    switch(fat_arch->cpusubtype){
 	    case CPU_SUBTYPE_VEO_1:
@@ -1628,6 +1641,18 @@ cpu_subtype_t cpusubtype)
 		goto print_arch_unknown;
 	    }
 	    break;
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_POWERPC64_ALL:
+		printf("    cputype CPU_TYPE_POWERPC64\n"
+		       "    cpusubtype CPU_SUBTYPE_POWERPC64_ALL\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    switch(cpusubtype){
 	    case CPU_SUBTYPE_VEO_1:

@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -128,6 +130,19 @@ struct mach_header {
 #define MH_NOFIXPREBINDING 0x400	/* do not have dyld notify the
 					   prebinding agent about this
 					   executable */
+#define MH_PREBINDABLE  0x800           /* the binary is not prebound but can
+					   have its prebinding redone. only used
+                                           when MH_PREBOUND is not set. */
+#define MH_ALLMODSBOUND 0x1000		/* indicates that this binary binds to
+                                           all two-level namespace modules of
+					   its dependent libraries. only used
+					   when MH_PREBINDABLE and MH_TWOLEVEL
+					   are both set. */ 
+#define MH_SUBSECTIONS_VIA_SYMBOLS 0x2000/* safe to divide up the sections into
+					    sub-sections via symbols for dead
+					    code stripping */
+#define MH_CANONICAL    0x4000		/* the binary has been canonicalized
+					   via the unprebind operation */
 /*
  * The load commands directly follow the mach_header.  The total size of all
  * of the commands is given by the sizeofcmds field in the mach_header.  All
@@ -336,6 +351,9 @@ struct section {
 #define S_ATTR_STRIP_STATIC_SYMS 0x20000000	/* ok to strip static symbols
 						   in this section in files
 						   with the MH_DYLDLINK flag */
+#define S_ATTR_NO_DEAD_STRIP	 0x10000000	/* no dead stripping */
+#define S_ATTR_LIVE_SUPPORT	 0x08000000	/* blocks are live if they
+						   reference live blocks */
 #define SECTION_ATTRIBUTES_SYS	 0x00ffff00	/* system setable attributes */
 #define S_ATTR_SOME_INSTRUCTIONS 0x00000400	/* section contains some
 						   machine instructions */

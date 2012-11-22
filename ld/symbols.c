@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -52,6 +54,7 @@
 
 #include "ld.h"
 #include "specs.h"
+#include "live_refs.h"
 #include "objects.h"
 #include "sections.h"
 #include "pass1.h"
@@ -81,9 +84,17 @@ __private_extern__ unsigned long nmerged_symbols_referenced_only_from_dylibs =0;
 
 /*
  * nstripped_merged_symbols is set to the number of merged symbol being stripped
- * out when the strip_level is STRIP_DYNAMIC_EXECUTABLE.
+ * out when -dead_strip is specified or the strip_level is
+ * STRIP_DYNAMIC_EXECUTABLE.
  */
 __private_extern__ unsigned long nstripped_merged_symbols = 0;
+/*
+ * When -dead_strip is specified some of these the merged private symbols may
+ * get stripped. To allow assign_output_symbol_indexes() to do its consistency
+ * check after assigning local symbol indexes nstripped_merged_private_symbols
+ * is set in count_live_symbols().
+ */
+static unsigned long nstripped_merged_private_symbols = 0;
 
 /*
  * This is set by lookup_symbol() and used by enter_symbol(). When a symbol
@@ -215,6 +226,12 @@ static struct object_file *link_edit_symbols_object = NULL;
 static void setup_link_edit_symbols_object(
     void);
 
+static void mark_N_NO_DEAD_STRIP_local_symbols_in_section_live(
+    struct merged_section *ms);
+static void removed_dead_local_symbols_in_section(
+    struct merged_section *ms);
+static void remove_dead_N_GSYM_stabs(
+    void);
 static void exports_list_processing(
     char *symbol_name,
     struct nlist *symbol);
@@ -259,6 +276,7 @@ struct section_map link_edit_section_maps = {
     NULL,		/* fine_relocs */
     0,			/* nfine_relocs */
     FALSE,		/* no_load_order */
+    0,			/* order */
     NULL,		/* load_orders */
     0			/* nload_orders */
 };
@@ -278,8 +296,8 @@ struct symtab_command link_edit_common_symtab = {
 __private_extern__
 struct object_file link_edit_common_object = {
     "\"link editor\"",	/* file_name */
-    0,			/* obj_addr */
-    0, 			/* obj_size */
+    NULL,		 /* obj_addr */
+    0,			/* obj_size */
     FALSE,		/* swapped */
     FALSE,		/* fvmlib_stuff */
     FALSE,		/* dylib */
@@ -394,6 +412,9 @@ static void define_link_editor_symbol(
     unsigned char sect,
     short desc,
     unsigned long value);
+static void remove_dead_N_GSYM_stabs_for_cur_obj(
+    struct nlist *object_symbols,
+    char *object_strings);
 #endif /* !defined(RLD) */
 static unsigned long merged_symbol_string_index(
     char *symbol_name);
@@ -435,7 +456,7 @@ unsigned long index)
 				   strings + symbol->n_un.n_strx);
 		return;
 	    }
-	    if(symbol->n_type & N_PEXT){
+	    if(symbol->n_type & N_PEXT && symbol->n_value == 0){
 		error_with_cur_obj("undefined symbol %lu (%s) can't be "
 				   "private external symbol (N_PEXT)", index,
 				   symbol->n_un.n_strx == 0 ? "NULL name" :
@@ -879,8 +900,12 @@ merge_symbols(void)
 		return;
 	    if(object_symbols[i].n_type == (N_EXT | N_UNDF))
 		object_undefineds++;
-/* TODO coalesce symbols may need to be accounted for depending on how they are
-   referenced */
+	    /*
+	     * Note: coalesced symbols are always defined symbols in each object
+	     * file but referenced with external relocation entries.  Since they
+	     * are always defined they are not in the count of undefined
+	     * symbols or in the undefined map.
+	     */
 #ifndef RLD
 	    /*
 	     * If we have an -export_symbols_list or -unexport_symbol_list
@@ -919,8 +944,15 @@ merge_symbols(void)
 	 * reference map, to build the reference table, is allocated.
 	 */
 	if(filetype == MH_DYLIB && multi_module_dylib == TRUE){
-/* TODO coalesce symbols that are discarded need to be accounted for as
-   undefined references */
+	    /*
+	     * Note: coalesced symbols are always defined symbols in each object
+	     * file but referenced with external relocation entries.  If the one
+	     * in this object is discarded then cur_obj->nextdefsym is
+	     * decremented and the reference_maps[].flags field is changed to 
+	     * some REFERENCE_FLAG_*_UNDEFINED_* value.  But note that even
+	     * though cur_obj->nextdefsym is decremented cur_obj->nundefineds is
+	     * NOT incremented.
+	     */
 	    for(i = 0; i < cur_obj->symtab->nsyms; i++){
 		if((object_symbols[i].n_type & N_EXT) == N_EXT &&
 		   (object_symbols[i].n_type & N_PEXT) != N_PEXT &&
@@ -1346,12 +1378,16 @@ printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 		 */
 		if(object_symbols[i].n_type == (N_EXT | N_UNDF) &&
 		   cur_obj != base_obj){
-/* TODO coalesce symbols may need to be recorded for depending on how they are
-   referenced */
 		    cur_obj->undefined_maps[object_undefineds].index = i;
 		    cur_obj->undefined_maps[object_undefineds].merged_symbol =
 								merged_symbol;
 		    object_undefineds++;
+		    /*
+		     * Note: coalesced symbols are always defined symbols in
+		     * each object file but referenced with external relocation
+		     * entries.  Since they are always defined they are not in
+		     * in the undefined map.
+		     */
 		}
 #ifndef RLD
 		/*
@@ -3359,6 +3395,9 @@ define_common_symbols(void)
     struct nlist *common_nlist;
     char *common_names;
     unsigned long n_strx;
+#ifndef RLD
+    struct mach_header *link_edit_common_object_mach_header;
+#endif
 
 #if defined(DEBUG) || defined(RLD)
 	/*
@@ -3480,7 +3519,9 @@ define_common_symbols(void)
 			      "output format with the -multi_module option");
 		    commons_exist = TRUE;
 #ifndef RLD
-		    if(sect_spec != NULL && sect_spec->order_filename != NULL){
+		    if((sect_spec != NULL &&
+			sect_spec->order_filename != NULL) ||
+		       dead_strip == TRUE){
 			link_edit_common_symtab.nsyms++;
 			link_edit_common_symtab.strsize +=
 				   strlen(merged_symbol->nlist.n_un.n_name) + 1;
@@ -3548,18 +3589,31 @@ define_common_symbols(void)
 	 * used by print_load_map() in layout.c and the common_symbols allocated
 	 * here are free()'ed in there also.
 	 */
-	if(sect_spec != NULL && sect_spec->order_filename != NULL){
+	if((sect_spec != NULL && sect_spec->order_filename != NULL) ||
+	   dead_strip == TRUE){
 	    link_edit_common_symtab.strsize =
 			round(link_edit_common_symtab.strsize, sizeof(long));
 	    link_edit_common_object.obj_size =
+			sizeof(struct mach_header) +
 			link_edit_common_symtab.nsyms * sizeof(struct nlist) +
 			link_edit_common_symtab.strsize;
 	    link_edit_common_object.obj_addr =
 			allocate(link_edit_common_object.obj_size);
-	    link_edit_common_symtab.symoff = 0;
-	    link_edit_common_symtab.stroff = link_edit_common_symtab.nsyms *
+	    memset(link_edit_common_object.obj_addr,
+		   '\0',
+		   link_edit_common_object.obj_size);
+	    link_edit_common_object_mach_header = (struct mach_header *)
+			link_edit_common_object.obj_addr;
+	    link_edit_common_object_mach_header->magic = MH_MAGIC;
+	    link_edit_common_object_mach_header->filetype = MH_OBJECT;
+	    link_edit_common_object_mach_header->flags =
+		MH_SUBSECTIONS_VIA_SYMBOLS;
+	    link_edit_common_symtab.symoff = sizeof(struct mach_header);
+	    link_edit_common_symtab.stroff = sizeof(struct mach_header) +
+					     link_edit_common_symtab.nsyms *
 					     sizeof(struct nlist);
-	    common_nlist = (struct nlist *)link_edit_common_object.obj_addr;
+	    common_nlist = (struct nlist *)(link_edit_common_object.obj_addr +
+			   		    link_edit_common_symtab.symoff);
 	    common_names = (char *)(link_edit_common_object.obj_addr +
 	    		            link_edit_common_symtab.stroff);
 	    n_strx = 1;
@@ -3664,7 +3718,9 @@ define_common_symbols(void)
 		     * Set the entries in the common symbol table if the section
 		     * is to be ordered or in the load map if producing it
 		     */
-		    if(sect_spec != NULL && sect_spec->order_filename != NULL){
+		    if((sect_spec != NULL &&
+			sect_spec->order_filename != NULL) ||
+	   		dead_strip == TRUE){
 			common_nlist->n_un.n_strx = n_strx;
 			common_nlist->n_type = N_SECT | N_EXT;
 			common_nlist->n_sect = 1;
@@ -3767,6 +3823,481 @@ void)
 	    link_edit_symbols_object->file_name = "link editor";
 	}
 }
+
+#ifndef RLD
+/*
+ * mark_globals_live() marks all merged symbol definitions which will be global
+ * in the output (not private externs turned into statics) or symbols with the
+ * N_NO_DEAD_STRIP bit, or symbols in sections with the S_ATTR_NO_DEAD_STRIP
+ * section attribute live.  And marks the fine_reloc (if any) for each live
+ * symbol live.
+ */
+__private_extern__
+void
+mark_globals_live(void)
+{
+    unsigned long i;
+    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol *merged_symbol;
+    struct fine_reloc *fine_reloc;
+    enum bool only_referenced_dynamically;
+
+	/*
+	 * If the output is an MH_EXECUTE and there was no
+	 * -exported_symbols_list or -unexported_symbols_list only symbols that
+	 * are referenced dynamically are marked live and assumed to be
+	 * exported.  For other outputs formats all global symbols are marked
+	 * live (note that when symbols were merged the were turned into private
+	 * externs if they were not to be exported).
+	 */
+	if(filetype == MH_EXECUTE &&
+	   (save_symbols == NULL && remove_symbols == NULL))
+	    only_referenced_dynamically = TRUE;
+	else
+	    only_referenced_dynamically = FALSE;
+
+	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+	    merged_symbol_list = *p;
+	    for(i = 0; i < merged_symbol_list->used; i++){
+		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		/*
+		 * If the symbol is marked REFERENCED_DYNAMICALLY or
+		 * N_NO_DEAD_STRIP or defined in a section with the attribute
+		 * S_ATTR_NO_DEAD_STRIP mark it live.  Else it has to be
+		 * a defined exported symbol to be marked live.
+		 */
+		if((merged_symbol->nlist.n_desc &
+		    REFERENCED_DYNAMICALLY) == REFERENCED_DYNAMICALLY ||
+
+		   (merged_symbol->nlist.n_desc &
+		    N_NO_DEAD_STRIP) == N_NO_DEAD_STRIP ||
+
+		   (((merged_symbol->nlist.n_type & N_TYPE) == N_SECT) &&
+		    (merged_symbol->definition_object->
+		     section_maps[merged_symbol->nlist.n_sect - 1].s->flags &
+		     S_ATTR_NO_DEAD_STRIP) == S_ATTR_NO_DEAD_STRIP) ){
+		    goto mark_it_live;
+		}
+		else{
+		    /*
+		     * Skip symbols defined in dynamic libraries, undefined
+		     * symbols and private_extern symbols.
+		     */
+		    if(merged_symbol->defined_in_dylib == TRUE)
+			continue;
+		    if((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+			merged_symbol->nlist.n_value == 0) ||
+		       merged_symbol->nlist.n_type == (N_EXT | N_PBUD))
+			continue;
+		    if((merged_symbol->nlist.n_type & N_EXT) &&
+		       (merged_symbol->nlist.n_type & N_PEXT))
+			continue;
+		    if(only_referenced_dynamically == TRUE)
+			continue;
+		}
+#ifdef DEBUG
+mark_it_live:
+		if(((debug & (1 << 25)) || (debug & (1 << 26)))){
+		    print("** In mark_globals_live() ");
+		    if(merged_symbol->nlist.n_desc & N_NO_DEAD_STRIP)
+			print("no dead strip symbol ");
+		    else
+			print("exported symbol ");
+		    print_obj_name(merged_symbol->definition_object);
+		    print("%s\n", merged_symbol->nlist.n_un.n_name);
+		}
+#endif /* DEBUG */
+		merged_symbol->live = TRUE;
+		fine_reloc = get_fine_reloc_for_merged_symbol(merged_symbol,
+							      NULL);
+		if(fine_reloc != NULL)
+		    fine_reloc->live = TRUE;
+	    }
+	}
+}
+
+/*
+ * mark_N_NO_DEAD_STRIP_local_symbols_live() is called to cause the fine_relocs
+ * for local symbols that have the N_NO_DEAD_STRIP bit set to be marked live.
+ */
+__private_extern__
+void
+mark_N_NO_DEAD_STRIP_local_symbols_live(void)
+{
+    struct merged_segment *msg, **r;
+    struct merged_section *ms, **content, **zerofill;
+
+	r = &merged_segments;
+	while(*r){
+	    msg = *r;
+	    content = &(msg->content_sections);
+	    while(*content){
+		ms = *content;
+		mark_N_NO_DEAD_STRIP_local_symbols_in_section_live(ms);
+		content = &(ms->next);
+	    }
+	    zerofill = &(msg->zerofill_sections);
+	    while(*zerofill){
+		ms = *zerofill;
+		mark_N_NO_DEAD_STRIP_local_symbols_in_section_live(ms);
+		zerofill = &(ms->next);
+	    }
+	    r = &(msg->next);
+	}
+}
+
+/*
+ * mark_N_NO_DEAD_STRIP_local_symbols_in_section_live() for the specified
+ * merged section marks fine_relocs for local symbols that have the
+ * N_NO_DEAD_STRIP bit set live.
+ */
+static
+void
+mark_N_NO_DEAD_STRIP_local_symbols_in_section_live(
+struct merged_section *ms)
+{
+    unsigned long i, j, k, nsect, input_offset;
+    struct object_list *object_list, **q;
+    struct section_map *map;
+    struct nlist *object_symbols;
+    char *object_strings;
+    struct fine_reloc *fine_reloc;
+
+	/*
+	 * For each object file that has this section process it.
+	 */
+	for(q = &objects; *q; q = &(object_list->next)){
+	    object_list = *q;
+	    for(i = 0; i < object_list->used; i++){
+		cur_obj = &(object_list->object_files[i]);
+		if(cur_obj == base_obj)
+		    continue;
+		if(cur_obj->dylib)
+		    continue;
+		if(cur_obj->bundle_loader)
+		    continue;
+		if(cur_obj->dylinker)
+		    continue;
+		map = NULL;
+		for(j = 0; j < cur_obj->nsection_maps; j++){
+		    if(cur_obj->section_maps[j].output_section != ms)
+			continue;
+		    if(cur_obj->section_maps[j].s->size == 0)
+			continue;
+		    map = &(cur_obj->section_maps[j]);
+		    break;
+		}
+		if(map == NULL)
+		    continue;
+		object_symbols = NULL;
+		object_strings = NULL;
+		if(cur_obj->symtab != NULL){
+		    object_symbols = (struct nlist *)(cur_obj->obj_addr +
+						      cur_obj->symtab->symoff);
+		    object_strings = (char *)(cur_obj->obj_addr +
+					      cur_obj->symtab->stroff);
+		}
+		nsect = j + 1;
+		/*
+		 * Now look through the symbol table for local symbols in this
+		 * section that are marked with the N_NO_DEAD_STRIP bit.
+		 */
+		for(k = 0; k < cur_obj->symtab->nsyms; k++){
+		    if((object_symbols[k].n_type & N_EXT) == 0 && 
+		       (object_symbols[k].n_type & N_TYPE) == N_SECT &&
+		       (object_symbols[k].n_type & N_STAB) == 0 &&
+		       object_symbols[k].n_sect == nsect &&
+		       object_symbols[k].n_desc & N_NO_DEAD_STRIP){
+			input_offset = object_symbols[k].n_value - map->s->addr;
+			fine_reloc = fine_reloc_for_input_offset(
+			    map, input_offset);
+			fine_reloc->live = TRUE;
+		    }
+		}
+	    }
+	}
+}
+
+/*
+ * count_live_symbols() is called when -dead_strip is specified after things
+ * have been marked live.  It adjust the counts and reference maps of symbols
+ * to account for just the live symbols.
+ */
+__private_extern__
+void
+count_live_symbols(void)
+{
+    unsigned long i, j, nrefsym;
+    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol *merged_symbol;
+    struct fine_reloc *fine_reloc;
+    struct object_list *object_list, **q;
+    struct object_file *obj;
+    struct merged_segment *msg, **r;
+    struct merged_section *ms, **content, **zerofill;
+
+	/*
+	 * In order to not put out strings for merged symbols that are not live
+	 * we need to rebuild the merged string table for only the live symbols.
+	 * This is done by resetting these two variables and recalling
+	 * enter_string() on the live symbols.
+	 */
+	merged_string_blocks = NULL;
+	merged_string_size = 0;
+
+	/*
+	 * The value of nstripped_merged_symbols is incremented here for each
+	 * merged symbol that would have been in the output but is not live.
+	 * Note: nstripped_merged_symbols can be reset to zero later in
+	 * assign_output_symbol_indexes() if strip_level is set to
+	 * STRIP_DYNAMIC_EXECUTABLE.  This works since any symbol to be
+	 * saved with STRIP_DYNAMIC_EXECUTABLE would also be live since
+	 * it would have REFERENCED_DYNAMICALLY set.
+	 */
+	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+	    merged_symbol_list = *p;
+	    for(i = 0; i < merged_symbol_list->used; i++){
+		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		/*
+		 * Because a live fine_reloc's could have multiple global
+		 * symbols, we need to check all global symbols to see if they
+		 * are in a live block.  And if so mark the global symbol live.
+		 */
+		if(merged_symbol->live == FALSE){
+		    fine_reloc = get_fine_reloc_for_merged_symbol(
+					merged_symbol, NULL);
+		    if(fine_reloc != NULL && fine_reloc->live == TRUE)
+			merged_symbol->live = TRUE;
+		}
+		/*
+		 * Skip symbols only referenced from dynamic libraries.
+		 */
+		if(merged_symbol->referenced_in_non_dylib == FALSE)
+		    continue;
+		if(merged_symbol->live == TRUE){
+		    merged_symbol->nlist.n_un.n_name =
+			enter_string(merged_symbol->nlist.n_un.n_name);
+		}
+		else{
+		    /*
+		     * This symbol is not live so account for it the number of
+		     * stripped merged symbols.
+		     */
+		    nstripped_merged_symbols++;
+/*
+printf("count_live_symbols() nstripped_merged_symbols %s\n", merged_symbol->nlist.n_un.n_name);
+*/
+
+		    /*
+		     * If this symbol is defined in a dylib or undefined then
+		     * we are done accounting for it being stripped.
+		     */
+		    if(merged_symbol->defined_in_dylib == TRUE ||
+		       merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
+                       (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD)
+			continue;
+		    /*
+		     * This symbol was defined in the .o files so adjust the
+		     * counts in the object_file struct.
+		     */
+
+		    /*
+		     * If this is a private symbol adjust the count of
+		     * private symbols in this object.  Also increment the
+		     * file level static variable for the number of private
+		     * merged symbols that are being stripped so later
+		     * assign_output_symbol_indexes() can use its value do its
+		     * consistency check.
+		     */
+		    if(merged_symbol->nlist.n_type & N_PEXT){
+			merged_symbol->definition_object->nprivatesym--;
+			nstripped_merged_private_symbols++;
+/*
+printf("count_live_symbols() nstripped_merged_private_symbols %s\n", merged_symbol->nlist.n_un.n_name);
+*/
+		    }
+		    /*
+		     * This symbol is defined in the .o file and not a
+		     * private symbol, so if we are creating a multi-module
+		     * dylib this files to adjust the count of the defined
+		     * externals in this object.
+		     */
+		    else if(filetype == MH_DYLIB &&
+			    multi_module_dylib == TRUE)
+			merged_symbol->definition_object->nextdefsym--;
+		}
+	    }
+	}
+
+	/*
+	 * If we are creating a multi-module dylib then we need to update the
+	 * reference table and the number of references for each object to only
+	 * contain live symbols.
+	 */
+	output_dysymtab_info.dysymtab_command.nextrefsyms = 0;
+	if(filetype == MH_DYLIB && multi_module_dylib == TRUE){
+	    for(q = &objects; *q; q = &(object_list->next)){
+		object_list = *q;
+		for(i = 0; i < object_list->used; i++){
+		    obj = &(object_list->object_files[i]);
+		    if(obj->dylib)
+			continue;
+		    if(obj->bundle_loader)
+			continue;
+		    if(obj->dylinker)
+			continue;
+		    nrefsym = 0;
+		    for(j = 0; j < obj->nrefsym; j++){
+			if(obj->reference_maps[j].merged_symbol->live){
+			    obj->reference_maps[nrefsym] =
+				obj->reference_maps[j];
+			    nrefsym++;
+			}
+		    }
+		    obj->nrefsym = nrefsym;
+		    if(nrefsym != 0)
+			obj->irefsym =
+			    output_dysymtab_info.dysymtab_command.nextrefsyms;
+		    output_dysymtab_info.dysymtab_command.nextrefsyms +=
+			nrefsym;
+		}
+	    }
+	}
+
+	/*
+	 * To get the global variable nlocal_symbols and the nlocal_symbols
+	 * field in the object_file structs adjusted to include just live
+	 * symbols call removed_dead_local_symbols_in_section() which will call
+	 * discard_local_symbols_for_section() for each section in each object.
+	 */
+	r = &merged_segments;
+	while(*r){
+	    msg = *r;
+	    content = &(msg->content_sections);
+	    while(*content){
+		ms = *content;
+		removed_dead_local_symbols_in_section(ms);
+		content = &(ms->next);
+	    }
+	    zerofill = &(msg->zerofill_sections);
+	    while(*zerofill){
+		ms = *zerofill;
+		removed_dead_local_symbols_in_section(ms);
+		zerofill = &(ms->next);
+	    }
+	    r = &(msg->next);
+	}
+
+	/*
+ 	 * Call remove_dead_N_GSYM_stabs() to get rid of dead N_GSYM stabs.
+	 * For common symbols this has to be done as they are not defined or
+ 	 * in a section and so they can't be bracked by N_BNSYM/N_ENSYM stabs.
+	 */
+	remove_dead_N_GSYM_stabs();
+}
+
+/*
+ * removed_dead_local_symbols_in_section() is pass a pointer to a merged section
+ * and then calls discard_local_symbols_for_section() for each object with that
+ * section to get the global variable nlocal_symbols and the nlocal_symbols
+ * field in the object_file structs adjusted to include just live symbols.
+ */
+static
+void
+removed_dead_local_symbols_in_section(
+struct merged_section *ms)
+{
+    unsigned long i, j;
+    struct object_list *object_list, **q;
+    struct section_map *map;
+    struct nlist *object_symbols;
+    char *object_strings;
+
+	/*
+	 * For each object file that has this section process it.
+	 */
+	for(q = &objects; *q; q = &(object_list->next)){
+	    object_list = *q;
+	    for(i = 0; i < object_list->used; i++){
+		cur_obj = &(object_list->object_files[i]);
+		if(cur_obj == base_obj)
+		    continue;
+		if(cur_obj->dylib)
+		    continue;
+		if(cur_obj->bundle_loader)
+		    continue;
+		if(cur_obj->dylinker)
+		    continue;
+		map = NULL;
+		for(j = 0; j < cur_obj->nsection_maps; j++){
+		    if(cur_obj->section_maps[j].output_section != ms)
+			continue;
+		    if(cur_obj->section_maps[j].s->size == 0)
+			continue;
+		    map = &(cur_obj->section_maps[j]);
+		    break;
+		}
+		if(map == NULL)
+		    continue;
+		object_symbols = NULL;
+		object_strings = NULL;
+		if(cur_obj->symtab != NULL){
+		    object_symbols = (struct nlist *)(cur_obj->obj_addr +
+						      cur_obj->symtab->symoff);
+		    object_strings = (char *)(cur_obj->obj_addr +
+					      cur_obj->symtab->stroff);
+		}
+		discard_local_symbols_for_section(j + 1,
+		    object_symbols, object_strings,
+		    cur_obj->section_maps[j].s, map);
+	    }
+	}
+}
+
+/*
+ * remove_dead_N_GSYM_stabs() is used by count_live_symbols() when -dead_strip
+ * is specified to get rid of dead N_GSYM stabs.  For common symbols this has
+ * to be done as they are not defined or in a section and so they can't be
+ * bracked by N_BNSYM/N_ENSYM stabs.
+ */
+static
+void
+remove_dead_N_GSYM_stabs(
+void)
+{
+    unsigned long i;
+    struct object_list *object_list, **q;
+    struct nlist *object_symbols;
+    char *object_strings;
+
+	/*
+	 * For each object that has symbols process it.
+	 */
+	for(q = &objects; *q; q = &(object_list->next)){
+	    object_list = *q;
+	    for(i = 0; i < object_list->used; i++){
+		cur_obj = &(object_list->object_files[i]);
+		if(cur_obj == base_obj)
+		    continue;
+		if(cur_obj->dylib)
+		    continue;
+		if(cur_obj->bundle_loader)
+		    continue;
+		if(cur_obj->dylinker)
+		    continue;
+		if(cur_obj->symtab != NULL){
+		    object_symbols = (struct nlist *)(cur_obj->obj_addr +
+						      cur_obj->symtab->symoff);
+		    object_strings = (char *)(cur_obj->obj_addr +
+					      cur_obj->symtab->stroff);
+		    remove_dead_N_GSYM_stabs_for_cur_obj(object_symbols,
+			object_strings);
+		    
+		}
+	    }
+	}
+}
+#endif /* !defined(RLD) */
 
 /*
  * define_link_editor_execute_symbols() is called when the output file type is
@@ -4010,7 +4541,7 @@ enum bool setup)
 
 	sections = NULL;
 	section_maps = NULL;
-	if(setup == FALSE){
+	if(setup == TRUE){
 	    /* count the number of merged sections */
 	    nsects = 0;
 	    p = &merged_segments;
@@ -4057,7 +4588,7 @@ enum bool setup)
 		while(*q){
 		    ms = *q;
 		    /* create the section and map for this section */
-		    if(setup == FALSE){
+		    if(setup == TRUE){
 			strncpy(sections[i].sectname, ms->s.sectname,
 				sizeof(ms->s.sectname));
 			strncpy(sections[i].segname, ms->s.segname,
@@ -4337,8 +4868,9 @@ layout_merged_symbols(void)
 }
 
 /*
- * discard_local_symbols_for_section() is used by coalesced_section_merge() and
- * indirect_section_merge() to deal with the symbol table entries for local
+ * discard_local_symbols_for_section() is used by coalesced_section_merge(), 
+ * indirect_section_merge() and removed_dead_local_symbols_in_section() (when
+ * -dead_strip is specified) to deal with the symbol table entries for local
  * symbols and N_STAB symbols in this section in the current object file after
  * the fine relocation entries have been set up to determined for which items
  * the contents will be used from current object file object file.
@@ -4387,8 +4919,8 @@ struct section_map *section_map)
 				       object_strings +
 				       object_symbols[i].n_un.n_strx))){
 		/*
-		 * If this local symbol from this section is for a coalesced
-		 * symbol that is not going to be in the output then make
+		 * If this local symbol from this section that part of a
+		 * fine_reloc that is not going to be in the output then make
 		 * sure the symbol is not going to be in the output by creating
 		 * a local symbol block for it marked to discard the symbol.
 		 */
@@ -4479,9 +5011,162 @@ struct section_map *section_map)
 		     */
 		    localsym_block = localsym_block->next;
 		}
+		/*
+		 * This local symbol is from this section and is that part of a
+		 * fine_reloc that WILL be in the output.  If this is a begin
+		 * nsect symbol stab (N_BNSYM) scan forward to the end nsect
+		 * symbol stab (N_ENSYM) and cause all stabs to also be kept.
+		 * This scan is needed just like the scan above for removing
+		 * symbols when to keep all the stabs for unstripped
+		 * fine_reloc's.
+		 */
+		else if(object_symbols[i].n_type == N_BNSYM &&
+			i + 1 < cur_obj->symtab->nsyms){
+		    fine_reloc = fine_reloc_for_input_offset(section_map,
+					object_symbols[i].n_value - s->addr);
+		    for(j = i + 1; j < cur_obj->symtab->nsyms; j++){
+			if(localsym_block != NULL &&
+			   j >= localsym_block->index)
+			    break;
+			if(object_symbols[j].n_type == N_ENSYM)
+			    break;
+			if((object_symbols[j].n_type & N_EXT) == N_EXT)
+			    break;
+			if((object_symbols[j].n_type & N_STAB) == 0)
+			    break;
+			if(object_symbols[j].n_sect == NO_SECT)
+			    continue;
+			if(object_symbols[j].n_sect != nsect)
+			    break;
+			if(fine_reloc != fine_reloc_for_input_offset(
+			    section_map,
+			    object_symbols[j].n_value - s->addr))
+			    break;
+		    }
+		    /*
+		     * If we really found an end nsect symbol stab (N_ENSYM)
+		     * move the index i to skip these stabs so they are kept.
+		     */
+		    if(j < cur_obj->symtab->nsyms &&
+		       (localsym_block == NULL ||
+			j < localsym_block->index) &&
+		       object_symbols[j].n_type == N_ENSYM &&
+		       object_symbols[j].n_sect == nsect){
+			i = j;
+		    }
+		}
 	    }
 	}
 }
+
+#ifndef RLD
+/*
+ * remove_dead_N_GSYM_stabs_for_cur_obj() is used by remove_dead_N_GSYM_stabs()
+ * when -dead_strip is specified to get rid of dead N_GSYM stabs for the
+ * cur_obj.  For common symbols this has to be done as they are not defined or
+ * in a section and so they can't be bracked by N_BNSYM/N_ENSYM stabs.
+ */
+static
+void
+remove_dead_N_GSYM_stabs_for_cur_obj(
+struct nlist *object_symbols,
+char *object_strings)
+{
+    unsigned long i, len, symbol_name_len;
+    struct localsym_block *localsym_block, **next_localsym_block;
+    char *stab_name, *symbol_name, *p;
+    struct merged_symbol **hash_pointer, *merged_symbol;
+
+	/*
+	 * Previouly in merge_symbols(), nlocal_symbols and local_string_size
+	 * were incremented for all symbols in this section. So now we decrement
+	 * these variables for N_GSYM stabs that will not be in the output file.
+	 */
+	symbol_name_len = 0;
+	symbol_name = NULL;
+	localsym_block = cur_obj->localsym_blocks;
+	next_localsym_block = &(cur_obj->localsym_blocks);
+	for(i = 0; i < cur_obj->symtab->nsyms; i++){
+	    /* skip blocks of symbols that have already been removed */
+	    if(localsym_block != NULL && localsym_block->index == i){
+		i += localsym_block->count - 1; /* the loop will do i++ */
+		next_localsym_block = &(localsym_block->next);
+		localsym_block = localsym_block->next;
+		continue;
+	    }
+	    /*
+	     * See if this is a N_GSYM stab and would be in the output file.
+	     */
+	    if(object_symbols[i].n_type == N_GSYM &&
+	       (strip_level == STRIP_NONE ||
+	        is_output_local_symbol(object_symbols[i].n_type,
+				       object_symbols[i].n_sect, cur_obj,
+				       object_symbols[i].n_un.n_strx == 0 ? "" :
+				       object_strings +
+				       object_symbols[i].n_un.n_strx))){
+		/*
+		 * Parse out the global symbol name from the N_GSYM stab and
+		 * look it up to see if the merged symbol symbol is live.
+		 */
+		if(object_symbols[i].n_un.n_strx == 0)
+		    continue;
+		stab_name = object_strings + object_symbols[i].n_un.n_strx;
+		p = strchr(stab_name, ':');
+		if(p == NULL)
+		    continue;
+		len = p - stab_name;
+		if(len == 0)
+		    continue;
+		if(len + 2 > symbol_name_len){
+		     if(len + 2 < 4096)
+			symbol_name_len = 4096;
+		     else
+			symbol_name_len = len + 2;
+		     symbol_name = reallocate(symbol_name, symbol_name_len);
+		}
+		strcpy(symbol_name, "_");
+		strncat(symbol_name, stab_name, len);
+		hash_pointer = lookup_symbol(symbol_name);
+		if(*hash_pointer == NULL)
+		    continue;
+		merged_symbol = *hash_pointer;
+		if(merged_symbol->live == FALSE){
+		    nlocal_symbols--;
+		    cur_obj->nlocalsym--;
+
+		    if(strip_level != STRIP_NONE){
+			local_string_size -=
+			    object_symbols[i].n_un.n_strx == 0 ? 0:
+			    strlen(object_strings +
+				   object_symbols[i].n_un.n_strx) + 1;
+		    }
+		    /*
+		     * Create a block for this symbol which will cause it to
+		     * be discarded for the output.
+		     */
+		    localsym_block = allocate(sizeof(struct localsym_block));
+		    memset(localsym_block, '\0', sizeof(struct localsym_block));
+		    localsym_block->index = i;
+		    localsym_block->state = DISCARD_SYMBOLS;
+		    localsym_block->count = 1;
+
+		    /* insert this block in the list */
+		    localsym_block->next = *next_localsym_block;
+		    *next_localsym_block = localsym_block;
+		    next_localsym_block = &(localsym_block->next);
+
+		    /*
+		     * Move the pointer from the block we just created to the
+		     * the next block
+		     */
+		    localsym_block = localsym_block->next;
+		}
+	    }
+	}
+	if(symbol_name != NULL)
+	    free(symbol_name);
+}
+#endif /* !defined(RLD) */
 
 /*
  * output_local_symbols() copys the local symbols and their strings from the
@@ -4631,6 +5316,15 @@ output_local_symbols(void)
 		/* copy the nlist to the output file */
 		*nlist = object_symbols[i];
 		relocate_symbol(nlist, cur_obj);
+		/*
+		 * If we are not producing a relocatable file clear the
+		 * N_NO_DEAD_STRIP bit in non-stab symbols as it is overloaded
+		 * and can't appear in a linked image.
+		 */
+		if(save_reloc == FALSE &&
+		   (nlist->n_type & N_TYPE) == N_SECT &&
+		   (nlist->n_type & N_STAB) == 0)
+		    nlist->n_desc = nlist->n_desc & ~(N_NO_DEAD_STRIP);
 #ifdef RLD
 		/*
 		 * Now change the section number of this symbol to the section
@@ -4905,6 +5599,8 @@ output_merged_symbols(void)
 		       (merged_symbol->nlist.n_desc & REFERENCED_DYNAMICALLY) !=
 			REFERENCED_DYNAMICALLY)
 			continue;
+		    if(dead_strip == TRUE && merged_symbol->live == FALSE)
+			continue;
 
 		    if(merged_symbol->nlist.n_type & N_PEXT){
 			/*
@@ -4927,6 +5623,13 @@ output_merged_symbols(void)
 			 * weak reference bit is off.
 			 */
 			nlist->n_desc = nlist->n_desc & ~(N_WEAK_REF);
+			/*
+			 * If we are not producing a relocatable file clear the
+			 * N_NO_DEAD_STRIP bit as it is overloaded and can't
+			 * appear in a linked image.
+			 */
+			if(save_reloc == FALSE)
+			    nlist->n_desc = nlist->n_desc & ~(N_NO_DEAD_STRIP);
 			nlist->n_un.n_strx = output_symtab_info.
 					     output_merged_strsize +
 					     merged_symbol_string_index(
@@ -4973,6 +5676,13 @@ output_merged_symbols(void)
 	     * bit is off.
 	     */
 	    nlist->n_desc = nlist->n_desc & ~(N_WEAK_REF);
+	    /*
+	     * If we are not producing a relocatable file clear the
+	     * N_NO_DEAD_STRIP bit as it is overloaded and can't appear in a
+	     * linked image.
+	     */
+	    if(save_reloc == FALSE)
+		nlist->n_desc = nlist->n_desc & ~(N_NO_DEAD_STRIP);
 	    nlist->n_un.n_strx = output_symtab_info.output_merged_strsize +
 				 merged_symbol_string_index(
 				    merged_symbol->nlist.n_un.n_name);
@@ -5020,9 +5730,9 @@ output_merged_symbols(void)
 	    *nlist = merged_symbol->nlist;
 	    /*
 	     * Since this is an undefined symbol make sure the weak definition
-	     * bit is off.
+	     * bit and N_NO_DEAD_STRIP bits are off.
 	     */
-	    nlist->n_desc = nlist->n_desc & ~(N_WEAK_DEF);
+	    nlist->n_desc = nlist->n_desc & ~(N_WEAK_DEF & N_NO_DEAD_STRIP);
 	    nlist->n_un.n_strx = output_symtab_info.output_merged_strsize +
 				 merged_symbol_string_index(
 				    merged_symbol->nlist.n_un.n_name);
@@ -5248,6 +5958,14 @@ void)
 		 */
 		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
 		   merged_symbol->nlist.n_value == 0){
+		    /*
+		     * If we are dead stripping and this undefined symbol is not
+		     * live just ignore it.
+		     */
+		    if(dead_strip == TRUE &&
+		       merged_symbol->live == FALSE)
+			continue;
+
 		    if(prebinding == TRUE){
 			if(rc_trace_prebinding_disabled == TRUE)
 			    print("[Logging for Build & Integration] prebinding"
@@ -5727,6 +6445,33 @@ void)
 		merged_string_blocks = NULL;
 		merged_string_size = 0;
 		rebuild_merged_string_table = TRUE;
+		/*
+		 * The value of nstripped_merged_symbols is reset to zero here
+		 * since we are setting the strip_level to
+		 * STRIP_DYNAMIC_EXECUTABLE.  This routine will then increment
+		 * nstripped_merged_symbols for the symbols to be stripped. It
+		 * may have previouly held the count of dead symbols to strip if
+		 * -dead_strip was specified. This works since any symbol to be
+		 * saved with STRIP_DYNAMIC_EXECUTABLE would also be live since
+		 * it would have REFERENCED_DYNAMICALLY set.  Except for
+		 * undefined symbols, so if -dead_strip is specified and the
+		 * undefined symbol is not live then nstripped_merged_symbols
+		 * is incremented to account for these.
+		 */
+		nstripped_merged_symbols = 0;
+/*
+printf("assign_output_symbol_indexes() nstripped_merged_symbols set to 0\n");
+*/
+		/*
+		 * The value of nstripped_merged_private_symbols is also reset
+		 * to zero since we are setting the strip_level to
+		 * STRIP_DYNAMIC_EXECUTABLE.  Since this causes all private
+		 * symbols to be stripped and nstripped_merged_private_symbols
+		 * held the count of merged private symbols when -dead_strip
+		 * was specified.  This routine will then increment
+		 * nstripped_merged_private_symbols for all private symbols.
+		 */
+		nstripped_merged_private_symbols = 0;
 	    }
 	    else{
 		seglinkedit = FALSE;
@@ -5758,12 +6503,19 @@ void)
 	last_object = add_last_object_file(&link_edit_common_object);
 
 	/*
-	 * Private exterals are always kept when any symbols are kept.  The
-	 * private externals on the merged symbol list may be kept as local
-	 * symbols or external depending on the keep_private_externs flag.
-	 * Private externals that are local symbols (no N_EXT bit set) are
-	 * always counted in the cur_obj->nlocalsym unless the strip level
-	 * is STRIP_ALL.
+	 * Private exterals are always kept when any symbols are kept (except in
+	 * the case of STRIP_DYNAMIC_EXECUTABLE).  The private externals on the
+	 * merged symbol list may be kept as local symbols or external depending
+	 * on the keep_private_externs flag. Private externals that are local
+	 * symbols (no N_EXT bit set) are always counted in the
+	 * cur_obj->nlocalsym unless the strip level is STRIP_ALL.
+	 */
+
+	/*
+	 * Note if -dead_strip is specified the values of the nlocalsym and
+	 * nprivatesym fields in the object_file structs were previously
+	 * adjusted to account for only the live symbols in
+	 * count_live_symbols().
 	 */
 
 	index = 0;
@@ -5792,6 +6544,10 @@ void)
 		    continue;
 #endif /* RLD */
 		cur_obj->ilocalsym = index;
+/*
+print_obj_name(cur_obj);
+print(" cur_obj->nlocalsym %lu\n", cur_obj->nlocalsym);
+*/
 		index += cur_obj->nlocalsym;
 
 		if(keep_private_externs == FALSE){
@@ -5799,10 +6555,21 @@ void)
 		    cur_obj->cprivatesym = index;
 		    if(strip_level != STRIP_DYNAMIC_EXECUTABLE &&
 		       (strip_level != STRIP_NONGLOBALS ||
-			(filetype == MH_DYLIB && multi_module_dylib == TRUE)))
+			(filetype == MH_DYLIB && multi_module_dylib == TRUE))){
 			index += cur_obj->nprivatesym;
-		    else
-			nstripped_merged_symbols += cur_obj->nprivatesym;
+/*
+print(" adding cur_obj->nprivatesym %lu to index\n", cur_obj->nprivatesym);
+*/
+		    }
+		    else{
+			nstripped_merged_symbols +=
+			    cur_obj->nprivatesym;
+			nstripped_merged_private_symbols +=
+			    cur_obj->nprivatesym;
+/*
+print("assign_output_symbol_indexes() adding cur_obj->nprivatesym %lu to nstripped_merged_symbols\n", cur_obj->nprivatesym);
+*/
+		    }
 		}
 	    }
 	}
@@ -5811,7 +6578,7 @@ void)
 	 */
 	if((keep_private_externs == TRUE && index != nlocal_symbols) ||
 	   (keep_private_externs == FALSE && index != nlocal_symbols +
-	    nmerged_private_symbols - nstripped_merged_symbols))
+	    nmerged_private_symbols - nstripped_merged_private_symbols))
 		fatal("internal error: assign_output_symbol_indexes() "
 		      "inconsistent local symbol counts");
 	output_dysymtab_info.dysymtab_command.nlocalsym = index;
@@ -5845,14 +6612,30 @@ void)
 		if(merged_symbol->definition_object->set_num != cur_set)
 		    continue;
 #endif /* RLD */
+		/*
+		 * The value of nstripped_merged_symbols is recalculated if we
+		 * set the strip_level to STRIP_DYNAMIC_EXECUTABLE in the case
+		 * -dead_strip is specified.
+		 */
+		if(strip_level != STRIP_DYNAMIC_EXECUTABLE &&
+		   dead_strip == TRUE && merged_symbol->live == FALSE)
+		    continue;
 		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
 		   merged_symbol->nlist.n_type == (N_EXT | N_PBUD) ||
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
 		    merged_symbol->defined_in_dylib == TRUE)){
-		    nundefsym++;
-		    if(rebuild_merged_string_table == TRUE)
-			merged_symbol->nlist.n_un.n_name =
-			    enter_string(merged_symbol->nlist.n_un.n_name);
+		    if(dead_strip == FALSE || merged_symbol->live == TRUE){
+			nundefsym++;
+			if(rebuild_merged_string_table == TRUE)
+			    merged_symbol->nlist.n_un.n_name =
+				enter_string(merged_symbol->nlist.n_un.n_name);
+		    }
+		    else{
+/*
+printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for undefined %s\n", merged_symbol->nlist.n_un.n_name);
+*/
+			nstripped_merged_symbols++; 
+		    }
 		}
 		else{
 		    if(merged_symbol->nlist.n_type == (N_EXT | N_INDR)){
@@ -5874,6 +6657,9 @@ void)
 						 nlist.n_un.n_name);
 			}
 			else{
+/*
+printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for %s\n", merged_symbol->nlist.n_un.n_name);
+*/
 			    nstripped_merged_symbols++; 
 			}
 		    }
@@ -5907,6 +6693,8 @@ void)
 		if(merged_symbol->definition_object->set_num != cur_set)
 		    continue;
 #endif /* RLD */
+		if(dead_strip == TRUE && merged_symbol->live == FALSE)
+		    continue;
 		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
 		   merged_symbol->nlist.n_type == (N_EXT | N_PBUD) ||
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
@@ -5926,6 +6714,14 @@ void)
 			   (merged_symbol->nlist.n_desc &
 			    REFERENCED_DYNAMICALLY) == REFERENCED_DYNAMICALLY){
 			    extdefsyms_order[nextdefsym++] = merged_symbol;
+			}
+			else{
+			    if((merged_symbol->nlist.n_type & N_TYPE) == N_ABS)
+				merged_symbol->output_index =
+				    INDIRECT_SYMBOL_ABS | INDIRECT_SYMBOL_LOCAL;
+			    else
+				merged_symbol->output_index =
+				    INDIRECT_SYMBOL_LOCAL;
 			}
 		    }
 		}
@@ -6005,6 +6801,8 @@ void)
 		    if(merged_symbol->definition_object->set_num != cur_set)
 			continue;
 #endif /* RLD */
+		    if(dead_strip == TRUE && merged_symbol->live == FALSE)
+			continue;
 		    if(merged_symbol->nlist.n_type & N_PEXT){
 			merged_symbol->output_index =
 				merged_symbol->definition_object->cprivatesym++;
@@ -6277,6 +7075,8 @@ void)
 		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
 		    if(merged_symbol->referenced_in_non_dylib == FALSE)
 			continue;
+		    if(dead_strip == TRUE && merged_symbol->live == FALSE)
+			continue;
 		    if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
 		       merged_symbol->nlist.n_type == (N_EXT | N_PBUD) ||
 		       (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
@@ -6326,14 +7126,31 @@ void)
 			       merged_symbol_string_index(cur_obj->module_name);
 		    mod->iextdefsym = cur_obj->iextdefsym;
 		    mod->nextdefsym = cur_obj->nextdefsym;
-		    mod->irefsym    = cur_obj->irefsym;
-		    mod->nrefsym    = cur_obj->nrefsym;
-		    mod->ilocalsym  = cur_obj->ilocalsym;
-		    mod->nlocalsym  = cur_obj->nlocalsym + cur_obj->nprivatesym;
-		    mod->iextrel    = cur_obj->iextrel;
-		    mod->nextrel    = cur_obj->nextrel;
-		    mod->iinit_iterm = (cur_obj->iterm << 16) | cur_obj->iinit;
+
+		    mod->nrefsym = cur_obj->nrefsym;
+		    if(mod->nrefsym == 0)
+    			mod->irefsym = 0;
+		    else 
+			mod->irefsym = cur_obj->irefsym;
+
+		    mod->nlocalsym = cur_obj->nlocalsym + cur_obj->nprivatesym;
+		    if(mod->nlocalsym == 0)
+			mod->ilocalsym = 0;
+		    else
+			mod->ilocalsym = cur_obj->ilocalsym;
+
+		    mod->nextrel = cur_obj->nextrel;
+		    if(mod->nextrel == 0)
+			mod->iextrel = 0;
+		    else
+			mod->iextrel    = cur_obj->iextrel;
+
 		    mod->ninit_nterm = (cur_obj->nterm << 16) | cur_obj->ninit;
+		    if(cur_obj->ninit == 0)
+			cur_obj->iinit = 0;
+		    if(cur_obj->nterm == 0)
+			cur_obj->iterm = 0;
+		    mod->iinit_iterm = (cur_obj->iterm << 16) | cur_obj->iinit;
 		    if(cur_obj->objc_module_info != NULL){
 			mod->objc_module_info_addr =
 			    cur_obj->objc_module_info->output_section->s.addr +

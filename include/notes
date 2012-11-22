@@ -1,3 +1,80 @@
+Changes for the 5.16 release (the cctools-520 release):
+- Changed the reference to kmodload(8) in <mach-o/kld.h> to kextload(8).
+  Radar bug #3633604.
+
+Changes for the 5.16 release (the cctools-517 release):
+- Changed the Makefile for installsrc to always install all of the files.
+
+Changes for the 5.16 release (the cctools-515 release):
+- Added the installGASsrc Makefile target to install just the needed header
+  files to build the GAS sources:
+    stuff/bytesex.h
+    stuff/bool.h
+    stuff/round.h
+    stuff/errors.h
+    stuff/openstep_mach.h
+    mach/m68k/thread_status.h
+    mach/i860/thread_status.h
+    mach/m88k/thread_status.h
+    architecture/m88k/fp_regs.h
+    architecture/m88k/reg_help.h
+    architecture/nrw/reg_help.h
+    architecture/nrw/macro_help.h
+    mach/hppa/thread_status.h
+    mach/sparc/thread_status.h
+    architecture/sparc/reg.h
+    mach/ppc/thread_status.h
+  and changed the Copyright in these files to the Apple BSD License.
+  Radar bug #3657295.
+
+Changes for the 5.16 release (the cctools-514 release):
+- Added the new typedef:
+    typedef integer_t     cpu_threadtype_t;
+  to cctools' copy of "mach/machine.h".
+
+Changes for the 5.16 release (the cctools-513 release):
+- Changed the Makefile so that it only installs the following files for releases
+  Panther and older:
+	/usr/include/mach-o/dyld.h
+	/usr/local/include/mach-o/dyld_gdb.h
+	/usr/local/include/mach-o/dyld_priv.h
+  Radar bug #3639836.
+
+Changes for the 5.16 release (the cctools-512 release):
+- Added then new enum bool * seen_archive parameter to writeout_to_mem() to the
+  header file "stuff/breakout.h".  See the notes in libstuff for this, as this
+  is part of the fix for Radar bug #3645280.
+
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format in <mach/machine.h> .
+
+Changes for the 5.16 release (the cctools-501 release):
+- Added the MH_SUBSECTIONS_VIA_SYMBOLS mach header flag to <mach-o/loader.h> to
+  be used to indicate to the static link editor it is safe to divide up the
+  sections into sub-sections via symbols for dead code stripping.  Radar bug
+  #2284500.
+
+Changes for the 5.16 release (the cctools-500 release):
+- Added the S_ATTR_LIVE_SUPPORT user section attribute to <mach-o/loader.h> to
+  be used to mark C++ exception frame sections contents and references not to
+  be dead stripped if they reference some live block.  Radar bug #2284500.
+- Added the S_ATTR_NO_DEAD_STRIP user section attribute to <mach-o/loader.h> to
+  be used to mark Objective-C sections contents and references not to be dead
+  stripped.  Radar bug #2284500.
+- Added N_NO_DEAD_STRIP to <mach-o/nlist.h> to be used to mark symbols not to
+  be dead stripped.  This is the same value as N_DESC_DISCARDED and the comments
+  for that were also updated.  Radar bug #2284500.
+
+Changes for the 5.16 release (the cctools-499.4 release):
+- Added the comment "3=quad" to the r_length field comments in mach-o/reloc.h 
+  for 8 byte relocable sized items.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Added the CPU_TYPE_POWERPC64 cputype and the subtype CPU_SUBTYPE_POWERPC64_ALL
+  to <mach/machine.h> for the interim ppc64 file format.  Radar bug #3562133
+  and #3562232.
+
 Changes for the 5.14 release (the cctools-496 release):
 - Added the constant MACOSX_DEPLOYMENT_TARGET_10_4 to the header file
   <stuff/macosx_deployment_target.h>.  Radar bug #3445632.
@@ -7,6 +84,21 @@ Changes for the 5.14 release (the cctools-496 release):
     extern struct mach_header * _dyld_get_image_header_containing_address
     extern enum DYLD_BOOL _dyld_all_twolevel_modules_prebound
   with AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER.  Radar bug #3401910.
+
+Changes for the 5.13.2 release (the cctools-495.3 release):
+- Added the prototype for unprebind(3) to <mach-o/redo_prebinding.h>.  
+  Radar bug #3176679.
+- Added prototypes for the new routine breakout_mem() and writeout_to_mem()
+  to <stuff/breakout.h>.  Radar bug #3176679.
+- Added MH_PREBINDABLE, MH_ALLMODSBOUND, and MH_CANONICAL Mach-O header 
+  flags to <mach-o/loader.h>.  MH_PREBINDABLE indicates that the binary is not
+  prebound but has enough information in it to be prebound by 
+  redo_prebinding(3) or redo_prebinding(1).  MH_ALLMODSBOUND exists 
+  only in binaries with MH_PREBINDABLE also set and indicates that 
+  when this binary is reprebound, all the two-level namespace modules
+  should be bound.  MH_CANONICAL identifies a canonical form of a 
+  binary, in other words, one that has been processed by unprebind(3) or 
+  redo_prebinding(1) -u.  Radar bug #3176679.
 
 Changes for the 5.13 release (the cctools-492 release):
 - Added the #define NEXT_DEBUG_ADDRESS_TO_ASSIGN to <stuff/seg_addr_table.h>

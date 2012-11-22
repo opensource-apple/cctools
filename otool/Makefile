@@ -6,7 +6,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp ; \
+	     echo -Wno-long-double -no-cpp-precomp -DINTERIM_PPC64 ; \
 	     fi; )
 endif
 
@@ -33,7 +33,19 @@ else
   SYSTEMDIR = /Local/Developer/System
 endif
 ifeq "macos" "$(RC_OS)"
-  LIBS = -L$(NEXT_ROOT)$(SYSTEMDIR) -lc_static
+  LIBS := $(shell if [ "$(RC_RELEASE)" = "Beaker"    ] || \
+		     [ "$(RC_RELEASE)" = "Bunsen"    ] || \
+		     [ "$(RC_RELEASE)" = "Gonzo"     ] || \
+		     [ "$(RC_RELEASE)" = "Kodiak"    ] || \
+		     [ "$(RC_RELEASE)" = "Cheetah"   ] || \
+		     [ "$(RC_RELEASE)" = "Puma"      ] || \
+		     [ "$(RC_RELEASE)" = "Jaguar"    ] || \
+		     [ "$(RC_RELEASE)" = "Panther"   ] || \
+		     [ "$(RC_RELEASE)" = "MuonPrime" ]; then \
+		    echo "-L$(NEXT_ROOT)$(SYSTEMDIR) -lc_static" ; \
+	    else \
+		    echo "-L$(NEXT_ROOT)$(SYSTEMDIR) -lc_static -lm_static" \
+	  ; fi; )
 else
   LIBS = -lc_static
 endif

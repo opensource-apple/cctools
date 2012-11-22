@@ -3,9 +3,57 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.16 release (the cctools-522 release):
+- Fixed the problem with the changes to libc in Radar bug #3535291 causing the
+  symbols ___fegetfltrounds and ___fpclassifyd to be undefined.
+  Changed the Makefile to cause -lm_static to be used for releases after
+  Panther.  And changed main.c to remove the ifdef's around the stubs
+  __fpclassifyd() and __fpclassify(). Radar bug #3685865.
+
+Changes for the 5.16 release (the cctools-520 release):
+- Fixed a bug in the disassembly of the i386 movdq2q instruction.  Radar bug
+  #3488840.
+- Fixed a bug in the disassembly of the i386 move word to accumulator
+  instructions.  It was incorrectly using the data-size attribute to determines
+  the size of the offset.  For move to accumulator instructions the
+  address-size attribute of the instruction determines the size of the offset.
+  Radar bug #3515794.
+
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format.  And added -DINTERIM_PPC64 to the Makefile.
+- Changed print_thread_states() in ofile_print.c to treat CPU_TYPE_POWERPC64 the
+  same as CPU_TYPE_POWERPC and CPU_TYPE_VEO.
+
+Changes for the 5.16 release (the cctools-501 release):
+- Added the printing of MH_SUBSECTIONS_VIA_SYMBOLS to print_mach_header() in
+  ofile_print.c .  Radar bug #2284500.
+
+Changes for the 5.16 release (the cctools-500 release):
+- Added printing S_ATTR_LIVE_SUPPORT and S_ATTR_NO_DEAD_STRIP to print_section()
+  in ofile_print.c .  Radar bug #2284500.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Made changes to support the interim ppc64 file format.  Radar bug #3562133
+  and #3562232.
+  - Changed print_text() in main.c to treat CPU_TYPE_POWERPC64 the same as
+    CPU_TYPE_POWERPC and CPU_TYPE_VEO.
+  - Changed print_relocs() in ofile_print.c to print "quad" for an
+    r_length == 3 and cputype == CPU_TYPE_POWERPC64 and r_type ==
+    PPC_RELOC_VANILLA in 2 places.
+  - Changed print_indirect_symbols() and guess_indirect_symbol() in
+    ofile_print.c to set the stride to 8 for CPU_TYPE_POWERPC64 otherwise 4.
+  - Updated print_arch(), print_cputype(), print_mach_header(), print_relocs()
+    and print_r_type() in ofile_print.c for CPU_TYPE_POWERPC64 to be the same
+    as CPU_TYPE_POWERPC.
+
 Changes for the 5.14 release (the cctools-498 release):
 - Added code to disassemble the PowerPC pseudo-instruction 'jmp' as the
  non-linking form of 'jbsr' in ppc_disasm.c .  Radar bug #3458928.
+
+Changes for the 5.13.2 release (the cctools-495.3 release):
+- Updated print_mach_header() in ofile_print.c to print the new mach_header
+  flags MH_PREBINDABLE, MH_ALLMODSBOUND and MH_CANONICAL.  Radar bug #3176679.
 
 Changes for the 5.12 release (the cctools-489 release):
 - Added stub functions for the notify API in the new file notify.c and picked

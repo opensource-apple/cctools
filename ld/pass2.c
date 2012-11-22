@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -51,6 +53,7 @@
 #include "stuff/macosx_deployment_target.h"
 
 #include "ld.h"
+#include "live_refs.h"
 #include "objects.h"
 #include "fvmlibs.h"
 #include "dylibs.h"
@@ -667,6 +670,11 @@ unsigned long size)
 	if(flush == FALSE)
 	    return;
 
+/*
+if(offset == 588824 && size != 0)
+printf("in output_flush() offset = %lu size = %lu\n", offset, size);
+*/
+
 	if(offset + size > output_size)
 	    fatal("internal error: output_flush(offset = %lu, size = %lu) out "
 		  "of range for output_size = %lu", offset, size, output_size);
@@ -910,7 +918,7 @@ final_output_flush(void)
 		write_size = block->size;
 	    }
 	    if(block->next != NULL)
-		fatal("internal error: more then one block in final list");
+		fatal("internal error: more than one block in final list");
 	}
 	if(write_size != 0){
 #ifdef DEBUG
@@ -1117,9 +1125,8 @@ output_headers(void)
 			dl->cmd = LC_LOAD_DYLIB;
 		    }
 		}
-		else{
+		else
 		    dl->cmd = LC_LOAD_DYLIB;
-		}
 	    }
 	    header_offset += mdl->dl->cmdsize;
 	    mdl = mdl->next;

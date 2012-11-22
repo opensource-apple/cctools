@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -35,7 +37,9 @@ __private_extern__ void generic_reloc(
     char *contents,
     struct relocation_info *relocs,
     struct section_map *map,
-    long pcrel_at_end_of_disp);
+    long pcrel_at_end_of_disp,
+    struct live_refs *refs,
+    unsigned long reloc_index);
 
 __private_extern__ int undef_bsearch(
     const unsigned long *index,

@@ -5,7 +5,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp ; \
+	     echo -Wno-long-double -no-cpp-precomp -DINTERIM_PPC64 ; \
 	     fi; )
 endif
 
@@ -200,17 +200,17 @@ installGASsrc:
 	chmod 444 $(SRCROOT)/*
 
 fromGASsrc: $(OBJROOT)/dynamic_obj
-	@cd dynamic_obj;                                                \
-	    $(MAKE) -f ../Makefile libstuff.dylib                       \
-	    PRODUCT=libstuff.dylib                                      \
-	    VPATH=..                                                    \
-	    OFILE_DIR=.                                                 \
-	    SRCROOT=..                                                  \
-	    SYMROOT=..                                                  \
-	    COPTS="-dynamic"                                            \
-	    OFLAG="$(OFLAG)"                                            \
-	    CFILES="bytesex.c round.c"                                  \
-	    RC_CFLAGS="$(RC_CFLAGS)"                                    \
+	@cd dynamic_obj;						\
+	    $(MAKE) -f ../Makefile libstuff.dylib			\
+	    PRODUCT=libstuff.dylib					\
+	    VPATH=.. 							\
+	    OFILE_DIR=.							\
+	    SRCROOT=..							\
+	    SYMROOT=..							\
+	    COPTS="-dynamic"						\
+	    OFLAG="$(OFLAG)"						\
+	    CFILES="bytesex.c round.c"					\
+	    RC_CFLAGS="$(RC_CFLAGS)"					\
 	    RC_ARCHS="$(RC_ARCHS)";
 
 $(OFILE_DIRS) $(SYMROOT):

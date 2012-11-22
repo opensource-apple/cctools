@@ -1,4 +1,6 @@
 To Do:
+- Add the -prebind_allow_overlap and  -prebind_all_two_level_modules to libtool
+  see Radar bug 3417137.
 - Change to Doug's approach to relayout, namely something like reserving the
   last 10% of the load region for new dylibs and then evenly spacing the
   existing dylibs in the other 90% (for split libs).  See email of 11/6/2000.
@@ -7,6 +9,46 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.16 release (the cctools-520 release):
+- Fixed a bug in strip(1) that when used on a dynamic library with no options,
+  to strip all symbols, it produced a malformed file that had bad offsets
+  to various tables.  The fix was in strip_object() in strip.c to change it to
+  make it call strip_symtab() when the file is an MH_DYLIB.  Radar bug #3641669.
+- Changed libtool(1) that printed "Logging for Build & Integration] Used static 
+  library" to print the realpath() name of the file name.  Radar bug #3585834.
+- Changed libtool(1) to take -executable_path as a linker flag.  Radar bug
+  #3489733.
+- Changed libtool(1) and ranlib(1) to not generate warnings about multiple 
+  archive members defining the same symbol.  This is was done by adding the
+  boolean parameter library_warnings to the function check_sort_ranlibs() in
+  libtool.c and always passing this a FALSE.  This matches the way it is done
+  in writeout() in libstuff.  Radar bug #3653845 .
+
+Changes for the 5.16 release (the cctools-512 release):
+- Changed the two calls to writeout_to_mem() in redo_prebinding.c to pass the
+  new enum bool * seen_archive parameter (it is not used in this code however).
+  See the notes in libstuff for this, as it is part of the fix for Radar bug
+  #3645280.
+
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format.  And added -DINTERIM_PPC64 to the Makefile.
+
+Changes for the 5.16 release (the cctools-500 release):
+- Added in nm(1) when -m is specified printing "[no dead strip] " for symbols
+  with the N_NO_DEAD_STRIP bit set.  This change is in print_mach_symbols() in
+  nm.c .  Radar bug #2284500.
+- Changed libtool(1) to take -dead_strip and -no_dead_strip_inits_and_terms
+  as linker flags.  Radar bug #2284500.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Added support for the interim ppc64 file format. Radar bug #3562133 and
+  #3562232.
+  - Updated lipo.c to know about CPU_TYPE_POWERPC64 in print_arch() and
+    print_cputype().
+  - Updated strip_object() in strip.c so the stride for symbol pointers is set
+    8 when arch_flag.cputype == CPU_TYPE_POWERPC64 and 4 otherwise.
+
 Changes for the 5.14 release (the cctools-497 release):
 - Added passing the -prebind_allow_overlap from libtool(1) to ld(1).  Radar bug
   #3452484.
@@ -14,6 +56,43 @@ Changes for the 5.14 release (the cctools-497 release):
 Changes for the 5.14 release (the cctools-496 release):
 - Fixed a bug that caused the seg_addr_table(1) tool to reserves more space
   than necessary for flat dylibs.  Radar bug #3440884.
+
+Changes for the 5.13.2 release (the cctools-495.3 release):
+- Added a -u option to redo_prebinding(1) and the unprebind(3) API to allow
+  binaries to be "unprebound".  Unprebound binaries are identified by the
+  MH_PREBINDABLE flag.  The unprebind operation will remove all
+  LC_PREBOUND_DYLIB load commands, set LC_LOAD_DYLIB load command's timestamps
+  to zero, slide dynamic libraries to address 0x0, set prebound symbols' symtab
+  entries to be of type N_UNDF and address zero, resets lazy symbol pointers to
+  their original values as specified in their corresponding relocation entries,
+  sets non-lazy symbol pointers to zero, and sets two-level hints to zero.  If
+  a dynamic library has all two-level namespace modules bound, the unprebound
+  binary will also have the MH_ALLMODSBOUND flag set (because this fact is lost
+  when the LC_PREBOUND_DYLIB commands are removed).  It is also 
+  possible to unprebind non-prebound dylibs, executables, and bundles.  
+  These files do not gain the MH_PREBINDABLE flag, however they will have 
+  their dependent library timestamps and versions zeroed, and their hints 
+  table will be zeroed as well.  As unprebind is intended to produce a 
+  canonical Mach-O, all unprebound binaries are identified with the 
+  MH_CANONICAL flag.  Radar bug #3176679.
+- Added a -s option to redo_prebinding(1).  If -s is specified, the resulting
+  output file will be written to standard output, rather than to an output file.
+  Radar bug #3176679.
+- Added a -seg1addr option to redo_prebinding(1).  If -seg1addr is specified,
+  the next command-line argument should be a valid hexadecimal address.  
+  redo_prebinding(1) will then slide the input dynamic library to this address.
+  This option does not apply when -u, -seg_addr_table or
+  -seg_addr_table_filename are specified.
+- Modified the redo_prebinding code to support reprebinding of unprebound
+  binaries.  This included recognizing binaries with MH_PREBINDABLE as opposed
+  to MH_PREBOUND as binaries acceptable for reprebinding, using the
+  MH_ALLMODSBOUND flag (or lack thereof) to determine if all two-level namespace
+  modules should be bound for input binaries with MH_PREBINDABLE, and changing
+  the type of the input symbols to N_PBUD if the type was read in as N_UNDF and
+  the file has MH_PREBINDABLE set in setup_initial_undefined_list() (this is
+  because these symbols can be assumed to have been prebound symbols prior to
+  the file being unprebound, and these symbols must be treated as prebound
+  during the reprebinding process).  Radar bug #3176679.
 
 Changes for the 5.13 release (the cctools-493 release):
 - Fixed a bug in the redo_prebinding code that was incorrectly checking that an

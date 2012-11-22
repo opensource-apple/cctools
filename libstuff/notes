@@ -5,7 +5,62 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
-Changes for the 5.11 release (the cctools-438 release):
+Changes for the 5.16 release (the cctools-520 release):
+- Fixed a bug that caused otool(1) to crash when it was called with a bad fat
+  file (a java class file).  The calls to ofile_first_arch() in ofile.c was not
+  checking its return value and later causing the code to crash when it should
+  have returned in case of an error.  Radar bug #3670740.
+
+Changes for the 5.16 release (the cctools-515 release):
+- Added the installGASsrc and fromGASsrc Makefile targets to install and build
+  just the need sources to build the PowerPC assembler from the GAS sources:
+    bytesex.c
+    round.c
+  and changed the Copyright in this file to the Apple BSD License.
+  Radar bug #3657295.
+
+Changes for the 5.16 release (the cctools-513 release):
+- Changed writeout_to_mem() in writeout.c to move the local declrations of:
+    long toc_time, timestamp, index;
+  to the start of the routine so it would compile on older systems.  Also fixed
+  the intenting of the first bit of code in that routine.
+
+Changes for the 5.16 release (the cctools-512 release):
+- Fixed a bug in the change made for Radar bug #3176679 in cctools-495.3 where
+  the new writeout_to_mem() routine did not pass up the value of the boolean
+  seen_archive to the outer routine writeout().  So the outer routine never made
+  the call utime() to reset the mod time as the value of seen_archive was always
+  FALSE in the outer routine.  The change was add the parameter seen_archive
+  as a enum bool * to writeout_to_mem() in writeout.c and set the value
+  indirectly.  Then the outer routine writeout() was changed to pass the address
+  of its seen_archive variable to writeout_to_mem().  Radar bug #3645280.
+
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format.  And added -DINTERIM_PPC64 to the Makefile.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Made changes to support the interim ppc64 file format.  Radar bug  #3562133
+  and #3562232.
+  - Added an entry in the arch_flags[] array in arch.c for ppc64 as:
+      { "ppc64",  CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC64_ALL },
+  - Updated get_byte_sex_from_flag() in arch.c to return BIG_ENDIAN_BYTE_SEX
+    for CPU_TYPE_POWERPC64.
+  - Updated cpusubtype_findbestarch() in best_arch.c for CPU_TYPE_POWERPC64
+    and its cpusubtype.
+
+Changes for the 5.13.2 release (the cctools-495.3 release):
+- Modified breakout.c to include a breakout_mem() function which will perform
+  the breakout on a memory buffer, rather than reading from a file.  The 
+  internals of breakout() were moved to breakout_internal() so they could
+  be shared by both breakout() and breakout_mem().  Radar bug #3176679.
+- Modified writeout.c to include a writeout_to_mem() function which will 
+  return a vm_allocate'd buffer of the contents of the output file.  The 
+  interanls of writeout() were moved to writeout_to_mem() so that writeout() 
+  calls writeout_to_mem(), which produces the contents of the file, and
+  writeout() writes it to the output file.  Radar bug #3176679.
+
+Changes for the 5.14 release (the cctools-496 release):
 - Added the following entry to the table in macosx_deployment_target.c :
     { "10.4", MACOSX_DEPLOYMENT_TARGET_10_4 },
   Radar bug #3445632.

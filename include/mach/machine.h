@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -105,6 +107,7 @@ typedef struct machine_info	machine_info_data_t;	/* bogus */
 
 typedef int	cpu_type_t;
 typedef int	cpu_subtype_t;
+typedef integer_t	cpu_threadtype_t;
 
 #define CPU_STATE_MAX		3
 
@@ -154,6 +157,9 @@ extern vm_offset_t		interrupt_stack[];
 #define CPU_TYPE_RS6000		((cpu_type_t) 17)
 #define CPU_TYPE_MC98000	((cpu_type_t) 18)
 #define CPU_TYPE_POWERPC	((cpu_type_t) 18)
+#ifdef INTERIM_PPC64
+#define CPU_TYPE_POWERPC64	((cpu_type_t) 19)
+#endif /* INTERIM_PPC64 */
 #define CPU_TYPE_VEO		((cpu_type_t) 255)
 		
 
@@ -355,6 +361,14 @@ extern vm_offset_t		interrupt_stack[];
 #define CPU_SUBTYPE_POWERPC_7400	((cpu_subtype_t) 10)
 #define CPU_SUBTYPE_POWERPC_7450	((cpu_subtype_t) 11)
 #define CPU_SUBTYPE_POWERPC_970		((cpu_subtype_t) 100)
+
+#ifdef INTERIM_PPC64
+/*
+ *      64-bit PowerPC subtypes
+ */
+#define CPU_SUBTYPE_POWERPC64_ALL		((cpu_subtype_t) 0)
+#endif /* INTERIM_PPC64 */
+
 
 /*
  * VEO subtypes

@@ -57,6 +57,9 @@ int force_cpusubtype_ALL = 0;
 cpu_subtype_t archflag_cpusubtype = -1;
 char *specific_archflag = NULL;
 
+/* TRUE if the .subsections_via_symbols directive was seen */
+int subsections_via_symbols = 0;
+
 /*
  * .include "file" looks in source file dir, then stack.
  * -I directories are added to the end, then the defaults are added.
@@ -88,13 +91,15 @@ static void perform_an_assembly_pass(
     int argc,
     char **argv);
 
+/* used by error calls (exported) */
+char *progname = NULL;
+
 int
 main(
 int argc,
 char **argv,
 char **envp)
 {
-    char *progname;	/* argv[0] */
     int	work_argc;	/* variable copy of argc */
     char **work_argv;	/* variable copy of argv */
     char *arg;		/* an arg to program */
@@ -366,7 +371,7 @@ char **envp)
 				as_fatal("I expected 'm88k' after "
 				       "-arch for this assembler.");
 #endif
-#ifdef PPC
+#if defined(PPC) && !defined(INTERIM_PPC64)
 			    if(strcmp(*work_argv, "ppc601") == 0){
 				if(archflag_cpusubtype != -1 &&
 				   archflag_cpusubtype !=
@@ -479,6 +484,11 @@ char **envp)
 			    else if(strcmp(*work_argv, "ppc") != 0 &&
 			    	    strcmp(*work_argv, "m98k") != 0)
 				as_fatal("I expected 'ppc' after "
+				       "-arch for this assembler.");
+#endif /* defined(PPC) && !defined(INTERIM_PPC64) */
+#ifdef INTERIM_PPC64
+			    if(strcmp(*work_argv, "ppc64") != 0)
+			      as_fatal("I expected 'ppc64' after "
 				       "-arch for this assembler.");
 #endif
 #ifdef I860

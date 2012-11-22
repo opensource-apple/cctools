@@ -18,7 +18,7 @@ along with GAS; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #define MASK_CHAR (0xFF)	/* If your chars aren't 8 bits, you will
-				   change this a bit.  But then, GNU isn't
+				   change this a bit.  But then, GNU isnt
 				   spozed to run on your machine anyway.
 				   (RMS is so shortsighted sometimes.)
 				 */
@@ -38,6 +38,8 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "stuff/round.h"
+#include "stuff/arch.h"
+#include "stuff/best_arch.h"
 #include "as.h"
 #include "flonum.h"
 #include "struc-symbol.h"
@@ -248,6 +250,8 @@ static struct attribute_name attribute_names[] = {
     { "pure_instructions", S_ATTR_PURE_INSTRUCTIONS },
     { "no_toc", S_ATTR_NO_TOC },
     { "strip_static_syms", S_ATTR_STRIP_STATIC_SYMS },
+    { "no_dead_strip", S_ATTR_NO_DEAD_STRIP },
+    { "live_support", S_ATTR_LIVE_SUPPORT },
     { NULL, 0 }
 };
 
@@ -328,23 +332,25 @@ static const struct builtin_section builtin_sections[] = {
     { "data",                "__DATA", "__data" },
     { "static_data",         "__DATA", "__static_data" },
     { "const_data",          "__DATA", "__const" },
-    { "objc_class",          "__OBJC", "__class" },
-    { "objc_meta_class",     "__OBJC", "__meta_class" },
-    { "objc_string_object",  "__OBJC", "__string_object" },
-    { "objc_protocol",       "__OBJC", "__protocol" },
-    { "objc_cat_cls_meth",   "__OBJC", "__cat_cls_meth" },
-    { "objc_cat_inst_meth",  "__OBJC", "__cat_inst_meth" },
-    { "objc_cls_meth",       "__OBJC", "__cls_meth" },
-    { "objc_inst_meth",      "__OBJC", "__inst_meth" },
-    { "objc_message_refs",   "__OBJC", "__message_refs", S_LITERAL_POINTERS, 2},
-    { "objc_cls_refs",       "__OBJC", "__cls_refs",     S_LITERAL_POINTERS, 2},
+    { "objc_class",          "__OBJC", "__class", S_ATTR_NO_DEAD_STRIP },
+    { "objc_meta_class",     "__OBJC", "__meta_class", S_ATTR_NO_DEAD_STRIP },
+    { "objc_string_object",  "__OBJC", "__string_object", S_ATTR_NO_DEAD_STRIP},
+    { "objc_protocol",       "__OBJC", "__protocol", S_ATTR_NO_DEAD_STRIP },
+    { "objc_cat_cls_meth",   "__OBJC", "__cat_cls_meth", S_ATTR_NO_DEAD_STRIP },
+    { "objc_cat_inst_meth",  "__OBJC", "__cat_inst_meth", S_ATTR_NO_DEAD_STRIP},
+    { "objc_cls_meth",       "__OBJC", "__cls_meth", S_ATTR_NO_DEAD_STRIP },
+    { "objc_inst_meth",      "__OBJC", "__inst_meth", S_ATTR_NO_DEAD_STRIP },
+    { "objc_message_refs",   "__OBJC", "__message_refs",
+		S_LITERAL_POINTERS | S_ATTR_NO_DEAD_STRIP, 2},
+    { "objc_cls_refs",       "__OBJC", "__cls_refs",
+		S_LITERAL_POINTERS | S_ATTR_NO_DEAD_STRIP, 2},
     { "objc_class_names",    "__TEXT", "__cstring", S_CSTRING_LITERALS },
-    { "objc_module_info",    "__OBJC", "__module_info" },
-    { "objc_symbols",        "__OBJC", "__symbols" },
-    { "objc_category",       "__OBJC", "__category" },
+    { "objc_module_info",    "__OBJC", "__module_info", S_ATTR_NO_DEAD_STRIP },
+    { "objc_symbols",        "__OBJC", "__symbols", S_ATTR_NO_DEAD_STRIP },
+    { "objc_category",       "__OBJC", "__category", S_ATTR_NO_DEAD_STRIP },
     { "objc_meth_var_types", "__TEXT", "__cstring", S_CSTRING_LITERALS },
-    { "objc_class_vars",     "__OBJC", "__class_vars" },
-    { "objc_instance_vars",  "__OBJC", "__instance_vars" },
+    { "objc_class_vars",     "__OBJC", "__class_vars", S_ATTR_NO_DEAD_STRIP },
+    { "objc_instance_vars",  "__OBJC", "__instance_vars", S_ATTR_NO_DEAD_STRIP},
     { "objc_meth_var_names", "__TEXT", "__cstring", S_CSTRING_LITERALS },
     { "objc_selector_strs",  "__OBJC", "__selector_strs", S_CSTRING_LITERALS },
     { 0 }
@@ -377,6 +383,7 @@ static void s_reference(int value);
 static void s_lazy_reference(int value);
 static void s_weak_reference(int value);
 static void s_weak_definition(int value);
+static void s_no_dead_strip(int value);
 static void s_include(int value);
 static void s_dump(int value);
 static void s_load(int value);
@@ -389,6 +396,8 @@ static void s_macros_off(int value);
 static void s_section(int value);
 static void s_zerofill(int value);
 static unsigned long s_builtin_section(const struct builtin_section *s);
+static void s_subsections_via_symbols(int value);
+static void s_machine(int value);
 
 #ifdef PPC
 /*
@@ -427,6 +436,9 @@ static const pseudo_typeS pseudo_table[] = {
   { "lcomm",	s_lcomm,	0	},
   { "line",	s_line,		0	},
   { "long",	cons,		4	},
+#ifdef INTERIM_PPC64
+  { "quad",	cons,		8	},
+#endif /* INTERIM_PPC64 */
   { "lsym",	s_lsym,		0	},
   { "section",	s_section,	0	},
   { "zerofill",	s_zerofill,	0	},
@@ -441,6 +453,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "lazy_reference",s_lazy_reference,	0	},
   { "weak_reference",s_weak_reference,	0	},
   { "weak_definition",s_weak_definition,	0	},
+  { "no_dead_strip",s_no_dead_strip,	0	},
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
   { "endmacro",	s_endmacro,	0	},
@@ -452,6 +465,8 @@ static const pseudo_typeS pseudo_table[] = {
   { "endif",	s_endif,	0	},
   { "dump",	s_dump,		0	},
   { "load",	s_load,		0	},
+  { "subsections_via_symbols",	s_subsections_via_symbols,	0	},
+  { "machine",	s_machine,	0	},
   { NULL }	/* end sentinel */
 };
 
@@ -1649,7 +1664,7 @@ int value)
 	*p = c;
 	if((symbolP->sy_type & N_TYPE) != N_UNDF ||
 	   symbolP->sy_other != 0 ||
-	   symbolP->sy_desc != 0) {
+	   (symbolP->sy_desc & ~N_NO_DEAD_STRIP) != 0) {
 	    as_warn("Ignoring attempt to re-define symbol");
 	    ignore_rest_of_line();
 	    return;
@@ -2214,6 +2229,7 @@ int value)
 	    return;
 	}
 	symbolP = symbol_find_or_make(name);
+	symbolP->sy_desc |= N_NO_DEAD_STRIP;
 	*end_name = delim;
 	pseudo_set(symbolP);
 	demand_empty_rest_of_line();
@@ -2414,7 +2430,7 @@ int value)
 	    do{
 		e = *input_line_pointer++ ;
 	    }
-	    while(e != ',' && e != '\0' && e != '\n');
+	    while(e != ',' && !(is_end_of_line[(int)e]));
 	    r = input_line_pointer - 1;
 	    *r = 0;
 	    for(type_name = type_names; type_name->name != NULL; type_name++)
@@ -2435,7 +2451,7 @@ int value)
 		    attributename = input_line_pointer;
 		    do{
 			f = *input_line_pointer++ ;
-		    }while(f != ',' && f != '\0' && f != '\n' && f != '+');
+		    }while(f != ',' && f != '+' && !(is_end_of_line[(int)f]));
 		    t = input_line_pointer - 1;
 		    *t = 0;
 		    for(attribute_name = attribute_names;
@@ -2460,7 +2476,7 @@ int value)
 			sizeof_stub_name = input_line_pointer;
 			do{
 			    g = *input_line_pointer++ ;
-			}while(g != '\0' && g != '\n');
+			}while(!(is_end_of_line[(int)g]));
 			u = input_line_pointer - 1;
 			*u = 0;
 			sizeof_stub = strtoul(sizeof_stub_name, &endp, 0);
@@ -2657,6 +2673,7 @@ int value)
 
 	*p = 0;
 	symbolP = symbol_find_or_make(name);
+	symbolP->sy_desc |= N_NO_DEAD_STRIP;
 	*p = c;
 	demand_empty_rest_of_line();
 }
@@ -2690,6 +2707,7 @@ int value)
 	symbolP = symbol_find_or_make(name);
 	if((symbolP->sy_type & N_TYPE) == N_UNDF && symbolP->sy_value == 0)
 	    symbolP->sy_desc |= REFERENCE_FLAG_UNDEFINED_LAZY;
+	symbolP->sy_desc |= N_NO_DEAD_STRIP;
 	*p = c;
 	demand_empty_rest_of_line();
 }
@@ -2756,6 +2774,34 @@ int value)
 	      as_fatal("symbol: %s can't be a weak_definition (currently "
 		       "only supported in section of type coalesced)", name);
 	symbolP->sy_desc |= N_WEAK_DEF;
+	*p = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * s_no_dead_strip() implements the pseudo op:
+ *	.no_dead_strip name
+ */
+static
+void
+s_no_dead_strip(
+int value)
+{
+    char *name;
+    char c;
+    char *p;
+    symbolS *symbolP;
+
+	if(* input_line_pointer == '"')
+	    name = input_line_pointer + 1;
+	else
+	    name = input_line_pointer;
+	c = get_symbol_end();
+	p = input_line_pointer;
+
+	*p = 0;
+	symbolP = symbol_find_or_make(name);
+	symbolP->sy_desc |= N_NO_DEAD_STRIP;
 	*p = c;
 	demand_empty_rest_of_line();
 }
@@ -2973,7 +3019,7 @@ symbolS *symbolP)
     int ext;
 
 	know(symbolP);		/* NULL pointer is logic error. */
-	ext = (symbolP->sy_type & N_EXT);
+	ext = (symbolP->sy_type & (N_EXT | N_PEXT));
 	segment = expression(&exp);
 
 	switch(segment){
@@ -3057,18 +3103,23 @@ symbolS *symbolP)
  * But we can't detect if expression() discarded significant digits
  * in the case of a long. Not worth the crocks required to fix it.
  *
- * Worker function to do .byte, .short, .long, statements.
+ * Worker function to do .byte, .short, .long, .quad statements.
  * This clobbers input_line_pointer, checks end-of-line.
  */
 void
 cons(	
-int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long */
+int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 {
     char c;
-    long mask;		/* high-order bits to truncate */
-    long unmask;	/* what bits we will store */
-    long get;		/* the bits of the expression we get */
-    long use;		/* the bits of the expression after truncation */
+#ifdef INTERIM_PPC64
+    long long
+#else
+    long
+#endif /* INTERIM_PPC64 */
+    mask,		/* high-order bits to truncate */
+    unmask,		/* what bits we will store */
+    get,		/* the bits of the expression we get */
+    use;		/* the bits of the expression after truncation */
     char *p;		/* points into the frag */
     segT segment;
     expressionS exp;
@@ -3077,10 +3128,19 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long */
 	 * Input_line_pointer -> 1st char after pseudo-op-code and could legally
 	 * be a end-of-line. (Or, less legally an eof - which we cope with.)
 	 */
+#ifdef INTERIM_PPC64
+	if(nbytes >= (int)sizeof(long long))
+#else
 	if(nbytes >= (int)sizeof(long int))
+#endif /* INTERIM_PPC64 */
 	    mask = 0;
 	else 
-	    mask = ~0 << (BITS_PER_CHAR * nbytes); /* Don't store these bits. */
+	    /* Don't store these bits. */
+#ifdef INTERIM_PPC64
+	    mask = ~0ULL << (BITS_PER_CHAR * nbytes);
+#else
+	    mask = ~0 << (BITS_PER_CHAR * nbytes);
+#endif /* INTERIM_PPC64 */
 	unmask = ~mask;		/* Do store these bits. */
 
 	/*
@@ -3111,9 +3171,30 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long */
 	    p = frag_more(nbytes);
 	    switch(segment){
 	    case SEG_BIG:
-		as_warn("%s number illegal. Absolute 0 assumed.",
-			exp.X_add_number > 0 ? "Bignum" : "Floating-Point");
-		md_number_to_chars(p, (long)0, nbytes);
+#ifdef INTERIM_PPC64
+		/*
+		 * Handle bignums small enough to fit in a long long and
+		 * thus be passed directly to md_number_to_chars.
+		 */
+		if(exp.X_add_number > 0 &&
+		   (((LITTLENUM_NUMBER_OF_BITS * exp.X_add_number) / 8) <=
+		   sizeof(long long))){
+		    int i;
+		    long long sum;
+
+		    sum = 0;
+		    for(i = 0; i < exp.X_add_number; ++i)
+			sum = (sum << LITTLENUM_NUMBER_OF_BITS) +
+			      generic_bignum[(exp.X_add_number - 1) - i];
+		    md_number_to_chars(p, sum, nbytes);
+		}
+		else
+#endif /* INTERIM_PPC64 */
+		{
+		    as_warn("%s number illegal. Absolute 0 assumed.",
+			    exp.X_add_number > 0 ? "Bignum" : "Floating-Point");
+		    md_number_to_chars(p, (long)0, nbytes);
+	        }
 		break;
 
 	    case SEG_NONE:
@@ -3743,6 +3824,8 @@ char *sym_name)
 	}
 
 	symbolP = symbol_find_or_make(sym_name);
+	if(symbolP->sy_type & N_ABS)
+	    symbolP->sy_desc |= N_NO_DEAD_STRIP;
 	if(input_line_pointer[1] == '=')
 	    input_line_pointer += 2;
 	else
@@ -4243,6 +4326,69 @@ int value)
 	    else
 		as_fatal("Couldn't find the dump file: \"%s\"", filename);
 	}
+}
+
+/*
+ * s_subsections_via_symbols() implements the pseudo op:
+ *	.subsections_via_symbols
+ * which will cause the MH_SUBSECTIONS_VIA_SYMBOLS flag to be set in the output
+ * file.  This indicates to the static linker it is safe to divide up the
+ * sections into sub-sections via symbols for dead code stripping.
+ */
+static
+void
+s_subsections_via_symbols(
+int value)
+{
+	demand_empty_rest_of_line();
+	subsections_via_symbols = TRUE;
+}
+
+/*
+ * s_machine() implements the pseudo op:
+ *	.machine <arch_name>
+ * where <arch_name> is allowed to be the same strings as the argument to the
+ * command line argument -arch <arch_name> .
+ */
+static
+void
+s_machine(
+int value)
+{
+    char *arch_name, c;
+    struct arch_flag arch_flag;
+    cpu_subtype_t new_cpusubtype;
+
+	arch_name = input_line_pointer;
+	c = get_symbol_end();
+
+	if(force_cpusubtype_ALL == FALSE){
+	    if(get_arch_from_flag(arch_name, &arch_flag) == 0){
+		as_warn("unknown .machine argument: %s", arch_name);
+	    }
+	    else{
+		if(arch_flag.cputype != md_cputype){
+		    as_warn("invalid .machine argument: %s", arch_name);
+		}
+		else{
+		    new_cpusubtype = cpusubtype_combine(md_cputype,
+						        md_cpusubtype,
+						        arch_flag.cpusubtype);
+		    if(new_cpusubtype == -1){
+			as_warn(".machine argument: %s can not be combined "
+				"with previous .machine directives, -arch "
+				"arguments or machine specific instructions",
+				arch_name);
+		    }
+		    else{
+			md_cpusubtype = new_cpusubtype;
+		    }
+		}
+	    }
+	}
+
+	*input_line_pointer = c;
+	demand_empty_rest_of_line();
 }
 
 #ifdef SPARC

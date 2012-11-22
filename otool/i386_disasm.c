@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -1438,6 +1440,10 @@ enum bool verbose)
 		    sse2 = TRUE;
 		    printf("%sq\t", mnemonic);
 		}
+		else if(prefix_byte == 0xf2){
+		    printf("%sdq2q\t", mnemonic);
+		    mmx = TRUE;
+		}
 		break;
 	    case 0x7f: /* movdqa, movdqu, movq */
 		sse2 = TRUE;
@@ -2094,7 +2100,7 @@ enum bool verbose)
 
 	/* memory operand to accumulator */
 	case OA:
-	    value0_size = OPSIZE(data16, LONGOPERAND);
+	    value0_size = OPSIZE(addr16, LONGOPERAND);
 	    IMMEDIATE(&symadd0, &symsub0, &value0, value0_size);
 	    printf("%s\t", mnemonic);
 	    print_operand(seg, symadd0, symsub0, value0, value0_size, "", ",");
@@ -2105,7 +2111,7 @@ enum bool verbose)
 
 	/* accumulator to memory operand */
 	case AO:
-	    value0_size = OPSIZE(data16, LONGOPERAND);
+	    value0_size = OPSIZE(addr16, LONGOPERAND);
 	    IMMEDIATE(&symadd0, &symsub0, &value0, value0_size);
 	    wbit = WBIT(opcode2);
 	    reg_name = (data16 ? REG16 : REG32)[0][wbit];

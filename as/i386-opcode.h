@@ -528,6 +528,7 @@ static const template i386_optab[] = {
   def_cmov("cmovnbe", 0x0f47)
   def_cmov("cmovnc", 0x0f43)
   def_cmov("cmovne", 0x0f45)
+  def_cmov("cmovnz", 0x0f45)
   def_cmov("cmovng", 0x0f4e)
   def_cmov("cmovnge", 0x0f4c)
   def_cmov("cmovnl", 0x0f4d)
@@ -736,10 +737,10 @@ static const template i386_optab[] = {
   {"pmuludq", 2, 0x660ff4, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
   {"por", 2, 0x0feb, _, RR|Modrm, {mm|m64, mm, 0},"O"},
   {"por", 2, 0x660feb, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
-  {"prefetcht0", 1, 0x0f18, 1, Modrm, {m8, 0, 0},"O"},
-  {"prefetcht1", 1, 0x0f18, 2, Modrm, {m8, 0, 0},"O"},
-  {"prefetcht2", 1, 0x0f18, 3, Modrm, {m8, 0, 0},"O"},
-  {"prefetchnta", 1, 0x0f18, 0, Modrm, {m8, 0, 0},"O"},
+  {"prefetcht0", 1, 0x0f18, 1, Modrm, {m8, 0, 0} },
+  {"prefetcht1", 1, 0x0f18, 2, Modrm, {m8, 0, 0} },
+  {"prefetcht2", 1, 0x0f18, 3, Modrm, {m8, 0, 0} },
+  {"prefetchnta", 1, 0x0f18, 0, Modrm, {m8, 0, 0} },
   {"psadbw", 2, 0x0ff6, _, RR|Modrm, {mm|m64, mm, 0},"O"},
   {"psadbw", 2, 0x660ff6, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
   {"pshufd", 3, 0x660f70, _, RR|Modrm, {Imm8, xmm|m128, xmm},"O"},

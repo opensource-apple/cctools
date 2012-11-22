@@ -52,6 +52,7 @@ SYM_DIRS = $(SYMROOT)/driver_dir \
 	   $(SYMROOT)/a88_dir \
 	   $(SYMROOT)/a386_dir \
 	   $(SYMROOT)/appc_dir \
+	   $(SYMROOT)/appc64_dir \
 	   $(SYMROOT)/a860_dir \
 	   $(SYMROOT)/ahppa_dir \
 	   $(SYMROOT)/asparc_dir
@@ -61,6 +62,7 @@ OFILE_DIRS = $(OBJROOT)/driver_dir \
 	     $(OBJROOT)/a88_dir \
 	     $(OBJROOT)/a386_dir \
 	     $(OBJROOT)/appc_dir \
+	     $(OBJROOT)/appc64_dir \
 	     $(OBJROOT)/a860_dir \
 	     $(OBJROOT)/ahppa_dir \
 	     $(OBJROOT)/asparc_dir
@@ -124,7 +126,7 @@ OBJS_hppa = $(CFILES_hppa:.c=.o)
 OBJS_sparc = $(CFILES_sparc:.c=.o)
 
 all:	$(OFILE_DIRS) $(SYM_DIRS) driver_build a68_build a88_build a386_build \
-	a860_build appc_build ahppa_build asparc_build
+	a860_build appc_build appc64_build ahppa_build asparc_build
 
 all_test:	a68_test a88_test a860_test a386_test appc_test ahppa_test
 
@@ -242,6 +244,23 @@ appc_build:	$(OBJROOT)/appc_dir
 		TARGET_OBJS="$(OBJS_ppc)" COPTS="-DPPC"			\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_CFLAGS="$(RC_CFLAGS)" DEP_DIR=appc_dir;		\
+	fi
+
+appc64_build:	$(OBJROOT)/appc64_dir
+	@if [ $(SRCROOT) = . ];						\
+	then								\
+	    cd appc64_dir; $(MAKE) -f ../Makefile as VPATH=.. OFILE_DIR=. \
+		SRCROOT=.. TARGET_OBJS="$(OBJS_ppc)" DEP_DIR=appc64_dir	\
+		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
+		RC_CFLAGS="$(RC_CFLAGS)" OFLAG=$(OFLAG)			\
+		COPTS="-DPPC -DINTERIM_PPC64"; 				\
+	else								\
+	    cd $(OBJROOT)/appc64_dir; $(MAKE) -f $(SRCROOT)/Makefile as	\
+		VPATH=$(SRCROOT) OFILE_DIR=$(OBJROOT)/appc64_dir	\
+		SYMROOT=$(SYMROOT)/appc64_dir SRCROOT=$(SRCROOT)	\
+		TARGET_OBJS="$(OBJS_ppc)" COPTS="-DPPC -DINTERIM_PPC64"	\
+		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
+		RC_CFLAGS="$(RC_CFLAGS)" DEP_DIR=appc64_dir;		\
 	fi
 
 appc_test: appc_dir
@@ -379,6 +398,9 @@ xcommon_install:
 	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc
 	install -c -s -m 555 $(SYMROOT)/appc_dir/as \
 		$(DSTROOT)$(LIBDIR)/ppc/as
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc64
+	install -c -s -m 555 $(SYMROOT)/appc64_dir/as \
+		$(DSTROOT)$(LIBDIR)/ppc64/as
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/m68k
 	install -c -s -m 555 $(SYMROOT)/a68_dir/as \
 		$(DSTROOT)$(LOCLIBDIR)/m68k/as

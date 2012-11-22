@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -66,7 +68,7 @@ struct relocation_info {
    unsigned int r_symbolnum:24,	/* symbol index if r_extern == 1 or section
 				   ordinal if r_extern == 0 */
 		r_pcrel:1, 	/* was relocated pc relative already */
-		r_length:2,	/* 0=byte, 1=word, 2=long */
+		r_length:2,	/* 0=byte, 1=word, 2=long, 3=quad */
 		r_extern:1,	/* does not include value of sym referenced */
 		r_type:4;	/* if not 0, machine specific relocation type */
 };
@@ -151,7 +153,7 @@ struct scattered_relocation_info {
 #ifdef __BIG_ENDIAN__
    unsigned int r_scattered:1,	/* 1=scattered, 0=non-scattered (see above) */
 		r_pcrel:1, 	/* was relocated pc relative already */
-		r_length:2,	/* 0=byte, 1=word, 2=long */
+		r_length:2,	/* 0=byte, 1=word, 2=long, 3=quad */
 		r_type:4,	/* if not 0, machine specific relocation type */
    		r_address:24;	/* offset in the section to what is being
 				   relocated */
@@ -163,7 +165,7 @@ struct scattered_relocation_info {
    		r_address:24,	/* offset in the section to what is being
 				   relocated */
 		r_type:4,	/* if not 0, machine specific relocation type */
-		r_length:2,	/* 0=byte, 1=word, 2=long */
+		r_length:2,	/* 0=byte, 1=word, 2=long, 3=quad */
 		r_pcrel:1, 	/* was relocated pc relative already */
 		r_scattered:1;	/* 1=scattered, 0=non-scattered (see above) */
    long		r_value;	/* the value the item to be relocated is

@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
  * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
@@ -288,6 +290,17 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+	    switch(fat_arch->cpusubtype){
+	    case CPU_SUBTYPE_POWERPC64_ALL:
+		printf("ppc64\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }		
+	    break;
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    switch(fat_arch->cpusubtype){
 	    case CPU_SUBTYPE_VEO_1:
@@ -492,6 +505,18 @@ cpu_subtype_t cpusubtype)
 		goto print_arch_unknown;
 	    }
 	    break;
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_POWERPC64_ALL:
+		printf("    cputype CPU_TYPE_POWERPC64\n"
+		       "    cpusubtype CPU_SUBTYPE_POWERPC64_ALL\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    switch(cpusubtype){
 	    case CPU_SUBTYPE_VEO_1:
@@ -1101,6 +1126,19 @@ NS32:
 		    break;
 		}
 		break;
+#ifdef INTERIM_PPC64
+	    case CPU_TYPE_POWERPC64:
+		printf("   PPC64");
+		switch(mh->cpusubtype){
+		case CPU_SUBTYPE_POWERPC64_ALL:
+		    printf("        ALL");
+		    break;
+		default:
+		    printf(" %10d", mh->cpusubtype);
+		    break;
+		}
+		break;
+#endif /* INTERIM_PPC64 */
 	    case CPU_TYPE_VEO:
 		printf("     VEO");
 		switch(mh->cpusubtype){
@@ -1221,6 +1259,22 @@ NS32:
 	    if(flags & MH_NOFIXPREBINDING){
 		printf(" NOFIXPREBINDING");
 		flags &= ~MH_NOFIXPREBINDING;
+	    }
+	    if(flags & MH_PREBINDABLE){
+		printf(" PREBINDABLE");
+		flags &= ~MH_PREBINDABLE;
+	    }
+	    if(flags & MH_ALLMODSBOUND){
+		printf(" ALLMODSBOUND");
+		flags &= ~MH_ALLMODSBOUND;
+	    }
+	    if(flags & MH_SUBSECTIONS_VIA_SYMBOLS){
+		printf(" SUBSECTIONS_VIA_SYMBOLS");
+		flags &= ~MH_SUBSECTIONS_VIA_SYMBOLS;
+	    }
+	    if(flags & MH_CANONICAL){
+		printf(" CANONICAL");
+		flags &= ~MH_CANONICAL;
 	    }
 	    if(flags != 0 || mh->flags == 0)
 		printf(" 0x%08x", (unsigned int)flags);
@@ -1850,6 +1904,10 @@ enum bool verbose)
 		printf(" NO_TOC");
 	    if(section_attributes & S_ATTR_STRIP_STATIC_SYMS)
 		printf(" STRIP_STATIC_SYMS");
+	    if(section_attributes & S_ATTR_NO_DEAD_STRIP)
+		printf(" NO_DEAD_STRIP");
+	    if(section_attributes & S_ATTR_LIVE_SUPPORT)
+		printf(" LIVE_SUPPORT");
 	    if(section_attributes & S_ATTR_SOME_INSTRUCTIONS)
 		printf(" SOME_INSTRUCTIONS");
 	    if(section_attributes & S_ATTR_EXT_RELOC)
@@ -2852,6 +2910,9 @@ enum byte_sex thread_states_byte_sex)
 	    }
 	}
 	if(mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+	   mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 	   mh->cputype == CPU_TYPE_VEO){
 	    ppc_thread_state_t cpu;
 	    ppc_float_state_t fpu;
@@ -4020,6 +4081,9 @@ enum bool verbose)
 		       (mh->cputype == CPU_TYPE_MC88000 &&
 			sr->r_type == M88K_RELOC_PAIR) ||
 		       ((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+		         mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 		         mh->cputype == CPU_TYPE_VEO) &&
 			sr->r_type == PPC_RELOC_PAIR) ||
 		       (mh->cputype == CPU_TYPE_HPPA &&
@@ -4052,7 +4116,17 @@ enum bool verbose)
 			 * branch prediction was predicted in the assembly
 			 * source.
 			 */
+#ifdef INTERIM_PPC64
+			if(mh->cputype == CPU_TYPE_POWERPC64 && 
+			   reloc.r_type == PPC_RELOC_VANILLA) {
+                                printf("quad   ");
+			}
+			else
+#endif /* INTERIM_PPC64 */
 			if(mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+			   mh->cputype == CPU_TYPE_POWERPC64 || 
+#endif /* INTERIM_PPC64 */
 			   mh->cputype == CPU_TYPE_VEO){
 			    printf("long   ");
 			    predicted = TRUE;
@@ -4081,6 +4155,9 @@ enum bool verbose)
 			    printf(" other_part = 0x%06x ",
 				   (unsigned int)sr->r_address);
 			else if(((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+				  mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 				  mh->cputype == CPU_TYPE_VEO) &&
 				 sr->r_type == PPC_RELOC_PAIR)){
 			    if(previous_ppc_jbsr == FALSE)
@@ -4104,6 +4181,9 @@ enum bool verbose)
 				   (unsigned int)sr->r_address);
 		    }
 		    else if((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+			     mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 			     mh->cputype == CPU_TYPE_VEO) &&
 			    (sectdiff_r_type == PPC_RELOC_HI16_SECTDIFF ||
 			     sectdiff_r_type == PPC_RELOC_LO16_SECTDIFF ||
@@ -4119,6 +4199,9 @@ enum bool verbose)
 		       (mh->cputype == CPU_TYPE_MC88000 &&
 			sr->r_type == M88K_RELOC_SECTDIFF) ||
 		       ((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+		         mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 		         mh->cputype == CPU_TYPE_VEO) &&
 			(sr->r_type == PPC_RELOC_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_HI16_SECTDIFF ||
@@ -4141,6 +4224,9 @@ enum bool verbose)
 		    else
 			previous_sectdiff = FALSE;
 		    if(((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+		         mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 		         mh->cputype == CPU_TYPE_VEO) &&
 			 sr->r_type == PPC_RELOC_JBSR))
 			previous_ppc_jbsr = TRUE;
@@ -4160,6 +4246,9 @@ enum bool verbose)
 		    if((mh->cputype == CPU_TYPE_MC88000 &&
 			reloc.r_type == M88K_RELOC_PAIR) ||
 		       ((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+		         mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 		         mh->cputype == CPU_TYPE_VEO) &&
 			reloc.r_type == PPC_RELOC_PAIR) ||
 		       (mh->cputype == CPU_TYPE_HPPA &&
@@ -4192,7 +4281,17 @@ enum bool verbose)
 			 * branch prediction was predicted in the assembly
 			 * source.
 			 */
+#ifdef INTERIM_PPC64
+			if(mh->cputype == CPU_TYPE_POWERPC64 && 
+			   reloc.r_type == PPC_RELOC_VANILLA) {
+                                printf("quad   ");
+			}
+			else
+#endif /* INTERIM_PPC64 */
 			if(mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+			   mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 			   mh->cputype == CPU_TYPE_VEO){
 			    printf("long   ");
 			    predicted = TRUE;
@@ -4237,6 +4336,9 @@ enum bool verbose)
 				   (unsigned int)reloc.r_address);
 			}
 			else if(((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+				  mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 				  mh->cputype == CPU_TYPE_VEO) &&
 				 reloc.r_type == PPC_RELOC_PAIR)){
 			    if(previous_ppc_jbsr == FALSE)
@@ -4261,6 +4363,9 @@ enum bool verbose)
 			}
 		    }
 		    if(((mh->cputype == CPU_TYPE_POWERPC ||
+#ifdef INTERIM_PPC64
+		         mh->cputype == CPU_TYPE_POWERPC64 ||
+#endif /* INTERIM_PPC64 */
 		         mh->cputype == CPU_TYPE_VEO) &&
 			 reloc.r_type == PPC_RELOC_JBSR))
 			previous_ppc_jbsr = TRUE;
@@ -4333,6 +4438,9 @@ enum bool predicted)
 	    printf("%s", i860_r_types[r_type]);
 	    break;
 	case CPU_TYPE_POWERPC:
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    printf("%s", ppc_r_types[r_type]);
 	    if(r_type == PPC_RELOC_BR14){
@@ -4678,7 +4786,11 @@ enum bool verbose)
 	    }
 	    else if(section_type == S_LAZY_SYMBOL_POINTERS ||
 	            section_type == S_NON_LAZY_SYMBOL_POINTERS)
+#ifdef INTERIM_PPC64
+		stride = (mh->cputype == CPU_TYPE_POWERPC64 ? 8 : 4);
+#else
 		stride = sizeof(unsigned long);
+#endif /* INTERIM_PPC64 */
 	    else
 		continue;
 	
@@ -5535,7 +5647,12 @@ const unsigned long strings_size)
 			if(section_type == S_SYMBOL_STUBS)
 			    stride = s.reserved2;
 			else
+#ifdef INTERIM_PPC64
+			    stride = (mh->cputype == CPU_TYPE_POWERPC64 ?
+				      8 : 4);
+#else
 			    stride = sizeof(unsigned long);
+#endif /* INTERIM_PPC64 */
 			index = s.reserved1 + (value - s.addr) / stride;
 			if(index < nindirect_symbols &&
 		    	   symbols != NULL && strings != NULL &&

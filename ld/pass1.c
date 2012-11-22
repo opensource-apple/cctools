@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -62,6 +64,7 @@
 
 #include "ld.h"
 #include "pass1.h"
+#include "live_refs.h"
 #include "objects.h"
 #include "fvmlibs.h"
 #include "dylibs.h"
@@ -1650,9 +1653,6 @@ down:
 	     * and cause the possibility of more swapping and if fast linking is
 	     * wanted then the table of contents can be sorted.
 	     */
-	    warning("table of contents of library: %s not sorted slower link "
-		    "editing will result (use the ranlib(1) -s option)",
-		    file_name);
 	    member_loaded = TRUE;
 	    while(member_loaded == TRUE && errors == 0){
 		member_loaded = FALSE;

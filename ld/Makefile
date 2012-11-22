@@ -16,7 +16,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp ; \
+	     echo -Wno-long-double -no-cpp-precomp -DINTERIM_PPC64 ; \
 	     fi; )
 endif
 
@@ -73,7 +73,8 @@ HFILES = ld.h pass1.h objects.h sections.h cstring_literals.h symbols.h \
 	 fvmlibs.h layout.h specs.h pass2.h generic_reloc.h hash_string.h \
 	 sets.h 4byte_literals.h 8byte_literals.h literal_pointers.h dylibs.h \
 	 indirect_sections.h mod_sections.h i860_reloc.h ppc_reloc.h \
-	 m88k_reloc.h hppa_reloc.h sparc_reloc.h coalesced_sections.h
+	 m88k_reloc.h hppa_reloc.h sparc_reloc.h coalesced_sections.h \
+	 live_refs.h
 CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
 	 fvmlibs.c layout.c specs.c pass2.c generic_reloc.c rld.c sets.c \
 	 4byte_literals.c 8byte_literals.c literal_pointers.c dylibs.c \
@@ -335,8 +336,8 @@ libkld.dylib: $(OBJS)
 	libtool -o $(SYMROOT)/libkld.dylib $(SYMROOT)/dynamic_libkld.o
 
 ld_vers.c:
-	vers_string -l $(VERS_STRING_FLAGS) ld > $(OFILE_DIR)/$@
-
+	echo "const char apple_version[]= " \"`vers_string $(VERS_STRING_FLAGS) -f cctools`\" ";" > \
+                $(OFILE_DIR)/$@
 
 makeUser.c ld.c: make.h
 

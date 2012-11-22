@@ -117,7 +117,11 @@ extern char *md_atof(
  */
 extern void md_number_to_chars(
     char *buf,
+#ifdef INTERIM_PPC64
+    long long val,
+#else
     long val,
+#endif /* INTERIM_PPC64 */
     int n);
 
 /*
@@ -129,7 +133,11 @@ extern void md_number_to_chars(
  */
 extern void md_number_to_imm(
     unsigned char *buf,
+#ifdef INTERIM_PPC64
+    long long val,
+#else
     long val,
+#endif /* INTERIM_PPC64 */
     int n,
     fixS *fixP,
     int nsect);

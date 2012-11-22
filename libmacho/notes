@@ -1,3 +1,16 @@
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format.  And added -DINTERIM_PPC64 to the Makefile.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Made changes to support the interim ppc64 file format.  Radar bug #3562133
+  and #3562232.
+  - Added an entry in the ArchInfoTable[] array in arch.c for ppc64 as:
+    {"ppc64",  CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC64_ALL,  NX_BigEndian,
+         "PowerPC 64-bit"},
+  - In NXFindBestFatArch() in arch.c added a case statement for
+    CPU_TYPE_POWERPC64 and the code to look for CPU_SUBTYPE_POWERPC64_ALL.
+
 Changes for the 5.12 release (the cctools-464 release):
 - Made changes to build cleanly with gcc3.3
   - Removed -Wno-precomp from the Makefile and setting RC_OS = macos

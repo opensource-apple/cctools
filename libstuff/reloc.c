@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -52,6 +54,9 @@ cpu_type_t cputype)
 	    return(I860_RELOC_PAIR);
 	    break;
 	case CPU_TYPE_POWERPC:
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    return(PPC_RELOC_PAIR);
 	    break;
@@ -97,6 +102,9 @@ unsigned long r_type)
 		return(TRUE);
 	    break;
 	case CPU_TYPE_POWERPC:
+#ifdef INTERIM_PPC64
+	case CPU_TYPE_POWERPC64:
+#endif /* INTERIM_PPC64 */
 	case CPU_TYPE_VEO:
 	    if(r_type == PPC_RELOC_HI16 ||
 	       r_type == PPC_RELOC_LO16 ||

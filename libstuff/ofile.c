@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -177,7 +179,8 @@ void *cookie)
 		}
 
 		for(i = 0; i < narch_flags; i++){
-		    (void)ofile_first_arch(&ofile);
+		    if(ofile_first_arch(&ofile) == FALSE)
+			return;
 		    arch_found = FALSE;
 		    if(narch_flags != 1)
 			arch_name = ofile.arch_flag.name;
@@ -313,7 +316,8 @@ void *cookie)
 		ofile_unmap(&ofile);
 		if(ofile_map(name, NULL, NULL, &ofile, FALSE) == FALSE)
 		    return;
-		(void)ofile_first_arch(&ofile);
+		if(ofile_first_arch(&ofile) == FALSE)
+		    return;
 		do{
 		    if(ofile.arch_flag.cputype ==
 			    host_arch_flag.cputype &&
@@ -413,7 +417,8 @@ void *cookie)
 	    ofile_unmap(&ofile);
 	    if(ofile_map(name, NULL, NULL, &ofile, FALSE) == FALSE)
 		return;
-	    (void)ofile_first_arch(&ofile);
+	    if(ofile_first_arch(&ofile) == FALSE)
+		return;
 	    do{
 		if(ofile.arch_type == OFILE_ARCHIVE){
 		    if(member_name != NULL){

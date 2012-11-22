@@ -25,6 +25,136 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.16 release (the cctools-523 release):
+- Fixed a bug in the handing of PPC_RELOC_LO14 relocs in md_number_to_imm() in
+  ppc.c which needed to mask in the low byte of a PPC_RELOC_LO14 instead of
+  assigning it.  Radar bug #3687246
+
+Changes for the 5.16 release (the cctools-522 release):
+- Fix the positioning of the INTERIM_PPC64 ifdef in cons() so it doesn't
+  fall through and make bogus complaints. Radar bug #3682374.
+
+Changes for the 5.16 release (the cctools-520 release):
+- Added the cmovnz instruction to the i386 assembler to be the same as cmovne.
+  Radar bug #3345900.
+- Changed the PowerPC assembler to not mark the fsqrte and fres as optional.
+  Radar bug #3519365.
+- Changed the i386 assembler to not mark the following instructions as
+  optional: prefetcht0, prefetcht1, prefetcht2 and prefetchnta.  Radar bug
+  #3500323.
+- Changed the assembler to not create scattered relocation entries when the
+  r_address field would overflow its 24 bit field.  This can still cause
+  problems if the offset to the symbol reaches outside of the block and ld(1)
+  is asked to order this section.  The change is in fix_to_relocation_entries()
+  in write_objects.c to test if the r_address field has any of the 0xff000000
+  bits set and then does not create a scattered relocation entry.  Radar bug
+  #3604972.
+- Changed the PowerPC Data cache block touch with hint instruction, dcbt with
+  the TH third argument as to not be optional or 64-bit only.  So it will now
+  assemble without the -force_cpusubtype_ALL or -arch ppc970.  The change was
+  in ppc-opcode.h to change this line:
+     { 0x7c00022c, "dcbt",    {{16,5,G0REG}, {11,5,GREG}, {21,4,NUM}},
+       IMPL64|OPTIONAL },
+  to this:
+     { 0x7c00022c, "dcbt",    {{16,5,G0REG}, {11,5,GREG}, {21,4,NUM}}, },
+  Radar bug #3468847.
+- Added the .machine directive which takes the same arguments as the command
+  line -arch <arch_name> flag.  The routine s_machine() was added to read.c and
+  the local variable program in main() in as.c was made global.  Radar bug
+  3492132.
+- Fixed a bug in pseudo_set() in read.c that did not correctly preserve the
+  private extern bit (N_PEXT).  Radar bug #3660818.
+
+Changes for the 5.16 release (the cctools-515 release):
+- Added the installGASsrc and fromGASsrc Makefile targets to install and build
+  just the PowerPC assembler from the GAS sources.  Radar bug #3657295.
+
+Changes for the 5.16 release (the cctools-509 release):
+- Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
+  file format.  And added -DINTERIM_PPC64 to the Makefile for the appc64_build
+  target and removed -DPPC64.
+- Changed main() in as.c to handle "-arch ppc64" only when INTERIM_PPC64 is
+  defined.  And to handle the ppc arch flags only when PPC is defined and
+  INTERIM_PPC64 is not defined.
+- #ifdef INTERIM_PPC64 the changed to md_number_to_chars() and
+  md_number_to_imm() second argument 'val' in mh.h from long to long long .
+- Backed out the changed of the definition of md_number_to_chars() andi
+  md_number_to_imm() in the machine dependent files i386.c, hppa.c, i860.c,
+  m68k.c, m88k,c and sparc.c for the type of the argument 'val' from long long
+  back to long.
+- Backed out the change to md_cputype in md.h and added back the const qualifer.
+  Backed out this change in the machine dependent files ppc.c, i386.c, hppa.c,
+  i860.c, m68k.c, m88k,c and sparc.c .
+- Changed ppc.c to set md_cpusubtype to CPU_SUBTYPE_POWERPC64_ALL when
+  #ifdef INTERIM_PPC64.
+
+Changes for the 5.16 release (the cctools-501 release):
+- Added the variable subsections_via_symbols as a boolean value to as.[ch].
+- Added the .subsections_via_symbols directive in read.c with the new routine
+  s_subsections_via_symbols() which sets the variable subsections_via_symbols
+  to TRUE.
+- Changed write_object() in write_object.c to set the MH_SUBSECTIONS_VIA_SYMBOLS
+  bit in the mach_header if variable subsections_via_symbols is TRUE.
+- Fixed a bug in s_comm() in read.c that caused it to generate a re-definition
+  symbol error if a .no_dead_strip directive is seen before a .comm directive.
+
+Changes for the 5.16 release (the cctools-500 release):
+- Added the no_dead_strip attribute and live_support to attribute_names[] in
+  read.c that sets S_ATTR_NO_DEAD_STRIP and S_ATTR_LIVE_SUPPORT.  Also updated
+  the logic in colon() in symbols.s to allow N_NO_DEAD_STRIP in the n_desc field
+  when checking for a weak symbol. Radar bug #2284500.
+- Added S_ATTR_NO_DEAD_STRIP to all the builtin Objective-C sections in the
+  __OBJC segment to builtin_sections[] in read.c .  Radar bug #2284500.
+- Added setting the N_NO_DEAD_STRIP bit for the .reference and .lazy_reference
+  directives.  The changes were in read.c in s_reference() and
+  s_lazy_reference().  Radar bug #2284500.
+- Added setting the N_NO_DEAD_STRIP bit for .set and assignments for absolute
+  symbols.  The changes were in read.c in s_equals() and s_set().  Radar bug
+  #2284500.
+- Added the .no_dead_strip directive, which takes a symbol name and sets the
+  N_NO_DEAD_STRIP bit.  Radar bug #2284500.
+
+Changes for the 5.16 release (the cctools-499.3 release):
+- Fix i386 hosting bug with longs by using ~0ULL in cons().
+  Radar bug #3591543.
+
+Changes for the 5.16 release (the cctools-499.1 release):
+- Added support for the ppc64 architecture, using the interim file format.
+  A new assembler is built with the cpp macro PPC64 and the cpp macro PPC
+  defined.  Radar bug #3562232.
+  - Added the appc64_build target the Makefile which compiles the code
+    with -DPPC64 and installs it in $(DSTROOT)$(LIBDIR)/ppc64/as .
+  - Changed main() in as.c to handle "-arch ppc64" for PPC64.
+  - Added support for the .quad directive for relocatable 8-byte quantities.
+    - Added the following entry to pseudo_table[] in read.c:
+      { "quad",    cons,        8    },
+    - In cons() in read.c made the following changes:
+      - The types of the parameters mask, unmask, get, and use changed from long
+        to long long.
+      - The test of (nbytes >= (int)sizeof(long int)) changed to
+        (nbytes >= (int)sizeof(long long) .
+      - In the case for SEG_BIG code was added to handle bignums small enough
+        to fit in a long long then passed to md_number_to_chars().
+    - In fix_to_relocation_entries() in write_object.c code ifdef'ed PPC64 was
+      added for the fx_size value of 8 which sets the r_length to 3 to  indicate
+      a 64-bit item to be relocated.
+  - Changed md_number_to_chars() and md_number_to_imm() second argument 'val'
+    in mh.h from long to long long.
+    - Changed the definition of md_number_to_chars() and  md_number_to_imm()
+      in the machine dependent files ppc.c, i386.c, hppa.c, i860.c, m68k.c,
+      m88k,c and sparc.c .  And for md_number_to_chars() and md_number_to_imm()
+      in ppc.c added a case when nbytes is 8.  Also the as_warn() formatting
+      string was chaged from using %ld to %lld when using 'val'.
+  - Changed the initialization of md_cputype in ppc.c to be CPU_TYPE_POWERPC64
+    when PPC64 is defined.
+  - In md_assemble() in ppc.c ifndef'ed PPC64 out the check for 64-bit compare
+    instructions without the -force_cpusubtype_ALL option.
+  - In md_assemble() in ppc.c changed the check for instructions marked with
+    IMPL64 to be flagged only when md_cputype == CPU_TYPE_POWERPC.
+  - In layout_indirect_symbols() in write_object.c the stride for symbol
+    pointers was changed to be conditional on CPU_TYPE_POWERPC64 where it is 8
+    otherwise 4.
+
 Changes for the 5.14 release (the cctools-498 release):
 - Added the PowerPC pseudo-instruction 'jmp' as the non-linking form of 'jbsr'.
   The following entry was added to ppc-opcode.h :
@@ -38,7 +168,7 @@ Changes for the 5.14 release (the cctools-497 release):
 Changes for the 5.14 release (the cctools-496 release):
 - Added the file COPYING from FSF.  Radar bug #3443583.
 
-Changes for the 5.12 release (the cctools-487 release):
+Changes for the 5.13 release (the cctools-487 release):
 - Fixed a bug that should have allow the 64-bit compare instructions and other
   optional instructions when -arch ppc970 was used.  The fix was to add the
   constant CPU970 in ppc-opcode.h and mark the optional instructions that the

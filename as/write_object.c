@@ -208,6 +208,8 @@ char *out_file_name)
 	else
 	    strsize = 0;
 	header.flags = 0;
+	if(subsections_via_symbols == TRUE)
+	    header.flags |= MH_SUBSECTIONS_VIA_SYMBOLS;
 
 	/* fill in the segment command */
 	memset(&reloc_segment, '\0', sizeof(struct segment_command));
@@ -665,7 +667,11 @@ symbolP = symbol_find_or_make(isymbolP->isy_name);
 		if(section_type == S_SYMBOL_STUBS)
 		    stride = frchainP->frch_section.reserved2;
 		else
+#ifdef INTERIM_PPC64
+		    stride = sizeof(long long);
+#else
 		    stride = sizeof(unsigned long);
+#endif /* INTERIM_PPC64 */
 		if(frchainP->frch_section.size / stride != count)
 		    as_warn("missing indirect symbols for section (%s,%s)",
 			    frchainP->frch_section.segname,
@@ -974,6 +980,11 @@ struct relocation_info *riP)
 #endif
 		riP->r_length = 2;
 		break;
+#ifdef INTERIM_PPC64
+	    case 8:
+		riP->r_length = 3;
+		break;
+#endif /* INTERIM_PPC64 */
 	    default:
 		layout_file = fixP->file;
 		layout_line = fixP->line;
@@ -1112,7 +1123,12 @@ struct relocation_info *riP)
 	     * value (symbol + offset).  This is because the relocation must be
 	     * based on the value of the symbol not the value of the expression.
 	     * Thus a scattered relocation entry that encodes the address of the
-	     * symbol is used when the offset is non-zero.
+	     * symbol is used when the offset is non-zero.  Unfortunately this
+	     * encoding only allows for 24 bits in the r_address field and can
+	     * overflow.  So it if it would overflow we don't create a
+	     * scattered relocation entry and hope the offset does not reach
+	     * out of the block or the linker will not be doing scattered
+	     * loading on this symbol in this object file.
 	     */
 #if !defined(I860)
 	    /*
@@ -1123,6 +1139,7 @@ struct relocation_info *riP)
 	     * by two references to two different symbols.
 	     */
 	    if(fixP->fx_offset != 0 &&
+	       (riP->r_address & 0xff000000) == 0 &&
 	       ((symbolP->sy_type & N_TYPE) & ~N_EXT) != N_ABS
 #ifdef M68K
 	       /*
@@ -1195,6 +1212,11 @@ struct relocation_info *riP)
 		case 4:
 		    riP->r_length = 2;
 		    break;
+#ifdef INTERIM_PPC64
+                case 8:
+                    riP->r_length = 3;
+                    break;
+#endif /* INTERIM_PPC64 */
 		default:
 		    as_fatal("Bad fx_size (0x%x) in fix_to_relocation_info()\n",
 			     fixP->fx_size);

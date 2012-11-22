@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -43,6 +45,7 @@
 #include "stuff/bytesex.h"
 
 #include "ld.h"
+#include "live_refs.h"
 #include "objects.h"
 #include "sections.h"
 #include "pass1.h"
@@ -55,6 +58,14 @@
 /*
  * generic_reloc() relocates the contents of the specified section for the 
  * relocation entries using the section map from the current object (cur_obj).
+ *
+ * Or if refs is not NULL it is being called by to get the addresses or
+ * merged_symbols from the item being referenced by the relocation entry(s) at
+ * reloc_index. This is used by mark_fine_relocs_references_live() when
+ * -dead_strip is specified to determined what is being referenced and is only
+ * called when all sections have fine_relocs (that is why refs is only filled
+ * in when nfine_relocs != 0). When refs is not NULL, only refs is filled in
+ * and returned and the contents are not relocated.
  */
 __private_extern__
 void
@@ -62,7 +73,9 @@ generic_reloc(
 char *contents,
 struct relocation_info *relocs,
 struct section_map *section_map,
-long pcrel_at_end_of_disp)
+long pcrel_at_end_of_disp,
+struct live_refs *refs,
+unsigned long reloc_index)
 {
     unsigned long i, j, symbolnum, value, input_pc, output_pc;
     struct nlist *nlists;
@@ -91,7 +104,11 @@ long pcrel_at_end_of_disp)
 	pair_local_map = 0;
 #endif /* DEBUG */
 
-	for(i = 0; i < section_map->s->nreloc; i++){
+	if(refs != NULL)
+	    memset(refs, '\0', sizeof(struct live_refs));
+	else
+	    reloc_index = 0;
+	for(i = reloc_index; i < section_map->s->nreloc; i++){
 	    force_extern_reloc = FALSE;
 	    /*
 	     * Break out the fields of the relocation entry and set pointer to
@@ -328,9 +345,10 @@ long pcrel_at_end_of_disp)
 			      symbolnum);
 		    }
 		}
-		if((merged_symbol->nlist.n_type & N_TYPE) == N_SECT &&
-		   (get_output_section(merged_symbol->nlist.n_sect)->
-		    flags & SECTION_TYPE) == S_COALESCED){
+		if(refs == NULL &&
+		   ((merged_symbol->nlist.n_type & N_TYPE) == N_SECT &&
+		    (get_output_section(merged_symbol->nlist.n_sect)->
+		     flags & SECTION_TYPE) == S_COALESCED)){
 		    if(((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
 			keep_private_externs == FALSE) ||
 		       dynamic == FALSE ||
@@ -347,6 +365,18 @@ long pcrel_at_end_of_disp)
 		if((merged_symbol->nlist.n_type & N_TYPE) == N_INDR)
 		    merged_symbol = (struct merged_symbol *)
 				    merged_symbol->nlist.n_value;
+
+		/*
+		 * If we are being called only to get the references for this
+		 * relocation entry fill it in and return.
+		 */
+		if(refs != NULL){
+		    refs->ref1.ref_type = LIVE_REF_SYMBOL;
+		    refs->ref1.merged_symbol = merged_symbol;
+		    refs->ref2.ref_type = LIVE_REF_NONE;
+		    return;
+		}
+
 		/*
 		 * If the symbol is undefined (or common) or a global coalesced 
 		 * symbol where we need to force an external relocation entry
@@ -428,7 +458,18 @@ long pcrel_at_end_of_disp)
 		 * the item to be relocated is the zero above and any pc
 		 * relative change in value added below.
 		 */
-		if(r_symbolnum != R_ABS){
+		if(r_symbolnum == R_ABS){
+		    /*
+		     * If we are being called only to get the references for
+		     * this relocation entry fill in it has none and return.
+		     */
+		    if(refs != NULL){
+			refs->ref1.ref_type = LIVE_REF_NONE;
+			refs->ref2.ref_type = LIVE_REF_NONE;
+			return;
+		    }
+		}
+		else{
 		    if(r_symbolnum > cur_obj->nsection_maps){
 			error_with_cur_obj("r_symbolnum (%lu) field of local "
 			    "relocation entry %lu in section (%.16s,%.16s) "
@@ -534,6 +575,22 @@ long pcrel_at_end_of_disp)
 			    offset = value - r_value + pair_r_value;
 
 			    /*
+			     * If we are being called only to get the references
+			     * for this relocation entry fill it in and return.
+			     */
+			    if(refs != NULL){
+				fine_reloc_output_ref(
+				    local_map,
+				    r_value - local_map->s->addr,
+				    &(refs->ref1) );
+				fine_reloc_output_ref(
+				    local_map,
+				    pair_r_value - local_map->s->addr,
+				    &(refs->ref2) );
+				return;
+			    }
+
+			    /*
 			     * Now build up the value of the relocated
 			     * expression one part at a time.  First set the
 			     * new value to the relocated r_value.
@@ -606,6 +663,20 @@ long pcrel_at_end_of_disp)
 			    legal_reference(section_map, r_address, local_map,
 				    r_value - local_map->s->addr + offset, i,
 				    FALSE);
+
+			    /*
+			     * If we are being called only to get the references
+			     * for this relocation entry fill it in and return.
+			     */
+			    if(refs != NULL){
+				fine_reloc_output_ref(
+				    local_map,
+				    r_value - local_map->s->addr,
+				    &(refs->ref1) );
+				refs->ref2.ref_type = LIVE_REF_NONE;
+				return;
+			    }
+
 			    value = fine_reloc_output_address(local_map,
 					r_value - local_map->s->addr,
 					local_map->output_section->s.addr);

@@ -3,6 +3,8 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -28,8 +30,13 @@ __private_extern__ void coalesced_section_merge(
     void *data, 
     struct merged_section *ms,
     struct section *s, 
-    struct section_map *section_map);
+    struct section_map *section_map,
+    enum bool redo_live);
 
 __private_extern__ void coalesced_section_order(
     void *data, 
+    struct merged_section *ms);
+
+__private_extern__ void coalesced_section_reset_live(
+    void *data,
     struct merged_section *ms);
