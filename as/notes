@@ -25,6 +25,30 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.31 release (the cctools-828 release):
+- Back out the change below in relax_immediate() in arm.c that was done as
+  an attempt to fix Radar bug #11215603 as it is causing problems.  Radar bug
+  #11403124.
+
+Changes for the 5.31 release (the cctools-827 release):
+- Fixed relax_immediate() in arm.c to correctly handle a negative immediate
+  to see that it fits in the instruction.  Radar bug #11215603.
+
+Changes for the 5.31 release (the cctools-825 release):
+- Added the -Q flag and tweaked handling the running of clang as the assembler
+  to the driver.  Cleaned up a bit of the code in there.  Radar bug #11139995.
+- Added a missing extern to subsections_via_symbols in as.h, and to 
+  dwarf2_loc_mark_labels in dwarf2dbg.h and to now_subseg in arm.c . Radar bug
+  #11136207.
+
+Changes for the 5.31 release (the cctools-824 release):
+- Added a check in do_neon_ld_st_interleave() in arm.c to check that the size
+  of 64 is only used with VLD1/VST1.  Radar bug #11024563.
+
+Changes for the 5.31 release (the cctools-823 release):
+- Added the -q option to the assembler driver to run clang(1) for x86_64.
+  Basis for Radar bug #9801003.
+
 Changes for the 5.30 release (the cctools-820 release):
 - Removed creating the apple_version.c file from the Makefile and now use the
   new one created in libstuff.  Radar bug #10596469.

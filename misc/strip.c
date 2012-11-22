@@ -1865,6 +1865,8 @@ struct object *object)
 			      object->input_indirectsym_pad;
 		}
 	    }
+	    if(no_uuid == TRUE)
+		strip_LC_UUID_commands(arch, member, object);
 	}
 #endif /* !defined(NMEDIT) */
 

@@ -1,3 +1,6 @@
+Changes for the 5.31 release (the cctools-823 release):
+- Remove the buggy code that added the -e option.  Radar bug #10843929.
+
 Changes for the 5.30 release (the cctools-820 release):
 - Removed creating the vers.c file from the Makefile. Added the -e option to
   ar.c to print the version that uses the new apple_version[] from libstuff.

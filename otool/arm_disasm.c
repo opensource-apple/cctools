@@ -39,24 +39,6 @@
 #include "ofile_print.h"
 #include "arm_disasm.h"
 
-#ifdef HACKED_LLVM_DISASSEMBLER_INTERFACE
-/*
- * This is the HACKED llvm-mc disassembler interface for otool(1).
- */
-typedef int (* RelocExprInfoFunc)(unsigned Opcode,
-				  uint64_t Pc, const char **s, int *variant);
-
-extern
-int
-OtoolDisassembleInput(
-const char *ProgName,
-uint8_t *Bytes,
-uint64_t BytesSize,
-uint64_t Pc,
-RelocExprInfoFunc getRelocExprInfo,
-const char *arch_name);
-#endif /* HACKED_LLVM_DISASSEMBLER_INTERFACE */
-
 /* Used by otool(1) to stay or switch out of thumb mode */
 enum bool in_thumb = FALSE;
 
@@ -217,7 +199,7 @@ void *TagBuf)
 
 	op_info = (struct LLVMOpInfo1 *)TagBuf;
 	value = op_info->Value;
-	/* make sure all feilds returned are zero if we don't set them */
+	/* make sure all fields returned are zero if we don't set them */
 	memset(op_info, '\0', sizeof(struct LLVMOpInfo1));
 	op_info->Value = value;
 
@@ -417,6 +399,9 @@ void *TagBuf)
 	    op_info->Value = offset;
 	    return(1);
 	}
+
+	if(reloc_found == FALSE)
+	    return(0);
 
 	op_info->AddSymbol.Present = 1;
 	op_info->Value = offset;
@@ -901,52 +886,6 @@ LLVMDisasmContextRef dc)
 #endif
 	    (dc);
 }
-
-#ifdef HACKED_LLVM_DISASSEMBLER_INTERFACE
-// These are defined in lib/Target/ARM/ARMGenInstrNames.inc
-#define ARM__tBLXi_r9	2252  /* ARM::tBLXi_r9 */
-
-// This is called by the HACKED llvm-mc disassembler.  If it finds relocation
-// information for the Pc it sets SymbolName and variant then returns 1, else
-// it returns 0.
-static
-int
-getRelocExprInfo(
-unsigned Opcode,
-uint64_t Pc,
-const char **SymbolName,
-int *variant)
-{
-    int32_t i;
-    struct relocation_info *relocs = dis_info.relocs;
-    uint32_t nrelocs = dis_info.nrelocs;
-    struct nlist *symbols = dis_info.symbols;
-    uint32_t nsymbols = dis_info.nsymbols;
-    char *strings = dis_info.strings;
-    uint32_t strings_size = dis_info.strings_size;
-    bfd_vma r_address = Pc - dis_info.sect_addr;
-
-    if(Opcode != ARM__tBLXi_r9)
-	return(0);
-
-    *variant = 0;
-    if(dis_info.verbose){
-	for(i = 0; i < nrelocs; i++){
-	    if(relocs[i].r_address == r_address && relocs[i].r_extern){
- 		unsigned int r_symbolnum = relocs[i].r_symbolnum;
-		if(r_symbolnum < nsymbols){
-		    uint32_t n_strx = symbols[r_symbolnum].n_un.n_strx;
-		    if(n_strx < strings_size){
-			*SymbolName = strings + n_strx;
-			return(1);
-		    }
-		}
-	    }
-	}
-    }
-    return(0);
-}
-#endif /* HACKED_LLVM_DISASSEMBLER_INTERFACE */
 
 /* HACKS to avoid pulling in FSF binutils bfd/bfd-in2.h */
 #define bfd_mach_arm_XScale    10
@@ -4973,10 +4912,10 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
       /* Print the raw data, too. */
       if(!Xflag)
         {
-          if(Qflag || qflag)
+          if(qflag)
 	    info->fprintf_func (info->stream, "\t");
 	  info->fprintf_func (info->stream, "%08x", (unsigned int) given);
-          if(!Qflag && !qflag)
+          if(!qflag)
 	    info->fprintf_func (info->stream, "\t");
         }
     }
@@ -5015,11 +4954,11 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
 	      /* Print the raw data, too. */
 	      if(!Xflag)
 		{
-		  if(Qflag || qflag)
+		  if(qflag)
 		    info->fprintf_func (info->stream, "\t");
 	          info->fprintf_func (info->stream, "%08x",
 				      (unsigned int) given);
-		  if(!Qflag && !qflag)
+		  if(!qflag)
 		    info->fprintf_func (info->stream, "\t");
 		}
 	      printer = print_insn_thumb32;
@@ -5031,11 +4970,11 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
 	    /* Print the raw data, too. */
 	    if(!Xflag)
 	      {
-		if(Qflag || qflag)
+		if(qflag)
 		  info->fprintf_func (info->stream, "\t");
 	        info->fprintf_func (info->stream, "    %04x",
 				    (unsigned int)given);
-		if(!Qflag && !qflag)
+		if(!qflag)
 		  info->fprintf_func (info->stream, "\t");
 	      }
 	   }
@@ -5083,14 +5022,6 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
 	  info->fprintf_func (info->stream, "\tinvalid instruction encoding");
       }
     }
-#ifdef HACKED_LLVM_DISASSEMBLER_INTERFACE
-  else if (Qflag) /* HACKED interface */
-    {
-      if(OtoolDisassembleInput(progname, (uint8_t *)info->sect, size, pc,
-			        getRelocExprInfo, llvm_arch_name) != 0)
-	info->fprintf_func (info->stream, "\tinvalid instruction encoding");
-    }
-#endif /* HACKED_LLVM_DISASSEMBLER_INTERFACE */
   else
     printer (pc, info, given);
 
@@ -5320,7 +5251,7 @@ enum bool pool)
 	       (r_type == ARM_RELOC_SECTDIFF ||
 		r_type == ARM_RELOC_LOCAL_SECTDIFF)){
 		if(!Xflag){
-		    if(Qflag || qflag)
+		    if(qflag)
 			fprintf(stream, "\t");
 		    fprintf(stream, "%08x\t", value);
 		}

@@ -832,7 +832,8 @@ enum bool archives_with_fat_objects)
 {
     int fd;
     struct stat stat_buf;
-    uint32_t size, magic;
+    uint64_t size;
+    uint32_t magic;
     char *addr;
 
 	magic = 0; /* to shut up the compiler warning message */
@@ -890,7 +891,7 @@ enum bool
 #endif
 ofile_map_from_memory(
 char *addr,
-uint32_t size,
+uint64_t size,
 const char *file_name,
 uint64_t mtime,
 const struct arch_flag *arch_flag,	/* can be NULL */
@@ -1615,7 +1616,15 @@ uint32_t narch)
 	 * program.
 	 */
 	else{
-	    ofile->arch_type = OFILE_UNKNOWN;
+#ifdef LTO_SUPPORT
+	    if(is_llvm_bitcode(ofile, addr, size) == TRUE){
+		ofile->arch_type = OFILE_LLVM_BITCODE;
+		ofile->object_addr = addr;
+		ofile->object_size = size;
+	    }
+	    else
+#endif /* LTO_SUPPORT */
+	        ofile->arch_type = OFILE_UNKNOWN;
 	}
 	return(TRUE);
 cleanup:
@@ -1655,7 +1664,7 @@ ofile_first_member(
 struct ofile *ofile)
 {
     char *addr;
-    uint32_t size, offset;
+    uint64_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     struct ar_hdr *ar_hdr;
@@ -1919,7 +1928,7 @@ ofile_next_member(
 struct ofile *ofile)
 {
     char *addr;
-    uint32_t size, offset;
+    uint64_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     struct ar_hdr *ar_hdr;
@@ -2147,7 +2156,7 @@ struct ofile *ofile)
 {
     int32_t i;
     char *addr;
-    uint32_t size, offset;
+    uint64_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     char *ar_name;
@@ -2905,11 +2914,23 @@ struct ofile *ofile)
 #endif /* ALIGNMENT_CHECKS_ARCHIVE_64_BIT */
 	    }
 	    else{
-		archive_member_error(ofile, "fat file for cputype (%d) "
-			"cpusubtype (%d) is not an object file (bad magic "
-			"number)", ofile->fat_archs[i].cputype,
-			ofile->fat_archs[i].cpusubtype & ~CPU_SUBTYPE_MASK);
-		return(CHECK_BAD);
+#ifdef LTO_SUPPORT
+	        if(is_llvm_bitcode(ofile, ofile->file_addr +
+		   ofile->member_offset + ofile->fat_archs[i].offset,
+		   ofile->fat_archs[i].size) == TRUE){
+		    ofile->member_type = OFILE_LLVM_BITCODE;
+		    ofile->object_addr = ofile->member_addr;
+		    ofile->object_size = ofile->member_size;
+	        }
+		else
+#endif /* LTO_SUPPORT */
+		{
+		    archive_member_error(ofile, "fat file for cputype (%d) "
+			    "cpusubtype (%d) is not an object file (bad magic "
+			    "number)", ofile->fat_archs[i].cputype,
+			    ofile->fat_archs[i].cpusubtype & ~CPU_SUBTYPE_MASK);
+		    return(CHECK_BAD);
+		}
 	    }
 	}
 	for(i = 0; i < ofile->fat_header->nfat_arch; i++){
@@ -2942,7 +2963,7 @@ enum bool archives_with_fat_objects)
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
     char *addr;
-    uint32_t size, offset;
+    uint64_t size, offset;
     uint64_t big_size;
     uint32_t magic;
     enum byte_sex host_byte_sex;
@@ -3543,7 +3564,8 @@ struct ofile *ofile)
 		    if(mh->filetype != MH_DYLIB_STUB &&
 		       s->flags != S_ZEROFILL &&
 		       s->flags != S_THREAD_LOCAL_ZEROFILL &&
-		       sg->fileoff == 0 && s->offset < sizeofhdrs){
+		       sg->fileoff == 0 && s->offset < sizeofhdrs &&
+		       s->size != 0){
 			Mach_O_error(ofile, "malformed object (offset field of "
 				"section %u in LC_SEGMENT command %u not "
 				"past the headers of the file)", j, i);
@@ -3588,6 +3610,7 @@ struct ofile *ofile)
 			goto return_bad;
 		    }
 		    if(mh->filetype != MH_DYLIB_STUB &&
+		       mh->filetype != MH_DSYM &&
 		       s->flags != S_ZEROFILL &&
 		       s->flags != S_THREAD_LOCAL_ZEROFILL &&
 		       check_overlaping_element(ofile, &elements, s->offset,
@@ -3680,6 +3703,7 @@ struct ofile *ofile)
 			goto return_bad;
 		    }
 		    if(mh64->filetype != MH_DYLIB_STUB &&
+		       mh64->filetype != MH_DSYM &&
 		       s64->flags != S_ZEROFILL &&
 		       s64->flags != S_THREAD_LOCAL_ZEROFILL &&
 		       check_overlaping_element(ofile, &elements, s64->offset,

@@ -35,7 +35,7 @@ int TagType,
 LLVMOpInfoCallback GetOpInfo,
 LLVMSymbolLookupCallback SymbolLookUp)
 {
-   size_t bufsize;
+   uint32_t bufsize;
    char *p, *prefix, *llvm_path, buf[MAXPATHLEN], resolved_name[PATH_MAX];
    int i;
    LLVMDisasmContextRef DC;
@@ -43,18 +43,11 @@ LLVMSymbolLookupCallback SymbolLookUp)
 	if(tried_to_load_llvm == 0){
 	    tried_to_load_llvm = 1;
 	    /*
-	     * The design is rather lame and inelegant: "llvm support is only
-	     * for stuff in /Developer and not the tools installed in /".
-	     * Which would mean tools like otool(1) run from /usr/bin would
-	     * not work with llvm, and work differently if the same binary was
-	     * installed in /Developer/usr/bin . And if the tools were
-	     * installed in some other location besides /Developer, like
-	     * /Developer/Platforms/...  that would also not work.
-	     *
-	     * So instead construct the prefix to this executable assuming it
-	     * is in a bin directory relative to a lib directory of the matching
-	     * lto library and first try to load that.  If not then fall back to
-	     * trying "/Developer/usr/lib/" LIB_LLVM.
+	     * Construct the prefix to this executable assuming it is in a bin
+	     * directory relative to a lib directory of the matching lto library
+	     * and first try to load that.  If not then fall back to trying
+	     * "/Applications/Xcode.app/Contents/Developer/Toolchains/
+	     * XcodeDefault.xctoolchain/usr/lib/" LIB_LLVM.
 	     */
 	    bufsize = MAXPATHLEN;
 	    p = buf;
@@ -73,8 +66,10 @@ LLVMSymbolLookupCallback SymbolLookUp)
 	    if(llvm_handle == NULL){
 		free(llvm_path);
 		llvm_path = NULL;
-		llvm_handle = dlopen("/Developer/usr/lib/" LIB_LLVM,
-				    RTLD_NOW);
+		llvm_handle = dlopen("/Applications/Xcode.app/Contents/"
+				     "Developer/Toolchains/XcodeDefault."
+				     "xctoolchain/usr/lib/" LIB_LLVM,
+				     RTLD_NOW);
 	    }
 	    if(llvm_handle == NULL)
 		return(0);

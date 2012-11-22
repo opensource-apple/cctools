@@ -60,7 +60,7 @@ extern void print_library_toc(
     enum byte_sex toc_byte_sex,
     char *library_name,
     char *library_addr,
-    uint32_t library_size,
+    uint64_t library_size,
     char *arch_name,
     enum bool verbose);
 
@@ -344,6 +344,7 @@ extern void print_literal16_section(
     enum bool print_addresses);
 
 extern void print_literal_pointer_section(
+    cpu_type_t cputype,
     struct load_command *lc,
     uint32_t ncmds,
     uint32_t sizeofcmds,
@@ -352,7 +353,7 @@ extern void print_literal_pointer_section(
     uint32_t size,
     char *sect,
     uint32_t sect_size,
-    uint32_t sect_addr,
+    uint64_t sect_addr,
     struct nlist *symbols,
     struct nlist_64 *symbols64,
     uint32_t nsymbols,

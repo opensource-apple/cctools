@@ -5,6 +5,38 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.31 release (the cctools-829 release):
+- Fixed the change in check_fat_object_in_archive() in ofile.c to handle llvm
+  bitcode in fat files in archives for Radar bug #9087924.  The added code was
+  slightly in the wrong place.  Radar bug #11423019.
+
+Changes for the 5.31 release (the cctools-827 release):
+- Changed check_fat_object_in_archive() in ofile.c to handle llvm bitcode in
+  fat files in archives.  Radar bug #9087924.
+- Fixed the type of the second parameter to in the calls to 
+  _NSGetExecutablePath() so they are uint32_t in execute.c llvm.c lto.c.
+  Radar bug #11274640.
+
+Changes for the 5.31 release (the cctools-825 release):
+- Changed the type of the local variables size and offset from uint32_t to
+  uint64_t in ofile_first_member(), ofile_next_member(), ofile_specific_member()
+  and check_archive() in ofile.c .  Radar bug #11089424.
+
+Changes for the 5.31 release (the cctools-824 release):
+- Added a test of filetype not being MH_DSYM before the calls to 
+  check_overlaping_element() for section contents in check_Mach_O() in ofile.c
+  to allow the tools to work with dSYM files.  Radar bug #8483201.
+- Change the Makefile to also use -I$(DT_TOOLCHAIN_DIR)/usr/local/include where
+  it uses -I/Developer/usr/local/include.  When the project nolonger neededs to
+  build on older system then the -I/Developer/usr/local/include can be removed.
+  Radar bug #11015395.
+- Changed one check in check_Mach_O() when checking that the section offset is
+  greater than the size of headers to not cause an error when the section size
+  is zero.  Radar bug #9608550.
+- Changed the size variable in ofile_map() and the size parameter in 
+  ofile_map_from_memory() from a uint32_t type to a uint64_t type.  Radar bug
+  #10645295.
+
 Changes for the 5.30 release (the cctools-822 release):
 - The "low risk fix to strip(1)" below in cctools-821 for Radar bug #10718585
   breaks striping .o files with dwarf debug info.  Because the input file has

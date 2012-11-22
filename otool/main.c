@@ -84,7 +84,7 @@ enum bool Wflag = FALSE; /* print the mod time of an archive as a number */
 enum bool Xflag = FALSE; /* don't print leading address in disassembly */
 enum bool Zflag = FALSE; /* don't use simplified ppc mnemonics in disassembly */
 enum bool Bflag = FALSE; /* force Thumb disassembly (ARM objects only) */
-enum bool Qflag = FALSE; /* use the HACKED llvm-mc disassembler */
+enum bool Qflag = FALSE; /* use otool's disassembler */
 enum bool qflag = FALSE; /* use 'C' Public llvm-mc disassembler */
 enum bool jflag = FALSE; /* print opcode bytes */
 char *pflag = NULL; 	 /* procedure name to start disassembling from */
@@ -209,6 +209,7 @@ static void print_text(
     char *sect,
     uint32_t size,
     uint64_t addr,
+    uint32_t sect_flags,
     struct symbol *sorted_symbols,
     uint32_t nsorted_symbols,
     struct nlist *symbols,
@@ -431,11 +432,9 @@ char **envp)
 		case 'B':
 		    Bflag = TRUE;
 		    break;
-#ifdef HACKED_LLVM_DISASSEMBLER_INTERFACE
 		case 'Q':
 		    Qflag = TRUE;
 		    break;
-#endif /* HACKED_LLVM_DISASSEMBLER_INTERFACE */
 		case 'q':
 		    qflag = TRUE;
 		    break;
@@ -456,6 +455,10 @@ char **envp)
 	   !oflag && !Oflag && !rflag && !Tflag && !Mflag && !Rflag && !Iflag &&
 	   !Hflag && !Sflag && !cflag && !iflag && !Dflag && !segname){
 	    error("one of -fahlLtdoOrTMRIHScis must be specified");
+	    usage();
+	}
+	if(qflag && Qflag){
+	    error("can't specify both -q and -Q");
 	    usage();
 	}
 	if(nfiles == 0){
@@ -499,8 +502,8 @@ usage(
 void)
 {
 	fprintf(stderr,
-		"Usage: %s [-fahlLDtdorSTMRIHvVcXm] <object file> ...\n",
-		progname);
+		"Usage: %s [-arch arch_type] [-fahlLDtdorSTMRIHvVcXmqQ] "
+		"<object file> ...\n", progname);
 
 	fprintf(stderr, "\t-f print the fat headers\n");
 	fprintf(stderr, "\t-a print the archive header\n");
@@ -531,6 +534,8 @@ void)
 	fprintf(stderr, "\t-X print no leading addresses or headers\n");
 	fprintf(stderr, "\t-m don't use archive(member) syntax\n");
 	fprintf(stderr, "\t-B force Thumb disassembly (ARM objects only)\n");
+	fprintf(stderr, "\t-q use llvm's disassembler\n");
+	fprintf(stderr, "\t-Q use otool(1)'s disassembler\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -542,7 +547,8 @@ char *arch_name,
 void *cookie) /* cookie is not used */
 {
     char *addr;
-    uint32_t i, size, magic;
+    uint32_t i, magic;
+    uint64_t size;
     struct mach_header mh;
     struct mach_header_64 mh64;
     cpu_type_t mh_cputype;
@@ -735,6 +741,12 @@ void *cookie) /* cookie is not used */
 			return;
 		    }
 		}
+#ifdef LTO_SUPPORT
+		if(ofile->lto != NULL){
+		    printf(" is an LLVM bit-code file\n");
+		    return;
+		}
+#endif /* LTO_SUPPORT */
 		printf(" is not an object file\n");
 		return;
 	    }
@@ -1126,8 +1138,8 @@ void *cookie) /* cookie is not used */
 		    printf("Contents of (%.16s,%.16s) section\n", segname,
 			   sectname);
 	    }
-	    print_text(mh_cputype, ofile->object_byte_sex,
-		       sect, sect_size, sect_addr, sorted_symbols,
+	    print_text(mh_cputype, ofile->object_byte_sex, sect, sect_size,
+		       sect_addr, sect_flags, sorted_symbols,
 		       nsorted_symbols, symbols, symbols64, nsymbols, strings,
 		       strings_size, relocs, nrelocs, indirect_symbols,
 		       nindirect_symbols, ofile->load_commands, mh_ncmds,
@@ -1271,11 +1283,12 @@ void *cookie) /* cookie is not used */
 					         get_host_byte_sex());
 			qsort(relocs, nrelocs, sizeof(struct relocation_info),
 			      (int (*)(const void *, const void *))rel_compare);
-			print_literal_pointer_section(ofile->load_commands,
-				mh_ncmds, mh_sizeofcmds, ofile->object_byte_sex,
-				addr, size, sect, sect_size, sect_addr, symbols,
-				symbols64, nsymbols, strings, strings_size,
-				relocs, nrelocs, Xflag == TRUE ? FALSE : TRUE);
+			print_literal_pointer_section(mh_cputype,
+				ofile->load_commands, mh_ncmds, mh_sizeofcmds,
+				ofile->object_byte_sex, addr, size, sect,
+				sect_size, sect_addr, symbols, symbols64,
+				nsymbols, strings, strings_size, relocs,
+				nrelocs, Xflag == TRUE ? FALSE : TRUE);
 			free(relocs);
 
 			break;
@@ -2349,6 +2362,7 @@ enum byte_sex object_byte_sex,
 char *sect,
 uint32_t size,
 uint64_t addr,
+uint32_t sect_flags,
 struct symbol *sorted_symbols,
 uint32_t nsorted_symbols,
 struct nlist *symbols,
@@ -2375,10 +2389,14 @@ uint32_t object_size)
     uint64_t cur_addr;
     unsigned short short_word;
     unsigned char byte_word;
-    LLVMDisasmContextRef arm_dc, thumb_dc;
+    LLVMDisasmContextRef arm_dc, thumb_dc, i386_dc, x86_64_dc;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != object_byte_sex;
+	arm_dc = NULL;
+	thumb_dc = NULL;
+	i386_dc = NULL;
+	x86_64_dc = NULL;
 
 	if(disassemble == TRUE){
 	    if(pflag){
@@ -2406,16 +2424,22 @@ uint32_t object_size)
 	    if(cputype == CPU_TYPE_ARM &&
 	       (cpusubtype == CPU_SUBTYPE_ARM_V7 ||
 	        cpusubtype == CPU_SUBTYPE_ARM_V7F ||
-	        cpusubtype == CPU_SUBTYPE_ARM_V7K))
-		in_thumb = TRUE;
+	        cpusubtype == CPU_SUBTYPE_ARM_V7K)){
+		if(sect_flags & S_SYMBOL_STUBS)
+		    in_thumb = FALSE;
+		else
+		    in_thumb = TRUE;
+	    }
 	    else
 		in_thumb = FALSE;
-	    arm_dc = NULL;
-	    thumb_dc = NULL;
-	    if(cputype == CPU_TYPE_ARM){
+	    if(qflag && cputype == CPU_TYPE_ARM){
 		arm_dc = create_arm_llvm_disassembler();
 		thumb_dc = create_thumb_llvm_disassembler();
 	    }
+	    if(qflag && cputype == CPU_TYPE_I386)
+		i386_dc = create_i386_llvm_disassembler();
+	    if(qflag && cputype == CPU_TYPE_X86_64)
+		x86_64_dc = create_x86_64_llvm_disassembler();
 	    for(i = offset ; i < size ; ){
 		print_label(cur_addr, TRUE, sorted_symbols, nsorted_symbols);
 		if(Xflag == FALSE){
@@ -2423,7 +2447,7 @@ uint32_t object_size)
 			printf("%016llx", cur_addr);
 		    else
 			printf("%08x", (uint32_t)cur_addr);
-		    if(Qflag == FALSE && qflag == FALSE)
+		    if(qflag == FALSE)
 			printf("\t");
 		}
 		if(cputype == CPU_TYPE_POWERPC64)
@@ -2440,7 +2464,8 @@ uint32_t object_size)
 				nsorted_symbols, strings, strings_size,
 				indirect_symbols, nindirect_symbols, cputype,
 				load_commands, ncmds, sizeofcmds, verbose,
-				llvm_mc);
+				llvm_mc, i386_dc, x86_64_dc , object_addr,
+				object_size);
 	 	else if(cputype == CPU_TYPE_MC680x0)
 		    j = m68k_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, symbols,
@@ -2459,7 +2484,8 @@ uint32_t object_size)
 				nsymbols, sorted_symbols, nsorted_symbols,
 				strings, strings_size, indirect_symbols,
 				nindirect_symbols, cputype, load_commands, 
-				ncmds, sizeofcmds, verbose, llvm_mc);
+				ncmds, sizeofcmds, verbose, llvm_mc, i386_dc,
+				x86_64_dc, object_addr, object_size);
 		else if(cputype == CPU_TYPE_MC88000)
 		    j = m88k_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, symbols,

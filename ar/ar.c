@@ -92,9 +92,6 @@ static void badoptions __P((char *));
 static void usage __P((void));
 char *progname;
 
-/* apple_version is created by the libstuff/Makefile */
-extern char apple_version[];
-
 /*
  * main --
  *	main basically uses getopt to parse options and calls the appropriate
@@ -106,7 +103,7 @@ main(argc, argv)
 	int argc;
 	char **argv;
 {
-	int c, retval, verbose, run_ranlib, print_version;
+	int c, retval, verbose, run_ranlib;
 	char *p;
 	int (*fcall) __P((char **));
 
@@ -114,9 +111,8 @@ main(argc, argv)
 	verbose = 0;
 	progname = argv[0];
 	run_ranlib = 1;
-	print_version = 0;
 
-	if (argc < 3 && (argc != 2 && strcmp(argv[1], "-e") != 0))
+	if (argc < 3)
 		usage();
 
 	/*
@@ -137,7 +133,7 @@ main(argc, argv)
 	 * extended format #1.  The new option -L allows ar to use the extended 
 	 * format and the old -T option causes the truncation of names.
 	 */
-	while ((c = getopt(argc, argv, "abcdeilLmopqrSsTtuVvx")) != -1) {
+	while ((c = getopt(argc, argv, "abcdilLmopqrSsTtuVvx")) != -1) {
 		switch(c) {
 		case 'a':
 			options |= AR_A;
@@ -205,11 +201,6 @@ main(argc, argv)
 			options |= AR_X;
 			fcall = extract;
 			break;
-		case 'e':
-			(void)fprintf(stderr, "Apple Inc. version %s\n",
-				      apple_version);
-			print_version = 1;
-			break;
 		default:
 			usage();
 		}
@@ -220,8 +211,6 @@ main(argc, argv)
 
 	/* One of -dmpqrtsx required. */
 	if (!(options & (AR_D|AR_M|AR_P|AR_Q|AR_R|AR_S|AR_T|AR_X))) {
-		if(print_version == 1)
-			exit(0);
 		warnx("one of options -dmpqrtsx is required");
 		usage();
 	}

@@ -77,7 +77,7 @@ struct arch_flag *arch_flag,
 void **pmod) /* maybe NULL */
 {
 
-   size_t bufsize;
+   uint32_t bufsize;
    char *p, *prefix, *lto_path, buf[MAXPATHLEN], resolved_name[PATH_MAX];
    int i;
    void *mod;
@@ -92,18 +92,11 @@ void **pmod) /* maybe NULL */
 	if(tried_to_load_lto == 0){
 	    tried_to_load_lto = 1;
 	    /*
-	     * The design is rather lame and inelegant: "llvm support is only
-	     * for stuff in /Developer and not the tools installed in /".
-	     * Which would mean tools like libtool(1) run from /usr/bin would
-	     * not work with lto, and work differently if the same binary was
-	     * installed in /Developer/usr/bin . And if the tools were
-	     * installed in some other location besides /Developer, like
-	     * /Developer/Platforms/...  that would also not work.
-	     *
-	     * So instead construct the prefix to this executable assuming it
-	     * is in a bin directory relative to a lib directory of the matching
-	     * lto library and first try to load that.  If not then fall back to
-	     * trying "/Developer/usr/lib/libLTO.dylib".
+	     * Construct the prefix to this executable assuming it is in a bin
+	     * directory relative to a lib directory of the matching lto library
+	     * and first try to load that.  If not then fall back to trying
+	     * "/Applications/Xcode.app/Contents/Developer/Toolchains/
+	     * XcodeDefault.xctoolchain/usr/lib/libLTO.dylib".
 	     */
 	    bufsize = MAXPATHLEN;
 	    p = buf;
@@ -122,7 +115,9 @@ void **pmod) /* maybe NULL */
 	    if(lto_handle == NULL){
 		free(lto_path);
 		lto_path = NULL;
-		lto_handle = dlopen("/Developer/usr/lib/libLTO.dylib",
+		lto_handle = dlopen("/Applications/Xcode.app/Contents/"
+				    "Developer/Toolchains/XcodeDefault."
+				    "xctoolchain/usr/lib/libLTO.dylib",
 				    RTLD_NOW);
 	    }
 	    if(lto_handle == NULL)

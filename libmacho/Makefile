@@ -36,6 +36,9 @@ endif
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  STRIP = $(shell xcrun -find -sdk ${SDKROOT} strip)
+else
+  STRIP = strip
 endif
 ifeq "clang" "$(notdir $(CC))"
   CFLAGS = $(OFLAG) -g -Wall $(LEGACY) \
@@ -366,13 +369,13 @@ macos_lib_ofiles_install: all
 	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
 	    install -c -m 555 dtmp_obj/libmacho.dylib			\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
 	    install -c -m 555 dtmp_obj/libmacho_profile.dylib		\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
 	    install -c -m 555 dtmp_obj/libmacho_debug.dylib		\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
 	else								\
 	    install -c -m 444 $(SYMROOT)/libmacho.a			\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
@@ -387,13 +390,13 @@ macos_lib_ofiles_install: all
 	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
 	    install -c -m 555 $(SYMROOT)/libmacho.dylib			\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
 	    install -c -m 555 $(SYMROOT)/libmacho_profile.dylib		\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
 	    install -c -m 555 $(SYMROOT)/libmacho_debug.dylib	\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
-	    strip -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
 	fi
 
 teflon_lib_ofiles_install nextstep_lib_ofiles_install:

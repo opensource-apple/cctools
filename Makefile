@@ -399,7 +399,8 @@ install_dev_tools:
 	$(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)"					\
 		RC_OS="$(RC_OS)"					\
-		DSTROOT=$$DSTROOT/$(DT_TOOLCHAIN_DIR)			\
+		DT_TOOLCHAIN_DIR=$(DT_TOOLCHAIN_DIR)			\
+		DSTROOT=$(DSTROOT)					\
 		SRCROOT=$(SRCROOT)					\
 		OBJROOT=$(OBJROOT)					\
 		SYMROOT=$(SYMROOT)					\

@@ -151,8 +151,7 @@ typedef enum {
 # define N_(String) (String)
 
 /* STUFF FROM gas/as.h */
-#define COMMON
-COMMON subsegT now_subseg;
+extern subsegT now_subseg;
 
 /* STUFF FROM gas/config/tc-arm.h */
 #define ARM_FLAG_THUMB 		(1 << 0)	/* The symbol is a Thumb symbol rather than an Arm symbol.  */
@@ -12718,6 +12717,10 @@ do_neon_ld_st_interleave (void)
   typebits = typetable[idx];
   
   constraint (typebits == -1, _("bad list type for instruction"));
+  /* Only VLD1/VST1 allows a size of 64.  As the comment above states, the <n>
+     of VLD<n>/VST<n> is in bits [9:8] of the initial bitmask. */
+  constraint (((inst.instruction >> 8) & 3) != 0 &&
+              et.size == 64, _("bad size for instruction"));
 
   inst.instruction &= ~0xf00;
   inst.instruction |= typebits << 8;

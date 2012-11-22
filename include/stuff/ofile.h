@@ -57,7 +57,7 @@ enum ofile_type {
 struct ofile {
     char *file_name;		    /* pointer to name malloc'ed by ofile_map */
     char *file_addr;		    /* pointer to vm_allocate'ed memory       */
-    uint32_t file_size;	    	    /* size of vm_allocate'ed memory	      */
+    uint64_t file_size;	    	    /* size of vm_allocate'ed memory	      */
     uint64_t file_mtime;	    /* stat(2)'s mtime                        */
     enum ofile_type file_type;	    /* type of the file			      */
 
@@ -159,7 +159,7 @@ __private_extern__ NSObjectFileImageReturnCode ofile_map_from_memory(
 __private_extern__ enum bool ofile_map_from_memory(
 #endif
     char *addr,
-    uint32_t size,
+    uint64_t size,
     const char *file_name,
     uint64_t mtime,
     const struct arch_flag *arch_flag,	/* can be NULL */

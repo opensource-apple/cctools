@@ -1,6 +1,7 @@
 RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -Os
+LTO = -DLTO_SUPPORT
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
 X_CFLAGS =
@@ -38,10 +39,10 @@ ifneq "" "$(SDKROOT)"
 endif
 
 ifeq "clang" "$(notdir $(CC))"
-  CFLAGS = $(STATIC) $(OFLAG) -g -Wall -I$(SRCROOT)/../include \
+  CFLAGS = $(STATIC) $(OFLAG) $(LTO) -g -Wall -I$(SRCROOT)/../include \
 	   -I$(SRCROOT) $(LEGACY) $(EFI_SUPPORT) $(SDK)
 else
-  CFLAGS = $(STATIC) $(OFLAG) -g -Wall -I$(SRCROOT)/../include \
+  CFLAGS = $(STATIC) $(OFLAG) $(LTO) -g -Wall -I$(SRCROOT)/../include \
 	   -I$(SRCROOT) $(X_CFLAGS) $(LEGACY) $(EFI_SUPPORT) $(SDK)
 endif
 

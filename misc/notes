@@ -9,6 +9,20 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.31 release (the cctools-827 release):
+- Added #ifdef guards for LTO_SUPPORT in lipo.c . Radar bug #11296366.
+
+Changes for the 5.31 release (the cctools-825 release):
+- Fixed the full strip case with -no_uuid that was not stripping the LC_UUID
+  load command.  A call to strip_LC_UUID_commands() was added to strip_object()
+  in strip.c for the full strip case.  Radar bug #11136733.
+
+Changes for the 5.31 release (the cctools-824 release):
+- Removed the creation of the link to /usr/local/bin/nmedit from
+  $(DSTROOT)$(LOCBINDIR)/nmedit in the Makefile.  Radar bug #10688477.
+- Fixed a bunch of places in libtool(1) that was using 32-bit variables to hold
+  offsets and sizes.  Radar bug #10645295.
+
 Changes for the 5.30 release (the cctools-822 release):
 - The "low risk fix to strip(1)" below in cctools-821 for Radar bug #10718585
   breaks striping .o files with dwarf debug info.  Because the input file has

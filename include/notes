@@ -1,3 +1,12 @@
+Changes for the 5.31 release (the cctools-827 release):
+- Change the second parameter of _NSGetExecutablePath() in "mach-o/dyld.h" to
+  uint32_t * .  Radar bug #11274640.
+
+Changes for the 5.31 release (the cctools-824 release):
+- Changed the file_size field in the ofile struct in "stuff/ofile.h" and the
+  size parameter in ofile_map_from_memory() from a uint32_t type to a uint64_t
+  type.  Radar bug #10645295.
+
 Changes for the 5.30 release (the cctools-822 release):
 - The "low risk fix to strip(1)" below in cctools-821 for Radar bug #10718585
   breaks striping .o files with dwarf debug info.  Because the input file has

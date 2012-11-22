@@ -172,7 +172,7 @@ static uint32_t narchs = 0;
 
 struct arch {
     struct arch_flag arch_flag;	/* the identifing info of this architecture */
-    uint32_t size;		/* current working size and final size */
+    uint64_t size;		/* current working size and final size */
 
     /* the table of contents (toc) stuff for this architecture in the library */
     uint32_t  toc_size;	/* total size of the toc including ar_hdr */
@@ -300,19 +300,19 @@ static void ld_trace(
  * with output_blocks.
  */
 static struct block {
-    uint32_t offset;	/* starting offset of this block */
-    uint32_t size;		/* size of this block */
-    uint32_t written_offset;/* first page offset after starting offset */
-    uint32_t written_size;	/* size of written area from written_offset */
+    uint64_t offset;	/* starting offset of this block */
+    uint64_t size;		/* size of this block */
+    uint64_t written_offset;/* first page offset after starting offset */
+    uint64_t written_size;	/* size of written area from written_offset */
     struct block *next; /* next block in the list */
 } *output_blocks;
 
 static void output_flush(
     char *library,
-    uint32_t library_size,
+    uint64_t library_size,
     int fd,
-    uint32_t offset,
-    uint32_t size);
+    uint64_t offset,
+    uint64_t size);
 static void final_output_flush(
     char *library,
     int fd);
@@ -1369,7 +1369,8 @@ void)
 			    }
 			}
 		    }
-		    else if(ofiles[i].arch_type == OFILE_Mach_O){
+		    else if(ofiles[i].arch_type == OFILE_Mach_O ||
+		            ofiles[i].arch_type == OFILE_LLVM_BITCODE){
 			if(cmd_flags.ranlib == TRUE){
 			    error("for architecture: %s file: %s is not an "
 				  "archive (no processing done on this file)",
@@ -2163,7 +2164,8 @@ create_library(
 char *output,
 struct ofile *ofile)
 {
-    uint32_t i, j, k, library_size, offset, pad, *time_offsets;
+    uint32_t i, j, k, pad, *time_offsets;
+    uint64_t library_size, offset;
     enum byte_sex target_byte_sex;
     char *library, *p, *flush_start;
     kern_return_t r;
@@ -2363,7 +2365,7 @@ struct ofile *ofile)
 	    if((r = vm_allocate(mach_task_self(), (vm_address_t *)&library,
 				library_size, TRUE)) != KERN_SUCCESS)
 		mach_fatal(r, "can't vm_allocate() buffer for output file: %s "
-			   "of size %u", output, library_size);
+			   "of size %llu", output, library_size);
 
 
 	    /* put in the archive magic string in the buffer */
@@ -2399,7 +2401,7 @@ fail_to_update_toc_in_place:
 	if((r = vm_allocate(mach_task_self(), (vm_address_t *)&library,
 			    library_size, TRUE)) != KERN_SUCCESS)
 	    mach_fatal(r, "can't vm_allocate() buffer for output file: %s of "
-		       "size %u", output, library_size);
+		       "size %llu", output, library_size);
 
 	/*
 	 * Create the output file.  The unlink() is done to handle the problem
@@ -2431,10 +2433,24 @@ fail_to_update_toc_in_place:
 	    for(i = 0; i < narchs; i++){
 		fat_arch[i].cputype = archs[i].arch_flag.cputype;
 		fat_arch[i].cpusubtype = archs[i].arch_flag.cpusubtype;
+		if(offset > UINT32_MAX)
+		    error("file too large to create as a fat file because "
+			  "offset field in struct fat_arch is only 32-bits and "
+			  "offset (%llu) to architecture %s exceeds that",
+			  offset, archs[i].arch_flag.name);
 		fat_arch[i].offset = offset;
+		if(archs[i].size > UINT32_MAX)
+		    error("file too large to create as a fat file because "
+			  "size field in struct fat_arch is only 32-bits and "
+			  "size (%llu) of architecture %s exceeds that",
+			  archs[i].size, archs[i].arch_flag.name);
 		fat_arch[i].size = archs[i].size;
 		fat_arch[i].align = 2;
 		offset += archs[i].size;
+	    }
+	    if(errors != 0){
+		(void)unlink(output);
+		return;
 	    }
 #ifdef __LITTLE_ENDIAN__
 	    swap_fat_header(fat_header, BIG_ENDIAN_BYTE_SEX);
@@ -2749,12 +2765,12 @@ static
 void
 output_flush(
 char *library,
-uint32_t library_size,
+uint64_t library_size,
 int fd,
-uint32_t offset,
-uint32_t size)
+uint64_t offset,
+uint64_t size)
 { 
-    uint32_t write_offset, write_size, host_pagesize;
+    uint64_t write_offset, write_size, host_pagesize;
     struct block **p, *block, *before, *after;
     kern_return_t r;
 
@@ -2764,14 +2780,15 @@ uint32_t size)
 	    return;
 
 	if(offset + size > library_size)
-	    fatal("internal error: output_flush(offset = %u, size = %u) out "
-		  "of range for library_size = %u", offset, size, library_size);
+	    fatal("internal error: output_flush(offset = %llu, size = %llu) "
+		  "out of range for library_size = %llu", offset, size,
+		  library_size);
 
 #ifdef DEBUG
 	if(cmd_flags.debug & (1 << 2))
 	    print_block_list();
 	if(cmd_flags.debug & (1 << 1))
-	    printf("output_flush(offset = %lu, size %lu)", offset, size);
+	    printf("output_flush(offset = %llu, size %llu)", offset, size);
 #endif /* DEBUG */
 
 	if(size == 0){
@@ -2807,18 +2824,20 @@ uint32_t size)
 	 */
 	if(before != NULL){
 	    if(before->offset + before->size > offset){
-		warning("internal error: output_flush(offset = %u, size = %u)"
-		      " overlaps with flushed block(offset = %u, size = %u)",
-		      offset, size, before->offset, before->size);
+		warning("internal error: output_flush(offset = %llu, size = "
+			"%llu) overlaps with flushed block(offset = %llu, "
+			"size = %llu)", offset, size, before->offset,
+			before->size);
 		printf("calling abort()\n");	
 		abort();
 	    }
 	}
 	if(after != NULL){
 	    if(offset + size > after->offset){
-		warning("internal error: output_flush(offset = %u, size = %u)"
-		      " overlaps with flushed block(offset = %u, size = %u)",
-		      offset, size, after->offset, after->size);
+		warning("internal error: output_flush(offset = %llu, size = "
+			"%llu) overlaps with flushed block(offset = %llu, "
+			"size = %llu)", offset, size, after->offset,
+			after->size);
 		printf("calling abort()\n");	
 		abort();
 	    }
@@ -2949,7 +2968,7 @@ uint32_t size)
 	if(write_size != 0){
 #ifdef DEBUG
 	if((cmd_flags.debug & (1 << 1)) || (cmd_flags.debug & (1 << 0)))
-	    printf(" writing (write_offset = %lu write_size = %lu)\n",
+	    printf(" writing (write_offset = %llu write_size = %llu)\n",
 		   write_offset, write_size);
 #endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
@@ -2979,7 +2998,7 @@ char *library,
 int fd)
 { 
     struct block *block;
-    uint32_t write_offset, write_size;
+    uint64_t write_offset, write_size;
     kern_return_t r;
 
 #ifdef DEBUG
@@ -3013,7 +3032,7 @@ int fd)
 	if(write_size != 0){
 #ifdef DEBUG
 	    if((cmd_flags.debug & (1 << 1)) || (cmd_flags.debug & (1 << 1)))
-		printf(" writing (write_offset = %lu write_size = %lu)\n",
+		printf(" writing (write_offset = %llu write_size = %llu)\n",
 		       write_offset, write_size);
 #endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
@@ -3043,10 +3062,10 @@ print_block_list(void)
 	while(*p){
 	    block = *p;
 	    printf("block 0x%x\n", (unsigned int)block);
-	    printf("    offset %lu\n", block->offset);
-	    printf("    size %lu\n", block->size);
-	    printf("    written_offset %lu\n", block->written_offset);
-	    printf("    written_size %lu\n", block->written_size);
+	    printf("    offset %llu\n", block->offset);
+	    printf("    size %llu\n", block->size);
+	    printf("    written_offset %llu\n", block->written_offset);
+	    printf("    written_size %llu\n", block->written_size);
 	    printf("    next 0x%x\n", (unsigned int)(block->next));
 	    p = &(block->next);
 	}

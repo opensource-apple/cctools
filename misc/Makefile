@@ -349,8 +349,6 @@ teflon_install macos_install: common_install
 	install -c -s -m 555 $(SYMROOT)/redo_prebinding.NEW \
 			  $(DSTROOT)$(USRBINDIR)/redo_prebinding
 	install -c -s -m 555 $(SYMROOT)/nmedit.NEW $(DSTROOT)$(USRBINDIR)/nmedit
-	(cd $(DSTROOT)$(LOCBINDIR); rm -f nmedit; \
-	 ln -s $(USRBINDIR)/nmedit nmedit)
 	install -c -s -m 555 $(SYMROOT)/install_name_tool.NEW \
 			  $(DSTROOT)$(USRBINDIR)/install_name_tool
 	install -c -s -m 555 $(SYMROOT)/codesign_allocate.NEW \
