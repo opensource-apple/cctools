@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -78,7 +79,8 @@ struct merged_symbol {
 				   /*  only in the undefined list as a two- */
 				   /*  level namespace reference from a dylib.*/
 	weak_reference_mismatch:1, /* seen both a weak and non-weak reference */
-	reserved:1,
+	define_a_way:1,		   /* set if this symbol was defined as a */
+				   /*  result of -undefined define_a_way */
 	output_index:23;	/* the symbol table index this symbol will */
 				/*  have in the output file. */
     int undef_order;		/* if the symbol was undefined the order it */
@@ -216,9 +218,6 @@ __private_extern__ struct common_load_map common_load_map;
  * The object file that is created for the common symbols to be allocated in.
  */
 __private_extern__
-#if defined(RLD) && !defined(__DYNAMIC__)
-const 
-#endif
 struct object_file link_edit_common_object;
 
 /*
@@ -261,6 +260,7 @@ struct localsym_block {
     unsigned long index;
     unsigned long count;
     enum localsym_block_state state;
+    unsigned long input_N_BINCL_n_value;
     unsigned long sum;
     struct localsym_block *next;
 };
@@ -329,6 +329,8 @@ __private_extern__ void free_undefined_list(
     void);
 __private_extern__ void define_common_symbols(
     void);
+__private_extern__ void define_undefined_symbols_a_way(
+    void);
 __private_extern__ void define_link_editor_execute_symbols(
     unsigned long header_address);
 __private_extern__ void setup_link_editor_symbols(
@@ -375,6 +377,8 @@ void output_rld_symfile_merged_symbols(
 #endif /* defined(RLD) && !defined(SA_RLD) */
 __private_extern__ enum bool is_output_local_symbol(
     unsigned char n_type,
+    unsigned char n_sect,
+    struct object_file *obj,
     char *symbol_name);
 __private_extern__ unsigned long merged_symbol_output_index(
     struct merged_symbol *merged_symbol);

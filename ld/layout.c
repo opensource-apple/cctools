@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -213,8 +214,11 @@ layout(void)
 	if(filetype == MH_EXECUTE ||
 	   filetype == MH_BUNDLE ||
 	   filetype == MH_DYLIB ||
-	   filetype == MH_DYLINKER)
+	   filetype == MH_DYLINKER){
 	    setup_link_editor_symbols();
+	    if(undefined_flag == UNDEFINED_DEFINE_A_WAY)
+		define_undefined_symbols_a_way();
+	}
 	if(filetype == MH_PRELOAD)
 	    define_link_editor_preload_symbols(TRUE);
 #endif /* !defined(RLD) */
@@ -2196,12 +2200,18 @@ struct merged_section *ms)
 				      (unsigned int)(ms->s.addr +
 					fine_relocs[k].output_offset),
 				      (unsigned int)
-				      (k == object_file->section_maps[j].
-							     nfine_relocs - 1 ?
-				      object_file->section_maps[j].s->size -
-					fine_relocs[k].input_offset :
-				      fine_relocs[k + 1].input_offset -
-					fine_relocs[k].input_offset));
+				      (k == (unsigned int)
+					((object_file->section_maps[j].
+							    nfine_relocs) -
+					(unsigned int)1) ?
+				      (unsigned int)
+				      (object_file->section_maps[j].s->size) -
+					(unsigned int)(fine_relocs[k].
+						input_offset) :
+				      (unsigned int)(fine_relocs[k + 1].
+					input_offset) -
+					(unsigned int)(fine_relocs[k].
+					input_offset)));
 				print_obj_name(object_file);
 				print("\n");
 			    }

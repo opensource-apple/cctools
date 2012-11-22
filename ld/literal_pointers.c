@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -149,8 +150,8 @@ struct section_map *section_map)
      */
     fine_relocs = allocate(nliterals * sizeof(struct fine_reloc));
     memset(fine_relocs, '\0', nliterals * sizeof(struct fine_reloc));
-    for(i = 0; i < nliterals; i++){
-	fine_relocs[i].output_offset = -1;
+    for(j = 0; j < nliterals; j++){
+	fine_relocs[j].output_offset = -1;
     }
     section_map->fine_relocs = fine_relocs;
     section_map->nfine_relocs = nliterals;
@@ -569,7 +570,7 @@ struct section_map *section_map)
 	 * for this literal does not have an output_offset of -1 it is an error
 	 * because we have seen it before.
 	 */ 
-	if(fine_relocs[r_address/4].output_offset != -1){
+	if((int)(fine_relocs[r_address/4].output_offset) != -1){
 	    error_with_cur_obj("more than one relocation entry for literal "
 		"pointer at address 0x%x (r_address 0x%x) in section "
 		"(%.16s,%.16s)", (unsigned int)(s->addr + r_address),

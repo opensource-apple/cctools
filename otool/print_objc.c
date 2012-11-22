@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -613,7 +614,9 @@ print_objc_class:
 				   "of " SECT_OBJC_SYMBOLS " section\n");
 			printf("\t\t       ivar_count %d\n", 
 				    objc_ivar_list.ivar_count);
-			for(j = 0; j < objc_ivar_list.ivar_count; j++){
+			for(j = 0;
+			    j < (unsigned long)objc_ivar_list.ivar_count;
+			    j++){
 			    if((j + 1) * sizeof(struct objc_ivar) >
 			       ivar_list_left){
 				printf("\t\t remaining ivar's extend past "
@@ -1245,7 +1248,7 @@ enum bool verbose)
 	printf("\t\t     method_count %d\n",
 	       method_list.method_count);
 	
-	for(i = 0; i < method_list.method_count; i++){
+	for(i = 0; i < (unsigned long)method_list.method_count; i++){
 	    if((i + 1) * sizeof(struct objc_method) > methods_left){
 		printf("\t\t remaining method's extend past the of the "
 		       "section\n");
@@ -1325,7 +1328,7 @@ enum bool verbose)
 	printf("        count %d\n",
 	       protocol_list.count);
 	
-	for(i = 0; i < protocol_list.count; i++){
+	for(i = 0; i < (unsigned long)protocol_list.count; i++){
 	    if((i + 1) * sizeof(struct objc_protocol *) > list_left){
 		print_indent(indent);
 		printf(" remaining list entries extend past the of the "
@@ -1450,7 +1453,7 @@ enum bool verbose)
 	print_indent(indent);
 	printf("        count %d\n", mdl.count);
 	
-	for(i = 0; i < mdl.count; i++){
+	for(i = 0; i < (unsigned long)mdl.count; i++){
 	    if((i + 1) * sizeof(struct objc_method_description) > list_left){
 		print_indent(indent);
 		printf(" remaining list entries extend past the of the "

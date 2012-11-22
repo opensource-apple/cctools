@@ -1338,7 +1338,7 @@ struct m88k_opcode *format,
 int parcnt)
 {
 	char c, *saveptr, *saveparam;
-	unsigned int val, nohilo = 0;
+	int val, nohilo = 0;
 	segT seg;
         expressionS exp;
 

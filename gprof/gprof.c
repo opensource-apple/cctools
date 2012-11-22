@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -617,7 +618,7 @@ unsigned long nbytes)
 	if(buf == NULL)
 	    fatal("no room for dyld state (malloc failed)");
 
-	if(read(fd, buf, nbytes) != nbytes)
+	if(read(fd, buf, nbytes) != (int)nbytes)
 	    system_fatal("malformed gmon.out file: %s (can't read dyld state)",
 			 filename);
 
@@ -694,10 +695,10 @@ enum bool old_style)
 	 * bytes of the 2byte samples that follow it.  Try to make sure this
 	 * is reasonable and that what's left in the file is at least that big.
 	 */
-	if(header.ncnt < sizeof(header))
+	if((size_t)header.ncnt < sizeof(header))
 	    fatal("gmon.out file: %s malformed (ncnt field less than the "
 		  "size of the expected header)", filename);
-	if(header.ncnt > nbytes)
+	if((unsigned long)header.ncnt > nbytes)
 	    fatal("gmon.out file: %s malformed (ncnt field greater than "
 		  "the byte count for it in the file)", filename);
 	if(header.hpc < header.lpc)
@@ -807,7 +808,7 @@ enum bool old_style)
 	if(samples == NULL)
 	    system_fatal("can't allocate buffer of size: %lu for samples from "
 			 "gmon.out file: %s", size, filename);
-	if(read(fd, samples, size) != size)
+	if(read(fd, samples, size) != (int)size)
 	    system_fatal("can't read samples from gmon.out file: %s", filename);
 	for(j = 0; j < sample_sets[i].nsamples; j++){
 	    sample = samples[j];

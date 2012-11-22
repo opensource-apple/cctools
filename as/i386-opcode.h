@@ -26,7 +26,7 @@ static const template i386_optab[] = {
 { "mov", 2, 0xb0, _, ShortFormW, {Imm, Reg, 0} },
 { "mov", 2, 0xc6, _,  W|Modrm,  {Imm, Reg|Mem, 0} },
 #ifdef NeXT_MOD /* bug fix for "movw %ds,64(%edx)" */
-{ "mov", 2, 0x8c, _, D|Modrm,  {SReg3|SReg2, Reg16|Mem, 0} },
+{ "mov", 2, 0x8c, _, D|Modrm,  {SReg3|SReg2, Reg|Mem, 0} },
 #else
 { "mov", 2, 0x8c, _, D|Modrm,  {SReg3|SReg2, Reg16|Mem16, 0} },
 #endif
@@ -476,41 +476,41 @@ static const template i386_optab[] = {
 
 #if defined(i486) || defined (i586)
 #define BSWAP_OPCODE 0x0fc8
-{"bswap",	1, 0x0fc8, _,    NoModrm,  {Reg32,           0,	0}, "4" },
-{"xadd",	2, 0x0fc0, _,  W|  Modrm,    {Reg,     Reg|Mem, 0}, "4" },
-{"cmpxchg",	2, 0x0fb0, _,  W|  Modrm,    {Reg,     Reg|Mem, 0}, "4" },
-{"invd",	0, 0x0f08, _,    NoModrm,      {0,           0,	0}, "4" },
-{"invlpg",	1, 0x0f01, 7,      Modrm,    {Mem,           0,	0}, "4" },
-{"wbinvd",	0, 0x0f09, _,    NoModrm,      {0,           0,	0}, "4" },
+{"bswap",	1, 0x0fc8, _,    NoModrm,  {Reg32,           0,	0}, /*"4"*/ },
+{"xadd",	2, 0x0fc0, _,  W|  Modrm,    {Reg,     Reg|Mem, 0}, /*"4"*/ },
+{"cmpxchg",	2, 0x0fb0, _,  W|  Modrm,    {Reg,     Reg|Mem, 0}, /*"4"*/ },
+{"invd",	0, 0x0f08, _,    NoModrm,      {0,           0,	0}, /*"4"*/ },
+{"invlpg",	1, 0x0f01, 7,      Modrm,    {Mem,           0,	0}, /*"4"*/ },
+{"wbinvd",	0, 0x0f09, _,    NoModrm,      {0,           0,	0}, /*"4"*/ },
 #endif /* defined (i486) || defined (i586) */
 
 #ifdef i586
 /* cmpxchg8b - here Mem32 means 32 bit pointer to a 64bit entity */
-{"cmpxchg8b",	1, 0x0fc7, _,       Modrm,    {Mem,           0, 0}, "5" },
-{"cpuid",	0, 0x0fa2, _,     NoModrm,      {0,           0, 0}, "5" },
-{"rdtsc",	0, 0x0f31, _,     NoModrm,      {0,           0, 0}, "5" },
-{"rdmsr",	0, 0x0f32, _,     NoModrm,      {0,           0, 0}, "5" },
-{"wrmsr",	0, 0x0f30, _,     NoModrm,      {0,           0, 0}, "5" },
-{"rsm",		0, 0x0faa, _,     NoModrm,      {0,           0, 0}, "5" },
+{"cmpxchg8b",	1, 0x0fc7, 1,       Modrm,    {Mem,           0, 0}, /*"5"*/ },
+{"cpuid",	0, 0x0fa2, _,     NoModrm,      {0,           0, 0}, /*"5"*/ },
+{"rdtsc",	0, 0x0f31, _,     NoModrm,      {0,           0, 0}, /*"5"*/ },
+{"rdmsr",	0, 0x0f32, _,     NoModrm,      {0,           0, 0}, /*"5"*/ },
+{"wrmsr",	0, 0x0f30, _,     NoModrm,      {0,           0, 0}, /*"5"*/ },
+{"rsm",		0, 0x0faa, _,     NoModrm,      {0,           0, 0}, /*"5"*/ },
 #endif /* i586 */
 
 #ifdef i686
 /* Pentium Pro extensions */
-{"rdpmc", 0, 0x0f33, _, NoModrm, {0, 0, 0}, "6" },
+{"rdpmc", 0, 0x0f33, _, NoModrm, {0, 0, 0}, /*"6"*/ },
         
-{"ud2", 0, 0x0fff, _, NoModrm, {0, 0, 0}, "6" }, /* official undefined instr. */
+{"ud2", 0, 0x0fff, _, NoModrm, {0, 0, 0}, /*"6"*/ }, /* official undefined instr. */
 #endif /* i686 */
 
 #define Mem512 (Mem32|Disp|BaseIndex)
 
-  {"fxrstor", 1, 0x0fae, 1, Modrm, {Mem512, 0, 0}, "6" },
-  {"fxsave", 1, 0x0fae, 0, Modrm, {Mem512, 0, 0}, "6" },
-  {"sysenter", 0, 0x0f34, _, NoModrm, {0, 0, 0}, "6" },
-  {"sysexit", 0, 0x0f35, _, NoModrm, {0, 0, 0}, "6" },
+  {"fxrstor", 1, 0x0fae, 1, Modrm, {Mem512, 0, 0}, /*"6"*/ },
+  {"fxsave", 1, 0x0fae, 0, Modrm, {Mem512, 0, 0}, /*"6"*/ },
+  {"sysenter", 0, 0x0f34, _, NoModrm, {0, 0, 0}, /*"6"*/ },
+  {"sysexit", 0, 0x0f35, _, NoModrm, {0, 0, 0}, /*"6"*/ },
 
 #define def_cmov(name,opc) \
-  {name,2,opc,_,Modrm|ReverseRegRegmem,{Reg16|Mem16|Disp|BaseIndex,Reg16,0}, "6" }, \
-  {name,2,opc,_,Modrm|ReverseRegRegmem,{Reg32|Mem32|Disp|BaseIndex,Reg32,0}, "6" },
+  {name,2,opc,_,Modrm|ReverseRegRegmem,{Reg16|Mem16|Disp|BaseIndex,Reg16,0}, /*"6"*/ }, \
+  {name,2,opc,_,Modrm|ReverseRegRegmem,{Reg32|Mem32|Disp|BaseIndex,Reg32,0}, /*"6"*/ },
 
   def_cmov("cmova", 0x0f47)
   def_cmov("cmovae", 0x0f43)
@@ -539,18 +539,18 @@ static const template i386_optab[] = {
   def_cmov("cmovp", 0x0f4a)
   def_cmov("cmovnp", 0x0f4b)
 
-  {"fcomi", 2, 0xdbf0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcomip", 2, 0xdff0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fucomi", 2, 0xdbe8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fucomip", 2, 0xdfe8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovb", 2, 0xdac0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmove", 2, 0xdac8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovbe", 2, 0xdad0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovu", 2, 0xdad8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovnb", 2, 0xdbc0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovne", 2, 0xdbc8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovnbe", 2, 0xdbd0, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
-  {"fcmovnu", 2, 0xdbd8, _, ShortForm, {FloatReg, FloatAcc, 0}, "6" },
+  {"fcomi", 2, 0xdbf0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcomip", 2, 0xdff0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fucomi", 2, 0xdbe8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fucomip", 2, 0xdfe8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovb", 2, 0xdac0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmove", 2, 0xdac8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovbe", 2, 0xdad0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovu", 2, 0xdad8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovnb", 2, 0xdbc0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovne", 2, 0xdbc8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovnbe", 2, 0xdbd0, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
+  {"fcmovnu", 2, 0xdbd8, _, ShortForm, {FloatReg, FloatAcc, 0}, /*"6"*/ },
 
 /* SSE extensions */
 #define RR   ReverseRegRegmem
@@ -625,7 +625,7 @@ static const template i386_optab[] = {
   {"movd", 2, 0x0f6e, _, RR|Modrm, {r32|m32, mm, 0},"O"},
   {"movd", 2, 0x0f7e, _, RR|Modrm, {mm, r32|m32, 0},"O"},
   {"movd", 2, 0x660f6e, _, RR|Modrm, {r32|m32, xmm, 0},"O"},
-  {"movd", 2, 0x660f7e, _, RR|Modrm, {xmm, r32|m32, 0},"O"},
+  {"movd", 2, 0x660f7e, _, Modrm, {xmm, r32|m32, 0},"O"},
   {"movdq2q", 2, 0xf20fd6, _, RR|Modrm, {xmm, mm, 0},"O"},
   {"movdqa", 2, 0x660f6f, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
   {"movdqa", 2, 0x660f7f, _, RR|Modrm, {xmm, xmm|m128, 0},"O"},
@@ -693,7 +693,7 @@ static const template i386_optab[] = {
   {"pand", 2, 0x660fdb, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
   {"pandn", 2, 0x0fdf, _, RR|Modrm, {mm|m64, mm, 0},"O"},
   {"pandn", 2, 0x660fdf, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
-  {"pause", 0, 0xf390, _, RR|NoModrm, {0, 0, 0},"O"},
+  {"pause", 0, 0xf390, _, RR|NoModrm, {0, 0, 0},},
   {"pavgb", 2, 0x0fe0, _, RR|Modrm, {mm|m64, mm, 0},"O"},
   {"pavgb", 2, 0x660fe0, _, RR|Modrm, {xmm|m128, xmm, 0},"O"},
   {"pavgw", 2, 0x0fe3, _, RR|Modrm, {mm|m64, mm, 0},"O"},

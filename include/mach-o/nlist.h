@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -198,15 +199,24 @@ struct nlist {
  * undefined references from module defined in another use the same nlist struct
  * an in that case SELF_LIBRARY_ORDINAL is used as the library ordinal.  For
  * defined symbols in all images they also must have the library ordinal set to
- * SELF_LIBRARY_ORDINAL.  The EXECUTABLE_ORDINAL is refers to the executable
+ * SELF_LIBRARY_ORDINAL.  The EXECUTABLE_ORDINAL refers to the executable
  * image for references from plugins that refer to the executable that loads
  * them.
+ * 
+ * The DYNAMIC_LOOKUP_ORDINAL is for undefined symbols in a two-level namespace
+ * image that are looked up by the dynamic linker with flat namespace semantics.
+ * This ordinal was added as a feature in Mac OS X 10.3 by reducing the
+ * value of MAX_LIBRARY_ORDINAL by one.  So it is legal for existing binaries
+ * or binaries built with older tools to have 0xfe (254) dynamic libraries.  In
+ * this case the ordinal value 0xfe (254) must be treated as a library ordinal
+ * for compatibility. 
  */
 #define GET_LIBRARY_ORDINAL(n_desc) (((n_desc) >> 8) & 0xff)
 #define SET_LIBRARY_ORDINAL(n_desc,ordinal) \
 	(n_desc) = (((n_desc) & 0x00ff) | (((ordinal) & 0xff) << 8))
 #define SELF_LIBRARY_ORDINAL 0x0
-#define MAX_LIBRARY_ORDINAL 0xfe
+#define MAX_LIBRARY_ORDINAL 0xfd
+#define DYNAMIC_LOOKUP_ORDINAL 0xfe
 #define EXECUTABLE_ORDINAL 0xff
 
 /*

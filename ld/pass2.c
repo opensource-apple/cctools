@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -336,7 +337,7 @@ pass2(void)
 	    /*
 	     * Write the entire object file.
 	     */
-	    if(write(fd, output_addr, output_size) != output_size)
+	    if(write(fd, output_addr, output_size) != (int)output_size)
 		system_fatal("can't write output file");
 
 	    if((r = vm_deallocate(mach_task_self(), (vm_address_t)output_addr,
@@ -858,7 +859,8 @@ unsigned long size)
 		   write_offset, write_size);
 #endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
-	    if(write(fd, output_addr + write_offset, write_size) != write_size)
+	    if(write(fd, output_addr + write_offset, write_size) !=
+	       (int)write_size)
 		system_fatal("can't write to output file");
 	    if((r = vm_deallocate(mach_task_self(), (vm_address_t)(output_addr +
 				  write_offset), write_size)) != KERN_SUCCESS)
@@ -919,7 +921,8 @@ final_output_flush(void)
 		       write_offset, write_size);
 #endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
-	    if(write(fd, output_addr + write_offset, write_size) != write_size)
+	    if(write(fd, output_addr + write_offset, write_size) !=
+	       (int)write_size)
 		system_fatal("can't write to output file");
 	    if((r = vm_deallocate(mach_task_self(), (vm_address_t)(output_addr +
 				  write_offset), write_size)) != KERN_SUCCESS)

@@ -17,7 +17,7 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
 ifeq "mwccppc" "$(notdir $(CC))"
   CFLAGS = $(OFLAG) -g -gccinc -I$(SRCROOT)/../include
 else
-  CFLAGS = $(OFLAG) -g -I$(SRCROOT)/../include -Wall -Wno-precomp $(X_CFLAGS)
+  CFLAGS = $(OFLAG) -g -I$(SRCROOT)/../include -Wall $(X_CFLAGS)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

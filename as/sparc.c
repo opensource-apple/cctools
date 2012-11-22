@@ -222,7 +222,7 @@ md_begin ()
 {
   register const char *retval = NULL;
   int lose = 0;
-  register unsigned int i = 0;
+  register int i = 0;
 
   op_hash = hash_new ();
 
@@ -992,7 +992,7 @@ sparc_ip (str)
       if (match == 0)
 	{
 	  /* Args don't match. */
-	  if (((unsigned) (&insn[1] - sparc_opcodes)) < NUMOPCODES
+	  if (((int) (&insn[1] - sparc_opcodes)) < NUMOPCODES
 	      && !strcmp (insn->name, insn[1].name))
 	    {
 	      ++insn;

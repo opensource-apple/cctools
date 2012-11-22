@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -158,7 +159,8 @@ main(
 int argc,
 char *argv[])
 {
-    unsigned long i, start, page_number;
+    int i, start;
+    unsigned long j, page_number;
     char *endp;
 
 	progname = argv[0];
@@ -181,8 +183,8 @@ char *argv[])
 
 	if(strcmp(argv[start], "-a") == 0){
 	    page_number = (ofile.file_size + vm_page_size - 1) / vm_page_size;
-	    for(i = 0; i < page_number; i++){
-		print_parts_for_page(i);
+	    for(j = 0; j < page_number; j++){
+		print_parts_for_page(j);
 	    }
 	    start++;
 	}
@@ -573,15 +575,15 @@ struct file_part *fp)
 		    if(symbols[i].n_type & N_EXT ||
 		       (fp->mh->filetype == MH_EXECUTE &&
 		        symbols[i].n_type & N_PEXT)){
-			if(symbols[i].n_un.n_strx > ext_high)
+			if((unsigned long)symbols[i].n_un.n_strx > ext_high)
 			    ext_high = symbols[i].n_un.n_strx;
-			if(symbols[i].n_un.n_strx < ext_low)
+			if((unsigned long)symbols[i].n_un.n_strx < ext_low)
 			    ext_low = symbols[i].n_un.n_strx;
 		    }
 		    else{
-			if(symbols[i].n_un.n_strx > local_high)
+			if((unsigned long)symbols[i].n_un.n_strx > local_high)
 			    local_high = symbols[i].n_un.n_strx;
-			if(symbols[i].n_un.n_strx < local_low)
+			if((unsigned long)symbols[i].n_un.n_strx < local_low)
 			    local_low = symbols[i].n_un.n_strx;
 		    }
 		}

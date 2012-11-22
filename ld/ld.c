@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -270,6 +271,7 @@ __private_extern__ enum bool prebind_all_twolevel_modules = FALSE;
 static enum bool read_only_reloc_flag_specified = FALSE;
 static enum bool sect_diff_reloc_flag_specified = FALSE;
 static enum bool weak_reference_mismatches_specified = FALSE;
+static enum bool prebind_all_twolevel_modules_specified = FALSE;
 #endif
 
 /* True if -m is specified to allow multiply symbols, as a warning */
@@ -437,7 +439,8 @@ int argc,
 char *argv[],
 char *envp[])
 {
-    unsigned long i, j, symbols_created, objects_specified, sections_created;
+    int i;
+    unsigned long j, symbols_created, objects_specified, sections_created;
     unsigned long table_size;
     int fd;
     char *p, *symbol_name, *indr_symbol_name, *endp, *file_name;
@@ -583,7 +586,13 @@ char *envp[])
 			prebind_allow_overlap = TRUE;
 		    }
 		    else if(strcmp(p, "prebind_all_twolevel_modules") == 0){
+			if(prebind_all_twolevel_modules_specified == TRUE &&
+			   prebind_all_twolevel_modules == FALSE)
+			    fatal("both -prebind_all_twolevel_modules and "
+				  "-noprebind_all_twolevel_modules can't be "
+				  "specified");
 			prebind_all_twolevel_modules = TRUE;
+			prebind_all_twolevel_modules_specified = TRUE;
 		    }
 		    else if(strcmp(p, "private_bundle") == 0){
 			private_bundle = TRUE;
@@ -831,6 +840,15 @@ char *envp[])
 		    }
 		    else if(strcmp(p, "nomultidefs") == 0){
 			nomultidefs = TRUE;
+		    }
+		    else if(strcmp(p, "noprebind_all_twolevel_modules") == 0){
+			if(prebind_all_twolevel_modules_specified == TRUE &&
+			   prebind_all_twolevel_modules == TRUE)
+			    fatal("both -prebind_all_twolevel_modules and "
+				  "-noprebind_all_twolevel_modules can't be "
+				  "specified");
+			prebind_all_twolevel_modules = FALSE;
+			prebind_all_twolevel_modules_specified = TRUE;
 		    }
 		    else
 			goto unknown_flag;
@@ -1469,6 +1487,10 @@ char *envp[])
 			    new_undefined_flag = UNDEFINED_WARNING;
 			else if(strcmp(argv[i], "suppress") == 0)
 			    new_undefined_flag = UNDEFINED_SUPPRESS;
+			else if(strcmp(argv[i], "dynamic_lookup") == 0)
+			    new_undefined_flag = UNDEFINED_DYNAMIC_LOOKUP;
+			else if(strcmp(argv[i], "define_a_way") == 0)
+			    new_undefined_flag = UNDEFINED_DEFINE_A_WAY;
 			else{
 			    fatal("-undefined: unknown argument: %s", argv[i]);
 			    new_undefined_flag = UNDEFINED_ERROR;
@@ -1729,7 +1751,7 @@ unknown_flag:
 	    rc_trace_dylibs = TRUE;
         if(getenv("RC_TRACE_PREBINDING_DISABLED") != NULL)
 	    rc_trace_prebinding_disabled = TRUE;
-        if(getenv("XBS_TRACE_BUNDLE_LOADER") != NULL &&
+        if(getenv("LD_TRACE_BUNDLE_LOADER") != NULL &&
 	   bundle_loader != NULL)
 	    print("[Logging for XBS] Referenced bundle loader: %s\n",
 		  bundle_loader);
@@ -1767,7 +1789,8 @@ unknown_flag:
 	}
 	if(getenv("LD_PREBIND_ALLOW_OVERLAP") != NULL)
 	    prebind_allow_overlap = TRUE;
-	if(getenv("LD_PREBIND_ALL_TWOLEVEL_MODULES") != NULL)
+	if(prebind_all_twolevel_modules_specified == FALSE &&
+	   getenv("LD_PREBIND_ALL_TWOLEVEL_MODULES") != NULL)
 	    prebind_all_twolevel_modules = TRUE;
 
 	/*
@@ -1839,8 +1862,8 @@ unknown_flag:
 		      "-unexported_symbols_list");
 	}
 	if(save_symbols != NULL && remove_symbols != NULL){
-	    for(i = 0; i < nremove_symbols ; i++){
-		sp = bsearch(remove_symbols[i].name,
+	    for(j = 0; j < nremove_symbols ; j++){
+		sp = bsearch(remove_symbols[j].name,
 			     save_symbols, nsave_symbols,
 			     sizeof(struct symbol_list),
 			     (int (*)(const void *, const void *))
@@ -1849,7 +1872,7 @@ unknown_flag:
 		    error("symbol name: %s is listed in both "
 			  "-exported_symbols_list and -unexported_symbols_list "
 			  "(can't be both exported and unexported)",
-			  remove_symbols[i].name);
+			  remove_symbols[j].name);
 		}
 	    }
 	    if(errors != 0)
@@ -2187,9 +2210,26 @@ unknown_flag:
 		warning("flag: -init %s ignored (-dylib was not specified",
 			init_name);
 	}
-	if(twolevel_namespace == TRUE && undefined_flag != UNDEFINED_ERROR){
-	    fatal("-undefined error must be used when -twolevel_namespace is "
-		  "in effect");
+	if(twolevel_namespace == TRUE &&
+	   undefined_flag != UNDEFINED_ERROR &&
+	   undefined_flag != UNDEFINED_DYNAMIC_LOOKUP &&
+	   undefined_flag != UNDEFINED_DEFINE_A_WAY){
+	    if(macosx_deployment_target >=MACOSX_DEPLOYMENT_TARGET_10_3)
+		fatal("-undefined error, -undefined dynamic_lookup or "
+		      "-undefined define_a_way must be used when "
+		      "-twolevel_namespace is in effect");
+	    else
+		fatal("-undefined error or -undefined define_a_way must be "
+		      "used when -twolevel_namespace is in effect");
+	}
+	if(undefined_flag == UNDEFINED_DYNAMIC_LOOKUP){
+	    if(dynamic == FALSE)
+		fatal("incompatible flag -undefined dynamic_lookup used (must "
+		      "specify \"-dynamic\" to be used)");
+	    if(macosx_deployment_target < MACOSX_DEPLOYMENT_TARGET_10_3)
+		fatal("flag: -undefined dynamic_lookup can't be used with "
+		      "MACOSX_DEPLOYMENT_TARGET environment variable set to: "
+		      "%s", macosx_deployment_target_name);
 	}
 	if(twolevel_namespace == TRUE && nundef_syms != 0){
 	    fatal("can't use -U flags when -twolevel_namespace is in effect");
@@ -2608,29 +2648,29 @@ unknown_flag:
 	 */
 	if(save_symbols != NULL){
 	    missing_syms = FALSE;
-	    for(i = 0; i < nsave_symbols ; i++){
-		if(save_symbols[i].seen == FALSE){
+	    for(j = 0; j < nsave_symbols ; j++){
+		if(save_symbols[j].seen == FALSE){
 		    if(missing_syms == FALSE){
 			error("symbols names listed in "
 			      "-exported_symbols_list: %s not in linked "
 			      "objects", exported_symbols_list);
 			missing_syms = TRUE;
 		    }
-		    printf("%s\n", save_symbols[i].name);
+		    printf("%s\n", save_symbols[j].name);
 		}
 	    }
 	}
 	if(remove_symbols != NULL){
 	    missing_syms = FALSE;
-	    for(i = 0; i < nremove_symbols ; i++){
-		if(remove_symbols[i].seen == FALSE){
+	    for(j = 0; j < nremove_symbols ; j++){
+		if(remove_symbols[j].seen == FALSE){
 		    if(missing_syms == FALSE){
 			error("symbols names listed in "
 			      "-unexported_symbols_list: %s not in linked "
 			      "objects", unexported_symbols_list);
 			missing_syms = TRUE;
 		    }
-		    printf("%s\n", remove_symbols[i].name);
+		    printf("%s\n", remove_symbols[j].name);
 		}
 	    }
 	}

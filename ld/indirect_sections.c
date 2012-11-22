@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -370,11 +371,13 @@ printf("in indirect_section_merge() got INDIRECT_SYMBOL_LOCAL or INDIRECT_SYMBOL
 			(merged_symbol->definition_object->section_maps[
 			 merged_symbol->nlist.n_sect - 1].
 			 s->flags & SECTION_TYPE) == S_COALESCED){
-		    if(output_for_dyld && has_dynamic_linker_command &&
+		    if((output_for_dyld && has_dynamic_linker_command &&
 		       (((merged_symbol->nlist.n_desc & N_WEAK_DEF) !=
 			 N_WEAK_DEF) ||
 		       ((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
-			keep_private_externs == FALSE) ) )
+			keep_private_externs == FALSE) ) ) ||
+		       (filetype == MH_DYLIB && multi_module_dylib == FALSE &&
+			(merged_symbol->nlist.n_type & N_PEXT) == N_PEXT) )
 			fine_relocs[i].indirect_defined = TRUE;
 		    else
 			fine_relocs[i].indirect_defined = FALSE;

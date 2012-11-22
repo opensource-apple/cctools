@@ -23,6 +23,173 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.12 release (the cctools-466 release):
+- Added the new treatment of "-undefined define_a_way" to define all undefined
+  symbols as private extern symbols.  This is a temporary work around to not
+  having dead-code stripping that also strips the undefined references from
+  dead code.  Radar bug 3216770.
+  - Added the undefined_check_level enum UNDEFINED_DEFINE_A_WAY to ld.h .
+  - Added parsing out "-undefined define_a_way" in main() in ld.c and modified
+    checks to allow its use with -twolevel_namespace.
+  - Added the define_a_way bit field in the merged_symbol struct in symbols.h .
+  - Added the define_undefined_symbols_a_way() routine to symbols.c and
+    symbols.h .  This routines sets up the undefined symbols to be defined and
+    sets the define_a_way bit field in the merged_symbol.
+  - Added code at the end of define_link_editor_dylib_symbols() in symbols.c to
+    loop through the symbol table and set the address of the symbols with the
+    define_a_way bit field set.
+  - In layout() in layout.c after it sets up the link editor defined symbols
+    a check of the undefined_flag for UNDEFINED_DEFINE_A_WAY is made and if so
+    a call to define_undefined_symbols_a_way() is made.
+- Fixed the incorrect casts on the comparison of the nlist struct's n_strx field
+  where the value being compared to was casted to a long.  The correct fix was
+  to cast n_strx to an unsigned long.
+- Added the "-undefined dynamic_lookup" option for use in two-level namespace
+  images to all undefined symbols to be looked up dynamically with flat
+  namespace semantics.  Radar bug #3210803.
+  - Added the undefined_check_level enum UNDEFINED_DYNAMIC_LOOKUP to ld.h .
+  - Added parsing out "-undefined dynamic_lookup" in main() in ld.c and modified
+    checks to allow its use with -twolevel_namespace.  Also added checks when
+    "-undefined dynamic_lookup" is not allowed for -static and when
+    MACOSX_DEPLOYMENT_TARGET is less than 10.3 .
+  - Changed process_undefineds() in symbols.c to changed its check of 
+	undefined_flag != UNDEFINED_SUPPRESS
+    to  
+	(undefined_flag == UNDEFINED_ERROR ||
+	 undefined_flag == UNDEFINED_WARNING)
+    and added an else cause to that if to check if undefined_flag is
+    UNDEFINED_DYNAMIC_LOOKUP and then set the library ordinal to
+    DYNAMIC_LOOKUP_ORDINAL if -r is not used and two-level namespace is in
+    effect.
+  - Changed check_symbol() in symbols.c to not treat a symbol with the library
+    ordinal DYNAMIC_LOOKUP_ORDINAL as an error.
+  - Changed merge_dylib_module_symbols() in symbols.c in the second loop that
+    loops through the symbols referenced by the dylib module when it is doing
+    symbol tracing to check the library_ordinal for DYNAMIC_LOOKUP_ORDINAL.
+    And if it is DYNAMIC_LOOKUP_ORDINAL not use it as a library ordinal and
+    let it just get printed as an unbounded reference.
+  - Changed merge_dylib_module_symbols() in symbols.c in the second loop where
+    it resolves the undefined references and changed the logic where it selects
+    how to resolve the symbol.  It now sets a new boolean, resolve_flat, based
+    on the old logic plus looking at library_ordinal for DYNAMIC_LOOKUP_ORDINAL.
+  - Changed search_dynamic_libs() in pass1.c when it is has an undefined symbol
+    from a two-level namespace image to check the library ordinal for
+    DYNAMIC_LOOKUP_ORDINAL and if so treat it an internal error.  Since the
+    above change to merge_dylib_module_symbols() should never let this happen.
+  - Also added this same check as above and internal error message to
+    process_undefineds() in symbols.c in two places.  Also added a missing
+    check in the loop looking for previous undefined two-level namespace symbols
+    that did not check the twolevel_reference field before using the
+    library_ordinal.  And added a check for DYNAMIC_LOOKUP_ORDINAL in the
+    loop the prints the references in the -Y loop.
+
+Changes for the 5.12 release (the cctools-464 release):
+- Changed the they way N_BINCL stabs with non-zero n_value fields are handled so
+  the n_value is not changed.  Radar bug #3201935.
+  - Added field input_N_BINCL_n_value to the struct localsym_block in symbols.h
+  - In merged_symbols() in symbols.c when a new N_BINCL is found the n_value
+    of the N_BINCL nlist is saved in the input_N_BINCL_n_value field.  And if
+    not zero the variable sum is set to that value.  Later when a new symbol in
+    the group in encountered if input_N_BINCL_n_value is not zero then the
+    string for that symbol is not sum'ed.
+
+Changes for the 5.12 release (the cctools-464 release):
+- Made changes to build cleanly with gcc3.3
+  - Removed -Wno-precomp from the Makefile
+  - Fixed warnings for "comparison between signed and unsigned" in ld.c,
+    layout.c, pass2.c, literal_pointers.c, pass1.c, rld.c and  sets.c .
+
+Changes for the 5.12 release (the cctools-463 release):
+- Added support for linking against MH_DYLIB_STUB libraries. Radar bug #3193744.
+  - Added a check for the MH_DYLIB_STUB filetype along with MH_DYLIB in
+    merge_symbols() in symbols.c .
+  - Added the testing of the filetype not being MH_DYLIB_STUB along with
+    testing of the section type not being S_ZEROFILL before checking the size
+    and offset of the section contents in check_cur_obj() in pass1.c .
+  - Added the testing for MH_DYLIB_STUB along with MH_DYLIB in a few places
+    in check_cur_obj() in pass1.c for various error checks.
+  - Changed the setting of cur_obj->dylib in check_cur_obj() in pass1.c to
+    include the MH_DYLIB_STUB filetype.
+
+Changes for the 5.12 release (the cctools-462 release):
+- Fixed a bug in the displacement overflow checking of a PPC_RELOC_BR14
+  relocation entry.  The mask that was used was 0xfffe0000 which should
+  have been 0xffff8000 in the PPC_RELOC_BR14 cases in ppc_reloc.c .
+  Radar bug #3190434.
+
+Changes for the 5.12 release (the cctools-457 release):
+- For the -single_module dylib case the symbol stubs for coalesced private
+  extern symbols were not being removed when they could be.  The change is in
+  indirect_section_merge() in indirect_sections.c after the test if the
+  merged symbol is a coalesced symbol the if statement on line 373.  An
+  additional case was added to the if expression such that if the output file
+  is a dylib and not multi-module and the symbol is private extern then the
+  expression is TRUE and indirect_defined is set to TRUE.  Radar bug #3163714.
+
+Changes for the 5.12 release (the cctools-456 release):
+- Changed XBS_TRACE_BUNDLE_LOADER to LD_TRACE_BUNDLE_LOADER in ld.c. Radar bug
+  #3152604.
+
+Changes for the 5.12 release (the cctools-454 release):
+- Fixed a bug when using the -m flag and having a multiple definition of a
+  private extern symbol.  The problem was in merge_symbols the counts of
+  private exterals are first incremented.  Then after multiply_defined() is
+  called a check was needed to see if allow_multiply_defined_symbols is TRUE
+  (the -m flag specified) and the counts for private exterals needed to be
+  decremented.  Radar bug #3143764.
+- Fixed a bug when creating an indirect symbol when the referenced symbol is
+  a private extern symbol that causes an internal overlap error.  Radar bug
+  #3134759.
+  - Added code in reduce_indr_symbols() in symbols.c so the N_PEXT bit is
+    checked and then the counts of private exterals (nmerged_private_symbols)
+    and the object's count (nprivatesym) are incremented.
+  - Changed assign_output_symbol_indexes() in symbols.c to check the N_PEXT
+    bit of the indirect symbol if the symbol is N_INDR to correctly determine
+    if the symbol is a private extern symbol in the two places it checks this
+    bit.
+
+Changes for the 5.12 release (the cctools-450 release):
+- Added some double quotes in the Makefile around uses of `pwd` to be "`pwd`" so
+  if this were in a directory with a space it would work.  Radar bug #3114622.
+- Changed is_output_local_symbol() in symbols.c to strip symbols in sections
+  with the S_ATTR_STRIP_STATIC_SYMS attribute.  To do this n_ssect and the
+  object struct that the symbol came from is passed to is_output_local_symbol().
+  Radar bug #3114458.
+- Changed the -x flag to strip private externs that will be local symbols in the
+  output file.  Radar bug #3114182.
+  - Changed is_output_local_symbol() in symbols.c for the STRIP_NONGLOBALS case
+    (the -x flag) to return FALSE causing all local symbols to be stripped.
+    This strips private externs that were local symbols in the input object
+    files.
+  - Changed assign_output_symbol_indexes() in symbols.c to rebuild the merged
+    string table if we are stripping non-globals and we are not keeping private
+    externs and we have some private externs in the merged symbol table, and the
+    output is not a multi-module dylib.  Then if this is the case the number of
+    private externs in each object is added to nstripped_merged_symbols so those
+    symbols are not counted.
+  - Changed output_merged_symbols() in symbols.c to check the strip_level for
+    STRIP_NONGLOBALS, and the output is not a multi-module dylib and not put ou
+    private externs in this case.
+
+Changes for the 5.12 release (the cctools-447 release):
+- Fixed a problem with -x not stripping STABS with the P_EXT bit on them.  The
+  odd stab:
+	00000000 - 00 0000    3c gcc2_compiled.
+  was not stripped because of a bug in is_output_local_symbol() in symbols.c in
+  the STRIP_NONGLOBALS because it did not first check for N_STAB bits in n_type.
+  Radar bug #3104019.
+- Added the -noprebind_all_twolevel_modules flag that overrides the setting
+  of the environment variable LD_PREBIND_ALL_TWOLEVEL_MODULES.  The changes are
+  in ld.c . Radar bug #3055372.
+- Fixed a bug that was causing dynamic libraries that had nothing referenced in
+  them that also were used indirectly that did have symbols indirectly
+  referenced in them to be LC_LOAD_WEAK_DYLIB.   The problem was that references
+  from dylibs that were were causing the some_symbols_referenced field to be
+  set for the dylib.  The fix was to merge_dylib_module_symbols() symbols.c
+  where it sets some_symbols_referenced. Radar bug #3094497.
+- Removed the const off of link_edit_common_object in symbols.[ch] to get rid
+  of warnings and since it is now written on.
+
 Changes for the 5.11 release (the cctools-446 release):
 - Changed it so that when -s is used on a dynamic dynamic executable it rebuilds
   the string table in assign_output_symbol_indexes() in symbols.c so that the

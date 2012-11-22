@@ -19,7 +19,8 @@ LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
 	   mach-o/hppa/swap.h mach-o/hppa/reloc.h \
 	   mach-o/m88k/swap.h mach-o/m88k/reloc.h \
 	   mach-o/m68k/swap.h \
-	   mach-o/sparc/swap.h mach-o/sparc/reloc.h
+	   mach-o/sparc/swap.h mach-o/sparc/reloc.h \
+	   cbt/libsyminfo.h
 
 # Note that OTHER_SRCS do NOT get installed
 GAS_OTHER_SRCS = stuff/bytesex.h stuff/bool.h stuff/round.h stuff/errors.h \
@@ -85,6 +86,7 @@ GAS_SRC_FILES = Makefile $(GAS_OTHER_SRCS) $(GAS_MISSING_SRCS)
 ENCUMBERED_SRC_FILES = $(SRC_FILES) $(ENCUMBERED_SRCS)
 
 installsrc:
+	echo installsrc
 	$(MKDIRS) $(SRCROOT)
 	chmod 755 $(SRCROOT)
 	gnutar cf - $(ENCUMBERED_SRC_FILES) | (cd $(SRCROOT); gnutar xf -)
@@ -138,6 +140,9 @@ common_install:
 	cd stuff; \
 	    install -c -m 444 ${IFLAGS} bool.h \
 	    ${DSTROOT}${$(RC_OS)_LOCINCDIR}/dyld
+	cd cbt; \
+	    install -c -m 444 ${IFLAGS} libsyminfo.h \
+	    ${DSTROOT}${$(RC_OS)_LOCINCDIR}/cbt
 
 dirs:
 	$(MKDIRS) ${DSTROOT}${$(RC_OS)_INCDIR}/mach-o/i386
@@ -148,6 +153,7 @@ dirs:
 	$(MKDIRS) ${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o/i860
 	$(MKDIRS) ${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o/m88k
 	$(MKDIRS) ${DSTROOT}${$(RC_OS)_LOCINCDIR}/dyld
+	$(MKDIRS) ${DSTROOT}${$(RC_OS)_LOCINCDIR}/cbt
 
 depend:
 

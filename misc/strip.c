@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -103,12 +104,12 @@ static enum bool *nmedits = NULL;
  * and the new counts of local, defined external and undefined symbols.
  */
 static struct nlist *new_symbols = NULL;
-static long new_nsyms = 0;
+static unsigned long new_nsyms = 0;
 static char *new_strings = NULL;
-static long new_strsize = 0;
-static long new_nlocalsym = 0;
-static long new_nextdefsym = 0;
-static long new_nundefsym = 0;
+static unsigned long new_strsize = 0;
+static unsigned long new_nlocalsym = 0;
+static unsigned long new_nextdefsym = 0;
+static unsigned long new_nundefsym = 0;
 
 /*
  * These hold the new table of contents, reference table and module table for
@@ -166,9 +167,9 @@ static enum bool strip_symtab(
     struct member *member,
     struct object *object,
     struct nlist *symbols,
-    long nsyms,
+    unsigned long nsyms,
     char *strings,
-    long strsize,
+    unsigned long strsize,
     struct dylib_table_of_contents *tocs,
     unsigned long ntoc,
     struct dylib_module *mods,
@@ -199,9 +200,9 @@ static enum bool edit_symtab(
     struct member *member,
     struct object *object,
     struct nlist *symbols,
-    long nsyms,
+    unsigned long nsyms,
     char *strings,
-    long strsize,
+    unsigned long strsize,
     struct dylib_table_of_contents *tocs,
     unsigned long ntoc,
     struct dylib_module *mods,
@@ -244,7 +245,8 @@ int argc,
 char *argv[],
 char *envp[])
 {
-    unsigned long i, j, args_left, files_specified;
+    int i;
+    unsigned long j, args_left, files_specified;
     struct arch_flag *arch_flags;
     unsigned long narch_flags;
     enum bool all_archs;
@@ -405,8 +407,8 @@ char *envp[])
 	if(Rfile){
 	    setup_symbol_list(Rfile, &remove_symbols, &nremove_symbols);
 	    if(sfile){
-		for(i = 0; i < nremove_symbols ; i++){
-		    sp = bsearch(remove_symbols[i].name,
+		for(j = 0; j < nremove_symbols ; j++){
+		    sp = bsearch(remove_symbols[j].name,
 				 save_symbols, nsave_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
@@ -414,7 +416,7 @@ char *envp[])
 		    if(sp != NULL){
 			error("symbol name: %s is listed in both -s %s and -R "
 			      "%s files (can't be both saved and removed)",
-			      remove_symbols[i].name, sfile, Rfile);
+			      remove_symbols[j].name, sfile, Rfile);
 		    }
 		}
 		if(errors)
@@ -737,7 +739,7 @@ struct object *object)
     unsigned long nextrefsyms;
     unsigned long *indirectsyms;
     unsigned long nindirectsyms;
-    long i, j, k;
+    unsigned long i, j, k;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s;
@@ -1479,9 +1481,9 @@ struct arch *arch,
 struct member *member,
 struct object *object,
 struct nlist *symbols,
-long nsyms,
+unsigned long nsyms,
 char *strings,
-long strsize,
+unsigned long strsize,
 struct dylib_table_of_contents *tocs,
 unsigned long ntoc,
 struct dylib_module *mods,
@@ -1491,7 +1493,8 @@ unsigned long nextrefsyms,
 unsigned long *indirectsyms,
 unsigned long nindirectsyms)
 {
-    long i, j, k, n, inew_syms, save_debug, missing_syms, missing_symbols;
+    unsigned long i, j, k, n, inew_syms, save_debug, missing_syms;
+    unsigned long missing_symbols;
     char *p, *q, **pp, *basename;
     struct symbol_list *sp;
     unsigned long new_ext_strsize, len, *changes, inew_undefsyms;
@@ -1556,7 +1559,7 @@ unsigned long nindirectsyms)
 	for(i = 0; i < nsyms; i++){
 	    if(symbols[i].n_un.n_strx != 0){
 		if(symbols[i].n_un.n_strx < 0 ||
-		   symbols[i].n_un.n_strx > strsize){
+		   (unsigned long)symbols[i].n_un.n_strx > strsize){
 		    error_arch(arch, member, "bad string index for symbol "
 			       "table entry %ld in: ", i);
 		    return(FALSE);
@@ -2371,9 +2374,9 @@ struct arch *arch,
 struct member *member,
 struct object *object,
 struct nlist *symbols,
-long nsyms,
+unsigned long nsyms,
 char *strings,
-long strsize,
+unsigned long strsize,
 struct dylib_table_of_contents *tocs,
 unsigned long ntoc,
 struct dylib_module *mods,
@@ -2513,7 +2516,7 @@ unsigned long nextrefsyms)
 	    len = 0;
 	    if(symbols[i].n_un.n_strx != 0){
 		if(symbols[i].n_un.n_strx < 0 ||
-		   symbols[i].n_un.n_strx > strsize){
+		   (unsigned long)symbols[i].n_un.n_strx > strsize){
 		    error_arch(arch, member, "bad string index for symbol "
 			       "table entry %lu in: ", i);
 		    return(FALSE);
@@ -2756,19 +2759,19 @@ change_symbol:
 		if((global_name[0] == '+' || global_name[0] == '-') &&
 		   global_name[1] == '['){
 		    j = 2;
-		    while(j + symbols[i].n_un.n_strx < strsize &&
+		    while(j + (unsigned long)symbols[i].n_un.n_strx < strsize &&
 			  global_name[j] != ']')
 			j++;
-		    if(j + symbols[i].n_un.n_strx < strsize &&
+		    if(j + (unsigned long)symbols[i].n_un.n_strx < strsize &&
 		       global_name[j] == ']')
 			j++;
 		}
 		else
 		    j = 0;
-		while(j + symbols[i].n_un.n_strx < strsize &&
+		while(j + (unsigned long)symbols[i].n_un.n_strx < strsize &&
 		      global_name[j] != ':')
 		    j++;
-		if(j + symbols[i].n_un.n_strx >= strsize){
+		if(j + (unsigned long)symbols[i].n_un.n_strx >= strsize){
 		    error_arch(arch, member, "bad N_STAB symbol name for entry "
 			"%lu (does not contain ':' separating name from type) "
 			"in: ", i);
@@ -2791,7 +2794,8 @@ change_symbol:
 			symbols[i].n_sect = (*global_symbol)->n_sect;
 			symbols[i].n_value = (*global_symbol)->n_value;
 			symbols[i].n_desc = (*global_symbol)->n_desc;
-			if(j + 1 + symbols[i].n_un.n_strx >= strsize ||
+			if(j + 1 + (unsigned long)symbols[i].n_un.n_strx >=
+			   strsize ||
 			   global_name[j+1] != 'G'){
 			    error_arch(arch, member, "bad N_GSYM symbol name "
 				"for entry %lu (does not have type 'G' after "
@@ -2801,7 +2805,8 @@ change_symbol:
 		        global_name[j+1] = 'S';
 		    }
 		    else{ /* symbols[i].n_type == N_FUN */
-			if(j + 1 + symbols[i].n_un.n_strx >= strsize ||
+			if(j + 1 + (unsigned long)symbols[i].n_un.n_strx >=
+			   strsize ||
 			   global_name[j+1] == 'F'){
 			    global_name[j+1] = 'f';
 			}

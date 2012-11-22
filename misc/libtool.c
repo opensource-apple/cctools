@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -243,9 +244,9 @@ char **argv,
 char **envp)
 {
     char *p, *endp, *filelist, *dirname, *addr;
-    int fd;
+    int fd, i;
     struct stat stat_buf;
-    unsigned long i, j, temp, nfiles, maxfiles;
+    unsigned long j, temp, nfiles, maxfiles;
     int oumask, numask;
     kern_return_t r;
     enum bool lflags_seen, bad_flag_seen;
@@ -958,23 +959,23 @@ char **envp)
 	    if(cmd_flags.nldflags != 0){
 		fprintf(stderr, "%s: -dynamic not specified the following "
 			"flags are invalid: ", progname);
-		for(i = 0; i < cmd_flags.nldflags; i++)
-		    fprintf(stderr, "%s ", cmd_flags.ldflags[i]);
+		for(j = 0; j < cmd_flags.nldflags; j++)
+		    fprintf(stderr, "%s ", cmd_flags.ldflags[j]);
 		fprintf(stderr, "\n");
 	    }
 	    if(cmd_flags.nLdirs != 0){
 		/* Note: both -L and -F flags are in cmd_flags.Ldirs to keep the
 		   search order right. */
 		bad_flag_seen = FALSE;
-		for(i = 0; i < cmd_flags.nLdirs; i++){
-		    if(strncmp(cmd_flags.Ldirs[i], "-L", 2) == 0)
+		for(j = 0; j < cmd_flags.nLdirs; j++){
+		    if(strncmp(cmd_flags.Ldirs[j], "-L", 2) == 0)
 			continue;
 		    if(bad_flag_seen == FALSE){
 			fprintf(stderr, "%s: -dynamic not specified the "
 				"following flags are invalid: ", progname);
 			bad_flag_seen = TRUE;
 		    }
-		    fprintf(stderr, "%s ", cmd_flags.Ldirs[i]);
+		    fprintf(stderr, "%s ", cmd_flags.Ldirs[j]);
 		}
 		if(bad_flag_seen == TRUE)
 		    fprintf(stderr, "\n");
@@ -1406,7 +1407,8 @@ struct ofile *ofile)
 	     * library to be created fat unless there are object going into
 	     * the library that are fat.
 	     */
-	    if(ofile->mh->filetype == MH_DYLIB){
+	    if(ofile->mh->filetype == MH_DYLIB ||
+	       ofile->mh->filetype == MH_DYLIB_STUB){
 		/*
 		 * If we are building a static library we should not put a
 		 * dynamic library Mach-O file into the static library.  This
@@ -1463,7 +1465,18 @@ struct ofile *ofile)
 	 */
 	if(arch->arch_flag.cputype == 0 && ofile->mh != NULL){
 	    family_arch_flag = get_arch_family_from_cputype(ofile->mh->cputype);
-	    arch->arch_flag = *family_arch_flag;
+	    if(family_arch_flag != NULL){
+		arch->arch_flag = *family_arch_flag;
+	    }
+            else{
+                arch->arch_flag.name =
+                    savestr("cputype 1234567890 cpusubtype 1234567890");
+                if(arch->arch_flag.name != NULL)
+                    sprintf(arch->arch_flag.name, "cputype %u cpusubtype %u",  
+                            ofile->mh->cputype, ofile->mh->cpusubtype);
+                    arch->arch_flag.cputype = ofile->mh->cputype;
+                    arch->arch_flag.cpusubtype = ofile->mh->cpusubtype;
+	    }
 	}
 
 	/* create a member in this arch type for this member */
@@ -1948,7 +1961,7 @@ char *output)
 	    system_error("can't create output file: %s", output);
 	    return;
 	}
-	if(write(fd, library, library_size) != library_size){
+	if(write(fd, library, library_size) != (int)library_size){
 	    system_error("can't write output file: %s", output);
 	    return;
 	}
@@ -2330,7 +2343,8 @@ char *output)
 				   get_host_byte_sex());
 		    strings = member->object_addr + member->st->stroff;
 		    for(j = 0; j < member->st->nsyms; j++){
-			if(symbols[j].n_un.n_strx > member->st->strsize){
+			if((unsigned long)symbols[j].n_un.n_strx >
+			   member->st->strsize){
 			    warn_member(arch, member, "malformed object (symbol"
 					" %lu n_strx field extends past the "
 					"end of the string table)", j);
@@ -2381,7 +2395,7 @@ char *output)
 					       member->st->symoff);
 		    strings = member->object_addr + member->st->stroff;
 		    for(j = 0; j < member->st->nsyms; j++){
-			if(symbols[j].n_un.n_strx > member->st->strsize)
+			if(symbols[j].n_un.n_strx > (long)member->st->strsize)
 			    continue;
 			if(toc_symbol(symbols + j, member->sections) == TRUE){
 			    strcpy(arch->toc_strings + s, 
@@ -2566,17 +2580,19 @@ check_sort_ranlibs(
 struct arch *arch,
 char *output)
 {
-    long i;
+    unsigned long i;
     enum bool multiple_defs;
     struct member *member;
 
+	if(arch->toc_nranlibs == 0)
+	    return(TRUE);
 	/*
 	 * Since the symbol table is sorted by name look to any two adjcent
 	 * entries with the same name.  If such entries are found print them
 	 * only once (marked by changing the sign of their ran_off).
 	 */
 	multiple_defs = FALSE;
-	for(i = 0; i < (long)arch->toc_nranlibs - 1; i++){
+	for(i = 0; i < arch->toc_nranlibs - 1; i++){
 	    if(strcmp(arch->toc_ranlibs[i].ran_un.ran_name,
 		      arch->toc_ranlibs[i+1].ran_un.ran_name) == 0){
 		if(multiple_defs == FALSE){

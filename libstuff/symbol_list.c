@@ -28,7 +28,8 @@ char *file,
 struct symbol_list **list,
 unsigned long *size)
 {
-    int fd, i, j, len, strings_size;
+    int fd;
+    unsigned long i, j, len, strings_size;
     struct stat stat_buf;
     char *strings, *p, *line;
 
@@ -45,7 +46,7 @@ unsigned long *size)
 	strings = (char *)allocate(strings_size + 2);
 	strings[strings_size] = '\n';
 	strings[strings_size + 1] = '\0';
-	if(read(fd, strings, strings_size) != strings_size){
+	if(read(fd, strings, strings_size) != (int)strings_size){
 	    system_error("can't read: %s", file);
 	    close(fd);
 	    return;

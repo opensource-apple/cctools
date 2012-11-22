@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -165,7 +166,8 @@ int argc,
 char *argv[],
 char *envp[])
 {
-    unsigned long i, j, nfiles;
+    int i;
+    unsigned long j, nfiles;
     char *p, *filelist, *dirname, *addr;
     int fd;
     struct stat stat_buf;
@@ -352,19 +354,19 @@ char *envp[])
 	 * Once all the libgcc objects have been processed then all the other
 	 * objects are processed.
 	 */
-	for(i = 0; i < objects.nobjects; i++){
-	    if(objects.libgcc[i] == NEW_LIBGCC ||
-	       objects.libgcc[i] == OLD_LIBGCC)
-		process(objects.names[i], TRUE, objects.libgcc[i]);
+	for(j = 0; j < objects.nobjects; j++){
+	    if(objects.libgcc[j] == NEW_LIBGCC ||
+	       objects.libgcc[j] == OLD_LIBGCC)
+		process(objects.names[j], TRUE, objects.libgcc[j]);
 	}
-	for(i = 0; i < objects.nobjects; i++){
-	    if(objects.libgcc[i] == NEW_LIBGCC ||
-	       objects.libgcc[i] == OLD_LIBGCC)
-		process(objects.names[i], FALSE, objects.libgcc[i]);
+	for(j = 0; j < objects.nobjects; j++){
+	    if(objects.libgcc[j] == NEW_LIBGCC ||
+	       objects.libgcc[j] == OLD_LIBGCC)
+		process(objects.names[j], FALSE, objects.libgcc[j]);
 	}
-	for(i = 0; i < objects.nobjects; i++){
-	    if(objects.libgcc[i] == NOT_LIBGCC)
-		process(objects.names[i], FALSE, objects.libgcc[i]);
+	for(j = 0; j < objects.nobjects; j++){
+	    if(objects.libgcc[j] == NOT_LIBGCC)
+		process(objects.names[j], FALSE, objects.libgcc[j]);
 	}
 
 	if(errors)
@@ -612,7 +614,7 @@ enum libgcc libgcc)
 	    if(nlistp->n_type & N_EXT){
 		if(nlistp->n_un.n_strx){
 		    if(nlistp->n_un.n_strx > 0 &&
-		       nlistp->n_un.n_strx < strings_size){
+		       (unsigned long)nlistp->n_un.n_strx < strings_size){
 			if(libgcc == OLD_LIBGCC){
 			    p = lookup_old_symbol(strings + nlistp->n_un.n_strx,
 				    ((nlistp->n_type & N_TYPE) != N_UNDF));
@@ -656,8 +658,8 @@ enum libgcc libgcc)
 	    }
 	    else{
 		if(nlistp->n_un.n_strx){
-		    if(nlistp->n_un.n_strx > 0 && nlistp->n_un.n_strx <
-								strings_size)
+		    if(nlistp->n_un.n_strx > 0 &&
+		       (unsigned long)nlistp->n_un.n_strx < strings_size)
 			nlistp->n_un.n_strx = add_to_string_table(
 				strings + nlistp->n_un.n_strx);
 		    else

@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -260,7 +261,7 @@ static struct lib *libs = NULL;
 static unsigned long nlibs = 0;
 
 /*
- * A fake lib struct for the arch being processed which is used if the arch
+ 
  * being processed is a two-level namespace image.
  */
 static struct lib arch_lib;
@@ -625,7 +626,7 @@ int argc,
 char *argv[],
 char *envp[])
 {
-    unsigned long i;
+    int i;
     char *input_file, *output_file;
     struct arch *archs;
     unsigned long narchs;
@@ -3105,6 +3106,13 @@ good:
 		    dl_id = (struct dylib_command *)lc;
 		    if(dl_load->dylib.timestamp != dl_id->dylib.timestamp){
 #ifdef LIBRARY_API
+			/*
+			 * If we are allowing missing architectures except one
+			 * see if this is not the one that can't be missing.
+			 */
+			if(arch_cant_be_missing != 0 &&
+			   arch_cant_be_missing != arch_flag.cputype)
+			    return(FALSE);
 			redo_prebinding_needed = TRUE;
 #endif
 			if(time_stamps_must_match == TRUE){
@@ -3579,7 +3587,7 @@ unsigned long nextrefsyms)
 
 	/* check the symbol table's offsets into the string table */
 	for(i = 0; i < nsyms; i++){
-	    if(symbols[i].n_un.n_strx > strsize){
+	    if((unsigned long)symbols[i].n_un.n_strx > strsize){
 		error("mallformed file: %s (bad string table index (%ld) for "
 		      "symbol %lu) (for architecture %s)", file_name,
 		      symbols[i].n_un.n_strx, i, arch_name);
@@ -3598,8 +3606,8 @@ unsigned long nextrefsyms)
 		if(mh->filetype == MH_DYLIB){
 		    if(GET_LIBRARY_ORDINAL(symbols[i].n_desc) !=
 			   SELF_LIBRARY_ORDINAL &&
-		       GET_LIBRARY_ORDINAL(symbols[i].n_desc) - 1 >
-			   nlibrefs){
+		       (unsigned long)GET_LIBRARY_ORDINAL(symbols[i].n_desc)
+			   - 1 > nlibrefs){
 			error("mallformed file: %s (bad LIBRARY_ORDINAL (%d) "
 			      "for symbol %lu %s) (for architecture %s)",
 			      file_name, GET_LIBRARY_ORDINAL(symbols[i].n_desc),
@@ -3610,8 +3618,8 @@ unsigned long nextrefsyms)
 		else if(mh->filetype == MH_EXECUTE){
 		   if(GET_LIBRARY_ORDINAL(symbols[i].n_desc) ==
 			   SELF_LIBRARY_ORDINAL ||
-		      GET_LIBRARY_ORDINAL(symbols[i].n_desc) - 1 >
-			   nlibrefs){
+		      (unsigned long)GET_LIBRARY_ORDINAL(symbols[i].n_desc)
+			- 1 > nlibrefs){
 			error("mallformed file: %s (bad LIBRARY_ORDINAL (%d) "
 			      "for symbol %lu %s) (for architecture %s)",
 			      file_name, GET_LIBRARY_ORDINAL(symbols[i].n_desc),
@@ -4053,8 +4061,10 @@ add_undefineds:
 			    break;
 		    }
 		    if(j < lib->nmodtab){
-			if(lib->module_states[j] == UNLINKED)
+			if(lib->module_states[j] == UNLINKED){
 			    lib->module_states[j] = LINKED;
+			    link_library_module(lib->module_states + j, lib);
+			}
 		    }
 		}
 	    }
@@ -4139,12 +4149,23 @@ struct nlist *symbol)
 	if((mh->flags & MH_TWOLEVEL) != MH_TWOLEVEL)
 	    return(NULL);
 	/*
-	 * Note for prebinding no image should have a LIBRARY_ORDINAL of
-	 * EXECUTABLE_ORDINAL and this is only used for bundles and bundles are
-	 * not prebound.
+	 * Note for prebinding: no image should have a LIBRARY_ORDINAL of
+	 * EXECUTABLE_ORDINAL or DYNAMIC_LOOKUP_ORDINAL. These values are only
+	 * used for bundles and images that have undefined symbols that are
+	 * looked up dynamically both of which are not prebound.
+	 *
+	 * But care has to be taken for compatibility as the ordinal for
+	 * DYNAMIC_LOOKUP_ORDINAL use to be the maximum number of libraries an
+	 * image could have.  So if this is an old image with that number of
+	 * images then DYNAMIC_LOOKUP_ORDINAL is a valid library ordinal and
+	 * needs to be treated as a normal library ordinal.
 	 */
 	if(GET_LIBRARY_ORDINAL(symbol->n_desc) == EXECUTABLE_ORDINAL)
 	    return(NULL);
+	if(lib->ndependent_images != DYNAMIC_LOOKUP_ORDINAL &&
+	   GET_LIBRARY_ORDINAL(symbol->n_desc) == DYNAMIC_LOOKUP_ORDINAL)
+	    return(NULL);
+	
 	/*
 	 * For two-level libraries that reference symbols defined in the
 	 * same library then the LIBRARY_ORDINAL will be
@@ -6965,7 +6986,10 @@ unsigned long vmslide)
 			sizeof(struct prebound_dylib_command) +
 			round(strlen(libs[i].dylib_name) + 1, sizeof(long));
 		for(j = 0; j < libs[i].nmodtab; j++){
-		    if(libs[i].module_states[j] == LINKED)
+		    if(libs[i].module_states[j] == LINKED ||
+		       (prebind_all_twolevel_modules == TRUE &&
+			(libs[i].ofile->mh->flags & MH_TWOLEVEL) ==
+				 MH_TWOLEVEL))
 			linked_modules[j / 8] |= 1 << j % 8;
 		}
 		lc2 = (struct load_command *)

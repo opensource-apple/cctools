@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -54,7 +55,7 @@ int nbytes)
     unsigned char tmpbuf[HOWMANY+1];	/* one extra for terminating '\0' */
     
 
-	if(nbytes < sizeof(struct fat_header)){
+	if(nbytes < (int)sizeof(struct fat_header)){
 	    return;
 	}
 	memcpy(&fat_header, buf, sizeof(struct fat_header));
@@ -62,7 +63,7 @@ int nbytes)
 	swap_fat_header(&fat_header, NX_LittleEndian);
 #endif /* __LITTLE_ENDIAN__ */
 	arch_size = fat_header.nfat_arch * sizeof(struct fat_arch);
-	if(arch_size + sizeof(struct fat_header) > nbytes){
+	if(arch_size + sizeof(struct fat_header) > (unsigned long)nbytes){
 	    return;
 	}
 	arch_buf = malloc(nbytes);
@@ -82,7 +83,7 @@ int nbytes)
 	    /*
 	     * try looking at the first HOWMANY bytes
 	     */
-	    if ((tbytes = read(fd, (char *)tmpbuf, HOWMANY)) == -1) {
+	    if ((int)(tbytes = read(fd, (char *)tmpbuf, HOWMANY)) == -1) {
 		error("read failed (%s).\n", strerror(errno));
 		/*NOTREACHED*/
 	    }

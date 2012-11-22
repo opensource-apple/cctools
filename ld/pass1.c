@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -1271,7 +1272,7 @@ down:
 	if(toc_byte_sex != host_byte_sex)
 	    swap_ranlib(ranlibs, nranlibs, host_byte_sex);
 	for(i = 0; i < nranlibs; i++){
-	    if(ranlibs[i].ran_un.ran_strx >= (long)string_size){
+	    if(ranlibs[i].ran_un.ran_strx >= string_size){
 		error("malformed table of contents in: %s (ranlib struct %lu "
 		      "has bad string index, can't load from it)", file_name,i);
 		return;
@@ -2349,6 +2350,18 @@ void)
 				    undefined->merged_symbol->nlist.n_desc);
 		if(library_ordinal == SELF_LIBRARY_ORDINAL)
 		    p = undefined->merged_symbol->referencing_library;
+		/*
+		 * Note that if library_ordinal was DYNAMIC_LOOKUP_ORDINAL then
+		 * merge_dylib_module_symbols() in symbols.c would not have
+		 * set the twolevel_reference field to TRUE in the merged_symbol
+		 * and if we get here it with this it is an internal error.
+		 */
+		else if(library_ordinal == DYNAMIC_LOOKUP_ORDINAL)
+		    fatal("internal error: search_dynamic_libs() with a "
+			  "merged_symbol (%s) on the undefined list with "
+			  "twolevel_reference == TRUE and library_ordinal == "
+			  "DYNAMIC_LOOKUP_ORDINAL", undefined->merged_symbol->
+			  nlist.n_un.n_name);
 		else
 		    p = undefined->merged_symbol->referencing_library->
 			    dependent_images[library_ordinal - 1];
@@ -3898,9 +3911,9 @@ merge_return:
  * the dysymtab field, the section_maps and nsection_maps fields (this routine 
  * allocates the section_map structures and fills them in too), the fvmlib_
  * stuff field is set if any SG_FVMLIB segments or LC_LOADFVMLIB commands are
- * seen and the dylib_stuff field is set if the file is a MH_DYLIB type and
- * has a LC_ID_DYLIB command or a LC_LOAD_DYLIB or LC_LOAD_WEAK_DLIB command is 
- * seen.
+ * seen and the dylib_stuff field is set if the file is a MH_DYLIB or
+ * MH_DYLIB_STUB type and has a LC_ID_DYLIB command or a LC_LOAD_DYLIB or
+ * LC_LOAD_WEAK_DLIB command is seen.
  */
 static
 void
@@ -4161,17 +4174,20 @@ enum bool bundle_loader)
 	    return;
 	}
 	if((mh->flags & MH_DYLDLINK) != 0 && 
-	   (mh->filetype != MH_DYLIB && mh->filetype != MH_DYLINKER) &&
+	   (mh->filetype != MH_DYLIB &&
+	    mh->filetype != MH_DYLIB_STUB &&
+	    mh->filetype != MH_DYLINKER) &&
 	   bundle_loader == FALSE){
 	    error_with_cur_obj("is input for the dynamic link editor, is not "
 			       "relocatable by the static link editor again");
 	    return;
 	}
 	/*
-	 * If this is a MH_DYLIB file then a single LC_ID_DYLIB command must be
-	 * seen to identify the library.
+	 * If this is a MH_DYLIB or MH_DYLIB_STUB file then a single LC_ID_DYLIB
+	 * command must be seen to identify the library.
 	 */
-	cur_obj->dylib = (enum bool)(mh->filetype == MH_DYLIB);
+	cur_obj->dylib = (enum bool)(mh->filetype == MH_DYLIB ||
+				     mh->filetype == MH_DYLIB_STUB);
 	dlid = NULL;
 	dylib_id_name = NULL;
 	if(cur_obj->dylib == TRUE && dynamic == FALSE){
@@ -4348,7 +4364,8 @@ enum bool bundle_loader)
 			return;
 		    }
 		    /* check the size and offset of the contents if it has any*/
-		    if(section_type != S_ZEROFILL){
+		    if(mh->filetype != MH_DYLIB_STUB &&
+		       section_type != S_ZEROFILL){
 			check_size_offset_sect(s->size, s->offset, sizeof(char),
 			    "size", "offset", i, j, s->segname, s->sectname);
 			if(errors)
@@ -4569,14 +4586,16 @@ enum bool bundle_loader)
 			filetype == MH_FVMLIB ? "MH_FVMLIB" : "MH_DYLINKER");
 		    return;
 		}
-		if(mh->filetype != MH_DYLIB){
+		if(mh->filetype != MH_DYLIB && mh->filetype != MH_DYLIB_STUB){
 		    error_with_cur_obj("LC_ID_DYLIB load command in non-"
-			"MH_DYLIB filetype");
+			"%s filetype", mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		if(dlid != NULL){
 		    error_with_cur_obj("malformed object (more than one "
-			"LC_ID_DYLIB load command in MH_DYLIB file)");
+			"LC_ID_DYLIB load command in %s file)", mh->filetype ==
+			MH_DYLIB ? "MH_DYLIB" : "MH_DYLIB_STUB");
 		    return;
 		}
 		dl = (struct dylib_command *)lc;
@@ -4655,14 +4674,17 @@ enum bool bundle_loader)
 			filetype == MH_FVMLIB ? "MH_FVMLIB" : "MH_DYLINKER");
 		    return;
 		}
-		if(mh->filetype != MH_DYLIB){
+		if(mh->filetype != MH_DYLIB && mh->filetype != MH_DYLIB_STUB){
 		    error_with_cur_obj("LC_SUB_FRAMEWORK load command in non-"
-			"MH_DYLIB filetype");
+			"%s filetype", mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		if(sub != NULL){
 		    error_with_cur_obj("malformed object (more than one "
-			"LC_SUB_FRAMEWORK load command in MH_DYLIB file)");
+			"LC_SUB_FRAMEWORK load command in %s file)",
+			mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		sub = (struct sub_framework_command *)lc;
@@ -4699,9 +4721,10 @@ enum bool bundle_loader)
 			filetype == MH_FVMLIB ? "MH_FVMLIB" : "MH_DYLINKER");
 		    return;
 		}
-		if(mh->filetype != MH_DYLIB){
+		if(mh->filetype != MH_DYLIB && mh->filetype != MH_DYLIB_STUB){
 		    error_with_cur_obj("LC_SUB_UMBRELLA load command in non-"
-			"MH_DYLIB filetype");
+			"%s filetype", mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		usub = (struct sub_umbrella_command *)lc;
@@ -4738,9 +4761,10 @@ enum bool bundle_loader)
 			filetype == MH_FVMLIB ? "MH_FVMLIB" : "MH_DYLINKER");
 		    return;
 		}
-		if(mh->filetype != MH_DYLIB){
+		if(mh->filetype != MH_DYLIB && mh->filetype != MH_DYLIB_STUB){
 		    error_with_cur_obj("LC_SUB_LIBRARY load command in non-"
-			"MH_DYLIB filetype");
+			"%s filetype", mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		lsub = (struct sub_library_command *)lc;
@@ -4777,9 +4801,10 @@ enum bool bundle_loader)
 			filetype == MH_FVMLIB ? "MH_FVMLIB" : "MH_DYLINKER");
 		    return;
 		}
-		if(mh->filetype != MH_DYLIB){
+		if(mh->filetype != MH_DYLIB && mh->filetype != MH_DYLIB_STUB){
 		    error_with_cur_obj("LC_SUB_CLIENT load command in non-"
-			"MH_DYLIB filetype");
+			"%s filetype", mh->filetype == MH_DYLIB ? "MH_DYLIB" :
+			"MH_DYLIB_STUB");
 		    return;
 		}
 		csub = (struct sub_client_command *)lc;
@@ -5092,12 +5117,14 @@ enum bool bundle_loader)
 	    }
 	}
 	/*
-	 * If this is a MH_DYLIB file then a single LC_ID_DYLIB command must be
-	 * seen to identify the library.
+	 * If this is a MH_DYLIB or MH_DYLIB_STUB file then a single
+	 * LC_ID_DYLIB command must be seen to identify the library.
 	 */
-	if(mh->filetype == MH_DYLIB && dlid == NULL){
+	if((mh->filetype == MH_DYLIB || mh->filetype == MH_DYLIB_STUB) &&
+	   dlid == NULL){
 	    error_with_cur_obj("malformed object (no LC_ID_DYLIB load command "
-			       "in MH_DYLIB file)");
+			       "in %s file)", mh->filetype == MH_DYLIB ?
+			       "MH_DYLIB" : "MH_DYLIB_STUB");
 	    return;
 	}
 	/*

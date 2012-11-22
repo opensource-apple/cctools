@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -420,13 +421,15 @@ static const char * const indexname[8] = {
 /*
  * Segment registers are selected by a two or three bit field.
  */
-static const char * const SEGREG[6] = {
+static const char * const SEGREG[8] = {
 /* 000 */	"%es",
 /* 001 */	"%cs",
 /* 010 */	"%ss",
 /* 011 */	"%ds",
 /* 100 */	"%fs",
 /* 101 */	"%gs",
+/* 110 */	"%?6",
+/* 111 */	"%?7",
 };
 
 /*
@@ -1345,6 +1348,7 @@ enum bool verbose)
 
 	/* SSE2 instructions with further prefix decoding dest to memory */
 	case SSE2tm:
+	    data16 = FALSE;
 	    if(got_modrm_byte == FALSE){
 		got_modrm_byte = TRUE;
 		byte = get_value(sizeof(char), sect, &length, &left);
@@ -1381,7 +1385,7 @@ enum bool verbose)
 	    case 0x7e: /* movd & movq */
 		if(prefix_byte == 0x66){
 		    printf("%sd\t", mnemonic);
-		    sse2 = TRUE;
+		    wbit = LONGOPERAND;
 		}
 		else if(prefix_byte == 0xf3){
 		    printf("%sq\t", mnemonic);
@@ -1424,6 +1428,7 @@ enum bool verbose)
 
 	/* SSE2 instructions with further prefix decoding */
 	case SSE2:
+	    data16 = FALSE;
 	    if(got_modrm_byte == FALSE){
 		got_modrm_byte = TRUE;
 		byte = get_value(sizeof(char), sect, &length, &left);
@@ -1635,7 +1640,6 @@ enum bool verbose)
 	    case 0x69: /* punpckhwd */
 	    case 0x6a: /* punpckhdq */
 	    case 0x6b: /* packssdw */
-	    case 0x6e: /* movd */
 	    case 0x74: /* pcmpeqb */
 	    case 0x75: /* pcmpeqw */
 	    case 0x76: /* pcmpeqd */
@@ -1714,6 +1718,17 @@ enum bool verbose)
 		else if(prefix_byte == 0xf3){
 		    printf("%sq2dq\t", mnemonic);
 		    mmx = TRUE;
+		}
+		break;
+	    case 0x6e: /* movd */
+		if(prefix_byte == 0x66){
+		    printf("%s\t", mnemonic);
+		    wbit = LONGOPERAND;
+		}
+		else{ /* no prefix_byte */
+		    sprintf(result1, "%%mm%lu", reg);
+		    printf("%s\t", mnemonic);
+		    wbit = LONGOPERAND;
 		}
 		break;
 	    case 0xd7: /* pmovmskb */
@@ -2738,7 +2753,7 @@ const enum bool verbose)
     unsigned long i;
     struct scattered_relocation_info *sreloc, *pair;
     unsigned int r_symbolnum;
-    long n_strx;
+    unsigned long n_strx;
     const char *name, *add, *sub;
 
     static char add_buffer[11]; /* max is "0x1234678\0" */
@@ -2816,7 +2831,7 @@ const enum bool verbose)
 		}
 	    }
 	    else{
-		if(relocs[i].r_address == sect_offset){
+		if((unsigned long)relocs[i].r_address == sect_offset){
 		    r_symbolnum = relocs[i].r_symbolnum;
 		    if(relocs[i].r_extern){
 		        if(r_symbolnum >= nsymbols)

@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -92,7 +93,7 @@ int
 open_archive(mode)
 	int mode;
 {
-	int created, fd, nr;
+	int created, fd, nr, r;
 	char buf[SARMAG];
 	
 	created = 0;
@@ -117,9 +118,46 @@ open_archive(mode)
 	 * error then someone is already working on this library (or
 	 * it's going across NFS).
 	 */
-opened:	if (flock(fd, LOCK_EX|LOCK_NB) && errno != EOPNOTSUPP)
-		error(archive);
-	
+opened:
+	r = flock(fd, LOCK_EX|LOCK_NB);
+	if (r) {
+		switch (errno)
+		{
+		/* Something interupted us let's not try again. */
+		case EINTR:
+
+		/* Coding errors */
+		case EACCES:
+		case EBADF:
+		case EMFILE:
+		case EINVAL:
+		case ESRCH:
+		case EAGAIN:
+		case EFAULT:
+		case EROFS:
+		case EOVERFLOW:
+		case EFBIG:
+
+		/* Something bad happened  so no point in going on. */
+		case EISDIR:
+		case EDEADLK:
+		case ESTALE:
+			error(archive);
+			break;
+
+		/* Locking is supported but we are out of resources right now */
+		case ENOLCK:
+
+		/* Locking seems to not be working */
+		case ENOTSUP:
+		case EHOSTUNREACH:
+		case EBADRPC:
+		default:
+			/* Filesystem does not support locking */
+			break;
+		}
+	}
+
 	/*
 	 * If not created, O_RDONLY|O_RDWR indicates that it has to be
 	 * in archive format.
@@ -241,7 +279,7 @@ put_arobj(cfp, sb)
 	CF *cfp;
 	struct stat *sb;
 {
-	int lname;
+	unsigned int lname;
 	char *name;
 	struct ar_hdr *hdr;
 	off_t size;
@@ -302,12 +340,13 @@ put_arobj(cfp, sb)
 	 * which is required for object files in archives.
 	 */
 	if (lname) {
-		if (write(cfp->wfd, name, lname) != lname)
+		if (write(cfp->wfd, name, lname) != (int)lname)
 			error(cfp->wname);
 		already_written = lname;
 		if ((lname % 4) != 0) {
 			static char pad[3] = "\0\0\0";
-			if (write(cfp->wfd, pad, 4-(lname%4)) !=  4-(lname%4))
+			if (write(cfp->wfd, pad, 4-(lname%4)) !=
+			    (int)(4-(lname%4)))
 				error(cfp->wname);
 			already_written += 4 - (lname % 4);
 		}

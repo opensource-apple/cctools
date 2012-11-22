@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -212,7 +213,8 @@ int argc,
 char **argv,
 char **envp)
 {
-    unsigned long i, j, nfiles;
+    int i;
+    unsigned long j, nfiles;
     struct arch_flag *arch_flags;
     unsigned long narch_flags;
     enum bool all_archs, use_member_syntax;
@@ -421,8 +423,8 @@ char **envp)
 	    }
 	}
 
-	for(i = 0; i < nfiles; i++){
-	    ofile_process(files[i], arch_flags, narch_flags, all_archs, TRUE,
+	for(j = 0; j < nfiles; j++){
+	    ofile_process(files[j], arch_flags, narch_flags, all_archs, TRUE,
 			  TRUE, use_member_syntax, processor, NULL);
 	}
 
@@ -697,11 +699,25 @@ void *cookie) /* cookie is not used */
 	 * If the indicated operation needs the symbol table get it.
 	 */
 	sect_flags = 0;
-	if(segname != NULL && sectname != NULL)
+	if(segname != NULL && sectname != NULL){
 	    (void)get_sect_info(segname, sectname, ofile->mh,
 			ofile->load_commands, ofile->object_byte_sex,
 			addr, size, &sect, &sect_size, &sect_addr,
 			&sect_relocs, &sect_nrelocs, &sect_flags);
+	    /*
+	     * The MH_DYLIB_STUB format has all section sizes set to zero 
+	     * except sections with indirect symbol table entries (so that the
+	     * indirect symbol table table entries can be printed, which are
+	     * based on the section size).  So if we are being asked to print
+	     * the section contents of one of these sections in a MH_DYLIB_STUB
+	     * we assume it has been stripped and set the section size to zero.
+	     */
+	    if(ofile->mh->filetype == MH_DYLIB_STUB &&
+	       ((sect_flags & SECTION_TYPE) == S_NON_LAZY_SYMBOL_POINTERS ||
+	        (sect_flags & SECTION_TYPE) == S_LAZY_SYMBOL_POINTERS ||
+	        (sect_flags & SECTION_TYPE) == S_SYMBOL_STUBS))
+		sect_size = 0;
+	}
 	if(Rflag || Mflag)
 	    get_symbol_table_info(ofile->mh, ofile->load_commands,
 		ofile->object_byte_sex, addr, size,
@@ -739,7 +755,7 @@ void *cookie) /* cookie is not used */
 		nsorted_symbols = 0;
 		for(i = 0; i < nsymbols; i++){
 		    if(symbols[i].n_un.n_strx > 0 &&
-			symbols[i].n_un.n_strx < strings_size)
+			(unsigned long)symbols[i].n_un.n_strx < strings_size)
 			p = strings + symbols[i].n_un.n_strx;
 		    else
 			p = "symbol with bad string index";
@@ -2052,4 +2068,21 @@ unsigned long object_size)
 	    if((char *)lc > (char *)load_commands + mh->sizeofcmds)
 		break;
 	}
+}
+
+/*
+ * To avoid linking in libm.  These variables are defined as they are used in
+ * pthread_init() to put in place a fast sqrt().
+ */
+size_t hw_sqrt_len = 0;
+
+double
+sqrt(double x)
+{
+	return(0.0);
+}
+double
+hw_sqrt(double x)
+{
+	return(0.0);
 }

@@ -580,7 +580,7 @@ char *line)
 	}
 	RESTORE_END_STRING (l);
 	/* check for repeated prefix */
-	for (q = 0; q < i.prefixes; q++)
+	for (q = 0; q < (int)i.prefixes; q++)
 	  if (i.prefix[q] == (char)prefix->prefix_code) {
 	    as_bad ("same prefix used twice; you don't really want this!");
 	    return;
@@ -1519,7 +1519,7 @@ string_instruction_bad_match:
       if (i.disp_operands) {
 	register int n;
 	
-	for (n = 0; n < i.operands; n++) {
+	for (n = 0; n < (int)i.operands; n++) {
 	  if (i.disps[n]) {
 	    if (i.disps[n]->X_seg == SEG_ABSOLUTE) {
 	      if (i.types[n] & (Disp8|Abs8)) {
@@ -1547,7 +1547,7 @@ string_instruction_bad_match:
       if (i.imm_operands) {
 	register int n;
 	
-	for (n = 0; n < i.operands; n++) {
+	for (n = 0; n < (int)i.operands; n++) {
 	  if (i.imms[n]) {
 	    if (i.imms[n]->X_seg == SEG_ABSOLUTE) {
 	      if (i.types[n] & (Imm8|Imm8S)) {

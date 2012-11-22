@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -53,10 +54,10 @@
  * the library shared library specification file.
  */
 char *target_name = (char *)0;	/* shared library target name */
-long minor_version = 0;		/* shared library minor version number */
-long image_version = 0;		/* shared library image version number */
-long text_addr = BAD_ADDRESS;	/* shared library __TEXT segment addr */
-long data_addr = BAD_ADDRESS;	/* shared library __DATA segment addr */
+unsigned long minor_version = 0;/* shared library minor version number */
+unsigned long image_version = 0;/* shared library image version number */
+unsigned long text_addr = BAD_ADDRESS;	/* shared library __TEXT segment addr */
+unsigned long data_addr = BAD_ADDRESS;	/* shared library __DATA segment addr */
 
 /*
  * Hash table for branch slots, filled in here used in creating the host library
@@ -83,9 +84,9 @@ static long noddball_list;		/* number of oddballs in oddball_list */
 /* hash table for objects, fixed size */
 static struct object **object_hash;
 
-struct object **object_list; /* list of objects in order to be loaded */
-static long object_list_size;     /* size of object_list */
-long nobject_list;		  /* number of objects in object_list */
+struct object **object_list;	      /* list of objects in order to be loaded*/
+static unsigned long object_list_size;/* size of object_list */
+unsigned long nobject_list;	      /* number of objects in object_list */
 
 /* The list of alias structures */
 struct alias *aliases;

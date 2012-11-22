@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -808,8 +809,8 @@ struct section_map *section_map)
 					"multiple of 4 bytes)", i,
 					section_map->s->segname,
 					section_map->s->sectname);
-				if((value & 0xfffe0000) != 0xfffe0000 &&
-				   (value & 0xfffe0000) != 0x00000000)
+				if((value & 0xffff8000) != 0xffff8000 &&
+				   (value & 0xffff8000) != 0x00000000)
 				    error_with_cur_obj("relocation overflow "
 					"for relocation entry %lu in section "
 					"(%.16s,%.16s) (displacement too large)"
@@ -993,8 +994,8 @@ struct section_map *section_map)
 			    "entry %lu in section (%.16s,%.16s) (displacement "
 			    "not a multiple of 4 bytes)", i,
 			    section_map->s->segname, section_map->s->sectname);
-		    if((immediate & 0xfffe0000) != 0xfffe0000 &&
-		       (immediate & 0xfffe0000) != 0x00000000)
+		    if((immediate & 0xffff8000) != 0xffff8000 &&
+		       (immediate & 0xffff8000) != 0x00000000)
 			error_with_cur_obj("relocation overflow for relocation "
 			    "entry %lu in section (%.16s,%.16s) (displacement "
 			    "too large)", i, section_map->s->segname,

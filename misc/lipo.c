@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -202,7 +203,7 @@ int argc,
 char *argv[],
 char *envp[])
 {
-    int fd;
+    int fd, a;
     unsigned long i, j, k, value;
     char *p, *endp;
     struct input_file *input;
@@ -217,27 +218,27 @@ char *envp[])
 	 * Process the command line arguments.
 	 */
 	progname = argv[0];
-	for(i = 1; i < argc; i++){
-	    if(argv[i][0] == '-'){
-		p = &(argv[i][1]);
+	for(a = 1; a < argc; a++){
+	    if(argv[a][0] == '-'){
+		p = &(argv[a][1]);
 		switch(*p){
 		case 'a':
 		    if(strcmp(p, "arch") == 0 || strcmp(p, "a") == 0){
-			if(i + 2 >= argc){
-			    error("missing argument(s) to %s option", argv[i]);
+			if(a + 2 >= argc){
+			    error("missing argument(s) to %s option", argv[a]);
 			    usage();
 			}
 			input = new_input();
-			if(get_arch_from_flag(argv[i+1],
+			if(get_arch_from_flag(argv[a+1],
 					      &(input->arch_flag)) == 0){
 			    error("unknown architecture specification flag: %s "
-				  "in specifying input file %s %s %s", argv[i+1],
-				  argv[i], argv[i+1], argv[i+2]);
+				  "in specifying input file %s %s %s", argv[a+1],
+				  argv[a], argv[a+1], argv[a+2]);
 			    arch_usage();
 			    usage();
 			}
-			input->name = argv[i+2];
-			i += 2;
+			input->name = argv[a+2];
+			a += 2;
 		    }
 		    else
 			goto unknown_flag;
@@ -263,20 +264,20 @@ char *envp[])
 			extract_flag = TRUE;
 			if(strcmp(p, "extract_family") == 0)
 			    extract_family_flag = TRUE;
-			if(i + 1 >= argc){
-			    error("missing argument to %s option", argv[i]);
+			if(a + 1 >= argc){
+			    error("missing argument to %s option", argv[a]);
 			    usage();
 			}
 			arch_flag = new_arch_flag(&extract_arch_flags,
 						&nextract_arch_flags);
-			if(get_arch_from_flag(argv[i+1], arch_flag) == 0){
+			if(get_arch_from_flag(argv[a+1], arch_flag) == 0){
 			    error("unknown architecture specification flag: "
 				  "%s in specifying extract operation: %s %s",
-				  argv[i+1], argv[i], argv[i+1]);
+				  argv[a+1], argv[a], argv[a+1]);
 			    arch_usage();
 			    usage();
 			}
-			i++;
+			a++;
 		    }
 		    else
 			goto unknown_flag;
@@ -290,14 +291,14 @@ char *envp[])
 		    break;
 		case 'o':
 		    if(strcmp(p, "output") == 0 || strcmp(p, "o") == 0){
-			if(i + 1 >= argc){
-			    error("missing argument to %s option", argv[i]);
+			if(a + 1 >= argc){
+			    error("missing argument to %s option", argv[a]);
 			    usage();
 			}
 			if(output_file != NULL)
-			    fatal("more than one %s option specified", argv[i]);
-			output_file = argv[i + 1];
-			i++;
+			    fatal("more than one %s option specified", argv[a]);
+			output_file = argv[a + 1];
+			a++;
 		    }
 		    else
 			goto unknown_flag;
@@ -305,61 +306,61 @@ char *envp[])
 		case 'r':
 		    if(strcmp(p, "remove") == 0 || strcmp(p, "rem") == 0){
 			remove_flag = TRUE;
-			if(i + 1 >= argc){
-			    error("missing argument to %s option", argv[i]);
+			if(a + 1 >= argc){
+			    error("missing argument to %s option", argv[a]);
 			    usage();
 			}
 			arch_flag = new_arch_flag(&remove_arch_flags,
 						&nremove_arch_flags);
-			if(get_arch_from_flag(argv[i+1], arch_flag) == 0){
+			if(get_arch_from_flag(argv[a+1], arch_flag) == 0){
 			    error("unknown architecture specification flag: "
 				  "%s in specifying remove operation: %s %s",
-				  argv[i+1], argv[i], argv[i+1]);
+				  argv[a+1], argv[a], argv[a+1]);
 			    arch_usage();
 			    usage();
 			}
-			i++;
+			a++;
 		    }
 		    else if(strcmp(p, "replace") == 0 || strcmp(p, "rep") == 0){
 			replace_flag = TRUE;
-			if(i + 2 >= argc){
-			    error("missing argument(s) to %s option", argv[i]);
+			if(a + 2 >= argc){
+			    error("missing argument(s) to %s option", argv[a]);
 			    usage();
 			}
 			replace = new_replace();
-			if(get_arch_from_flag(argv[i+1],
+			if(get_arch_from_flag(argv[a+1],
 					      &(replace->arch_flag)) == 0){
 			    error("unknown architecture specification flag: "
 				  "%s in specifying replace operation: %s %s %s",
-				  argv[i+1], argv[i], argv[i+1], argv[i+2]);
+				  argv[a+1], argv[a], argv[a+1], argv[a+2]);
 			    arch_usage();
 			    usage();
 			}
-			replace->thin_file.name = argv[i+2];
-			i += 2;
+			replace->thin_file.name = argv[a+2];
+			a += 2;
 		    }
 		    else
 			goto unknown_flag;
 		    break;
 		case 's':
 		    if(strcmp(p, "segalign") == 0 || strcmp(p, "s") == 0){
-			if(i + 2 >= argc){
-			    error("missing argument(s) to %s option", argv[i]);
+			if(a + 2 >= argc){
+			    error("missing argument(s) to %s option", argv[a]);
 			    usage();
 			}
 			segalign = new_segalign();
-			if(get_arch_from_flag(argv[i+1],
+			if(get_arch_from_flag(argv[a+1],
 					      &(segalign->arch_flag)) == 0){
 			    error("unknown architecture specification flag: "
 				  "%s in specifying segment alignment: %s %s %s",
-				  argv[i+1], argv[i], argv[i+1], argv[i+2]);
+				  argv[a+1], argv[a], argv[a+1], argv[a+2]);
 			    arch_usage();
 			    usage();
 			}
-			value = strtoul(argv[i+2], &endp, 16);
+			value = strtoul(argv[a+2], &endp, 16);
 			if(*endp != '\0')
 			    fatal("argument for -segalign <arch_type> %s not a "
-				  "proper hexadecimal number", argv[i+2]);
+				  "proper hexadecimal number", argv[a+2]);
 			if(!ispoweroftwo(value) || value == 0)
 			    fatal("argument to -segalign <arch_type> %lx (hex) "
 				  "must be a non-zero power of two", value);
@@ -372,7 +373,7 @@ char *envp[])
 			    value >>= 1;
 			    segalign->align++;
 			}
-			i += 2;
+			a += 2;
 		    }
 		    else
 			goto unknown_flag;
@@ -380,32 +381,32 @@ char *envp[])
 		case 't':
 		    if(strcmp(p, "thin") == 0 || strcmp(p, "t") == 0){
 			if(thin_flag == TRUE)
-			    fatal("more than one %s option specified", argv[i]);
+			    fatal("more than one %s option specified", argv[a]);
 			thin_flag = TRUE;
-			if(i + 1 >= argc){
-			    error("missing argument to %s option", argv[i]);
+			if(a + 1 >= argc){
+			    error("missing argument to %s option", argv[a]);
 			    usage();
 			}
-			if(get_arch_from_flag(argv[i+1], &thin_arch_flag) == 0){
+			if(get_arch_from_flag(argv[a+1], &thin_arch_flag) == 0){
 			    error("unknown architecture specification flag: "
 				  "%s in specifying thin operation: %s %s",
-				  argv[i+1], argv[i], argv[i+1]);
+				  argv[a+1], argv[a], argv[a+1]);
 			    arch_usage();
 			    usage();
 			}
-			i++;
+			a++;
 		    }
 		    else
 			goto unknown_flag;
 		    break;
 		default:
 unknown_flag:
-		    fatal("unknown flag: %s", argv[i]);
+		    fatal("unknown flag: %s", argv[a]);
 		}
 	    }
 	    else{
 		input = new_input();
-		input->name = argv[i];
+		input->name = argv[a];
 	    }
 	}
 
@@ -495,7 +496,7 @@ unknown_flag:
 				     output_file);
 
 		    if(write(fd, thin_files[i].addr,thin_files[i].fat_arch.size)
-		       != thin_files[i].fat_arch.size)
+		       != (int)(thin_files[i].fat_arch.size))
 			system_fatal("can't write thin file to output file: %s",
 				     output_file);
 		    if(close(fd) == -1)
@@ -826,7 +827,7 @@ create_fat(void)
 		if(lseek(fd, thin_files[i].fat_arch.offset, L_SET) == -1)
 		    system_fatal("can't lseek in output file: %s", output_file);
 	    if(write(fd, thin_files[i].addr, thin_files[i].fat_arch.size)
-	       != thin_files[i].fat_arch.size)
+	       != (int)(thin_files[i].fat_arch.size))
 		system_fatal("can't write to output file: %s", output_file);
 	}
 	if(close(fd) == -1)
@@ -1441,6 +1442,9 @@ struct fat_arch *fat_arch)
 	    case CPU_SUBTYPE_POWERPC_7450:
 		printf("ppc7450");
 		break;
+	    case CPU_SUBTYPE_POWERPC_970:
+		printf("ppc970");
+		break;
 	    default:
 		goto print_arch_unknown;
 	    }
@@ -1618,6 +1622,10 @@ cpu_subtype_t cpusubtype)
 		printf("    cputype CPU_TYPE_POWERPC\n"
 		       "    cpusubtype CPU_SUBTYPE_POWERPC_7450\n");
 		break;
+	    case CPU_SUBTYPE_POWERPC_970:
+		printf("    cputype CPU_TYPE_POWERPC\n"
+		       "    cpusubtype CPU_SUBTYPE_POWERPC_970\n");
+		break;
 	    default:
 		goto print_arch_unknown;
 	    }
@@ -1758,7 +1766,7 @@ int
 size_ar_name(
 char *ar_name)
 {
-    int j;
+    unsigned long j;
     struct ar_hdr ar_hdr;
 
 	for(j = 0; j < sizeof(ar_hdr.ar_name); j++){

@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -277,9 +278,6 @@ struct symtab_command link_edit_common_symtab = {
 #endif /* !defined(RLD) */
 
 __private_extern__
-#if defined(RLD) && !defined(__DYNAMIC__)
-const 
-#endif
 struct object_file link_edit_common_object = {
     "\"link editor\"",	/* file_name */
     0,			/* obj_addr */
@@ -422,7 +420,7 @@ unsigned long index)
 
 	/* check the n_strx field of this symbol */
 	if(symbol->n_un.n_strx < 0 ||
-	   symbol->n_un.n_strx >= (long)(cur_obj->symtab->strsize)){
+	   (unsigned long)symbol->n_un.n_strx >= cur_obj->symtab->strsize){
 	    error_with_cur_obj("bad string table index (%ld) for symbol %lu",
 			       symbol->n_un.n_strx, index);
 	    return;
@@ -454,6 +452,8 @@ unsigned long index)
 		    ((struct mach_header *)(cur_obj->obj_addr))->filetype !=
 		    MH_BUNDLE) ||
 		   (library_ordinal != SELF_LIBRARY_ORDINAL &&
+		    (library_ordinal != DYNAMIC_LOOKUP_ORDINAL ||
+		     cur_obj->nload_dylibs != DYNAMIC_LOOKUP_ORDINAL) &&
 		    library_ordinal-1 >= cur_obj->nload_dylibs) ){
 		    error_with_cur_obj("undefined symbol %lu (%s) has bad "
 				       "library oridinal %lu", index,
@@ -849,7 +849,9 @@ merge_symbols(void)
 					  cur_obj->symtab->symoff);
 	object_strings = (char *)(cur_obj->obj_addr + cur_obj->symtab->stroff);
 	if(cur_obj->swapped &&
-	   ((struct mach_header *)cur_obj->obj_addr)->filetype != MH_DYLIB)
+	   (((struct mach_header *)cur_obj->obj_addr)->filetype != MH_DYLIB ||
+	    ((struct mach_header *)cur_obj->obj_addr)->filetype !=
+	     MH_DYLIB_STUB))
 	    swap_nlist(object_symbols, cur_obj->symtab->nsyms, host_byte_sex);
 
 
@@ -1319,9 +1321,24 @@ merge_symbols(void)
 printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 #endif
 		    }
-		    else
+		    else{
 			multiply_defined(merged_symbol, &(object_symbols[i]),
 					 object_strings);
+			if(allow_multiply_defined_symbols == TRUE){
+			    /*
+			     * If this is a private external then decrement
+			     * the previous incremented the count of private
+			     * exterals for this object and the total in the
+			     * output file since we are going to ignore this
+			     * this multiply defined symbol.
+			     */
+			    if((object_symbols[i].n_type & N_EXT) &&
+			       (object_symbols[i].n_type & N_PEXT)){
+				cur_obj->nprivatesym--;
+				nmerged_private_symbols--;
+			    }
+			}
+		    }
 		}
 		/*
 		 * If this symbol was undefined or a common in this object
@@ -1380,6 +1397,7 @@ printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 		}
 		else if(strip_level != STRIP_DUP_INCLS &&
 			is_output_local_symbol(object_symbols[i].n_type,
+			    object_symbols[i].n_sect, cur_obj,
 			    object_symbols[i].n_un.n_strx == 0 ? "" :
 			    object_strings + object_symbols[i].n_un.n_strx)){
 		    cur_obj->nlocalsym++;
@@ -1454,6 +1472,10 @@ printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 		localsym_block->index = i;
 		localsym_block->state = PARSE_SYMBOLS;
 		localsym_block->count = 1;
+		localsym_block->input_N_BINCL_n_value =
+		    object_symbols[i].n_value;
+		if(localsym_block->input_N_BINCL_n_value != 0)
+		    sum = localsym_block->input_N_BINCL_n_value;
 
 		/* insert the first block in the list */
 		localsym_block->next = *next_localsym_block;
@@ -1533,7 +1555,8 @@ printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 			if((object_symbols[j].n_type & N_STAB) != 0){
 			    cur_localsym_block->count++;
 
-			    if(object_symbols[j].n_un.n_strx != 0){
+			    if(localsym_block->input_N_BINCL_n_value == 0 &&
+			       object_symbols[j].n_un.n_strx != 0){
 				stab_string = object_strings +
 					      object_symbols[j].n_un.n_strx;
 				for( ; *stab_string != '\0'; stab_string++){
@@ -2027,7 +2050,7 @@ struct dynamic_library *dynamic_library)
     struct nlist *symbols, *fake_trace_symbol;
     struct dylib_reference *refs;
     unsigned long flags;
-    enum bool was_traced;
+    enum bool was_traced, resolve_flat;
     struct merged_symbol **hash_pointer, *merged_symbol;
     struct object_file *obj;
     struct dylib_table_of_contents *toc;
@@ -2292,7 +2315,8 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 	    if((merged_symbol->nlist.n_desc & N_WEAK_REF) == 0 &&
 	       merged_symbol->referenced_in_non_dylib == TRUE)
 		dynamic_library->some_non_weak_refs = TRUE;
-	    dynamic_library->some_symbols_referenced = TRUE;
+	    if(merged_symbol->referenced_in_non_dylib == TRUE)
+		dynamic_library->some_symbols_referenced = TRUE;
 	    if((symbols[j].n_type & N_TYPE) == N_INDR){
 		merged_symbol->nlist.n_type = N_INDR | N_EXT;
 		enter_indr_symbol(merged_symbol, symbols + j, strings, cur_obj);
@@ -2372,7 +2396,8 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 				print_obj_name(cur_obj);
 				library_ordinal = GET_LIBRARY_ORDINAL(symbols[
 				    refs[j].isym].n_desc);
-				if(library_ordinal != 0){
+				if(library_ordinal != 0 &&
+				   library_ordinal != DYNAMIC_LOOKUP_ORDINAL){
 				    dep = dynamic_library->dependent_images[
 					      library_ordinal - 1];
 				    if(dep->umbrella_name != NULL)
@@ -2393,13 +2418,32 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 		    }
 		}
 		/*
-		 * If -force_flat_namespace is TRUE or this dylib is not a
-		 * two-level namespace dylib then use flat semantics to resolve
-		 * the undefined symbols from this dylib module.
+		 * Determine how this reference will be resolved. If
+		 * -force_flat_namespace is TRUE it will be resolved flat.
+		 * If this dylib is not a two-level namespace dylib it will
+		 * also be resolved flat.  It it is a two-level dylib then
+		 * if the library_ordinal is DYNAMIC_LOOKUP_ORDINAL it will be
+		 * resolved flat.  If it is a two-level namespace dylib and
+		 * the library_ordinal is not DYNAMIC_LOOKUP_ORDINAL it will
+		 * be resolved with two-level namespace semantics.
 		 */
-		if(force_flat_namespace == TRUE ||
-		   (((struct mach_header *)(cur_obj->obj_addr))->flags &
-		   MH_TWOLEVEL) != MH_TWOLEVEL){
+		if(force_flat_namespace == TRUE)
+		    resolve_flat = TRUE;
+		else{
+		    if((((struct mach_header *)(cur_obj->obj_addr))->
+			flags & MH_TWOLEVEL) == MH_TWOLEVEL){
+			library_ordinal = GET_LIBRARY_ORDINAL(
+						symbols[refs[j].isym].n_desc);
+			if(library_ordinal == DYNAMIC_LOOKUP_ORDINAL)
+			    resolve_flat = TRUE;
+			else
+			    resolve_flat = FALSE;
+		    }
+		    else{
+			resolve_flat = TRUE;
+		    }
+		}
+		if(resolve_flat == TRUE){
 		    /* lookup the symbol and see if it has already been seen */
 		    hash_pointer = lookup_symbol(symbol_name);
 		    if(*hash_pointer == NULL){
@@ -2764,13 +2808,17 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 
 /*
  * is_output_local_symbol() returns TRUE or FALSE depending if the local symbol
- * type and name passed to it will be in the output file's symbol table based
- * on the level of symbol stripping.
+ * type, section, object and name passed to it will be in the output file's
+ * symbol table based on the level of symbol stripping.  The obj passed must be
+ * be the object this symbol came from so that the the section can be checked
+ * for the S_ATTR_STRIP_STATIC_SYMS attribute flag.
  */
 __private_extern__
 enum bool
 is_output_local_symbol(
 unsigned char n_type,
+unsigned char n_sect,
+struct object_file *obj,
 char *symbol_name)
 {
 	switch(strip_level){
@@ -2779,14 +2827,14 @@ char *symbol_name)
 		return(TRUE);
 	    case STRIP_ALL:
 	    case STRIP_DYNAMIC_EXECUTABLE:
-		return(FALSE);
 	    case STRIP_NONGLOBALS:
-		if((n_type & N_STAB) == 0 && n_type & N_PEXT)
-		    return(TRUE);
 		return(FALSE);
 	    case STRIP_DEBUG:
 		if(n_type & N_STAB ||
-		   (*symbol_name == 'L' && (n_type & N_STAB) == 0))
+		   (*symbol_name == 'L' && (n_type & N_STAB) == 0) ||
+		   ((n_type & N_TYPE) == N_SECT && 
+		    (obj->section_maps[n_sect - 1].s->flags &
+		     S_ATTR_STRIP_STATIC_SYMS) == S_ATTR_STRIP_STATIC_SYMS))
 		    return(FALSE);
 		else
 		    return(TRUE);
@@ -3652,6 +3700,58 @@ define_common_symbols(void)
 }
 
 #ifndef RLD
+/*
+ * define_undefined_symbols_a_way() is called to setup defining all remaining
+ * undefined symbols as private externs.  Their final value gets set by
+ * define_link_editor_dylib_symbols().
+ */
+__private_extern__
+void
+define_undefined_symbols_a_way(
+void)
+{
+    unsigned long i;
+    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol *merged_symbol;
+
+	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+	    merged_symbol_list = *p;
+	    for(i = 0; i < merged_symbol_list->used; i++){
+		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+		   merged_symbol->nlist.n_value == 0){
+		    if(dynamic == TRUE &&
+		       filetype != MH_EXECUTE &&
+		       merged_segments != NULL){
+			define_link_editor_symbol(
+				      merged_symbol->nlist.n_un.n_name,
+				      N_SECT | N_PEXT | N_EXT,	/* n_type */
+				      1,			/* n_sect */
+				      0,			/* n_desc */
+				      0);			/* n_value */
+		    }
+		    else{
+			define_link_editor_symbol(
+				      merged_symbol->nlist.n_un.n_name,
+				      N_ABS | N_PEXT | N_EXT,	/* n_type */
+				      NO_SECT,			/* n_sect */
+				      0,			/* n_desc */
+				      0);			/* n_value */
+		    }
+		    /*
+		     * This symbol got made into a private extern so increment
+		     * the count of private exterals.
+		     */
+		    if((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT){
+			link_edit_symbols_object->nprivatesym++;
+			nmerged_private_symbols++;
+		    }
+		    merged_symbol->define_a_way = 1;
+		}
+	    }
+	}
+}
+
 static
 void
 setup_link_edit_symbols_object(
@@ -3836,6 +3936,8 @@ unsigned long header_address)
 {
     char *symbol_name;
     struct merged_symbol *merged_symbol;
+    struct merged_symbol_list **p, *merged_symbol_list;
+    unsigned long i;
 
 	if(filetype == MH_BUNDLE)
 	    symbol_name = _MH_BUNDLE_SYM;
@@ -3857,6 +3959,24 @@ unsigned long header_address)
 	else
 	    merged_symbol->nlist.n_value = header_address -
 	       link_edit_symbols_object->section_maps[0].output_section->s.addr;
+
+	/* set the correct values of the undefined symbols defined a way */ 
+	if(undefined_flag == UNDEFINED_DEFINE_A_WAY){
+	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+		merged_symbol_list = *p;
+		for(i = 0; i < merged_symbol_list->used; i++){
+		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    if(merged_symbol->define_a_way == 1){
+			if(merged_symbol->nlist.n_sect == NO_SECT)
+			    merged_symbol->nlist.n_value = header_address;
+			else
+			    merged_symbol->nlist.n_value = header_address -
+			       link_edit_symbols_object->section_maps[0].
+				    output_section->s.addr;
+		    }
+		}
+	    }
+	}
 }
 #endif /* !defined(RLD) */
 
@@ -4162,6 +4282,16 @@ reduce_indr_symbols(void)
 			for(j = 0; j < indr_depth; j++){
 			    indr_symbols[j]->nlist.n_value = 
 						    (unsigned long)indr_symbol;
+			    /*
+			     * If this indirect symbol is pointing to a
+			     * private extern then increment the count of
+			     * private exterals.
+			     */
+			    if((indr_symbol->nlist.n_type & N_PEXT) == N_PEXT){
+				indr_symbols[j]->definition_object->
+				    nprivatesym++;
+				nmerged_private_symbols++;
+			    }
 			}
 		    }
 		}
@@ -4247,6 +4377,7 @@ struct section_map *section_map)
 	       object_symbols[i].n_sect == nsect && 
 	       (strip_level == STRIP_NONE ||
 	        is_output_local_symbol(object_symbols[i].n_type,
+				       object_symbols[i].n_sect, cur_obj,
 				       object_symbols[i].n_un.n_strx == 0 ? "" :
 				       object_strings +
 				       object_symbols[i].n_un.n_strx))){
@@ -4488,6 +4619,7 @@ output_local_symbols(void)
 	    if((object_symbols[i].n_type & N_EXT) == 0 && 
 	       (strip_level == STRIP_NONE || strip_level == STRIP_DUP_INCLS ||
 	        is_output_local_symbol(object_symbols[i].n_type,
+		    object_symbols[i].n_sect, cur_obj,
 		    object_symbols[i].n_un.n_strx == 0 ? "" :
 		    object_strings + object_symbols[i].n_un.n_strx))){
 
@@ -4608,6 +4740,7 @@ unsigned long index)
 	    if((object_symbols[i].n_type & N_EXT) == 0 && 
 	       (strip_level == STRIP_NONE ||
 	        is_output_local_symbol(object_symbols[i].n_type,
+		    object_symbols[i].n_sect, obj,
 		    object_symbols[i].n_un.n_strx == 0 ? "" :
 		    object_strings + object_symbols[i].n_un.n_strx))){
 
@@ -4746,7 +4879,10 @@ output_merged_symbols(void)
 	 * the output file is the private externs if they are not to be kept
 	 * (that is they are to be made static and not kept as global symbols).
 	 */
-	if(nmerged_private_symbols != 0 && keep_private_externs == FALSE){
+	if(nmerged_private_symbols != 0 &&
+	   keep_private_externs == FALSE &&
+	   (strip_level != STRIP_NONGLOBALS ||
+	    (filetype == MH_DYLIB && multi_module_dylib == TRUE)) ){
 	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
 		merged_symbol_list = *p;
 		for(i = 0; i < merged_symbol_list->used; i++){
@@ -5131,7 +5267,8 @@ void)
 		    if(allowed_undef == FALSE)
 			noundefs = FALSE;
 		    if(save_reloc == FALSE &&
-		       undefined_flag != UNDEFINED_SUPPRESS){
+		       (undefined_flag == UNDEFINED_ERROR ||
+			undefined_flag == UNDEFINED_WARNING)){
 			if(allowed_undef == FALSE || prebound_undef == TRUE){
 			    if(printed_undef == FALSE){
 				if(undefined_flag == UNDEFINED_WARNING)
@@ -5157,6 +5294,12 @@ void)
 			    }
 			    print("%s\n", merged_symbol->nlist.n_un.n_name);
 			}
+		    }
+		    else if(save_reloc == FALSE &&
+			    undefined_flag == UNDEFINED_DYNAMIC_LOOKUP &&
+			    twolevel_namespace == TRUE){
+			SET_LIBRARY_ORDINAL(merged_symbol->nlist.n_desc,
+					    DYNAMIC_LOOKUP_ORDINAL);
 		    }
 		}
 #ifndef RLD
@@ -5288,6 +5431,8 @@ void)
 	}
 
 #ifndef RLD
+	lib = NULL;
+	prev_lib = NULL;
 	/*
 	 * There can be two-level references left on the undefined list.  These
 	 * are "fake" merged symbols as they are not entered in the symbol
@@ -5309,6 +5454,18 @@ void)
 				    undefined->merged_symbol->nlist.n_desc);
 		if(library_ordinal == SELF_LIBRARY_ORDINAL)
 		    lib = undefined->merged_symbol->referencing_library;
+		/*
+		 * Note that if library_ordinal was DYNAMIC_LOOKUP_ORDINAL then
+		 * merge_dylib_module_symbols() in symbols.c would not have
+		 * set the twolevel_reference field to TRUE in the merged_symbol
+		 * and if we get here it with this it is an internal error.
+		 */
+		else if(library_ordinal == DYNAMIC_LOOKUP_ORDINAL)
+		    fatal("internal error: process_undefineds() 1 with a "
+			  "merged_symbol (%s) on the undefined list with "
+			  "twolevel_reference == TRUE and library_ordinal == "
+			  "DYNAMIC_LOOKUP_ORDINAL", undefined->merged_symbol->
+			  nlist.n_un.n_name);
 		else
 		    lib = undefined->merged_symbol->referencing_library->
 			    dependent_images[library_ordinal - 1];
@@ -5316,10 +5473,25 @@ void)
 		for(prevs = undefined_list.next;
 		    prevs != undefined;
 		    prevs = prevs->next){
+		    if(prevs->merged_symbol->twolevel_reference == FALSE)
+			continue;
 		    library_ordinal = GET_LIBRARY_ORDINAL(
 					prevs->merged_symbol->nlist.n_desc);
 		    if(library_ordinal == SELF_LIBRARY_ORDINAL)
 			prev_lib = prevs->merged_symbol->referencing_library;
+		    /*
+		     * Note that if library_ordinal was DYNAMIC_LOOKUP_ORDINAL
+		     * then merge_dylib_module_symbols() in symbols.c would not
+		     * have set the twolevel_reference field to TRUE in the
+		     * merged_symbol and if we get here it with this it is an
+		     * internal error.
+		     */
+		    else if(library_ordinal == DYNAMIC_LOOKUP_ORDINAL)
+			fatal("internal error: process_undefineds() 2 with a "
+			      "merged_symbol (%s) on the undefined list with "
+			      "twolevel_reference == TRUE and library_ordinal "
+			      "== DYNAMIC_LOOKUP_ORDINAL",
+			      prevs->merged_symbol->nlist.n_un.n_name);
 		    else
 			prev_lib = prevs->merged_symbol->referencing_library->
 				dependent_images[library_ordinal - 1];
@@ -5388,9 +5560,10 @@ void)
 				  "weak " : "",
 				  merged_symbol->nlist.n_un.n_name);
 #ifndef RLD
-			    if(merged_symbol->twolevel_reference == TRUE){
-				library_ordinal = GET_LIBRARY_ORDINAL(
-						   merged_symbol->nlist.n_desc);
+			    library_ordinal = GET_LIBRARY_ORDINAL(
+					       merged_symbol->nlist.n_desc);
+			    if(merged_symbol->twolevel_reference == TRUE &&
+			       library_ordinal != DYNAMIC_LOOKUP_ORDINAL){
 				if(library_ordinal == SELF_LIBRARY_ORDINAL)
 				    lib = merged_symbol->referencing_library;
 				else
@@ -5530,12 +5703,14 @@ void
 assign_output_symbol_indexes(
 void)
 {
-    unsigned long index, i, nextdefsym, nundefsym;
+    unsigned long index, i, nextdefsym, nundefsym, n_pext;
     struct merged_symbol_list **p, *merged_symbol_list;
-    struct merged_symbol *merged_symbol;
+    struct merged_symbol *merged_symbol, *indr_symbol;
     struct object_list *object_list, **q;
     struct object_file *last_object;
+    enum bool rebuild_merged_string_table;
 
+	rebuild_merged_string_table = FALSE;
 	if(strip_level == STRIP_ALL){
 	    if(has_dynamic_linker_command){
 		strip_level = STRIP_DYNAMIC_EXECUTABLE;
@@ -5546,11 +5721,27 @@ void)
 		 */
 		merged_string_blocks = NULL;
 		merged_string_size = 0;
+		rebuild_merged_string_table = TRUE;
 	    }
 	    else{
 		seglinkedit = FALSE;
 		return;
 	    }      
+	}
+	/*
+	 * If we are stripping non-globals and we are not keeping private
+	 * externs and we have some private externs in the merged symbol table,
+	 * and the output is not a multi-module dylib, then in order to not put
+	 * out strings for them we also need to rebuild the merged string table
+	 * without these symbols.
+	 */
+	else if(strip_level == STRIP_NONGLOBALS &&
+		keep_private_externs == FALSE &&
+		nmerged_private_symbols != 0 &&
+		(filetype != MH_DYLIB || multi_module_dylib == FALSE)){
+	    merged_string_blocks = NULL;
+	    merged_string_size = 0;
+	    rebuild_merged_string_table = TRUE;
 	}
 
 	/*
@@ -5601,7 +5792,9 @@ void)
 		if(keep_private_externs == FALSE){
 		    cur_obj->iprivatesym = index;
 		    cur_obj->cprivatesym = index;
-		    if(strip_level != STRIP_DYNAMIC_EXECUTABLE)
+		    if(strip_level != STRIP_DYNAMIC_EXECUTABLE &&
+		       (strip_level != STRIP_NONGLOBALS ||
+			(filetype == MH_DYLIB && multi_module_dylib == TRUE)))
 			index += cur_obj->nprivatesym;
 		    else
 			nstripped_merged_symbols += cur_obj->nprivatesym;
@@ -5652,22 +5845,32 @@ void)
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
 		    merged_symbol->defined_in_dylib == TRUE)){
 		    nundefsym++;
-		    if(strip_level == STRIP_DYNAMIC_EXECUTABLE)
+		    if(rebuild_merged_string_table == TRUE)
 			merged_symbol->nlist.n_un.n_name =
 			    enter_string(merged_symbol->nlist.n_un.n_name);
 		}
-		else if(keep_private_externs == TRUE ||
-			(merged_symbol->nlist.n_type & N_PEXT) == 0){
-		    if(strip_level != STRIP_DYNAMIC_EXECUTABLE ||
-		       (merged_symbol->nlist.n_desc & REFERENCED_DYNAMICALLY) ==
-			REFERENCED_DYNAMICALLY){
-                        nextdefsym++;
-			if(strip_level == STRIP_DYNAMIC_EXECUTABLE)
-			    merged_symbol->nlist.n_un.n_name =
-				enter_string(merged_symbol->nlist.n_un.n_name);
+		else{
+		    if(merged_symbol->nlist.n_type == (N_EXT | N_INDR)){
+			indr_symbol = (struct merged_symbol *)
+				    (merged_symbol->nlist.n_value);
+			n_pext = indr_symbol->nlist.n_type & N_PEXT;
 		    }
 		    else{
-			nstripped_merged_symbols++; 
+			n_pext = merged_symbol->nlist.n_type & N_PEXT;
+		    }
+		    if(keep_private_externs == TRUE || n_pext == 0){
+			if(strip_level != STRIP_DYNAMIC_EXECUTABLE ||
+			   (merged_symbol->nlist.n_desc &
+			    REFERENCED_DYNAMICALLY) == REFERENCED_DYNAMICALLY){
+			    nextdefsym++;
+			    if(rebuild_merged_string_table == TRUE)
+				merged_symbol->nlist.n_un.n_name =
+				    enter_string(merged_symbol->
+						 nlist.n_un.n_name);
+			}
+			else{
+			    nstripped_merged_symbols++; 
+			}
 		    }
 		}
 	    }
@@ -5704,12 +5907,21 @@ void)
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
 		    merged_symbol->defined_in_dylib == TRUE))
 		    undefsyms_order[nundefsym++] = merged_symbol;
-		else if(keep_private_externs == TRUE ||
-			(merged_symbol->nlist.n_type & N_PEXT) == 0){
-		    if(strip_level != STRIP_DYNAMIC_EXECUTABLE ||
-		       (merged_symbol->nlist.n_desc & REFERENCED_DYNAMICALLY) ==
-			REFERENCED_DYNAMICALLY){
-			extdefsyms_order[nextdefsym++] = merged_symbol;
+		else{
+		    if(merged_symbol->nlist.n_type == (N_EXT | N_INDR)){
+			indr_symbol = (struct merged_symbol *)
+				    (merged_symbol->nlist.n_value);
+			n_pext = indr_symbol->nlist.n_type & N_PEXT;
+		    }
+		    else{
+			n_pext = merged_symbol->nlist.n_type & N_PEXT;
+		    }
+		    if(keep_private_externs == TRUE || n_pext == 0){
+			if(strip_level != STRIP_DYNAMIC_EXECUTABLE ||
+			   (merged_symbol->nlist.n_desc &
+			    REFERENCED_DYNAMICALLY) == REFERENCED_DYNAMICALLY){
+			    extdefsyms_order[nextdefsym++] = merged_symbol;
+			}
 		    }
 		}
 	    }

@@ -3,21 +3,22 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -64,7 +65,8 @@ static enum bool call_module_initializers_for_objects(
 void
 call_module_initializers(
 enum bool make_delayed_calls,
-enum bool bind_now)
+enum bool bind_now,
+enum bool post_launch_libraries_only)
 {
     unsigned long i;
     struct library_images *q;
@@ -110,7 +112,8 @@ enum bool bind_now)
 #endif /* !defined(__GONZO_BUNSEN_BEAKER__) && !defined(__HERA__) */
 #endif /* __ppc__ */
 			make_delayed_calls,
-			bind_now);
+			bind_now,
+			post_launch_libraries_only);
 	    }
 	    q = q->next_images;
 	}while(q != NULL);
@@ -156,7 +159,8 @@ int *facilities_used,
 #endif /* !defined(__GONZO_BUNSEN_BEAKER__) && !defined(__HERA__) */
 #endif /* __ppc__ */
 enum bool make_delayed_calls,
-enum bool bind_now)
+enum bool bind_now,
+enum bool post_launch_libraries_only)
 {
     unsigned long j, k;
     enum link_state link_state;
@@ -187,6 +191,8 @@ enum bool bind_now)
 
 	    if(link_state != REGISTERING &&
 	       (make_delayed_calls == FALSE ||
+		(link_state != LINKED && link_state != FULLY_LINKED)) &&
+		(post_launch_libraries_only == FALSE ||
 		(link_state != LINKED && link_state != FULLY_LINKED)))
 		continue;
 
@@ -295,19 +301,23 @@ enum bool bind_now)
 		    continue;
 
 		if(delay_mod_init == FALSE || make_delayed_calls == TRUE){
-		    slide_value = p->images[i].image.vmaddr_slide;
-		    n = p->images[i].image.init->size / sizeof(unsigned long);
-		    for(j = 0; j < n; j++){
-			addr = *((long *)
-			     (p->images[i].image.init->addr + slide_value) + j);
-			func = (void(*)(void))addr;
-			DYLD_TRACE_CALLOUT_START(
-			    DYLD_TRACE_module_init_for_object, func);
-			release_lock();
-			func();
-			set_lock();
-			DYLD_TRACE_CALLOUT_END(
-			    DYLD_TRACE_module_init_for_object, func);
+		    if(p->images[i].image.dont_call_mod_init == FALSE){
+			slide_value = p->images[i].image.vmaddr_slide;
+			n = p->images[i].image.init->size /
+			    sizeof(unsigned long);
+			for(j = 0; j < n; j++){
+			    addr = *((long *)
+				     (p->images[i].image.init->addr +
+				      slide_value) + j);
+			    func = (void(*)(void))addr;
+			    DYLD_TRACE_CALLOUT_START(
+				DYLD_TRACE_module_init_for_object, func);
+			    release_lock();
+			    func();
+			    set_lock();
+			    DYLD_TRACE_CALLOUT_END(
+				DYLD_TRACE_module_init_for_object, func);
+			}
 		    }
 		}
 		link_state = GET_LINK_STATE(p->images[i].module);
