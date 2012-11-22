@@ -241,6 +241,7 @@ ifeq "NO" "$(USE_DEPENDENCY_FILE)"
 
 lto.o: lto.c
 	$(CC) -std=c99 $(CFLAGS) $(RC_CFLAGS) $(COPTS) -c \
+		-I/Developer/usr/local/include \
 		-o $(OFILE_DIR)/$*.o $<
 else
 .c.o:
@@ -251,6 +252,7 @@ else
 
 lto.o: lto.c
 	$(CC) -std=c99 $(CFLAGS) $(RC_CFLAGS) $(COPTS) -c \
+		-I/Developer/usr/local/include \
 		-MD -dependency-file $(OFILE_DIR)/$*.d \
 		-o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d

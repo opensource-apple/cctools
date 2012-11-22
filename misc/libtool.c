@@ -3222,11 +3222,11 @@ char *output)
 #ifdef LTO_SUPPORT
 	    else if(member->lto != NULL){
 		nsyms = lto_get_nsyms(member->lto);
-		for(i = 0; i < nsyms; i++){
-		    if(lto_toc_symbol(member->lto, i, cmd_flags.c) == TRUE){
+		for(j = 0; j < nsyms; j++){
+		    if(lto_toc_symbol(member->lto, j, cmd_flags.c) == TRUE){
 			arch->toc_nranlibs++;
 			arch->toc_strsize +=
-			    strlen(lto_symbol_name(member->lto, i)) + 1;
+			    strlen(lto_symbol_name(member->lto, j)) + 1;
 		    }
 		}
 	    }

@@ -9,6 +9,11 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.26 release (the cctools-698.1 release):
+- Fixed a bug in libtool(1)'s producing a table of contents for LTO.  The loop
+  to size the table of contents was using the same outer loop variable in
+  make_table_of_contents().  Radar bug #6064634.
+
 Changes for the 5.25 release (the cctools-698 release):
 - Added support for LLVM bitcode files to libtool(1).  Radar bug #5712460.
   It was added undef the ifdef LTO_SUPPORT and can be disabled by setting the

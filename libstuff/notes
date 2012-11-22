@@ -5,6 +5,9 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.26 release (the cctools-689.1 release):
+- Added -I/Developer/usr/local/include to the lto.o build line in the Makefile.
+
 Changes for the 5.25 release (the cctools-698 release):
 - Added support for LLVM bitcode files.  Radar bug #5712460.
   It was added undef the ifdef LTO_SUPPORT and can be disabled by setting the
