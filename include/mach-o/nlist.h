@@ -63,23 +63,40 @@
  *
  *	@(#)nlist.h	8.2 (Berkeley) 1/21/94
  */
+#include <stdint.h>
 
 /*
- * Format of a symbol table entry of a Mach-O file.  Modified from the BSD
- * format.  The modifications from the original format were changing n_other
- * (an unused field) to n_sect and the addition of the N_SECT type.  These
- * modifications are required to support symbols in an arbitrary number of
- * sections not just the three sections (text, data and bss) in a BSD file.
+ * Format of a symbol table entry of a Mach-O file for 32-bit architectures.
+ * Modified from the BSD format.  The modifications from the original format
+ * were changing n_other (an unused field) to n_sect and the addition of the
+ * N_SECT type.  These modifications are required to support symbols in a larger
+ * number of sections not just the three sections (text, data and bss) in a BSD
+ * file.
  */
 struct nlist {
 	union {
+#ifndef __LP64__
 		char *n_name;	/* for use when in-core */
-		long  n_strx;	/* index into the string table */
+#endif
+		int32_t n_strx;	/* index into the string table */
 	} n_un;
-	unsigned char n_type;	/* type flag, see below */
-	unsigned char n_sect;	/* section number or NO_SECT */
-	short	      n_desc;	/* see <mach-o/stab.h> */
-	unsigned long n_value;	/* value of this symbol (or stab offset) */
+	uint8_t n_type;		/* type flag, see below */
+	uint8_t n_sect;		/* section number or NO_SECT */
+	int16_t n_desc;		/* see <mach-o/stab.h> */
+	uint32_t n_value;	/* value of this symbol (or stab offset) */
+};
+
+/*
+ * This is the symbol table entry structure for 64-bit architectures.
+ */
+struct nlist_64 {
+    union {
+        uint32_t  n_strx; /* index into the string table */
+    } n_un;
+    uint8_t n_type;        /* type flag, see below */
+    uint8_t n_sect;        /* section number or NO_SECT */
+    uint16_t n_desc;       /* see <mach-o/stab.h> */
+    uint64_t n_value;      /* value of this symbol (or stab offset) */
 };
 
 /*
@@ -250,6 +267,12 @@ struct nlist {
  * is only supported for symbols in coalesed sections.
  */
 #define N_WEAK_DEF	0x0080 /* coalesed symbol is a weak definition */
+
+/*
+ * The N_REF_TO_WEAK bit of the n_desc field indicates to the dynamic linker
+ * that the undefined symbol should be resolved using flat namespace searching.
+ */
+#define	N_REF_TO_WEAK	0x0080 /* reference to a weak symbol */
 
 #ifndef __STRICT_BSD__
 /*

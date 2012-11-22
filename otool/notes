@@ -3,6 +3,112 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.17 release (the cctools-571 release):
+- Changed the Makefile to treat SUPanWheat the same as Panther to build for
+  a Mac OS X 10.3 (Panther) system.  Radar bug #3979451.
+
+Changes for the 5.17 release (the cctools-568 release):
+- Changed print_section() in ofile_print.c to print the section type
+  S_INTERPOSING.  Radar bug #3965794.
+
+Changes for the 5.17 release (the cctools-563 release):
+- Changed print_mach_header() in ofile_print.c to print the new flags
+  MH_WEAK_DEFINES and MH_BINDS_TO_WEAK.  Radar bug #3799069.
+
+Changes for the 5.17 release (the cctools-562 release):
+- Changed print_thread_states() in ofile_print.c to use cpu.vrsave instead of
+  cpu.pad.  Radar bug #3930480.
+
+Changes for the 5.17 release (the cctools-558 release):
+- Fixed a problem in print_hints() in ofile_print.c that would always cause the
+  check about Inconsistent mh_sizeofcmds to be printed if the verbose option
+  was not used.  Radar bug #3902811.
+
+Changes for the 5.17 release (the cctools-557 release):
+- Removed support for the INTERIM_PPC64.  The changes were to remove the
+  #ifdef INTERIM_PPC64 source changes in main.c and ofile_print.c . Radar bug 
+  #3600419.
+
+Changes for the 5.17 release (the cctools-554 release):
+- Fixed a problem with the sorted_symbols not being correctly sorted causing
+  symbol names not to be printed.   The problem was the sym_compare() routine
+  in main() used for the qsort() routine did not have its parameters updated
+  to struct symbol * from nlist_t * for the 64-bit port work.  Radar bug
+  #3889188.
+
+Changes for the 5.17 release (the cctools-551 release):
+- Changed print_thread_states() in ofile_print.c to handle printing a
+  PPC_THREAD_STATE64.  Radar bug #3866755.
+
+Changes for the 5.17 release (the cctools-546 release):
+- Fixed a bug in print_mach_header() in ofile_print.c that was missing a case
+  statement for CPU_SUBTYPE_POWERPC_970 and printing "ppc970".  Radar bug
+  #3825281.
+
+Changes for the 5.17 release (the cctools-533 release):
+- Changes to support 32-bit & 64-bit tools in the same binary.  Radar bug
+  #3793394.
+  - Changed the code in main.c, ofile_print.c and objc_print.c to use the
+    swap_*_t new macros from "stuff/target_arch.h".
+  - In process() in main.c added a new ofile_mh local variable and added a few
+    ifdef ARCH64 to set it to ofile->mh64 or ofile->mh.  And changed places
+    where it used ofile->mh to ofile_mh.
+
+Changes for the 5.17 release (the cctools-531 release):
+- Changed print_segment_command() in ofile_print.c to print the fileoff and
+  filesize fields with the correct format depending on the field with for
+  ARCH64.  Radar bug #3781406.
+
+Changes for the 5.17 release (the cctools-529 release):
+- Made changes to support 64-bit tools. Radar bug #3600431.
+  - Changed the Makefile to build otool in a sub-directory and building of
+    otool64 in a different sub-directory.  Things are no longer built with
+    -DINTERIM_PPC64 and otool64 is built with -DARCH64 and linked with
+    libstuff64 .
+  - Added the include "stuff/target_arch.h" to the following files:
+      i386_disasm.c
+      m68k_disasm.c
+      main.c
+      ofile_print.c
+      ppc_disasm.c
+      print_objc.c
+      sparc_disasm.c
+      i386_disasm.h
+      m68k_disasm.h
+      ofile_print.h
+      ppc_disasm.h
+      sparc_disasm.h
+      hppa_disasm.c
+      i860_disasm.c
+      m88k_disasm.c
+      hppa_disasm.h
+      i860_disasm.h
+      m88k_disasm.h
+    and changed the uses of structs, constants and names that are different for
+    64-bit files to the typedefs in "stuff/target_arch.h".
+  - In all places that used sorted_symbols this was changed to the new type
+    in "stuff/symbol.h" to struct symbol.  Which contains a name and an nlist_t.
+  - Changed the places in main.c and ofile_print.c with #ifdef DINTERIM_PPC64
+    to have code for 64-bit architectures.
+
+Changes for the 5.16 release (the cctools-528.5 release):
+- Changed the Makefile to treat MuonSeed the same as MuonPrime to build for
+  a Mac OS X 10.3 (Panther) system.
+
+Changes for the 5.16 release (the cctools-528 release):
+- Print the new GENERIC_RELOC_LOCAL_SECTDIFF reloc, handle it in
+  i386_disasm.c.
+
+Changes for the 5.16 release (the cctools-527 release):
+- Print the new PPC_RELOC_LOCAL_SECTDIFF reloc.
+
+Changes for the 5.16 release (the cctools-526 release):
+- Fixed warnings for the changes in mach-o headers for types changing from
+  unsigned long to uint32_t and from long to int32_t.  Radar bug #3744082.
+  - Changed a number of uses of "%lu" to "%u" and "%ld to "%d" in ofile_print.c.
+- Added support for 3DNow! instructions.  Changes were in i386_disasm.c .
+  Radar bug #3737535.
+
 Changes for the 5.16 release (the cctools-524 release):
 - Fixed a bug in print_fat_headers() in ofile_print.c in the loop that was
   looking for illegal duplicate architectures.  The loop was using unsigned

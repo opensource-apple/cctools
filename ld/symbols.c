@@ -377,6 +377,12 @@ __private_extern__ unsigned long nindr_symbol_pairs = 0;
 static enum bool commons_exist = FALSE;
 static enum bool noundefs = TRUE;
 
+/*
+ * merged_symbols_relocated is set when the merged symbols are relocated to
+ * have addresses and section numbers as they would in the output file.
+ */
+__private_extern__ enum bool merged_symbols_relocated = FALSE;
+
 static struct merged_symbol *enter_symbol(
     struct merged_symbol **hash_pointer,
     struct nlist *object_symbol,
@@ -388,7 +394,8 @@ static void enter_indr_symbol(
     char *object_strings,
     struct object_file *definition_object);
 static char *enter_string(
-    char *symbol_name);
+    char *symbol_name,
+    unsigned long *len_ret);
 static void add_to_undefined_list(
     struct merged_symbol *merged_symbol);
 static void multiply_defined(
@@ -437,8 +444,8 @@ unsigned long index)
 
 	/* check the n_strx field of this symbol */
 	if(symbol->n_un.n_strx < 0 ||
-	   (unsigned long)symbol->n_un.n_strx >= cur_obj->symtab->strsize){
-	    error_with_cur_obj("bad string table index (%ld) for symbol %lu",
+	   (uint32_t)symbol->n_un.n_strx >= cur_obj->symtab->strsize){
+	    error_with_cur_obj("bad string table index (%d) for symbol %lu",
 			       symbol->n_un.n_strx, index);
 	    return;
 	}
@@ -521,9 +528,9 @@ unsigned long index)
 	    break;
 	case N_INDR:
 	    if(symbol->n_type & N_EXT){
-		/* note n_value is an unsigned long and can't be < 0 */
+		/* note n_value is unsigned and can't be < 0 */
 		if(symbol->n_value >= cur_obj->symtab->strsize){
-		    error_with_cur_obj("bad string table index (%lu) for "
+		    error_with_cur_obj("bad string table index (%u) for "
 			"indirect name for symbol %lu (%s)",
 			symbol->n_value, index, symbol->n_un.n_strx == 0 ?
 			"NULL name" : strings + symbol->n_un.n_strx);
@@ -739,7 +746,7 @@ enum bool next_eincl)
     unsigned long hash_index;
     struct include_file *include_file, *p, *q;
 
-	hash_index = hash_string(include_file_name) % INCLUDE_HASH_SIZE;
+	hash_index = hash_string(include_file_name, NULL) % INCLUDE_HASH_SIZE;
 	if(include_file_hash_table[hash_index] == NULL){
 	    include_file = allocate(sizeof(struct include_file));
 	    memset(include_file, '\0', sizeof(struct include_file));
@@ -896,7 +903,8 @@ merge_symbols(void)
 	    check_symbol(&(object_symbols[i]), object_strings, i);
 	    if(errors)
 		return;
-	    if(object_symbols[i].n_type == (N_EXT | N_UNDF))
+	    if((object_symbols[i].n_type & N_EXT) == N_EXT &&
+	       (object_symbols[i].n_type & N_TYPE) == N_UNDF)
 		object_undefineds++;
 	    /*
 	     * Note: coalesced symbols are always defined symbols in each object
@@ -917,12 +925,13 @@ merge_symbols(void)
 					object_symbols + i);
 #endif /* !defined(RLD) */
 	    /*
-	     * If this is a private external increment the count of
-	     * private exterals for this object and the total in the
-	     * output file.
+	     * If this is a private external defined symbol (but not a common)
+	     * increment the count of private exterals for this object and the
+	     * total in the output file.
 	     */
 	    if((object_symbols[i].n_type & N_EXT) &&
-	       (object_symbols[i].n_type & N_PEXT)){
+	       (object_symbols[i].n_type & N_PEXT) &&
+	       (object_symbols[i].n_type & N_TYPE) != N_UNDF){
 		cur_obj->nprivatesym++;
 		nmerged_private_symbols++;
 	    }
@@ -1083,7 +1092,7 @@ merge_symbols(void)
 		    if(merged_symbol->referenced_in_non_dylib == FALSE){
 			merged_symbol->nlist.n_un.n_name =
 			    enter_string(object_strings +
-					 object_symbols[i].n_un.n_strx);
+					 object_symbols[i].n_un.n_strx, NULL);
 			merged_symbol->referenced_in_non_dylib = TRUE;
 			if(merged_symbol->non_dylib_referenced_obj == NULL)
 			    merged_symbol->non_dylib_referenced_obj = cur_obj;
@@ -1149,23 +1158,43 @@ merge_symbols(void)
 		    /*
 		     * See if the object's symbol is a common.
 		     */
-		    else if(object_symbols[i].n_type == (N_EXT | N_UNDF) &&
+	    	    else if((object_symbols[i].n_type & N_EXT) == N_EXT &&
+	       		    (object_symbols[i].n_type & N_TYPE) == N_UNDF &&
 			    object_symbols[i].n_value != 0){
 			/*
 			 * See if the merged symbol is a common or undefined.
 			 */
-			if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF)){
+			if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
+		           (merged_symbol->nlist.n_type & N_TYPE) ==  N_UNDF){
 			    /*
 			     * If the merged symbol is a common use the larger
 			     * of the two commons.  Else the merged symbol is
 			     * a common so use the common symbol.
 			     */
 			    if(merged_symbol->nlist.n_value != 0){
+				if((merged_symbol->nlist.n_type & N_PEXT) !=
+				   (object_symbols[i].n_type & N_PEXT)){
+				    warning("common symbol: %s both as an "
+					"external symbol and a private "
+					"external symbol", merged_symbol->
+					nlist.n_un.n_name);
+				    trace_merged_symbol(merged_symbol);
+				    trace_object_symbol(&(object_symbols[i]),
+							object_strings);
+				}
 				if(object_symbols[i].n_value >
 				   merged_symbol->nlist.n_value){
 				    merged_symbol->nlist.n_value =
 						     object_symbols[i].n_value;
 				    merged_symbol->definition_object = cur_obj;
+				    /*
+				     * Since we are "using" this common then
+				     * "use" the private extern bit from this
+				     * object's symbol for the merged symbol.
+				     */
+				    merged_symbol->nlist.n_type =
+				      (merged_symbol->nlist.n_type & ~N_PEXT) |
+				      (object_symbols[i].n_type & N_PEXT);
 				}
 			    }
 			    else{
@@ -1184,9 +1213,9 @@ merge_symbols(void)
 		    /*
 		     * If the merged symbol is undefined or common (and at this
 		     * point the object's symbol is known not to be undefined
-		     * or common) used the object's symbol.
+		     * or common) then use the object's symbol.
 		     */
-		    else if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF)){
+		    else if((merged_symbol->nlist.n_type & N_TYPE) == N_UNDF){
 			/* one could also say:
 			 *  && merged_symbol->nlist.n_value == 0 &&
 			 *     merged_symbol->nlist.n_value != 0
@@ -1349,6 +1378,25 @@ merge_symbols(void)
 printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 #endif
 		    }
+#ifdef KLD
+                  /*
+                   * For KLD if both symbols are absolute symbols with the
+                   * value the symbol is discarded.
+                   */
+                  else if((merged_symbol->nlist.n_type & N_TYPE) == N_ABS &&
+                          (object_symbols[i].n_type & N_TYPE) == N_ABS &&
+                          merged_symbol->nlist.n_value ==
+                          object_symbols[i].n_value){
+                      if((object_symbols[i].n_type & N_EXT) &&
+                         (object_symbols[i].n_type & N_PEXT)){
+                          cur_obj->nprivatesym--;
+                          nmerged_private_symbols--;
+                      }
+                      else{
+                          cur_obj->nextdefsym--;
+                      }
+                  }
+#endif /* KLD */
 		    else{
 			multiply_defined(merged_symbol, &(object_symbols[i]),
 					 object_strings);
@@ -1374,7 +1422,8 @@ printf("symbol: %s is coalesced\n", merged_symbol->nlist.n_un.n_name);
 		 * merged symbol and its index in the object file's undefined
 		 * map.
 		 */
-		if(object_symbols[i].n_type == (N_EXT | N_UNDF) &&
+		if((object_symbols[i].n_type & N_EXT) == N_EXT &&
+		   (object_symbols[i].n_type & N_TYPE) == N_UNDF &&
 		   cur_obj != base_obj){
 		    cur_obj->undefined_maps[object_undefineds].index = i;
 		    cur_obj->undefined_maps[object_undefineds].merged_symbol =
@@ -1882,7 +1931,8 @@ char *symbol_name)
 	     * block that will be in the output file.
 	     */
 	    if(merged_symbol->referenced_in_non_dylib == FALSE)
-		merged_symbol->nlist.n_un.n_name = enter_string(symbol_name);
+		merged_symbol->nlist.n_un.n_name = enter_string(symbol_name,
+							        NULL);
 	}
 	merged_symbol->referenced_in_non_dylib = TRUE;
 	if(merged_symbol->non_dylib_referenced_obj == NULL)
@@ -1952,11 +2002,12 @@ char *indr_symbol_name)
 	     * block that will be in the output file.
 	     */
 	    if(merged_symbol->referenced_in_non_dylib == FALSE)
-		merged_symbol->nlist.n_un.n_name = enter_string(symbol_name);
+		merged_symbol->nlist.n_un.n_name = enter_string(symbol_name,
+								NULL);
 	    merged_symbol->referenced_in_non_dylib = TRUE;
 	    if(merged_symbol->non_dylib_referenced_obj == NULL)
 		merged_symbol->non_dylib_referenced_obj = command_line_object;
-	    if(merged_symbol->nlist.n_type != (N_UNDF | N_EXT)){
+	    if((merged_symbol->nlist.n_type & N_TYPE) != N_UNDF){
 		/*
 		 * It is multiply defined so the logic of the routine
 		 * multiply_defined() is copied here so that tracing a symbol
@@ -2033,7 +2084,7 @@ char *indr_symbol_name)
 	     */
 	    if(merged_indr_symbol->referenced_in_non_dylib == FALSE)
 		merged_indr_symbol->nlist.n_un.n_name =
-		    enter_string(indr_symbol_name);
+		    enter_string(indr_symbol_name, NULL);
 	    merged_indr_symbol->referenced_in_non_dylib = TRUE;
 	    if(merged_indr_symbol->non_dylib_referenced_obj == NULL)
 		merged_indr_symbol->non_dylib_referenced_obj =
@@ -2508,6 +2559,19 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 		     * search_dynamic_libs() in pass1.c will figure out which
 		     * dylib module is being referenced and load it.
 		     */
+		    /* 
+		     * With two level namespace, there is no need to resolve undefines in dependent dylibs.
+		     * Their location was fixed when that dylib was built.
+		     * The check here is that any undefine which already has an ordinal and the ordinal
+		     * refers to a library that can't be accessed by the being-linked image, then ignore it
+		     */
+		    library_ordinal = GET_LIBRARY_ORDINAL(symbols[refs[j].isym].n_desc);
+		    if((library_ordinal != SELF_LIBRARY_ORDINAL) && (library_ordinal != DYNAMIC_LOOKUP_ORDINAL)){
+			dep = dynamic_library->dependent_images[library_ordinal - 1];
+			if (dep->definition_obj->library_ordinal == 0)
+			    continue; /* with for loop */
+		    }
+			    
 		    merged_symbol = allocate(sizeof(struct merged_symbol));
 		    memset(merged_symbol, '\0', sizeof(struct merged_symbol));
 
@@ -2905,9 +2969,10 @@ char *symbol_name)
 {
     struct merged_symbol_list **p, *merged_symbol_list;
     struct merged_symbol **hash_pointer;
-    unsigned long hash_index, i;
+    unsigned long hash_index, i, name_len;
 
-	hash_index = hash_string(symbol_name) % SYMBOL_LIST_HASH_SIZE;
+	hash_index = hash_string(symbol_name, &name_len) %
+		     SYMBOL_LIST_HASH_SIZE;
 	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
 	    merged_symbol_list = *p;
 	    hash_pointer = merged_symbol_list->hash_table + hash_index;
@@ -2919,7 +2984,8 @@ char *symbol_name)
 		    merged_symbol_list_for_enter_symbol = merged_symbol_list;
 		    return(hash_pointer);
 		}
-		if(strcmp((*hash_pointer)->nlist.n_un.n_name, symbol_name) == 0)
+		if((*hash_pointer)->name_len == name_len &&
+		   strcmp((*hash_pointer)->nlist.n_un.n_name, symbol_name) == 0)
 		    return(hash_pointer);
 		hash_pointer += i;
 		i += 2;
@@ -2968,6 +3034,7 @@ struct object_file *definition_object)
 	if((cur_obj != base_obj || strip_base_symbols == FALSE))
 	    nmerged_symbols++;
 	*hash_pointer = merged_symbol;
+	memset(merged_symbol, '\0', sizeof(struct merged_symbol));
 	merged_symbol->nlist = *object_symbol;
 #ifdef RLD
 	if(cur_obj == base_obj && base_name == NULL)
@@ -2976,7 +3043,8 @@ struct object_file *definition_object)
 	else
 #endif
 	merged_symbol->nlist.n_un.n_name = enter_string(object_strings +
-						 object_symbol->n_un.n_strx);
+						 object_symbol->n_un.n_strx,
+						 &merged_symbol->name_len);
 	merged_symbol->definition_object = definition_object;
 	if(object_symbol->n_type == (N_UNDF | N_EXT) &&
 	   object_symbol->n_value == 0)
@@ -3031,7 +3099,8 @@ struct object_file *definition_object)
 	    else
 #endif
 	    indr_symbol->nlist.n_un.n_name = enter_string(object_strings +
-						      object_symbol->n_value);
+						      object_symbol->n_value,
+						      NULL);
 	    indr_symbol->definition_object = definition_object;
 	    add_to_undefined_list(indr_symbol);
 	}
@@ -3046,13 +3115,16 @@ struct object_file *definition_object)
 static
 char *
 enter_string(
-char *symbol_name)
+char *symbol_name,
+unsigned long *len_ret)
 {
     struct string_block **p, *string_block;
     unsigned long len;
     char *r;
 
 	len = strlen(symbol_name) + 1;
+	if(len_ret != NULL)
+	    *len_ret = len - 1;
 	for(p = &(merged_string_blocks); *p; p = &(string_block->next)){
 	    string_block = *p;
 	    if(len > string_block->size - string_block->used)
@@ -3281,7 +3353,7 @@ char *indr_symbol_name)
 		print("%sreference to undefined %s\n", 
 		      nlist->n_desc & N_WEAK_REF ? "weak " : "", symbol_name);
 	    else
-		print("definition of common %s (size %lu)\n", symbol_name,
+		print("definition of common %s (size %u)\n", symbol_name,
 		       nlist->n_value);
 	    break;
 	case N_PBUD:
@@ -3498,7 +3570,8 @@ define_common_symbols(void)
 	    merged_symbol_list = *p;
 	    for(i = 0; i < merged_symbol_list->used; i++){
 		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
-		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+		if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
+		   (merged_symbol->nlist.n_type & N_TYPE) ==  N_UNDF &&
 		   merged_symbol->nlist.n_value != 0){
 		    /*
 		     * If the output format is MH_FVMLIB then commons are not
@@ -3637,7 +3710,8 @@ define_common_symbols(void)
 	    merged_symbol_list = *p;
 	    for(i = 0; i < merged_symbol_list->used; i++){
 		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
-		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+		if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
+		   (merged_symbol->nlist.n_type & N_TYPE) ==  N_UNDF &&
 		   merged_symbol->nlist.n_value != 0){
 		    /*
 		     * Commons are not allowed with MH_FVMLIB or MH_DYLIB
@@ -3666,7 +3740,8 @@ define_common_symbols(void)
 		     * object file it is defined in to be the (__DATA,__common)
 		     * of the "link editor" object file at the address for it.
 		     */
-		    merged_symbol->nlist.n_type = N_SECT | N_EXT;
+		    merged_symbol->nlist.n_type = N_SECT | N_EXT |
+			(merged_symbol->nlist.n_type & N_PEXT);
 		    merged_symbol->nlist.n_sect = 1;
 #ifdef RLD
 		    merged_symbol->nlist.n_value =
@@ -4074,7 +4149,7 @@ count_live_symbols(void)
 		    continue;
 		if(merged_symbol->live == TRUE){
 		    merged_symbol->nlist.n_un.n_name =
-			enter_string(merged_symbol->nlist.n_un.n_name);
+			enter_string(merged_symbol->nlist.n_un.n_name, NULL);
 		}
 		else{
 		    /*
@@ -4854,6 +4929,15 @@ layout_merged_symbols(void)
 				merged_symbol->definition_object);
 	    }
 	}
+	/*
+	 * Set this global variable to let routines that look at merged symbols
+	 * in both the first pass and second pass that the merged symbols are
+	 * relocated.  This is need for example when looking at the n_sect value
+	 * of a merged symbol.  In the first pass it can be used as an index
+	 * into definition_object->section_maps[] but in the second pass it can
+	 * not.
+	 */
+	merged_symbols_relocated = TRUE;
 
 	/*
 	 * The MH_NOUNDEFS flag is set only if there are no undefined symbols
@@ -4921,9 +5005,15 @@ struct section_map *section_map)
 		 * fine_reloc that is not going to be in the output then make
 		 * sure the symbol is not going to be in the output by creating
 		 * a local symbol block for it marked to discard the symbol.
+		 * Unless the symbol is an N_SO stab, which must be kept for
+		 * the debugger to work correctly.  Note these stabs would have
+		 * addresses that are meaningless if the block they are in is
+		 * dead stripped, gdb(1) has code to handle this if the address
+		 * zero (see below where this is done).
 		 */
 		if(fine_reloc_offset_in_output(section_map,
-			object_symbols[i].n_value - s->addr) == FALSE){
+			object_symbols[i].n_value - s->addr) == FALSE &&
+		   object_symbols[i].n_type != N_SO){
 		    nlocal_symbols--;
 		    cur_obj->nlocalsym--;
 
@@ -5052,6 +5142,21 @@ struct section_map *section_map)
 		       object_symbols[j].n_sect == nsect){
 			i = j;
 		    }
+		}
+		/*
+		 * This local symbol is being kept, if it is an N_SO stab,
+		 * from this section that part of a fine_reloc that is not
+		 * going to be in the output then change it so the debugger
+		 * will work correctly.  These stabs would have addresses that
+		 * are meaningless if the block they are in is dead stripped,
+		 * gdb(1) has code to handle this if the address zero.  So
+		 * set the n_sect to NO_SECT and the n_value to zero.
+		 */
+		else if(object_symbols[i].n_type == N_SO &&
+		   fine_reloc_offset_in_output(section_map,
+			object_symbols[i].n_value - s->addr) == FALSE){
+		       object_symbols[i].n_sect = NO_SECT;
+		       object_symbols[i].n_value = 0;
 		}
 	    }
 	}
@@ -5600,7 +5705,12 @@ output_merged_symbols(void)
 		    if(dead_strip == TRUE && merged_symbol->live == FALSE)
 			continue;
 
-		    if(merged_symbol->nlist.n_type & N_PEXT){
+		    /*
+		     * See if this is a defined private extern symbol (but not
+		     * still a common private extern symbol).
+		     */
+		    if((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
+		       (merged_symbol->nlist.n_type & N_TYPE) != N_UNDF){
 			/*
 			 * Place this symbol with the local symbols for the
 			 * object that defined this symbol.  The output symbol
@@ -5684,6 +5794,13 @@ output_merged_symbols(void)
 	    nlist->n_un.n_strx = output_symtab_info.output_merged_strsize +
 				 merged_symbol_string_index(
 				    merged_symbol->nlist.n_un.n_name);
+	    /*
+	     * If this defined external symbol is also a weak definition then
+	     * set the MH_WEAK_DEFINES and MH_BINDS_TO_WEAK bits in the
+	     * mach_header.
+	     */
+	    if(nlist->n_desc & N_WEAK_DEF)
+		output_mach_header.flags |= MH_WEAK_DEFINES | MH_BINDS_TO_WEAK;
 #ifdef RLD
 	    /*
 	     * Now change the section number of this symbol to the section
@@ -5731,6 +5848,16 @@ output_merged_symbols(void)
 	     * bit and N_NO_DEAD_STRIP bits are off.
 	     */
 	    nlist->n_desc = nlist->n_desc & ~(N_WEAK_DEF & N_NO_DEAD_STRIP);
+	    /*
+	     * If this undefined symbol is referencing an undefined symbol that
+	     * is a weak symbol set the N_REF_TO_WEAK bit and set the
+	     * MH_BINDS_TO_WEAK bit in the mach_header.
+	     */
+	    if(merged_symbol->defined_in_dylib == TRUE &&
+	       merged_symbol->weak_def_in_dylib == TRUE){
+		nlist->n_desc |= N_REF_TO_WEAK;
+		output_mach_header.flags |= MH_BINDS_TO_WEAK;
+	    }
 	    nlist->n_un.n_strx = output_symtab_info.output_merged_strsize +
 				 merged_symbol_string_index(
 				    merged_symbol->nlist.n_un.n_name);
@@ -6268,6 +6395,8 @@ void)
 		    for(j = 0; j < cur_obj->nundefineds; j++){
 			merged_symbol =
 			    cur_obj->undefined_maps[j].merged_symbol;
+			if(merged_symbol == NULL)
+			    continue;
 			if(merged_symbol->nlist.n_type == (N_EXT|N_UNDF) &&
 			   merged_symbol->nlist.n_value == 0){
 			    if(Ycount >= Yflag){
@@ -6618,15 +6747,17 @@ print("assign_output_symbol_indexes() adding cur_obj->nprivatesym %lu to nstripp
 		if(strip_level != STRIP_DYNAMIC_EXECUTABLE &&
 		   dead_strip == TRUE && merged_symbol->live == FALSE)
 		    continue;
-		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
-		   merged_symbol->nlist.n_type == (N_EXT | N_PBUD) ||
+		if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
+		   ((merged_symbol->nlist.n_type & N_TYPE) == N_UNDF ||
+		    (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD) |
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
 		    merged_symbol->defined_in_dylib == TRUE)){
 		    if(dead_strip == FALSE || merged_symbol->live == TRUE){
 			nundefsym++;
 			if(rebuild_merged_string_table == TRUE)
 			    merged_symbol->nlist.n_un.n_name =
-				enter_string(merged_symbol->nlist.n_un.n_name);
+				enter_string(merged_symbol->nlist.n_un.n_name,
+					     NULL);
 		    }
 		    else{
 /*
@@ -6652,7 +6783,7 @@ printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for 
 			    if(rebuild_merged_string_table == TRUE)
 				merged_symbol->nlist.n_un.n_name =
 				    enter_string(merged_symbol->
-						 nlist.n_un.n_name);
+						 nlist.n_un.n_name, NULL);
 			}
 			else{
 /*
@@ -6693,8 +6824,9 @@ printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for 
 #endif /* RLD */
 		if(dead_strip == TRUE && merged_symbol->live == FALSE)
 		    continue;
-		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) ||
-		   merged_symbol->nlist.n_type == (N_EXT | N_PBUD) ||
+		if(((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
+		    ((merged_symbol->nlist.n_type & N_TYPE) == N_UNDF ||
+		     (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD)) ||
 		   (merged_symbol->nlist.n_type == (N_EXT | N_INDR) &&
 		    merged_symbol->defined_in_dylib == TRUE))
 		    undefsyms_order[nundefsym++] = merged_symbol;
@@ -6977,7 +7109,7 @@ void)
 			p = allocate(cur_obj->ar_name_size + 1);
 			memcpy(p, cur_obj->ar_name, cur_obj->ar_name_size);
 			p[cur_obj->ar_name_size] = '\0';
-			cur_obj->module_name = enter_string(p);
+			cur_obj->module_name = enter_string(p, NULL);
 			free(p);
 		    }
 		    else{
@@ -6986,7 +7118,7 @@ void)
 			    p++;
 			else
 			    p = cur_obj->file_name;
-			cur_obj->module_name = enter_string(p);
+			cur_obj->module_name = enter_string(p, NULL);
 		    }
 		}
 	    }
@@ -6999,7 +7131,7 @@ void)
 	     * be converted to a string table index on output.
 	     */
 	    output_dysymtab_info.dysymtab_command.nmodtab = 1;
-	    dylib_single_module_name = enter_string("single module");
+	    dylib_single_module_name = enter_string("single module", NULL);
 	}
 
 	/*
@@ -7493,7 +7625,7 @@ enum bool input_based)
 		    if(nlist->n_value == 0)
 			print("N_UNDF\n");
 		    else
-			print("common (size %lu)\n", nlist->n_value);
+			print("common (size %u)\n", nlist->n_value);
 		    break;
 		case N_PBUD:
 		    print("N_PBUD\n");

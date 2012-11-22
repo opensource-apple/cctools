@@ -371,7 +371,7 @@ char **envp)
 				as_fatal("I expected 'm88k' after "
 				       "-arch for this assembler.");
 #endif
-#if defined(PPC) && !defined(INTERIM_PPC64)
+#if defined(PPC) && !defined(ARCH64)
 			    if(strcmp(*work_argv, "ppc601") == 0){
 				if(archflag_cpusubtype != -1 &&
 				   archflag_cpusubtype !=
@@ -485,8 +485,22 @@ char **envp)
 			    	    strcmp(*work_argv, "m98k") != 0)
 				as_fatal("I expected 'ppc' after "
 				       "-arch for this assembler.");
-#endif /* defined(PPC) && !defined(INTERIM_PPC64) */
-#ifdef INTERIM_PPC64
+#endif /* defined(PPC) && !defined(ARCH64) */
+#if defined(PPC) && defined(ARCH64)
+			    if(strcmp(*work_argv,
+					   "ppc970-64") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_POWERPC_970)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_POWERPC_970;
+			    }
+			    else
+#endif
+#if defined(PPC) && defined(ARCH64)
 			    if(strcmp(*work_argv, "ppc64") != 0)
 			      as_fatal("I expected 'ppc64' after "
 				       "-arch for this assembler.");

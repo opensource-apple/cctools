@@ -25,6 +25,150 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.17 release (the cctools-572 release):
+- Fixed some bugs with the assembler not quite being 8-bit clean.  The problem
+  is that the assembler was accessing random memory, because 'char' is signed on
+  Darwin.  So the is_end_of_line table in read.c and the access to it needed
+  to be modified in a number of places.  Radar bug #3943609.
+- Fixed a bug so that if /dev/null is used as the output file it is not unlinked
+  since it is not a regular file.  The change was in write_object() in
+  write_object.c to stat(2) the output file first and check to see that it is a
+  regular file before doing the unlink(2). Radar bug #4007180.
+
+
+Changes for the 5.17 release (the cctools-570 release):
+- Fixed a bug in the assembler if the .desc directive was used to set the
+  REFERENCED_DYNAMICALLY bit before the label was defined it would cause an
+  error that it should not have.  The fix was in colon() in symbols.c where it
+  needed to include REFERENCED_DYNAMICALLY in its conditional of known allowable
+  bits in the n_desc field.  Radar bug #3975121.
+
+Changes for the 5.17 release (the cctools-568 release):
+- Added an entry to the type_names[] array in read.c for the interposing
+  section type (S_INTERPOSING).  Radar bug #3965794.
+
+Changes for the 5.17 release (the cctools-567 release):
+- Changed the Makefile to not build and install /usr/bin/as64. Radar bug
+  #3953127
+
+Changes for the 5.17 release (the cctools-558 release):
+- Changed the check in md_assemble() in ppc.c and ifdef'ed out the check for
+  vector instructions when ARCH64 is set.  Radar bug #3906004.
+
+Changes for the 5.17 release (the cctools-557 release):
+- Removed support for the INTERIM_PPC64.  The changes were to remove the
+  #ifdef INTERIM_PPC64 source changes in as.c, expr.c, expr.h, fixes.c, fixes.h,
+  md.h, notes, ppc.c, read.c and write_object.c .  Radar bug #3600419.
+
+Changes for the 5.17 release (the cctools-551 release):
+- Changed the PowerPC assembler to not mark the stfiwx instruction as optional.
+  Radar bug #3841472.
+
+Changes for the 5.17 release (the cctools-549 release):
+- Fixed a bug in the .machine directive that would not take a dash in the
+  architecure name in s_machine() in read.c. Radar bug #3856997.
+
+Changes for the 5.17 release (the cctools-536 release):
+- Changed all places where it was using the type target_addr_t to
+  signed_target_addr_t.  This is need because in i386_operand() in i386.c in
+  its use of the macro SMALLEST_IMM_TYPE that expected the operand to be signed.
+  This caused some instructions like "adc $0, (%ebp)" to not assemble with a
+  error:
+ 	no opcode suffix given; can't determine immediate size
+  And for the assembler to pick big instructions that make the code bigger.
+  Radar bug #3813924.
+
+Changes for the 5.17 release (the cctools-533 release):
+- Changes to support 32-bit & 64-bit tools in the same binary.  Radar bug
+  #3793394.
+  - Changed the code in write_object.c to use the swap_*_t new macros from
+    "stuff/target_arch.h".
+
+Changes for the 5.16 release (the cctools-529 release):
+- Take out a mistaken line affecting ppc64 interpretation of constants.
+  Radar bug #3757398.
+- Made changes to support 64-bit tools. Radar bug #3600431.
+  - Changed the Makefile's build of ppc64 to nolonger build with -DINTERIM_PPC64
+    but to build with -DARCH64 and link with libstuff64 .
+  - Added the include "stuff/target_arch.h" to the following files:
+      hppa-aux.h
+      sections.h
+      struc-symbol.h
+      i860.c
+      read.c
+      sparc.c
+      write_object.c
+    and changed the uses of structs, constants and names that are different for
+    64-bit files to the typedefs in "stuff/target_arch.h".
+  - Changed main() in as.c to allow "-arch ppc64" and "-arch ppc970-64" with
+    the ppc64 assembler.
+  - Changed the code around the INTERIM_PPC64 ifdefs to use target_addr_t from
+    "stuff/target_arch.h" in
+      md.h
+      expr.h
+      expr.c
+      fixes.h
+      fixes.c
+      ppc.c
+      read.c
+      write_object.c
+    And changed some of the INTERIM_PPC64 ifdefs to include ARCH64.
+- Fixed a bunch of places that were getting warnings when using the new hash
+  stuff and added const to the varaible being assigned to.
+
+Changes for the 5.17 release (the cctools-528.5 release):
+- Fixed a bug in s_machine() in read.c which was setting md_cpusubtype not
+  archflag_cpusubtype.  This caused later checks for use of instructions, like
+  altivec instructions, to get an erro when .machine ppc7400 was used.   Radar
+  bug #3492132.
+
+Changes for the 5.17 release (the cctools-528.4 release):
+- Maded a change to not generate the RELOC_LOCAL_SECTDIFF when -static is
+  specified.  Radar bug #3753904.
+
+Changes for the 5.17 release (the cctools-528 release):
+- Generate the GENERIC_RELOC_LOCAL_SECTDIFF reloc on m68k, i386.
+  Properly clear sri.r_address of the PAIR of a PPC_RELOC_LOCAL_SECTDIFF.
+
+Changes for the 5.17 release (the cctools-527 release):
+- Generate the PPC_RELOC_LOCAL_SECTDIFF reloc on ppc.
+- More performance improvements.  Replaced the old hash.[ch], which
+  come from an ancient version of GNU binutils, with the current GNU
+  binutils version of hash.[ch].  Changes required to use the new
+  binutils version of hash.[ch]: (1) the GNU binutils version of
+  hash.[ch] uses some things that are defined in ansidecl.h, and our
+  cctools doesn't have that header, so those declarations were added
+  to hash.h.  (2) The hash interface has changed in a few minor ways.
+  The traversal interface now uses void* instead of char*, it now
+  takes more pains to be const correct, and some of the lookup
+  functions changed from returning "" upon success to returning NULL.
+  Files affected by those interface changes were modified.  Radar bug
+  #3739375.
+
+Changes for the 5.17 release (the cctools-526 release):
+- Fixed a warnings for the changes in mach-o types from unsigned long to
+  uint32_t.  Radar bug #3744082.
+  - Change an "%ld" to "%d" in s_comm() in read.c.
+  - Change an "%ld" to "%d" in colon() in symbols.c.
+  - Added a NUMBER_FMT to operand() in expr.c as "%llu" for INTERIM_PPC64 and
+    "%d" otherwise and used it in one place in that routine.
+- Changed the internal representation of integers to be "long long" if
+  the INTERIM_PPC64 ppc64 assembler is being built.  Radar bug #3581557.
+  - In expr.h, make X_add_number field of the expressionS type a long long.
+  - In expr.c, double the number of digits considered to fit in a value.
+  - Make address arguments of fix_new(), parse_displacement(), parse_spreg(),
+    parse_crf(), parse_num(), parse_mbe(), parse_sh(), parse_mb() into
+   "long long" so address arithmetic will work right.
+- Performance improvements.  Radar bug #3739375.
+  - Changed the Makefile's OFLAG to Os and added -mdynamic-no-pic to GCC_FLAGS.
+  - Replaced all uses of getc with getc_unlocked.
+  - Eliminated the use of indirection through a function pointer when
+    do_scrub_next_char invokes getc_unlocked.  Created
+    do_scrub_next_char_from_string as a clone of do_scrub_next_char.
+  - Inlined function 'hash_code' in hash.c.
+- Added support for 3DNow! instructions.  Changes to i386-opcode.h, i386.c and
+  i386.h . Radar bug #3737535.
+
 Changes for the 5.16 release (the cctools-523 release):
 - Fixed a bug in the handing of PPC_RELOC_LO14 relocs in md_number_to_imm() in
   ppc.c which needed to mask in the low byte of a PPC_RELOC_LO14 instead of

@@ -34,6 +34,7 @@ OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/seg_addr_table.h stuff/dylib_table.h \
 	     stuff/SymLoc.h stuff/dylib_roots.h stuff/guess_short_name.h \
 	     stuff/macosx_deployment_target.h stuff/symbol_list.h \
+	     stuff/target_arch.h stuff/symbol.h stuff/unix_standard_mode.h \
 	     $(GAS_OTHER_SRCS)
 
 ENCUMBERED_SRCS = gnu/a.out.h gnu/exec.h
@@ -48,8 +49,7 @@ GAS_MISSING_SRCS = mach/m68k/thread_status.h \
 		   architecture/nrw/macro_help.h \
 		   mach/hppa/thread_status.h \
 		   mach/sparc/thread_status.h \
-		   architecture/sparc/reg.h \
-		   mach/ppc/thread_status.h
+		   architecture/sparc/reg.h
 MISSING_SRCS = mach/machine.h \
 	       architecture/i386/fpu.h architecture/i386/frame.h \
 	       standalone/libsa.h \
@@ -107,11 +107,11 @@ nextstep_install: common_install
 common_install:
 	cd mach-o; \
 	    install -c -m 444 ${IFLAGS} arch.h ldsyms.h reloc.h \
-	    dyld_debug.h nlist.h stab.h loader.h fat.h swap.h getsect.h \
+	    nlist.h stab.h loader.h fat.h swap.h getsect.h 	\
 	    ranlib.h ${DSTROOT}${$(RC_OS)_INCDIR}/mach-o
 	if [ $(OLD_DYLD_STUFF) ];				\
 	then							\
-	    cd mach-o; install -c -m 444 ${IFLAGS} dyld.h 	\
+	    cd mach-o; install -c -m 444 ${IFLAGS} dyld.h dyld_debug.h	\
 		${DSTROOT}${$(RC_OS)_INCDIR}/mach-o ;		\
 	fi
 	cd mach-o/i386; \

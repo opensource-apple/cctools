@@ -137,12 +137,7 @@ enum bool redo_live)
 	section_type = s->flags & SECTION_TYPE;
 	if(section_type == S_LAZY_SYMBOL_POINTERS ||
 	   section_type == S_NON_LAZY_SYMBOL_POINTERS){
-#ifdef INTERIM_PPC64
-            if(arch_flag.cputype == CPU_TYPE_POWERPC64)
-                stride = 8;
-            else
-#endif /* INTERIM_PPC64 */
-                stride = 4;
+	    stride = 4;
 	}
 	else if(section_type == S_SYMBOL_STUBS)
 	    stride = s->reserved2;
@@ -409,7 +404,8 @@ enum bool redo_live)
 		else if((merged_symbol->nlist.n_type & N_TYPE) == N_SECT &&
 			(merged_symbol->definition_object->section_maps[
 			 merged_symbol->nlist.n_sect - 1].
-			 s->flags & SECTION_TYPE) == S_COALESCED){
+			 s->flags & SECTION_TYPE) == S_COALESCED &&
+			filetype != MH_DYLINKER){
 		    if((output_for_dyld &&
 		       (has_dynamic_linker_command || filetype == MH_BUNDLE) &&
 		       (((merged_symbol->nlist.n_desc & N_WEAK_DEF) !=
@@ -623,13 +619,7 @@ account_for_size:
 			s->segname, s->sectname);
 		    continue;
 		}
-#ifdef INTERIM_PPC64
-		if((arch_flag.cputype == CPU_TYPE_POWERPC64 && r_length != 3) ||
-                   (arch_flag.cputype != CPU_TYPE_POWERPC64 && r_length != 2))
-#else
-		if(r_length != 2)
-#endif /* INTERIM_PPC64 */
-		{
+		if(r_length != 2){
 		    error_with_cur_obj("malformed object, illegal reference "
 			"(r_length (0x%x) field of relocation entry %lu in "
 			"lazy symbol pointer section (%.16s,%.16s) is not 2 "
@@ -1305,9 +1295,14 @@ enum bool sectdiff_reloc)
 		    to_section_type = S_REGULAR;
 		}
 		else if((merged_symbol->nlist.n_type & N_TYPE) == N_SECT){
-		    to_section_type = merged_symbol->definition_object->
-				section_maps[merged_symbol->nlist.n_sect - 1].
-				s->flags & SECTION_TYPE;
+		    if(merged_symbols_relocated == FALSE)
+			to_section_type = merged_symbol->definition_object->
+			    section_maps[merged_symbol->nlist.n_sect - 1].s->
+			    flags & SECTION_TYPE;
+		    else
+			to_section_type =
+			    pass2_nsect_merged_symbol_section_type(
+				merged_symbol);
 		}
 		else{
 		    if(sectdiff_reloc == TRUE && dynamic == TRUE){
@@ -1408,11 +1403,7 @@ enum bool sectdiff_reloc)
 		 */
 		indirect_symtab = (unsigned long *)(cur_obj->obj_addr +
 					    cur_obj->dysymtab->indirectsymoff);
-#ifdef INTERIM_PPC64
-		stride = (arch_flag.cputype == CPU_TYPE_POWERPC64 ? 8 : 4);
-#else
 		stride = 4;
-#endif /* INTERIM_PPC64 */
 		if(indirect_symtab[from_map->s->reserved1 + from_offset /
 							stride] !=
 		   indirect_symtab[to_map->s->reserved1 + to_offset /
@@ -1459,11 +1450,7 @@ enum bool sectdiff_reloc)
 		 */
 		indirect_symtab = (unsigned long *)(cur_obj->obj_addr +
 					    cur_obj->dysymtab->indirectsymoff);
-#ifdef INTERIM_PPC64
 		stride = (arch_flag.cputype == CPU_TYPE_POWERPC64 ? 8 : 4);
-#else
-		stride = 4;
-#endif /* INTERIM_PPC64 */
 		if(indirect_symtab[from_map->s->reserved1 + from_offset /
 				   from_map->s->reserved2] !=
 		   indirect_symtab[to_map->s->reserved1 + to_offset / stride]){

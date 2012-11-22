@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,29 +20,7 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-#include "stuff/target_arch.h"
-#import <stuff/bytesex.h>
-#import <mach-o/reloc.h>
-#import <mach-o/nlist.h>
-#import <stuff/bool.h>
-#include "stuff/symbol.h"
+#include "stuff/bool.h"
 
-extern unsigned long sparc_disassemble(
-    char *sect,
-    unsigned long left,
-    unsigned long addr,
-    unsigned long sect_addr,
-    enum byte_sex object_byte_sex,
-    struct relocation_info *sorted_relocs,
-    unsigned long nsorted_relocs,
-    nlist_t *symbols,
-    unsigned long nsymbols,
-    struct symbol *sorted_symbols,
-    unsigned long nsorted_symbols,
-    char *strings,
-    unsigned long strings_size,
-    unsigned long *indirect_symbols,
-    unsigned long nindirect_symbols,
-    mach_header_t *mh,
-    struct load_command *load_commands,
-    enum bool verbose);
+__private_extern__ enum bool get_unix_standard_mode(
+    void);

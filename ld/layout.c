@@ -42,7 +42,11 @@
 #include <mach-o/fat.h> 
 #include <mach-o/loader.h> 
 #import <mach/m68k/thread_status.h>
+#undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
+#undef MACHINE_THREAD_STATE_COUNT
 #import <mach/ppc/thread_status.h>
+#undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
+#undef MACHINE_THREAD_STATE_COUNT
 #import <mach/m88k/thread_status.h>
 #import <mach/i860/thread_status.h>
 #import <mach/i386/thread_status.h>
@@ -1048,7 +1052,7 @@ layout_segments(void)
 			 * the initial LC_PREBOUND_DYLIB commands seems to work
 			 * for most but not all things.
 			 */
-			headerpad += dp->pbdylib->cmdsize * 3;
+			headerpad += dp->pbdylib->cmdsize * 3 * indirect_library_ratio;
 		    }
 		}
 	    }
@@ -1132,9 +1136,6 @@ layout_segments(void)
 					    M68K_THREAD_STATE_REGS_COUNT;
 	    }
 	    else if(arch_flag.cputype == CPU_TYPE_POWERPC ||
-#ifdef INTERIM_PPC64
-		    arch_flag.cputype == CPU_TYPE_POWERPC64 ||
-#endif /* INTERIM_PPC64 */
 		    arch_flag.cputype == CPU_TYPE_VEO){
 		output_thread_info.flavor = PPC_THREAD_STATE;
 		output_thread_info.count = PPC_THREAD_STATE_COUNT;
@@ -1253,10 +1254,10 @@ layout_segments(void)
 
 	/*
 	 * The total headers size needs to be known in the case of MH_EXECUTE,
-	 * MH_BUNDLE, MH_FVMLIB, MH_DYLIB MH_DYLINKER format file types because
-	 * their headers get loaded as part of of the first segment.  For the
-	 * MH_FVMLIB file type the headers are placed on their own page (the
-	 * size of the segment alignment).
+	 * MH_BUNDLE, MH_FVMLIB, MH_DYLIB and MH_DYLINKER format file types
+	 * because their headers get loaded as part of of the first segment.
+	 * For the MH_FVMLIB and MH_DYLINKER file types the headers are placed
+	 * on their own page or pages (the size of the segment alignment).
 	 */
 	headers_size = sizeof(struct mach_header) + sizeofcmds;
 	if(filetype == MH_FVMLIB){
@@ -1266,17 +1267,19 @@ layout_segments(void)
 		      (unsigned int)headers_size, (unsigned int)segalign);
 	    headers_size = segalign;
 	}
+	else if(filetype == MH_DYLINKER){
+	    headers_size = round(headers_size, segalign);
+	}
 
 	/*
-	 * For MH_EXECUTE, MH_BUNDLE, MH_DYLIB and MH_DYLINKER formats the as
-	 * much of the segment padding that can be is moved to the begining of
-	 * the segment just after the headers.  This is done so that the headers
-	 * could added to by a smart program like segedit(1) some day.
+	 * For MH_EXECUTE, MH_BUNDLE, and MH_DYLIB formats the as much of the
+	 * segment padding that can be is moved to the begining of the segment
+	 * just after the headers.  This is done so that the headers could
+	 * added to by a smart program like segedit(1) some day.
 	 */
 	if(filetype == MH_EXECUTE ||
 	   filetype == MH_BUNDLE ||
-	   filetype == MH_DYLIB ||
-	   filetype == MH_DYLINKER){
+	   filetype == MH_DYLIB){
 	    if(first_msg != NULL){
 		size = 0;
 		content = &(first_msg->content_sections);
@@ -2417,10 +2420,10 @@ print_mach_header(void)
 	print("    magic = 0x%x\n", (unsigned int)(output_mach_header.magic));
 	print("    cputype = %d\n", output_mach_header.cputype);
 	print("    cpusubtype = %d\n", output_mach_header.cpusubtype);
-	print("    filetype = %lu\n", output_mach_header.filetype);
-	print("    ncmds = %lu\n", output_mach_header.ncmds);
-	print("    sizeofcmds = %lu\n", output_mach_header.sizeofcmds);
-	print("    flags = %lu\n", output_mach_header.flags);
+	print("    filetype = %u\n", output_mach_header.filetype);
+	print("    ncmds = %u\n", output_mach_header.ncmds);
+	print("    sizeofcmds = %u\n", output_mach_header.sizeofcmds);
+	print("    flags = %u\n", output_mach_header.flags);
 }
 
 /*
@@ -2432,12 +2435,12 @@ void
 print_symtab_info(void)
 {
 	print("Symtab info for output file\n");
-	print("    cmd = %lu\n", output_symtab_info.symtab_command.cmd);
-	print("    cmdsize = %lu\n", output_symtab_info.symtab_command.cmdsize);
-	print("    nsyms = %lu\n", output_symtab_info.symtab_command.nsyms);
-	print("    symoff = %lu\n", output_symtab_info.symtab_command.symoff);
-	print("    strsize = %lu\n", output_symtab_info.symtab_command.strsize);
-	print("    stroff = %lu\n", output_symtab_info.symtab_command.stroff);
+	print("    cmd = %u\n", output_symtab_info.symtab_command.cmd);
+	print("    cmdsize = %u\n", output_symtab_info.symtab_command.cmdsize);
+	print("    nsyms = %u\n", output_symtab_info.symtab_command.nsyms);
+	print("    symoff = %u\n", output_symtab_info.symtab_command.symoff);
+	print("    strsize = %u\n", output_symtab_info.symtab_command.strsize);
+	print("    stroff = %u\n", output_symtab_info.symtab_command.stroff);
 }
 
 /*

@@ -254,6 +254,7 @@ unsigned long reloc_index)
 		}
 	    }
 	    else if(r_type == PPC_RELOC_SECTDIFF ||
+		    r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 		    r_type == PPC_RELOC_HI16_SECTDIFF ||
 		    r_type == PPC_RELOC_LO16_SECTDIFF ||
 		    r_type == PPC_RELOC_LO14_SECTDIFF ||
@@ -370,7 +371,8 @@ unsigned long reloc_index)
 			merged_symbol = *hash_pointer;
 		    }
 		    else{
-			if(nlists[symbolnum].n_type != (N_EXT | N_UNDF)){
+			if((nlists[symbolnum].n_type & N_EXT) != N_EXT ||
+			   (nlists[symbolnum].n_type & N_TYPE) != N_UNDF){
 			    error_with_cur_obj("r_symbolnum (%lu) field of "
 				"external relocation entry %lu in section "
 				"(%.16s,%.16s) refers to a non-undefined "
@@ -549,6 +551,7 @@ unsigned long reloc_index)
 		    local_map->output_section->referenced = TRUE;
 		    pair_local_map = NULL;
 		    if(r_type == PPC_RELOC_SECTDIFF ||
+		       r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 		       r_type == PPC_RELOC_HI16_SECTDIFF ||
 		       r_type == PPC_RELOC_LO16_SECTDIFF ||
 		       r_type == PPC_RELOC_LO14_SECTDIFF ||
@@ -561,6 +564,7 @@ unsigned long reloc_index)
 		       (pair_local_map == NULL ||
 			pair_local_map->nfine_relocs == 0) ){
 			if(r_type == PPC_RELOC_SECTDIFF ||
+			   r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 			   r_type == PPC_RELOC_HI16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO14_SECTDIFF ||
@@ -607,7 +611,8 @@ unsigned long reloc_index)
 			 * relocated.
 			 */
 			if(r_type == PPC_RELOC_VANILLA ||
-			   r_type == PPC_RELOC_SECTDIFF){
+			   r_type == PPC_RELOC_SECTDIFF ||
+			   r_type == PPC_RELOC_LOCAL_SECTDIFF){
 			    switch(r_length){
 			    case 0: /* byte */
 				value = get_byte((char *)(contents +
@@ -621,12 +626,6 @@ unsigned long reloc_index)
 				value = get_long((long *)(contents +
 							  r_address));
 				break;
-#ifdef INTERIM_PPC64
-			    case 3: /* long long (8 byte) */
-				value = get_long((long *)(contents +
-							  r_address + 4));
-				break;
-#endif /* INTERIM_PPC64 */
 			    default:
 				/* the error check is catched below */
 				break;
@@ -680,6 +679,7 @@ unsigned long reloc_index)
 			    }
 			}
 			if(r_type == PPC_RELOC_SECTDIFF ||
+			   r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 			   r_type == PPC_RELOC_HI16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO14_SECTDIFF ||
@@ -725,7 +725,8 @@ unsigned long reloc_index)
 				 */
 				legal_reference(section_map, r_address,
 				    local_map, r_value - local_map->s->addr +
-				    offset, i, TRUE);
+				    offset, i,
+				    r_type != PPC_RELOC_LOCAL_SECTDIFF);
 				value = fine_reloc_output_address(local_map,
 					    r_value - local_map->s->addr,
 					    local_map->output_section->s.addr);
@@ -807,6 +808,7 @@ unsigned long reloc_index)
 			    value += offset;
 			}
 			if(r_type == PPC_RELOC_VANILLA ||
+			   r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 			   r_type == PPC_RELOC_SECTDIFF){
 			    switch(r_length){
 			    case 0: /* byte */
@@ -833,13 +835,6 @@ unsigned long reloc_index)
 			    case 2: /* long (4 byte) */
 				set_long((long *)(contents + r_address), value);
 				break;
-#ifdef INTERIM_PPC64
-			    case 3: /* long long (8 byte) */
-				set_long((long *)(contents + r_address), 0);
-				set_long((long *)(contents + r_address + 4),
-					 value);
-				break;
-#endif /* INTERIM_PPC64 */
 			    default:
 				error_with_cur_obj("r_length field of "
 				    "relocation entry %lu in section (%.16s,"
@@ -992,6 +987,7 @@ unsigned long reloc_index)
 							 r_address));
 	    }
 	    if(r_type == PPC_RELOC_VANILLA ||
+	       r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 	       r_type == PPC_RELOC_SECTDIFF){
 		switch(r_length){
 		case 0: /* byte */
@@ -1016,13 +1012,6 @@ unsigned long reloc_index)
 		    value += get_long((long *)(contents + r_address));
 		    set_long((long *)(contents + r_address), value);
 		    break;
-#ifdef INTERIM_PPC64
-		case 3: /* long long (8 byte) */
-		    value += get_long((long *)(contents + r_address + 4));
-		    set_long((long *)(contents + r_address), 0);
-		    set_long((long *)(contents + r_address + 4), value);
-		    break;
-#endif /* INTERIM_PPC64 */
 		default:
 		    error_with_cur_obj("r_length field of relocation entry %lu "
 			"in section (%.16s,%.16s) invalid", i,
@@ -1391,6 +1380,7 @@ update_reloc:
 		    }
 		    else if(spair_reloc != NULL){
 			if(r_type == PPC_RELOC_SECTDIFF ||
+			   r_type == PPC_RELOC_LOCAL_SECTDIFF ||
 			   r_type == PPC_RELOC_HI16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO16_SECTDIFF ||
 			   r_type == PPC_RELOC_LO14_SECTDIFF ||

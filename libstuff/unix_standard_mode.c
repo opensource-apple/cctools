@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,29 +20,36 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-#include "stuff/target_arch.h"
-#import <stuff/bytesex.h>
-#import <mach-o/reloc.h>
-#import <mach-o/nlist.h>
-#import <stuff/bool.h>
-#include "stuff/symbol.h"
+#ifndef RLD
+#include <stdlib.h>
+#include <strings.h>
+#include "stuff/bool.h"
+#include "stuff/unix_standard_mode.h"
 
-extern unsigned long sparc_disassemble(
-    char *sect,
-    unsigned long left,
-    unsigned long addr,
-    unsigned long sect_addr,
-    enum byte_sex object_byte_sex,
-    struct relocation_info *sorted_relocs,
-    unsigned long nsorted_relocs,
-    nlist_t *symbols,
-    unsigned long nsymbols,
-    struct symbol *sorted_symbols,
-    unsigned long nsorted_symbols,
-    char *strings,
-    unsigned long strings_size,
-    unsigned long *indirect_symbols,
-    unsigned long nindirect_symbols,
-    mach_header_t *mh,
-    struct load_command *load_commands,
-    enum bool verbose);
+/*
+ * get_unix_standard_mode() returns TRUE if we are running in UNIX standard
+ * command mode (the default).
+ */
+__private_extern__
+enum bool
+get_unix_standard_mode(
+void)
+{
+    static enum bool checked_environment_variable = FALSE;
+    static enum bool unix_standard_mode = TRUE;
+    char *p;
+
+	if(checked_environment_variable == FALSE){
+	    checked_environment_variable = TRUE;
+	    /*
+	     * Pick up the UNIX standard command mode environment variable.
+	     */
+	    p = getenv("COMMAND_MODE");
+	    if(p != NULL){
+		if(strcasecmp("legacy", p) == 0)
+		    unix_standard_mode = FALSE;
+	    }
+	}
+	return(unix_standard_mode);
+}
+#endif /* !defined(RLD) */

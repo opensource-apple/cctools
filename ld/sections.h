@@ -185,6 +185,8 @@ __private_extern__ void output_sections_from_files(
     void);
 __private_extern__ void output_section(
     struct section_map *map);
+__private_extern__ unsigned long pass2_nsect_merged_symbol_section_type(
+    struct merged_symbol *merged_symbol);
 __private_extern__ void nop_pure_instruction_scattered_sections(
     void);
 __private_extern__ void flush_scatter_copied_sections(

@@ -127,7 +127,8 @@ unsigned long reloc_index)
 		 * type to report the correct error a check for a stray
 		 * GENERIC_RELOC_PAIR relocation types needs to be done before
 		 * it is assumed that r_value is legal.  A GENERIC_RELOC_PAIR
-		 * only follows a GENERIC_RELOC_SECTDIFF relocation type and it
+		 * only follows a GENERIC_RELOC_SECTDIFF or
+		 * GENERIC_RELOC_LOCAL_SECTDIFF relocation type and it
 		 * is an error to see one otherwise.
 		 */
 		if(r_type == GENERIC_RELOC_PAIR){
@@ -181,7 +182,8 @@ unsigned long reloc_index)
 	    }
 	    /*
 	     * GENERIC_RELOC_PAIR relocation types only follow a 
-	     * GENERIC_RELOC_SECTDIFF relocation type and it is an error to
+	     * GENERIC_RELOC_SECTDIFF or GENERIC_RELOC_LOCAL_SECTDIFF
+	     * relocation type and it is an error to
 	     * see one otherwise.
 	     */
 	    if(r_type == GENERIC_RELOC_PAIR){
@@ -204,16 +206,18 @@ unsigned long reloc_index)
 	    /*
 	     * If this relocation type is to have a pair make sure it is there
 	     * and then break out it's fields.  Currently only the relocation
-	     * type GENERIC_RELOC_SECTDIFF can have a pair and itself and it's
+	     * types GENERIC_RELOC_SECTDIFF and GENERIC_RELOC_LOCAL_SECTDIFF
+	     * can have a pair and itself and it's
 	     * pair must be scattered relocation types.
 	     */
 	    pair_r_type = (enum reloc_type_generic)0;
 	    pair_reloc = NULL;
 	    spair_reloc = NULL;
-	    if(r_type == GENERIC_RELOC_SECTDIFF){
+	    if(r_type == GENERIC_RELOC_SECTDIFF ||
+	       r_type == GENERIC_RELOC_LOCAL_SECTDIFF){
 		if(r_scattered != 1){
 		    error_with_cur_obj("relocation entry (%lu) in section "
-			"(%.16s,%.16s) r_type is GENERIC_RELOC_SECTDIFF but "
+			"(%.16s,%.16s) r_type is section difference but "
 			"relocation entry not scattered type", i,
 			section_map->s->segname, section_map->s->sectname);
 		    continue;
@@ -329,7 +333,8 @@ unsigned long reloc_index)
 			merged_symbol = *hash_pointer;
 		    }
 		    else{
-			if(nlists[symbolnum].n_type != (N_EXT | N_UNDF)){
+			if((nlists[symbolnum].n_type & N_EXT) != N_EXT ||
+			   (nlists[symbolnum].n_type & N_TYPE) != N_UNDF){
 			    error_with_cur_obj("r_symbolnum (%lu) field of "
 				"external relocation entry %lu in section "
 				"(%.16s,%.16s) refers to a non-undefined "
@@ -478,7 +483,8 @@ unsigned long reloc_index)
 		    local_map = &(cur_obj->section_maps[r_symbolnum - 1]);
 		    local_map->output_section->referenced = TRUE;
 		    pair_local_map = NULL;
-		    if(r_type == GENERIC_RELOC_SECTDIFF){
+		    if(r_type == GENERIC_RELOC_SECTDIFF ||
+		       r_type == GENERIC_RELOC_LOCAL_SECTDIFF){
 			pair_local_map =
 			    &(cur_obj->section_maps[pair_r_symbolnum - 1]);
 			pair_local_map->output_section->referenced = TRUE;
@@ -486,7 +492,8 @@ unsigned long reloc_index)
 		    if(local_map->nfine_relocs == 0 && 
 		       (pair_local_map == NULL ||
 			pair_local_map->nfine_relocs == 0) ){
-			if(r_type == GENERIC_RELOC_SECTDIFF){
+			if(r_type == GENERIC_RELOC_SECTDIFF ||
+			   r_type == GENERIC_RELOC_LOCAL_SECTDIFF){
 			    value = - local_map->s->addr
 				    + (local_map->output_section->s.addr +
 				       local_map->offset)
@@ -558,7 +565,8 @@ unsigned long reloc_index)
 			    value = get_long((long *)(contents + r_address));
 			    break;
 			}
-			if(r_type == GENERIC_RELOC_SECTDIFF){
+			if(r_type == GENERIC_RELOC_SECTDIFF ||
+			   r_type == GENERIC_RELOC_LOCAL_SECTDIFF){
 			    /*
 			     * For GENERIC_RELOC_SECTDIFF's the item to be
 			     * relocated, in value, is the value of the
@@ -600,7 +608,8 @@ unsigned long reloc_index)
 				 */
 				legal_reference(section_map, r_address,
 				    local_map, r_value - local_map->s->addr +
-				    offset, i, TRUE);
+				    offset, i,
+				    r_type != GENERIC_RELOC_LOCAL_SECTDIFF);
 				value = fine_reloc_output_address(local_map,
 					    r_value - local_map->s->addr,
 					    local_map->output_section->s.addr);

@@ -571,7 +571,17 @@ deal_with_contents:
 				  object_symbols[r_symbolnum].n_un.n_strx);
 			}
 			merged_symbol = *hash_pointer;
-			if(((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
+			/*
+			 * While the .o file's symbol is a coalesced symbol, it
+			 * may have been weak and the merged symbol now being
+			 * used is not a coalesced symbol. In that case we don't
+			 * force an external relocation entry.
+			 */
+			if(((merged_symbol->nlist.n_type & N_TYPE) == N_SECT &&
+			    (merged_symbol->definition_object->section_maps[
+			      merged_symbol->nlist.n_sect-1].
+			      s->flags & SECTION_TYPE) != S_COALESCED) ||
+			  ((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
 			    keep_private_externs == FALSE) ||
 			    dynamic == FALSE ||
 			   (output_for_dyld && has_dynamic_linker_command))

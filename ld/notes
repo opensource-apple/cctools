@@ -23,6 +23,248 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.17 release (the cctools-572 release):
+- Fixed a problem when MallocScribble was on that caused a crash.  The problem
+  was enter_symbol() in symbols.c was assumed to return pointers to
+  merged_symbol structs that were zero'ed out.  A call to memset() was added to
+  make sure this is done.  Radar bug #3980535.
+
+Changes for the 5.17 release (the cctools-569 release):
+- Fixed a problem when determinging the type of relocation entries in a 
+  coalesced section to a symbol that was a weak coalesced symbol in the .o file
+  but ends up as a non-coalesced symbol in the output.  The problem was in
+  coalesced_section_merge() when it was trying to figure out if it was to force
+  an external relocation entry because the symbol was a coalesed symbol.  It
+  needed an extra test to look at the merged symbol and not the symbol in the .o
+  ofile.  Radar bug #3934341.
+
+Changes for the 5.17 release (the cctools-568 release):
+- Fixed problems with changes for supporting the new XXX_RELOC_LOCAL_SECTDIFF
+  relocs from Radar bug #3744821.  The problem was the logic around calling
+  legal_reference() in the cases with sections and fine relocs and sectdiff
+  relocation entries.  The code was changed back to the original code with the
+  sectdiff parameter to legal_reference() changed from TRUE to 
+  r_type != XXX_RELOC_LOCAL_SECTDIFF.  This change was made in ppc_reloc() in
+  ppc_reloc.c and generic_reloc() in generic_reloc.c .  Radar bug #3961903
+- Fixed problems with kld and outputing coalesced sections.  The code in
+  output_section() in sections.c to call scatter_copy() was #ifndef RLD so it
+  was not there.  If'def this back in and the neede parts of scatter_copy()
+  for RLD.  Radar bug #3959886.
+- Changed layout.c to remove multiply defined warnings by adding #undef's for
+  MACHINE_THREAD_STATE and MACHINE_THREAD_STATE_COUNT after including
+  <mach/m68k/thread_status.h> .
+
+Changes for the 5.17 release (the cctools-563 release):
+- Fixed some problems with regard to relocation entries refering to private
+  extern common symbols.  Radar bug #3928792.
+  - Changed the test for external relocation entries to being for undefined
+    symbols from checking n_type equal to (N_EXT | N_UNDF) to testing for
+    N_EXT and the N_TYPE bits equal to N_UNDF in the *_reloc() routines.
+    Changes made in:
+      ppc_reloc() in ppc_reloc.c
+      generic_reloc() in generic_reloc.c
+      hppa_reloc() in hppa_reloc.c
+      i860_reloc() in i860_reloc.c
+      m88k_reloc() in m88k_reloc.c
+      sparc_reloc() in sparc_reloc.c
+  - Changed creating and setting the undefined map for symbols from the n_type
+    equal to (N_EXT | N_UNDF) to testing for N_EXT and the N_TYPE bits equal to
+    N_UNDF in merge_symbols() in symbols.c (3 places). The first place is the
+    test before incrementing the object_undefineds variable.  The place is the
+    test before incrementing cur_obj->nprivatesym and nmerged_private_symbols.
+    The third place is the test before setting the undefined map's,
+    cur_obj->undefined_maps[], values.
+  - Changed the test for a merged undefined symbol in merge_symbols() in
+    symbols.c when checking for an undefined or common from n_type equal to
+    (N_EXT | N_UNDF) to testing the N_TYPE bits equal to N_UNDF.
+  - Changed the test for a merged undefined symbol in command_line_indr_symbol()
+    in symbols.c from the n_type equal to (N_EXT | N_UNDF) to testing the
+    N_TYPE bits equal to N_UNDF.
+  - Changed the test for common symbols when merging them in merge_symbols() in
+    symbols.c from testing n_type equal to (N_EXT | N_UNDF) to testing for
+    N_EXT and the N_TYPE bits equal to N_UNDF (2 places).  The first place is
+    the test to see if the object's symbol is a common.  The second place is
+    the test of the merged symbol being a common or undefined.
+  - Changed in merge_symbols() in symbols.c where the larger of the commons are
+    used, to also "use" the N_PEXT bit from the larger symbol.  Also if the same
+    common from different object has different N_PEXT bits a warning is issued
+    and the symbols are traced.
+  - Changed checking for common symbols in define_common_symbols() in symbols.c
+    from the n_type equal to (N_EXT | N_UNDF) to testing for N_EXT and the
+    N_TYPE bits equal to N_UNDF (2 places).  The first place is in the loop that
+    is checking if any commons exist.  The second place in the in the loop that
+    defines the commons.
+  - Also in define_common_symbols() in symbols.c, in the loop that defined the
+    commons and sets the new n_type, changed that to save the N_PEXT bit of
+    the merged symbol.
+  - Changed the check for a defined private extern symbol in
+    output_merged_symbols() in symbols.c from just checking the N_PEXT bit to
+    also checking that the N_TYPE != N_UNDF so that symbols that are still
+    common symbols and private extern are not treated as defined symbols.
+    So to not clear the N_EXT bit of private extern symbols that are still
+    common symbols.
+  - Changed the check for undefined symbols in assign_output_symbol_indexes()
+    in symbols.c from tesing if the n_type is (N_EXT | N_UNDF) or
+    (N_EXT | N_PBUD) to testing for N_EXT and the N_TYPE equal to N_UNDF or
+    N_PBUD so that private extern commons will be treated and undefined symbols
+    (in two places).  The first place, in the loop where the undefined symbols
+    are counted.  And the second place in the loop where the arrays of symbols
+    are filled in.
+- Changed output_merged_symbols() in symbols.c to set the new MH_WEAK_DEFINES
+  bit in the mach_header if there are any defined external symbol that are
+  weak defintions.  Also now set the new N_REF_TO_WEAK bit is the symbol table
+  entry if the symbol is a referencing an undefined symbol that is a weak symbol
+  and set the the new MH_BINDS_TO_WEAK bit in the mach_header.  Radar bug
+  #3799069.
+- Changed layout.c to remove multiply defined warnings by adding #undef's for
+  MACHINE_THREAD_STATE and MACHINE_THREAD_STATE_COUNT after including
+  <mach/ppc/thread_status.h> .
+
+Changes for the 5.17 release (the cctools-561 release):
+- Changed main() in ld.c to use MACOSX_DEPLOYMENT_VERSION >= 10.4 instead of
+  the environment variable LD_PREBIND_SPLITSEGS_ONLY to turn off prebinding for 
+  non-split libraries.  This is the second phase of the change to Radar bug
+  #3855581.  That bug is cloned as Radar bug #3924730 for this change.
+
+Changes for the 5.17 release (the cctools-559 release):
+- Changed libkld.a to link with the new libstuff_kld.a and libmacho_kld.a built
+  for the kernel's kld use.  Radar bug #3906133.
+
+Changes for the 5.17 release (the cctools-557 release):
+- Removed support for the INTERIM_PPC64.  The changes were to remove the
+  #ifdef INTERIM_PPC64 source changes in sections.c, ppc_reloc.c, layout.c and
+  indirect_sections.c as well as removing the -DINTERIM_PPC64 in the
+  Makefile.  Radar bug #3600419.
+
+Changes for the 5.17 release (the cctools-556 release):
+- Changed the way an MH_DYLINKER output file is laid out so that the headers
+  are on their own page or pages.  This allows the first address of the first
+  section to remain semi-constant.  The change was in layout_segments() in
+  layout.c to treat MH_DYLINKER outputs much like MH_FVMLIB. Radar bug #3893651.
+- Added the -syslibroot <argument> option as another way to specifiy NEXT_ROOT.
+  The change was in ld.c .  Radar bug #3886145.
+
+Changes for the 5.17 release (the cctools-555 release):
+- Fixed a problem with the fix below in that the new routine
+  pass2_nsect_merged_symbol_section_type() in sections.c is needed to not be
+  ifdef'ed out for RLD.  Radar bug #3894721.
+
+Changes for the 5.17 release (the cctools-554 release):
+- Fixed a bug in legal_reference() in indirect_sections.c that cause it to not
+  correctly catch an illegal reference to a weak coalesced symbol that was
+  used directly.  The problem was when the reference was made from a .o file
+  to a weak coalesced symbol in that .o file, but the weak coalesced symbol
+  in that .o file was discarded and the symbol was being used from a different
+  .o file.  The code was trying to figure out what type of section was being
+  referenced for a merged symbol from the merged symbol's n_sect value.  This
+  routine is used in both the first and second passes.  In the second pass the
+  merged symbol's n_sect was incorrectly being use as an index into the input
+  .o file's section map.  But that was wrong as the merged symbol's n_sect is
+  the section number in the output file in the second pass.  To fix this a new
+  routine pass2_nsect_merged_symbol_section_type() was added to sections.c to
+  correctly get the section type of the N_SECT merged symbol in the output.
+  And to know when the merged symbols have been relocated to second pass values,
+  the new boolean variable merged_symbols_relocated was added to symbols.[ch]
+  and set to TRUE in layout_merged_symbols() in symbols.c .  Radar bug #3884596.
+
+Changes for the 5.17 release (the cctools-553 release):
+- Added a bunch of logic and features when LD_PREBIND_SPLITSEGS_ONLY is set.
+  This is in main() in ld.c .  Radar bug #3875865.
+  - Added logic for LD_UNPREBOUND_LIBRARIES file with a list of files not to
+    be prebound when LD_PREBIND_SPLITSEGS_ONLY is set.
+  - Added logic for LD_SPLITSEGS_NEW_LIBRARIES to force libraries not listed
+    in the seg addr table and not in the LD_UNPREBOUND_LIBRARIES file to be
+    built split.
+
+Changes for the 5.17 release (the cctools-552 release):
+- Changed ld(1) to write its messages to stderr when in UNIX standard
+  conformance mode (the default) and stdout otherwise.  The change was in the
+  vprint() routine in ld.c . Radar bug #3762151.
+- Changed ld(1) to not write over a non-writeable file when in UNIX standard
+  conformance mode (the default) and produce an error instead.  The change was
+  in pass2() in pass2.c call the new libstuff routine get_unix_standard_mode()
+  and if TRUE call access(2) to see if the file exists and if not writeable
+  generate an error. Radar bug #3762029.
+- Changed pass2() in pass2.c to not turn on only execute bits allowed by the
+  umask(2) call.  Radar bug #3761943.
+
+Changes for the 5.17 release (the cctools-551 release):
+- Changed lookup_symbol() in symbols.c to reduce the number of failed strcmp()'s
+  by comparing the name size first.  Radar bug #3836837.
+  - Added the name_len field to the merged_symbol struct in symbols.h .
+  - Changed hash_string() in hash_string.h to take an extra pointer to return
+    the size of the string being hashed if not passed as NULL.  Then changed
+    the callers of hash_string() in symbols.c, sections.c and
+    cstring_literals.c .
+  - Changed enter_string() in symbols.c to also take an extra pointer to return
+    the size of the string being entered if not passed as NULL.  Then changed
+    the callers of enter_string() in symbols.c .
+  - Changed lookup_symbol() in symbols.c to first test the size of the name_len
+    before doing the strcmp().
+  - Changed enter_symbol()'s call to enter_string() to pass the address of the
+    new name_len field to the merged_symbol struct so it is set.
+- Changed indirect_section_merge() in indirect_sections.c to always set the
+  indirect_defined field of a fine_reloc for a symbol in a coalesced sections
+  to TRUE if the output filetype is MH_DYLINKER.  Radar bug #3863439.
+
+Changes for the 5.17 release (the cctools-549 release):
+- Changed main() in ld.c to turn off prebinding for non-split libraries if
+  the environment variable LD_PREBIND_SPLITSEGS_ONLY is set. Radar bug #3855581.
+- Changed discard_local_symbols_for_section() in symbols.c to change N_SO stabs
+  that are kept but in a block that is not in the output to have an n_value of
+  zero and an n_sect of NO_SECT.  This is needed to make the debugger work with
+  files linked with -dead_strip.  Radar bug #3854890.
+
+Changes for the 5.17 release (the cctools-538 release):
+- When -arch ppc64 is seen on the command line, invoke /usr/bin/ld64
+  instead and pass all the arguments to it verbatim. Radar bug #3823359.
+
+Changes for the 5.17 release (the cctools-537 release):
+- Changed check_cur_obj() in pass1.c to ignore MH_MAGIC_64 with
+  -no_arch_warnings.  Radar bug #3815344.
+
+Changes for the 5.17 release (the cctools-533 release):
+- When indirect libraries are removed from dynamic_libs list, a count is kept of
+  how many were removed.  This is later used when computing the header padding
+  to use.  Radar bug #3784597.
+
+Changes for the 5.16 release (the cctools-528.5 release):
+- Fixed a crash in process_undefineds() in symbols.c when the -Y flag is used
+  that is caused by the change to 3737622 to not search indirect dylibs.  This
+  change causes the cur_obj->undefined_maps[] not to be set up up in for
+  indirect dylibs.  The patch is to test to make sure the merged_symbol in the
+  map is not NULL before using it.  Radar bug #3797052.
+- Changed discard_local_symbols_for_section() in symbols.c to always keep N_SO
+  stabs if they are in a block that is not in the output.  This is needed to
+  make the debugger work with file linked with -dead_strip.  Radar bug #3739451.
+
+Changes for the 5.16 release (the cctools-528.4 release):
+- Added -I flags for building the static libkld to include PrivateHeaders
+  because of the changes made in the Tiger kernel header file layout.  Radar bug
+  #3782212.
+
+Changes for the 5.16 release (the cctools-528.3 release):
+- Don't search indirect libraries when linking two-level.  Radar bug #3737622.
+
+Changes for the 5.16 release (the cctools-528.2 release):
+- Let kld accept duplicate symbols silently if they are absolute and
+  have the same value.  Radar bug #3633627.
+
+Changes for the 5.16 release (the cctools-528 release):
+- Support the new GENERIC_RELOC_LOCAL_SECTDIFF reloc.  Radar bug #3744821.
+
+Changes for the 5.16 release (the cctools-527 release):
+- Support the new PPC_RELOC_LOCAL_SECTDIFF reloc.  Radar bug #3744821.
+
+Changes for the 5.16 release (the cctools-526 release):
+- Fixed two error messages in ld.c where it used "-flatname_space" not
+  "-flat_namespace".  Radar bug #3743186.
+- Fixed warnings for the changes in mach-o headers for types changing from
+  unsigned long to uint32_t and from long to int32_t.  Radar bug #3744082.
+  - Changed a number of uses of "%lu" to "%u" and "%ld to "%d" in pass1.c,
+    sections.c, cstring_literals.c, symbols.c, fvmlibs.c, layout.c,
+    4byte_literals.c, 8byte_literals.c and literal_pointers.c .
+
 Changes for the 5.16 release (the cctools-525 release):
 - Sped up clear_read_only_reloc_flags() in symbols.c in the normal case. Radar
   bug #3728427.

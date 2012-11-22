@@ -144,6 +144,16 @@ __private_extern__ struct nlist *bsearch_symbols = NULL;
 __private_extern__ struct dynamic_library *dynamic_libs = NULL;
 
 /*
+ * When building two-level-namespace, indirect libraries are not kept
+ * in the dynamic_libs list.  The pre-10.4 prebinding may need to grow
+ * the load commands in an executable proportional to the number of
+ * direct and indirect libraries.  The variable indirect_library_ratio
+ * gives us a scaling factor to multiple by the number of libraries
+ * in dynamic_libs as an estimate of the total number of libraries.
+ */
+__private_extern__ unsigned int indirect_library_ratio = 1;
+
+/*
  * The variable indirect_dylib is used for search_dynamic_libs() to communicate
  * with check_cur_obj() to prevent the error message that is generated when
  * a subframework is directly linked against.  When an umbrella framework is
@@ -891,13 +901,13 @@ unsigned long ar_name_size)
 	    }
 	    if(fat_archs[i].align > MAXSECTALIGN){
 		if(ar_name != NULL)
-		    error("fat file: %s(%.*s) align (2^%lu) too large for "
+		    error("fat file: %s(%.*s) align (2^%u) too large for "
 			  "cputype (%d) cpusubtype (%d) (maximum 2^%d)",
 			  file_name, (int)ar_name_size, ar_name,
 			  fat_archs[i].align, fat_archs[i].cputype,
 			  fat_archs[i].cpusubtype, MAXSECTALIGN);
 		else
-		    error("fat file: %s align (2^%lu) too large for cputype "
+		    error("fat file: %s align (2^%u) too large for cputype "
 			  "(%d) cpusubtype (%d) (maximum 2^%d)", file_name,
 			  fat_archs[i].align, fat_archs[i].cputype,
 			  fat_archs[i].cpusubtype, MAXSECTALIGN);
@@ -906,15 +916,15 @@ unsigned long ar_name_size)
 	    if(fat_archs[i].offset %
 	       (1 << fat_archs[i].align) != 0){
 		if(ar_name != NULL)
-		    error("fat file: %s(%.*s) offset: %lu for cputype (%d) "
+		    error("fat file: %s(%.*s) offset: %u for cputype (%d) "
 			  "cpusubtype (%d)) not aligned on it's alignment "
-			  "(2^%lu)", file_name, (int)ar_name_size, ar_name,
+			  "(2^%u)", file_name, (int)ar_name_size, ar_name,
 			  fat_archs[i].offset, fat_archs[i].cputype,
 			  fat_archs[i].cpusubtype, fat_archs[i].align);
 		else
-		    error("fat file: %s offset: %lu for cputype (%d) "
+		    error("fat file: %s offset: %u for cputype (%d) "
 			  "cpusubtype (%d)) not aligned on it's alignment "
-			  "(2^%lu)", file_name, fat_archs[i].offset,
+			  "(2^%u)", file_name, fat_archs[i].offset,
 			  fat_archs[i].cputype, fat_archs[i].cpusubtype,
 			  fat_archs[i].align);
 		return;
@@ -2308,6 +2318,31 @@ void)
 #endif /* DEBUG */
 
 	/*
+	 * When building for two-level-namespace, remove from the search path 
+	 * indirect libraries that cannot be encoded in a library ordinal.
+	 */
+	if((twolevel_namespace == TRUE) && (force_flat_namespace == FALSE) && (filetype != MH_OBJECT)){
+	    struct dynamic_library* last_library = NULL;
+	    unsigned int total_library_count = 0;
+	    unsigned int direct_library_count = 0;
+	    for(p = dynamic_libs; p != NULL; p = p->next){
+		++total_library_count;
+		if((p->type == DYLIB) && (p->definition_obj->library_ordinal == 0)){
+		    if(last_library==NULL)
+			dynamic_libs = p->next;
+		    else
+			last_library->next = p->next;
+		}
+		else {
+		    last_library = p;
+		    ++direct_library_count;
+		}
+	    }
+	    if(direct_library_count!=0)
+		indirect_library_ratio = total_library_count / direct_library_count;
+	}
+
+	/*
 	 * Go through the specified dynamic libraries setting up their table of
 	 * contents data.
 	 */
@@ -2627,6 +2662,9 @@ undefined_twolevel_reference:
 			    if(q->dl->cmd == LC_LOAD_DYLIB ||
 			       q->dl->cmd == LC_LOAD_WEAK_DYLIB)
 				break;
+			    /* don't search images that cannot be two level encoded */
+			    if(q->definition_obj->library_ordinal == 0)
+				continue;
 			    bsearch_strings = q->strings;
 			    bsearch_symbols = q->symbols;
 			    toc = bsearch(undefined->merged_symbol->
@@ -4107,7 +4145,8 @@ enum bool bundle_loader)
 	    swap_mach_header(mh, host_byte_sex);
 	}
 	if(mh->magic != MH_MAGIC){
-	    error_with_cur_obj("bad magic number (not a Mach-O file)");
+	    if(mh->magic != MH_MAGIC_64 || no_arch_warnings != TRUE)
+		error_with_cur_obj("bad magic number (not a Mach-O file)");
 	    return;
 	}
 	if(mh->cputype != 0){
@@ -4497,7 +4536,7 @@ enum bool bundle_loader)
 #endif /* defined(SA_RLD) || (defined(KLD) && defined(__STATIC__)) */
 		    /* check to make sure the alignment is reasonable */
 		    if(s->align > MAXSECTALIGN){
-			error_with_cur_obj("align (%lu) of section %lu "
+			error_with_cur_obj("align (%u) of section %lu "
 			    "(%.16s,%.16s) in load command %lu greater "
 			    "than maximum section alignment (%d)", s->align,
 			     j, s->segname, s->sectname, i, MAXSECTALIGN);
@@ -5497,7 +5536,7 @@ unsigned long strsize)
 		    }
 		    /* check to make sure the alignment is reasonable */
 		    if(s->align > MAXSECTALIGN){
-			error_with_cur_obj("align (%lu) of section %lu "
+			error_with_cur_obj("align (%u) of section %lu "
 			    "(%.16s,%.16s) in load command %lu greater "
 			    "than maximum section alignment (%d)", s->align,
 			     j, s->segname, s->sectname, i, MAXSECTALIGN);

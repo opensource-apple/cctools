@@ -1,3 +1,12 @@
+Changes for the 5.17 release (the cctools-550 release):
+- Ported and cleaned up the code to work with 32-bit and 64-bit Mach-O files.
+  Radar bug #3854972.
+
+Changes for the 5.17 release (the cctools-549 release):
+- Made a change to prevent the code from crashing if handed a 64-bit Mach-O
+  file.  The change is in nm() in libsyminfo.c to check to see that the 32-bit
+  mach_header is NULL and if so just return.  Radar bug #3854972.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Fixed a bug that would cause a crash if libsyminfo was presented with an
   binary of an unknown cputype.  The fix was in nm() in libsyminfo.c to check

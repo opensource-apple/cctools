@@ -1,4 +1,4 @@
-.TH LD 1 "March 27, 2004" "Apple Computer, Inc."
+.TH LD 1 "December 16, 2004" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -209,7 +209,7 @@ When the environment variable
 .B MACOSX_DEPLOYMENT_TARGET
 is set to
 .B 10.3
-then
+or higher then
 .BI \-undefined " dynamic_lookup"
 can also be used.  The specific library definition recorded
 for each reference is the first library that has a definition as listed on the
@@ -543,6 +543,10 @@ is set both the option
 .B \-prebind
 .SM LD_PREBIND
 environment variable are ignore and the output is not prebound.
+Or if the environment variable
+.B MACOSX_DEPLOYMENT_TARGET
+is set to 10.4 or greater and the output is not a split a dynamic library the
+output is not prebound.
 .TP
 .B \-noprebind
 Do not have the static linker,
@@ -648,6 +652,11 @@ are searched before the standard directories.
 .TP
 .B \-Z
 Do not search the standard directories when searching for libraries.
+.TP
+.BI "\-syslibroot " rootdir
+Prepend
+.I rootdir
+to the standard directories when searching for libraries or frameworks.
 .TP
 .B \-search_paths_first
 By default when the
@@ -1318,7 +1327,7 @@ When the environment variable
 .B MACOSX_DEPLOYMENT_TARGET
 is set to
 .B 10.3
-then
+or higher then
 .BI \-undefined " dynamic_lookup"
 can also be used to allow any undefined symbols to be looked up dynamically at
 runtime.  Use of a binary built with this flag requires a system with a dynamic
@@ -1691,8 +1700,9 @@ a feature is seen in the input that can't be in the output due to this setting
 a warning is issued.  The current allowable values for this are
 .B 10.1,
 .B 10.2
+.B 10.3,
 and
-.B 10.3
+.B 10.4
 with the default being
 .B 10.1.
 .PP
@@ -1729,6 +1739,16 @@ argument.
 The argument
 .I filename
 is used in the above message when RC_TRACE_PREBINDING_DISABLED is set.
+.TP
+.B LD_SPLITSEGS_NEW_LIBRARIES
+When set and
+.B MACOSX_DEPLOYMENT_TARGET
+is set to 10.4 or greater and the output is a dynamic library, and if the
+install name of the library is not listed the segment address table, and if the
+environment variable
+.B LD_UNPREBOUND_LIBRARIES
+is set with a file name with a list of library install names and the install
+name is not listed, then this is built as a split shared library.
 
 .PP
 Options available in early versions of the Mach-O link editor 

@@ -2,6 +2,44 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.17 release (the cctools-572 release):
+- Removed the references to  VAX and Mips from the lipo(1) man page. Radar bug
+  #4007112.
+
+Changes for the 5.17 release (the cctools-567 release):
+- Added a man page for otool64(1) with just sources the otool(1) man page.
+  Radar bug #3954720.
+
+Changes for the 5.17 release (the cctools-561 release):
+- Updates the description of the -prebind flag on the ld(1) man page to note the
+  output is not prebound when MACOSX_DEPLOYMENT_TARGET >= 10.4 Also added the
+  description of the environment variable LD_SPLITSEGS_NEW_LIBRARIES as well
+  as updated a few places that talked about 10.3 .  Radar bug #3924730.
+
+Changes for the 5.17 release (the cctools-556 release):
+- Added the description of the -syslibroot flag to the ld(1) man page and added
+  to the list of ld(1) flags on the libtool(1) man page.  Radar bug #3886145.
+
+Changes for the 5.17 release (the cctools-552 release):
+- Added the description of the -q flag to ranlib(1) on the libtool(1) man page
+  that ar(1) uses for UNIX standard conformance.  Radar bug #3762136.
+- Fixed the SYNOPSIS of the nm(1) man page to include all options.  Radar bug
+  #3856321.
+- Added the descriptions of the -A, -P and -t options to the nm(1) man page.
+  Radar bug #3652346.
+- Added the descriptions of the -t and -n options to the strings(1) man page.
+  Radar bug #3644256.
+- Added the description of the "--" option to the strings(1) man page.  Radar
+  bug #3571788.
+
+Changes for the 5.16 release (the cctools-531 release):
+- Removed the -mc68000 and -mc68010 options from as man page.  Radar bug
+  #3704760.
+
+Changes for the 5.16 release (the cctools-526 release):
+- Added the description of the -V flag to the libtool(1) man page.  Radar bug
+  #3738616.
+
 Changes for the 5.16 release (the cctools-524 release):
 - Changed the Makefile to use OLD_DYLD_STUFF instead of DYLD_STUFF to work
   around Radar bug #3675086.

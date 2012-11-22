@@ -104,7 +104,7 @@ static
 #ifndef PPC
 const
 #endif /* PPC */
-char is_end_of_line[256] = {
+char is_end_of_line_tab[256] = {
  99, _, _, _, _, _, _, _, _, _,99, _, _, _, _, _, /* @abcdefghijklmno */
   _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, /*                  */
   _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, /*                  */
@@ -124,6 +124,7 @@ char is_end_of_line[256] = {
   _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _  /*                  */
 };
 #undef _
+#define is_end_of_line(c)      (is_end_of_line_tab[(c) & 0xFF])
 
 /*
  * The conditional assembly feature (.if, .else, .elseif and .endif) is
@@ -173,8 +174,8 @@ static void macro_begin(void);
  * functions.
  */
 static FILE *dump_fp = NULL;
-static char *write_macro(char *string, char *value);
-static char *write_symbol(char *string, char *value);
+static void write_macro(const char *string, PTR value);
+static void write_symbol(const char *string, PTR value);
 
 
 /* Functions private to this file */
@@ -235,6 +236,7 @@ static struct type_name type_names[] = {
     { "mod_init_funcs",		  S_MOD_INIT_FUNC_POINTERS },
     { "mod_term_funcs",		  S_MOD_TERM_FUNC_POINTERS },
     { "coalesced",		  S_COALESCED },
+    { "interposing",		  S_INTERPOSING },
     { NULL, 0 }
 };
 
@@ -436,9 +438,9 @@ static const pseudo_typeS pseudo_table[] = {
   { "lcomm",	s_lcomm,	0	},
   { "line",	s_line,		0	},
   { "long",	cons,		4	},
-#ifdef INTERIM_PPC64
+#if defined(ARCH64)
   { "quad",	cons,		8	},
-#endif /* INTERIM_PPC64 */
+#endif /* defined(ARCH64) */
   { "lsym",	s_lsym,		0	},
   { "section",	s_section,	0	},
   { "zerofill",	s_zerofill,	0	},
@@ -511,9 +513,9 @@ void)
 	 * For ppcasm allow '\r' as an end of line character and don't treat
 	 * '@' and ':' as an end of line characters.
 	 */
-	is_end_of_line[(int)'\r'] = 99;
-	is_end_of_line[(int)'@'] = 0;
-	is_end_of_line[(int)':'] = 0;
+	is_end_of_line('\r') = 99;
+	is_end_of_line('@') = 0;
+	is_end_of_line(':') = 0;
 
 	ppcasm_pseudo_op_begin();
 }
@@ -528,18 +530,22 @@ void
 pseudo_op_begin(
 void)
 {
-    char *errtxt;
+    const char *errtxt;
     const pseudo_typeS *pop;
     unsigned long i;
     pseudo_typeS *sections_pseudo_table;
 
 	po_hash = hash_new();
-	errtxt = "";
-	for(pop = pseudo_table; pop->poc_name && *errtxt == '\0'; pop++)
-	    errtxt = hash_insert(po_hash, pop->poc_name, (char *)pop);
+	errtxt = NULL;
+	for(pop = pseudo_table;
+	    pop->poc_name && (!errtxt || *errtxt == '\0');
+	    pop++)
+	  errtxt = hash_insert(po_hash, pop->poc_name, (char *)pop);
 
-	for(pop = md_pseudo_table; pop->poc_name && *errtxt == '\0'; pop++)
-	    errtxt = hash_insert(po_hash, pop->poc_name, (char *)pop);
+	for(pop = md_pseudo_table;
+	    pop->poc_name && (!errtxt || *errtxt == '\0');
+	    pop++)
+	  errtxt = hash_insert(po_hash, pop->poc_name, (char *)pop);
 
 	for(i = 0; builtin_sections[i].directive != NULL; i++)
 	    ;
@@ -552,11 +558,11 @@ void)
 	}
 	sections_pseudo_table[i].poc_name = NULL;
 	for(pop = (const pseudo_typeS *)sections_pseudo_table;
-	    pop->poc_name && *errtxt == '\0';
+	    pop->poc_name && (!errtxt || *errtxt == '\0');
 	    pop++)
 	    errtxt = hash_insert(po_hash, pop->poc_name, (char *)pop);
 
-	if(*errtxt != '\0'){
+	if(errtxt != NULL && *errtxt != '\0'){
 	    as_fatal("error constructing pseudo-op table (%s)", errtxt);
 	}
 }
@@ -571,15 +577,16 @@ void
 ppcasm_pseudo_op_begin(
 void)
 {
-    char *errtxt, *uppercase;
+    const char *errtxt;
+    char *uppercase;
     const pseudo_typeS *pop;
     unsigned long len, i;
 
 	ppcasm_po_hash = hash_new();
-	errtxt = "";
+	errtxt = NULL;
 	for(pop = ppcasm_pseudo_table; pop->poc_name != NULL; pop++){
 	    errtxt = hash_insert(ppcasm_po_hash, pop->poc_name, (char *)pop);
-	    if(*errtxt != '\0')
+	    if(errtxt != NULL && *errtxt != '\0')
 		as_fatal("error constructing pseudo-op table (%s)", errtxt);
 
 	    len = strlen(pop->poc_name);
@@ -588,7 +595,7 @@ void)
 	    for(i = 0; i < len; i++)
 		uppercase[i] = toupper(uppercase[i]);
 	    errtxt = hash_insert(ppcasm_po_hash, uppercase, (char *)pop);
-	    if(*errtxt != '\0')
+	    if(errtxt != NULL && *errtxt != '\0')
 		as_fatal("error constructing pseudo-op table (%s)", errtxt);
 	}
 }
@@ -1035,7 +1042,7 @@ char *buffer)
 		 */
 		else{
 		    *input_line_pointer = after_name;
-		    while(is_end_of_line[(int)*input_line_pointer] == 0)
+		    while(is_end_of_line(*input_line_pointer) == 0)
 			input_line_pointer++;
 		    end_of_line = *input_line_pointer;
 		    *input_line_pointer = '\0';
@@ -1055,7 +1062,7 @@ char *buffer)
 	    } /* if(is_name_beginner(c) || c == '"') */
 
 	    /* empty statement */
-	    if(is_end_of_line[(int)c])
+	    if(is_end_of_line(c))
 		continue;
 
 	    /*
@@ -1266,7 +1273,7 @@ char *buffer)
 		 * instruction and if not it will be handled as an error.
 		 */
 		else{
-		    while(is_end_of_line[(int)*input_line_pointer] == 0)
+		    while(is_end_of_line(*input_line_pointer) == 0)
 			input_line_pointer++;
 		    end_of_line = *input_line_pointer;
 		    *input_line_pointer = '\0';
@@ -1281,7 +1288,7 @@ char *buffer)
 	     * If we ran into the end of the line we are done with this line.
 	     */
 	    /* empty statement */
-	    if(is_end_of_line[(int)c]){
+	    if(is_end_of_line(c)){
 		input_line_pointer++;
 		continue;
 	    }
@@ -1432,7 +1439,7 @@ char **buffer)
 	for(;;){
 	    int c;
 
-	    c = do_scrub_next_char(scrub_from_string, scrub_to_string);
+	    c = do_scrub_next_char_from_string();
 	    if(c == EOF)
 		break;
 	    *new_tmp++ = c;
@@ -1499,7 +1506,7 @@ int value)
     char *p;
 
 	p = input_line_pointer;
-	while(is_end_of_line[(int)*p] == FALSE)
+	while(is_end_of_line(*p) == FALSE)
 	    p++;
 	*p = '\0';
 	
@@ -1636,7 +1643,7 @@ int value)
     char *name;
     char c;
     char *p;
-    int temp;
+    signed_target_addr_t temp;
     symbolS *symbolP;
 
 	if(*input_line_pointer == '"')
@@ -1655,7 +1662,7 @@ int value)
 	}
 	input_line_pointer++; /* skip ',' */
 	if((temp = get_absolute_expression ()) < 0){
-	    as_warn(".COMMon length (%d.) <0! Ignored.", temp);
+	    as_warn(".COMMon length (" TA_DFMT ".) <0! Ignored.", temp);
 	    ignore_rest_of_line();
 	    return;
 	}
@@ -1671,8 +1678,9 @@ int value)
 	}
 	if(symbolP->sy_value != 0){
 	    if(symbolP->sy_value != (unsigned long)temp)
-		as_warn("Length of .comm \"%s\" is already %ld. Not changed "
-			"to %d.", symbolP->sy_name, symbolP->sy_value, temp);
+		as_warn("Length of .comm \"%s\" is already " TA_DFMT ". Not "
+			"changed to " TA_DFMT ".", symbolP->sy_name,
+			symbolP->sy_value, temp);
 	}
 	else{
 	    symbolP -> sy_value = temp;
@@ -2372,7 +2380,7 @@ int value)
     char c, d, e, *p, *q, *r;
     struct type_name *type_name;
     unsigned long type, attribute;
-    struct section s;
+    section_t s;
     frchainS *frcP;
     unsigned long sizeof_stub;
 
@@ -2430,7 +2438,7 @@ int value)
 	    do{
 		e = *input_line_pointer++ ;
 	    }
-	    while(e != ',' && !(is_end_of_line[(int)e]));
+	    while(e != ',' && !(is_end_of_line(e)));
 	    r = input_line_pointer - 1;
 	    *r = 0;
 	    for(type_name = type_names; type_name->name != NULL; type_name++)
@@ -2451,7 +2459,7 @@ int value)
 		    attributename = input_line_pointer;
 		    do{
 			f = *input_line_pointer++ ;
-		    }while(f != ',' && f != '+' && !(is_end_of_line[(int)f]));
+		    }while(f != ',' && f != '+' && !(is_end_of_line(f)));
 		    t = input_line_pointer - 1;
 		    *t = 0;
 		    for(attribute_name = attribute_names;
@@ -2476,7 +2484,7 @@ int value)
 			sizeof_stub_name = input_line_pointer;
 			do{
 			    g = *input_line_pointer++ ;
-			}while(!(is_end_of_line[(int)g]));
+			}while(!(is_end_of_line(g)));
 			u = input_line_pointer - 1;
 			*u = 0;
 			sizeof_stub = strtoul(sizeof_stub_name, &endp, 0);
@@ -2532,7 +2540,7 @@ s_zerofill(
 int value)
 {
     char *segname, *sectname, c, d, *p, *q, *name;
-    struct section s;
+    section_t s;
     frchainS *frcP;
     symbolS *symbolP;
     int size, align;
@@ -2851,7 +2859,7 @@ demand_empty_rest_of_line(
 void)
 {
 	SKIP_WHITESPACE();
-	if(is_end_of_line[(int)*input_line_pointer])
+	if(is_end_of_line(*input_line_pointer))
 	    input_line_pointer++;
 	else
 	    ignore_rest_of_line();
@@ -2866,15 +2874,15 @@ void
 ignore_rest_of_line(
 void)
 {
-	if(!is_end_of_line[(int)*input_line_pointer]){
+	if(!is_end_of_line(*input_line_pointer)){
 	    as_warn("Rest of line ignored. 1st junk character valued %d (%c).",
 		    *input_line_pointer, *input_line_pointer);
 	    while(input_line_pointer < buffer_limit &&
-		  !is_end_of_line[(int)*input_line_pointer])
+		  !is_end_of_line(*input_line_pointer))
 		input_line_pointer++;
 	}
 	input_line_pointer++;	/* Return pointing just after end-of-line. */
-	know(is_end_of_line[(int)(input_line_pointer[-1])]);
+	know(is_end_of_line(input_line_pointer[-1]));
 }
 
 /*
@@ -3111,11 +3119,7 @@ cons(
 int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 {
     char c;
-#ifdef INTERIM_PPC64
-    long long
-#else
-    long
-#endif /* INTERIM_PPC64 */
+    signed_target_addr_t
     mask,		/* high-order bits to truncate */
     unmask,		/* what bits we will store */
     get,		/* the bits of the expression we get */
@@ -3128,19 +3132,15 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 	 * Input_line_pointer -> 1st char after pseudo-op-code and could legally
 	 * be a end-of-line. (Or, less legally an eof - which we cope with.)
 	 */
-#ifdef INTERIM_PPC64
-	if(nbytes >= (int)sizeof(long long))
-#else
-	if(nbytes >= (int)sizeof(long int))
-#endif /* INTERIM_PPC64 */
+	if(nbytes >= (int)sizeof(signed_target_addr_t))
 	    mask = 0;
 	else 
 	    /* Don't store these bits. */
-#ifdef INTERIM_PPC64
+#if defined(ARCH64)
 	    mask = ~0ULL << (BITS_PER_CHAR * nbytes);
 #else
 	    mask = ~0 << (BITS_PER_CHAR * nbytes);
-#endif /* INTERIM_PPC64 */
+#endif /* defined(ARCH64) */
 	unmask = ~mask;		/* Do store these bits. */
 
 	/*
@@ -3171,7 +3171,7 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 	    p = frag_more(nbytes);
 	    switch(segment){
 	    case SEG_BIG:
-#ifdef INTERIM_PPC64
+#if defined(ARCH64)
 		/*
 		 * Handle bignums small enough to fit in a long long and
 		 * thus be passed directly to md_number_to_chars.
@@ -3189,7 +3189,7 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 		    md_number_to_chars(p, sum, nbytes);
 		}
 		else
-#endif /* INTERIM_PPC64 */
+#endif /* defined(ARCH64) */
 		{
 		    as_warn("%s number illegal. Absolute 0 assumed.",
 			    exp.X_add_number > 0 ? "Bignum" : "Floating-Point");
@@ -3782,7 +3782,7 @@ is_it_end_of_statement(
 void)
 {
 	SKIP_WHITESPACE();
-	return(is_end_of_line[(int)*input_line_pointer]);
+	return(is_end_of_line(*input_line_pointer));
 }
 
 /*
@@ -3941,14 +3941,14 @@ void
 totally_ignore_line(
 void)
 {
-	if(!is_end_of_line[(int)*input_line_pointer]){
+	if(!is_end_of_line(*input_line_pointer)){
 	    while(input_line_pointer < buffer_limit &&
-		  !is_end_of_line[(int)*input_line_pointer]){
+		  !is_end_of_line(*input_line_pointer)){
 		input_line_pointer ++;
 	    }
 	}
 	input_line_pointer++;	/* Return pointing just after end-of-line. */
-	know(is_end_of_line[(int)(input_line_pointer[-1])]);
+	know(is_end_of_line(input_line_pointer[-1]));
 }
 
 /*
@@ -4018,7 +4018,7 @@ void
 s_endmacro(
 int value)
 {
-    char *errorString;
+    const char *errorString;
 
 	if(!macro_name){
 	    as_warn ("This .endmacro does not match with a preceeding .macro");
@@ -4028,7 +4028,7 @@ int value)
 	    obstack_1grow(&macros, '\0');
 	    errorString = hash_insert(ma_hash, macro_name,
 				      obstack_finish(&macros));
-	    if(*errorString)
+	    if(errorString != NULL && *errorString)
 		as_warn("The macro named \"%s\" is already defined",
 			macro_name);
 	    macro_name = NULL;
@@ -4061,7 +4061,7 @@ char *char_pointer)
 	    c = *char_pointer ++;
 	    know(c != '\0');
 	    obstack_1grow(&macros, c);
-	}while((c != ':') && !(is_end_of_line[(int)c]));
+	}while((c != ':') && !(is_end_of_line(c)));
 	if(char_pointer > input_line_pointer)
 	    input_line_pointer = char_pointer;
 }
@@ -4094,7 +4094,7 @@ char *macro_contents)
 		++input_line_pointer;
 	    know(*input_line_pointer != ' ');
 	    c = *input_line_pointer;
-	    if(is_end_of_line[(int)c])
+	    if(is_end_of_line(c))
 		arguments[index] = NULL;
 	    else{
 		int parenthesis_depth = 0;
@@ -4108,26 +4108,26 @@ char *macro_contents)
 			if(c == '(')
 			    parenthesis_depth ++;
 			else
-			    if(is_end_of_line[(int)c] ||
+			    if(is_end_of_line(c) ||
 			       (c == ' ') || (c == ','))
 			    break;
 		    }
 		    know(c != '\0');
-		    if(is_end_of_line[(int)c])
+		    if(is_end_of_line(c))
 			as_warn("missmatched parenthesis");
 		    obstack_1grow(&macros, c);
 		}while(1);
 		obstack_1grow(&macros, '\0');
 		arguments[index] = obstack_finish(&macros);
 		nargs++;
-		if(is_end_of_line[(int)c])
+		if(is_end_of_line(c))
 		    --input_line_pointer;
 		else if(c == ' ')
 		    if(*input_line_pointer == ',')
 			input_line_pointer++;
 	    }
 	}
-	if(!is_end_of_line[(int)c]){
+	if(!is_end_of_line(c)){
 	    as_warn("More than 10 arguments not allowed for macros");
 	    ignore_rest_of_line();
 	}
@@ -4204,9 +4204,9 @@ int value)
 	if((filename = demand_copy_string(&length))){
 	    demand_empty_rest_of_line();
 	    if((dump_fp = fopen(filename, "w+"))){
-		hash_apply(ma_hash, write_macro);
+		hash_traverse(ma_hash, write_macro);
 		fwrite(null_string, 1, 1, dump_fp);
-		hash_apply(sy_hash, write_symbol);
+		hash_traverse(sy_hash, write_symbol);
 		fwrite(null_string, 1, 1, dump_fp);
 		fclose(dump_fp);
 	    }
@@ -4216,32 +4216,32 @@ int value)
 }
 
 /*
- * write_macro() used by hash_apply indirectly through s_dump() to write one
+ * write_macro() used by hash_traverse indirectly through s_dump() to write one
  * macro.
  */
 static
-char *
+void
 write_macro(
-char *string,
-char *value)
+const char *string,
+PTR value1)
 {
+        char *value = value1;
 	know(string);
 	know(value);
 	know(strlen(string));
 	fwrite(string, (strlen(string) + 1), 1, dump_fp);
 	fwrite(value, (strlen(value) + 1), 1, dump_fp);
-	return(NULL);
 }
 
 /*
- * write_symbol() used by hash_apply indirectly through s_dump() to write one
+ * write_symbol() used by hash_traverse indirectly through s_dump() to write one
  * N_ABS symbol and its value.
  */
 static
-char *
+void
 write_symbol(
-char *string,
-char *value)
+const char *string,
+PTR value)
 {
     symbolS *symbolP;
 
@@ -4253,7 +4253,6 @@ char *value)
 	    fwrite(string, (strlen(string) + 1), 1, dump_fp);
 	    fwrite(&(symbolP -> sy_value), 4, 1, dump_fp);
 	}
-	return(NULL);
 }
 
 /*
@@ -4279,18 +4278,18 @@ int value)
 	    if((dump_fp = fopen(filename, "r+"))){
 		do{
 		    do{
-			the_char = getc(dump_fp);
+			the_char = getc_unlocked(dump_fp);
 			obstack_1grow(&macros, the_char);
 		    }while(the_char);
 		    char_pointer = obstack_finish (&macros);
 		    if(!(*char_pointer))
 			break;
 		    do{
-			the_char = getc(dump_fp);
+			the_char = getc_unlocked(dump_fp);
 			obstack_1grow(&macros, the_char);
 		    }while(the_char);
-		    if(*hash_insert(ma_hash, char_pointer,
-				    obstack_finish(&macros)))
+		    if(hash_insert(ma_hash, char_pointer,
+				   obstack_finish(&macros)))
 			as_warn("a macro named \"%s\" encountered in a .load "
 			        "is already defined", char_pointer);
 		}while(1);
@@ -4303,7 +4302,7 @@ int value)
 		symbol_lastP = dump_symbol_lastP;
 		do{
 		    do{
-			the_char = getc(dump_fp);
+			the_char = getc_unlocked(dump_fp);
 			obstack_1grow(&macros, the_char);
 		    }while(the_char);
 		    char_pointer = obstack_base(&macros);
@@ -4313,10 +4312,10 @@ int value)
 		    the_symbol = symbol_find_or_make(char_pointer);
 		    the_symbol->sy_type = N_ABS;
 		    char_pointer = (char *)&the_symbol->sy_value;
-		    *char_pointer++ = getc(dump_fp);
-		    *char_pointer++ = getc(dump_fp);
-		    *char_pointer++ = getc(dump_fp);
-		    *char_pointer++ = getc(dump_fp);
+		    *char_pointer++ = getc_unlocked(dump_fp);
+		    *char_pointer++ = getc_unlocked(dump_fp);
+		    *char_pointer++ = getc_unlocked(dump_fp);
+		    *char_pointer++ = getc_unlocked(dump_fp);
 		    the_symbol->sy_frag = &zero_address_frag;
 		}while(1);
 		dump_symbol_lastP = symbol_lastP;
@@ -4360,7 +4359,13 @@ int value)
     cpu_subtype_t new_cpusubtype;
 
 	arch_name = input_line_pointer;
-	c = get_symbol_end();
+	/*
+	 * Can't call get_symbol_end() here as some arch names have '-' in them.
+	 */
+	do{
+	    c = *input_line_pointer++ ;
+	}while(c != '\0' && c != '\n' && c != '\t' && c != ' ');
+	*--input_line_pointer = 0;
 
 	if(force_cpusubtype_ALL == FALSE){
 	    if(get_arch_from_flag(arch_name, &arch_flag) == 0){
@@ -4381,7 +4386,7 @@ int value)
 				arch_name);
 		    }
 		    else{
-			md_cpusubtype = new_cpusubtype;
+			archflag_cpusubtype = new_cpusubtype;
 		    }
 		}
 	    }

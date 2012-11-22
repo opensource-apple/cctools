@@ -40,6 +40,7 @@
 #include "stuff/version_number.h"
 #include "stuff/guess_short_name.h"
 #include "stuff/macosx_deployment_target.h"
+#include "stuff/execute.h"
 #if !(defined(KLD) && defined(__STATIC__))
 #include <stdio.h>
 #include <signal.h>
@@ -282,6 +283,9 @@ static enum bool read_only_reloc_flag_specified = FALSE;
 static enum bool sect_diff_reloc_flag_specified = FALSE;
 static enum bool weak_reference_mismatches_specified = FALSE;
 static enum bool prebind_all_twolevel_modules_specified = FALSE;
+static enum bool unprebound_library(
+    char *dylib_install_name,
+    char *seg_addr_table_filename);
 #endif
 
 /* True if -m is specified to allow multiply symbols, as a warning */
@@ -381,8 +385,11 @@ static char *bundle_loader = NULL;
 /* set to TRUE if -private_bundle is specified */
 __private_extern__ enum bool private_bundle = FALSE;
 
-/* The value of the environment variable NEXT_ROOT */
+/* The value of the environment variable NEXT_ROOT or the -syslibroot argument*/
 __private_extern__ char *next_root = NULL;
+#ifndef RLD
+static enum bool syslibroot_specified = FALSE;
+#endif
 
 /* TRUE if the environment variable RC_TRACE_ARCHIVES is set */
 __private_extern__ enum bool rc_trace_archives = FALSE;
@@ -477,6 +484,7 @@ char *envp[])
     char *exported_symbols_list, *unexported_symbols_list;
     enum bool missing_syms;
     enum bool vflag;
+    enum bool prebinding_via_LD_PREBIND;
 
 #ifdef __MWERKS__
     char **dummy;
@@ -486,6 +494,7 @@ char *envp[])
 	vflag = FALSE;
 	exported_symbols_list = NULL;
 	unexported_symbols_list = NULL;
+	seg_addr_table_entry = NULL;
 
 	progname = argv[0];
 #ifndef BINARY_COMPARE
@@ -513,6 +522,22 @@ char *envp[])
 
 	/* If ProjectBuilder is around set up for it */
 	check_for_ProjectBuilder();
+
+	/* 
+	 * Temporary hack to recognize a "-arch ppc64" in the command
+	 * line and invoke ld64 instead, passing all the arguments
+	 * verbatim.
+	 */
+	for(i = 1 ; i < argc ; i++){
+	    if(*argv[i] == '-' &&
+	       argv[i][1] == 'a' &&
+	       strcmp(argv[i], "-arch") == 0 &&
+	       i + 1 < argc &&
+	       strcmp(argv[i+1], "ppc64") == 0){
+		argv[0] = "/usr/bin/ld64";
+		ld_exit(!execute(argv, 0));
+	    }
+	}
 
 	/*
 	 * Parse the command line options in this pass and skip the object files
@@ -1303,6 +1328,15 @@ char *envp[])
 			moduletype_specified = TRUE;
 			multi_module_dylib = FALSE;
 		    }
+		    else if(strcmp(p, "syslibroot") == 0){
+			if(i + 1 >= argc)
+			    fatal("%s: argument missing", argv[i]);
+			if(syslibroot_specified == TRUE)
+			    fatal("%s: multiply specified", argv[i]);
+			next_root = argv[i+1];
+			syslibroot_specified = TRUE;
+			i += 1;
+		    }
 		    else
 			goto unknown_flag;
 		    break;
@@ -1313,7 +1347,7 @@ char *envp[])
 			if(namespace_specified == TRUE &&
 			   twolevel_namespace == FALSE)
 			    fatal("can't specify both -twolevel_namespace and "
-				  "-flatname_space");
+				  "-flat_namespace");
 			namespace_specified = TRUE;
 			twolevel_namespace = TRUE;
 		    }
@@ -1321,7 +1355,7 @@ char *envp[])
 			if(namespace_specified == TRUE &&
 			   twolevel_namespace == FALSE)
 			    fatal("can't specify both -twolevel_namespace_hints"
-				  " and -flatname_space");
+				  " and -flat_namespace");
 			twolevel_namespace_hints_specified = TRUE;
 		    }
 		    else if(p[1] == '\0')
@@ -1789,11 +1823,19 @@ unknown_flag:
 	}
 
 	/*
-	 * If the environment variable NEXT_ROOT is set prepend it to the
-	 * standard paths for library searches.  This was added to ease
-	 * cross build environments.
+	 * If either -syslibroot or the environment variable NEXT_ROOT is set
+	 * prepend it to the standard paths for library searches.  This was
+	 * added to ease cross build environments.
 	 */
-	next_root = getenv("NEXT_ROOT");
+	p = getenv("NEXT_ROOT");
+	if(syslibroot_specified == TRUE){
+	    if(p != NULL)
+		warning("NEXT_ROOT environment variable ignored because "
+			"-syslibroot specified");
+	}
+	else{
+	    next_root = p;
+	}
 	if(next_root != NULL){
 	    for(i = 0; standard_dirs[i] != NULL; i++){
 		p = allocate(strlen(next_root) +
@@ -1834,6 +1876,7 @@ unknown_flag:
 	if(getenv("LD_DEAD_STRIP_DYLIB") != NULL && filetype == MH_DYLIB)
 	    dead_strip = TRUE;
 
+	prebinding_via_LD_PREBIND = FALSE;
 	/*
 	 * The LD_FORCE_NO_PREBIND environment variable overrides the command
 	 * line and the LD_PREBIND environment variable.
@@ -1861,6 +1904,8 @@ unknown_flag:
 			"-noprebind specified");
 	    }
 	    else{
+		if(prebinding_flag_specified == FALSE)
+		    prebinding_via_LD_PREBIND = TRUE;
 		prebinding_flag_specified = TRUE;
 		prebinding = TRUE;
 	    }
@@ -2019,7 +2064,7 @@ unknown_flag:
 		fatal("can't use -noseglinkedit with -dylib (resulting file "
 		      "must have a link edit segment to access symbols)");
 	    if(bind_at_load == TRUE){
-		warning("-bind_at_load is meanless with -dylib");
+		warning("-bind_at_load is meaningless with -dylib");
 		bind_at_load = FALSE;
 	    }
 	    /* use a segment address table if specified */
@@ -2230,6 +2275,88 @@ unknown_flag:
 		fatal("-single_module or -multi_module flags can only be used "
 		      "when -dylib is also specified");
 	}
+
+	/*
+	 * For Mac OS X 10.4 and later, prebinding will be limited to split
+	 * shared libraries. So if this is not a split library then turn off
+	 * prebinding.
+	 */
+	if(macosx_deployment_target >= MACOSX_DEPLOYMENT_TARGET_10_4){
+	    if(filetype != MH_DYLIB){
+		if(prebinding_via_LD_PREBIND == FALSE &&
+		   prebinding_flag_specified == TRUE &&
+		   prebinding == TRUE){
+		    warning("-prebind ignored because MACOSX_DEPLOYMENT_TARGET "
+			    "environment variable greater or equal to 10.4");
+		}
+		prebinding = FALSE;
+	    }
+	    /*
+	     * This is an MH_DYLIB.  First see if it is on the list of libraries
+	     * not to be prebound.  Then see if was specified to be built as a
+	     * split, if not check LD_SPLITSEGS_NEW_LIBRARIES to see if we are
+	     * forcing it to be a split library.
+	     */
+	    else{
+		/*
+		 * If this library was not in the seg_addr_table see if it is
+		 * on the list of libraries not to be prebound. And if so turn
+		 * off prebinding.  Note this list is only ever used when
+		 * macosx_deployment_target >= MACOSX_DEPLOYMENT_TARGET_10_4 .
+		 */
+		if(seg_addr_table_entry == NULL &&
+		   unprebound_library(dylib_install_name,
+				      seg_addr_table_filename) == TRUE){
+		    if(prebinding_flag_specified == TRUE &&
+		       prebinding == TRUE){
+			warning("-prebind ignored because -install_name %s "
+				"listed in LD_UNPREBOUND_LIBRARIES environment "
+				"variable file: %s", dylib_install_name,
+				getenv("LD_UNPREBOUND_LIBRARIES"));
+		    }
+		    prebinding = FALSE;
+		}
+		else{
+		    /*
+		     * This is not on the list of libraries not to be prebound,
+		     * and if there was no seg_addr_table entry for this then
+		     * force this to be a split library.  Note even if
+		     * prebinding was not specified we will still force this to
+		     * be a split library.
+		     */
+		    if(seg_addr_table_entry == NULL &&
+		       getenv("LD_SPLITSEGS_NEW_LIBRARIES") != NULL){
+			if(seg1addr_specified){
+			    warning("-seg1addr 0x%x ignored, using "
+				    "-segs_read_only_addr 0x%x and "
+				    "-segs_read_write_addr 0x%x because "
+				    "LD_SPLITSEGS_NEW_LIBRARIES environment is "
+				    "set",(unsigned int)seg1addr, 0,0x10000000);
+			}
+			seg1addr_specified = FALSE;
+			seg1addr = 0;
+			segs_read_only_addr_specified = TRUE;
+			segs_read_only_addr = 0;
+			segs_read_write_addr = 0x10000000;
+		    }
+		    /*
+		     * Finally if this is not a split library then turn off
+		     * prebinding.
+		     */
+		    if(segs_read_only_addr_specified == FALSE){
+			if(prebinding_via_LD_PREBIND == FALSE &&
+			   prebinding_flag_specified == TRUE &&
+			   prebinding == TRUE){
+			    warning("-prebind ignored because "
+				    "MACOSX_DEPLOYMENT_TARGET environment "
+				    "variable greater or equal to 10.4");
+			}
+			prebinding = FALSE;
+		    }
+		}
+	    }
+	}
+
 	if(filetype == MH_BUNDLE){
 	    if(dynamic == FALSE)
 		fatal("incompatible flag -bundle used (must specify "
@@ -2596,7 +2723,8 @@ unknown_flag:
 			    strcmp(p, "seg_addr_table") == 0 ||
 			    strcmp(p, "seg_addr_table_filename") == 0 ||
 			    strcmp(p, "sub_umbrella") == 0 ||
-			    strcmp(p, "sub_library") == 0)
+			    strcmp(p, "sub_library") == 0 ||
+			    strcmp(p, "syslibroot") == 0)
 			i++;
 		    break;
 		case 'r':
@@ -2820,6 +2948,120 @@ unknown_flag:
 
 	/* this is to remove the compiler warning, it never gets here */
 	return(0);
+}
+
+/*
+ * unprebound_library() checks the file for the environment variable
+ * LD_UNPREBOUND_LIBRARIES to see if the dynamic library is one listed as to
+ * not be prebound.  The dynamic library is specified with the
+ * dylib_install_name unless seg_addr_table_filename is not NULL then
+ * seg_addr_table_filename is used.  If it is found on the list then TRUE is
+ * returned.  If not FALSE is returned.
+ */ 
+static
+enum bool
+unprebound_library(
+char *dylib_install_name,
+char *seg_addr_table_filename)
+{
+    int fd;
+    kern_return_t r;
+    struct stat stat_buf;
+    unsigned long j, file_size, line;
+    char *file_name, *library_name, *file_addr, *name, *end;
+
+	/*
+	 * If there is no file name then it is not on the list and return FALSE.
+	 */
+	file_name = getenv("LD_UNPREBOUND_LIBRARIES");
+	if(file_name == NULL)
+	    return(FALSE);
+
+	/*
+	 * If there is no library name then it is not on the list and return
+	 * FALSE.
+	 */
+	if(seg_addr_table_filename != NULL)
+	    library_name = dylib_install_name;
+	else if(dylib_install_name != NULL)
+	    library_name = dylib_install_name;
+	else
+	    return(FALSE);
+
+
+	if((fd = open(file_name, O_RDONLY, 0)) == -1)
+	    system_fatal("Can't open: %s for LD_UNPREBOUND_LIBRARIES "
+			 "environment variable", file_name);
+	if(fstat(fd, &stat_buf) == -1)
+	    system_fatal("Can't stat file: %s for LD_UNPREBOUND_LIBRARIES "
+		    	 "environment variable", file_name);
+	/*
+	 * For some reason mapping files with zero size fails
+	 * so it has to be handled specially.
+	 */
+	if(stat_buf.st_size != 0){
+	    if((r = map_fd((int)fd, (vm_offset_t)0,
+		(vm_offset_t *)&file_addr, (boolean_t)TRUE,
+		(vm_size_t)stat_buf.st_size)) != KERN_SUCCESS)
+		mach_fatal(r, "can't map file: %s for LD_UNPREBOUND_LIBRARIES "
+			   "environment variable", file_name);
+	}
+	else
+	    fatal("Empty file: %s for LD_UNPREBOUND_LIBRARIES environment "
+		  "variable", file_name);
+	close(fd);
+	file_size = stat_buf.st_size;
+
+	/*
+	 * Got the file mapped now parse it.
+	 */
+	if(file_addr[file_size - 1] != '\n')
+	    fatal("file: %s for LD_UNPREBOUND_LIBRARIES environment variable "
+		  "does not end in new line", file_name);
+
+	line = 1;
+	for(j = 0; j < file_size; /* no increment expression */ ){
+	    /* Skip lines that start with '#' */
+	    if(file_addr[j] == '#'){
+		j++;
+		while(file_addr[j] != '\n')
+		    j++;
+		continue;
+	    }
+	    /* Skip blank lines and leading white space */
+	    while(file_addr[j] == ' ' || file_addr[j] == '\t')
+		j++;
+	    if(file_addr[j] == '\n'){
+		j++;
+		line++;
+		continue;
+	    }
+	    if(j == file_size)
+		fatal("missing library install name on line %lu in file: "
+		      "%s for LD_UNPREBOUND_LIBRARIES environment variable",
+		      line, file_name);
+
+	    name = file_addr + j;
+	    while(file_addr[j] != '\n')
+		j++;
+	    file_addr[j] = '\0';
+	    end = file_addr + j;
+	    line++;
+	    j++;
+
+	    /* Trim trailing spaces */
+	    end--;
+	    while(end > name && (*end == ' ' || *end == '\t')){
+		*end = '\0';
+		end--;
+	    }
+
+	    /* finally compare the name on this line with the library name */
+	    if(strcmp(library_name, name) == 0)
+		return(TRUE);
+	}
+
+	return(FALSE);
 }
 
 /*
@@ -3109,6 +3351,7 @@ unsigned long r)
 }
 
 #ifndef RLD
+#include "stuff/unix_standard_mode.h"
 /*
  * All printing of all messages goes through this function.
  */
@@ -3118,7 +3361,10 @@ vprint(
 const char *format,
 va_list ap)
 {
-	vprintf(format, ap);
+	if(get_unix_standard_mode() == TRUE)
+	    vfprintf(stderr, format, ap);
+	else
+	    vprintf(format, ap);
 }
 #endif /* !defined(RLD) */
 

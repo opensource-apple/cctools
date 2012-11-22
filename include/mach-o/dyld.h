@@ -250,8 +250,13 @@ extern unsigned long _dyld_present(
 
 extern unsigned long _dyld_image_count(
     void);
+#ifdef __LP64__
+extern struct mach_header_64 * _dyld_get_image_header(
+    uint32_t image_index);
+#else /* !defined(__LP64__) */
 extern struct mach_header * _dyld_get_image_header(
     unsigned long image_index);
+#endif /* !defined(__LP64__) */
 extern unsigned long _dyld_get_image_vmaddr_slide(
     unsigned long image_index);
 extern char * _dyld_get_image_name(

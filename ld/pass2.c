@@ -49,6 +49,7 @@
 #include "stuff/bool.h"
 #include "stuff/bytesex.h"
 #include "stuff/macosx_deployment_target.h"
+#include "stuff/unix_standard_mode.h"
 
 #include "ld.h"
 #include "live_refs.h"
@@ -131,6 +132,15 @@ pass2(void)
     kern_return_t r;
 
 	/*
+	 * In UNIX standard conformance mode we are not allowed to replace
+	 * a file that is not writeable.
+	 */
+	if(get_unix_standard_mode() == TRUE && 
+	   access(outputfile, F_OK) == 0 &&
+	   access(outputfile, W_OK) == -1)
+	    system_fatal("can't write output file: %s", outputfile);
+
+	/*
 	 * Create the output file.  The unlink() is done to handle the problem
 	 * when the outputfile is not writable but the directory allows the
 	 * file to be removed (since the file may not be there the return code
@@ -153,7 +163,7 @@ pass2(void)
 	 */
 	if(output_mach_header.flags & MH_NOUNDEFS ||
 	   (has_dynamic_linker_command && output_for_dyld))
-	    mode = (stat_buf.st_mode & 0777) | 0111;
+	    mode = (stat_buf.st_mode & 0777) | (0111 & ~umask(0));
 	else
 	    mode = (stat_buf.st_mode & 0777) & ~0111;
 	if(fchmod(fd, mode) == -1)

@@ -1,6 +1,6 @@
 RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
-OFLAG = -O
+OFLAG = -Os
 ifeq "macos" "$(RC_OS)"
   X_CFLAGS := $(shell if [ "$(RC_RELEASE)" != "Beaker" ] &&    \
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
@@ -11,7 +11,7 @@ ifeq "macos" "$(RC_OS)"
 endif
 
 ifneq "mwccppc" "$(notdir $(CC))"
-  GCC_FLAGS = -Wall $(X_CFLAGS)
+  GCC_FLAGS = -Wall $(X_CFLAGS) -mdynamic-no-pic
 endif
 
 USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
@@ -34,7 +34,8 @@ CFLAGS = $(OFLAG) -g -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) \
 	$(GCC_FLAGS) -DNeXT_MOD \
 	-I$(NEXT_ROOT)$(PRIVATEHEADERS)
 
-LIBSTUFF = -L$(SYMROOT)/../../libstuff -lstuff
+LIBSTUFF_DIR = -L$(SYMROOT)/../../libstuff
+LIBSTUFF = -lstuff
 
 ifneq "" "$(wildcard /bin/mkdirs)"
   MKDIRS = /bin/mkdirs
@@ -253,14 +254,15 @@ appc64_build:	$(OBJROOT)/appc64_dir
 		SRCROOT=.. TARGET_OBJS="$(OBJS_ppc)" DEP_DIR=appc64_dir	\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_CFLAGS="$(RC_CFLAGS)" OFLAG=$(OFLAG)			\
-		COPTS="-DPPC -DINTERIM_PPC64"; 				\
+		COPTS="-DPPC -DARCH64" LIBSTUFF="-lstuff64";		\
 	else								\
 	    cd $(OBJROOT)/appc64_dir; $(MAKE) -f $(SRCROOT)/Makefile as	\
 		VPATH=$(SRCROOT) OFILE_DIR=$(OBJROOT)/appc64_dir	\
 		SYMROOT=$(SYMROOT)/appc64_dir SRCROOT=$(SRCROOT)	\
-		TARGET_OBJS="$(OBJS_ppc)" COPTS="-DPPC -DINTERIM_PPC64"	\
+		TARGET_OBJS="$(OBJS_ppc)" COPTS="-DPPC -DARCH64"	\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
-		RC_CFLAGS="$(RC_CFLAGS)" DEP_DIR=appc64_dir;		\
+		RC_CFLAGS="$(RC_CFLAGS)" DEP_DIR=appc64_dir		\
+		LIBSTUFF="-lstuff64";					\
 	fi
 
 appc_test: appc_dir
@@ -312,12 +314,13 @@ asparc_test: asparc_dir
 
 driver:	driver.o apple_version.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/driver \
-		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o $(LIBSTUFF)
+		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o \
+		$(LIBSTUFF_DIR) $(LIBSTUFF)
 
 as:	$(OBJS) $(TARGET_OBJS) makeUser.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/as.private.o $(OBJS) $(TARGET_OBJS) \
-		makeUser.o $(LIBSTUFF)
+		makeUser.o $(LIBSTUFF_DIR) $(LIBSTUFF)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/as $(SYMROOT)/as.private.o
 
 makeUser.c messages.c: make.h

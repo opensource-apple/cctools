@@ -3,6 +3,8 @@ RC_OS = macos
 OFLAG = -O
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -force_cpusubtype_ALL -msoft-float -nostdinc \
+-I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
+-I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/libsa \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/bsd \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
@@ -16,7 +18,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp -DINTERIM_PPC64 ; \
+	     echo -Wno-long-double -no-cpp-precomp ; \
 	     fi; )
 endif
 
@@ -282,8 +284,8 @@ kld_build: $(OBJROOT)/dynamic_kld $(OBJROOT)/static_kld $(SYMROOT)/ld_dir
 	    cd static_kld; $(MAKE) -f ../Makefile libkld.a VPATH=.. \
 		MAKEINCDIR="`pwd`" OFILE_DIR=. SRCROOT=.. 		\
 		COPTS="-static -DRLD -DKLD $(KERN)" CC="$(CC)"		\
-		LIBSTUFF="-L../../libstuff -lstuff" PRIVATE_IFLAG=""	\
-		LIBMACHO="-L../../libmacho/otmp_obj -lmacho_static"	\
+		LIBSTUFF="-L../../libstuff -lstuff_kld" PRIVATE_IFLAG="" \
+		LIBMACHO="-L../../libmacho/ktmp_obj -lmacho_kld"	\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_CFLAGS="$(RC_CFLAGS)" RC_ARCHS="$(RC_ARCHS)";	\
 	else								\
@@ -291,8 +293,8 @@ kld_build: $(OBJROOT)/dynamic_kld $(OBJROOT)/static_kld $(SYMROOT)/ld_dir
 		libkld.a VPATH=$(SRCROOT) OFILE_DIR=$(OBJROOT)/static_kld \
 		SYMROOT=$(SYMROOT)/ld_dir SRCROOT=$(SRCROOT) CC="$(CC)"	\
 		COPTS="-static -DRLD -DKLD $(KERN)" RC_CFLAGS="$(RC_CFLAGS)" \
-		LIBSTUFF="-L$(SYMROOT)/../libstuff -lstuff"		\
-		LIBMACHO="-L$(SYMROOT)/../libmacho -lmacho_static"	\
+		LIBSTUFF="-L$(SYMROOT)/../libstuff -lstuff_kld"		\
+		LIBMACHO="-L$(SYMROOT)/../libmacho -lmacho_kld"		\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)" PRIVATE_IFLAG="" \
 		MAKEINCDIR="`pwd`" RC_ARCHS="$(RC_ARCHS)";		\
 	fi

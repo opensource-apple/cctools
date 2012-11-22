@@ -257,9 +257,11 @@ static void count_relocs(
     struct relocation_info *relocs,
     unsigned long *nlocrel,
     unsigned long *nextrel);
+#endif /* !defined(RLD) */
 static void scatter_copy(
     struct section_map *map,
     char *contents);
+#ifndef RLD
 static void reloc_output_for_dyld(
     struct section_map *map,
     struct relocation_info *relocs,
@@ -489,8 +491,8 @@ struct section *s)
 			if((ms->s.flags & SECTION_TYPE) == S_SYMBOL_STUBS &&
 			   ms->s.reserved2 != s->reserved2){
 			    error_with_cur_obj("section's (%.16s,%.16s) sizeof "
-				"stub %lu does not match previous objects "
-				"sizeof stub %lu", s->segname, s->sectname,
+				"stub %u does not match previous objects "
+				"sizeof stub %u", s->segname, s->sectname,
 				s->reserved2, ms->s.reserved2);
 			    return(NULL);
 			}
@@ -2374,7 +2376,7 @@ struct merged_section *ms)
 	    load_symbol->load_order = &(load_orders[i]);
 
 	    /* find this symbol's place in the hash table */
-	    hash_index = hash_string(load_orders[i].name) %
+	    hash_index = hash_string(load_orders[i].name, NULL) %
 			 LOAD_SYMBOL_HASHTABLE_SIZE;
 	    for(hash_load_symbol = load_symbol_hashtable[hash_index]; 
 		hash_load_symbol != NULL;
@@ -2500,7 +2502,8 @@ no_exact_match:
 	symbol_name = trim(symbol_name);
 
 	/* find this symbol's place in the hash table */
-	hash_index = hash_string(symbol_name) % LOAD_SYMBOL_HASHTABLE_SIZE;
+	hash_index = hash_string(symbol_name, NULL) %
+		     LOAD_SYMBOL_HASHTABLE_SIZE;
 	for(hash_load_symbol = load_symbol_hashtable[hash_index]; 
 	    hash_load_symbol != NULL;
 	    hash_load_symbol = hash_load_symbol->next){
@@ -3875,9 +3878,6 @@ struct section_map *map)
 	else if(arch_flag.cputype == CPU_TYPE_I386)
 	    generic_reloc(contents, relocs, map, TRUE, NULL, 0);
 	else if(arch_flag.cputype == CPU_TYPE_POWERPC ||
-#ifdef INTERIM_PPC64
-		arch_flag.cputype == CPU_TYPE_POWERPC64 ||
-#endif /* INTERIM_PPC64 */
 		arch_flag.cputype == CPU_TYPE_VEO)
 	    ppc_reloc(contents, relocs, map, NULL, 0);
 	else if(arch_flag.cputype == CPU_TYPE_MC88000)
@@ -3893,7 +3893,6 @@ struct section_map *map)
 	else
 	    fatal("internal error: output_section() called with unknown "
 		  "cputype (%d) set", arch_flag.cputype);
-#ifndef RLD
 
 	/*
 	 * If the reloc routines caused errors then return as so to not cause
@@ -3909,6 +3908,7 @@ struct section_map *map)
 	    scatter_copy(map, contents);
 	    free(contents);
 	}
+#ifndef RLD
 	else
 	    output_flush(map->output_section->s.offset + map->flush_offset,
 			 map->s->size + (map->offset - map->flush_offset));
@@ -4080,6 +4080,36 @@ struct merged_symbol *merged_symbol)
 	}
 	return(FALSE);
 }
+#endif /* !defined(RLD) */
+
+/*
+ * pass2_nsect_merged_symbol_section_type() is passed an n_sect merged symbol as
+ * it appears in the second pass (that is with its n_sect) set to the output's
+ * section number) and returns the section type of that symbol in the output.
+ * otherwise.  This is used by legal_reference() in the case of weak coalesced
+ * symbols being discarded for some other symbol to figure out what section is
+ * being referenced in the output.
+ */
+__private_extern__
+unsigned long
+pass2_nsect_merged_symbol_section_type(
+struct merged_symbol *merged_symbol)
+{
+    unsigned long i;
+
+	if(merged_symbol == NULL ||
+	   (merged_symbol->nlist.n_type & N_TYPE) != N_SECT)
+	    fatal("internal error, s_pass2_merged_symbol_coalesced() passed "
+		  "a non-N_SECT symbol");
+	for(i = 0; i < merged_symbol->definition_object->nsection_maps; i++){
+	    if(merged_symbol->nlist.n_sect == merged_symbol->definition_object->
+			section_maps[i].output_section->output_sectnum)
+	    return(merged_symbol->definition_object->section_maps[i].
+		   output_section->s.flags & SECTION_TYPE);
+	}
+	fatal("internal error, s_pass2_merged_symbol_coalesced() failed\n");
+	return(0);
+}
 
 /*
  * scatter_copy() copies the relocated contents of a section into the output
@@ -4091,7 +4121,9 @@ scatter_copy(
 struct section_map *map,
 char *contents)
 {
-    unsigned long i, j;
+    unsigned long i;
+#ifndef RLD
+    unsigned long j;
     struct nlist *nlists;
     unsigned long *indirect_symtab, index, value;
     struct undefined_map *undefined_map;
@@ -4353,7 +4385,9 @@ char *contents)
 	 * For other indirect sections and coalesced sections only copy those
 	 * parts of the section who's contents are used in the output file.
 	 */
-	else if((map->s->flags & SECTION_TYPE) == S_SYMBOL_STUBS ||
+	else
+#endif /* !defined(RLD) */
+	     if((map->s->flags & SECTION_TYPE) == S_SYMBOL_STUBS ||
 	        (map->s->flags & SECTION_TYPE) == S_LAZY_SYMBOL_POINTERS ||
 	        (map->s->flags & SECTION_TYPE) == S_COALESCED){
 	    for(i = 0; i < map->nfine_relocs - 1; i++){
@@ -4393,6 +4427,7 @@ char *contents)
 	}
 }
 
+#ifndef RLD
 /*
  * reloc_output_for_dyld() takes the relocation entries after being processed by
  * a relocation routine and copys the ones to be in the output file for a file
@@ -6025,21 +6060,21 @@ char *string)
 	print("Merged section list (%s)\n", string);
 	for(msg = merged_segments; msg ; msg = msg->next){
 	    print("    Segment %.16s\n", msg->sg.segname);
-	    print("\tcmd %lu\n", msg->sg.cmd);
-	    print("\tcmdsize %lu\n", msg->sg.cmdsize);
+	    print("\tcmd %u\n", msg->sg.cmd);
+	    print("\tcmdsize %u\n", msg->sg.cmdsize);
 	    print("\tvmaddr 0x%x ", (unsigned int)msg->sg.vmaddr);
 	    print("(addr_set %s)\n", msg->addr_set ? "TRUE" : "FALSE");
 	    print("\tvmsize 0x%x\n", (unsigned int)msg->sg.vmsize);
-	    print("\tfileoff %lu\n", msg->sg.fileoff);
-	    print("\tfilesize %lu\n", msg->sg.filesize);
+	    print("\tfileoff %u\n", msg->sg.fileoff);
+	    print("\tfilesize %u\n", msg->sg.filesize);
 	    print("\tmaxprot ");
 	    print_prot(msg->sg.maxprot);
 	    print(" (prot_set %s)\n", msg->prot_set ? "TRUE" : "FALSE");
 	    print("\tinitprot ");
 	    print_prot(msg->sg.initprot);
 	    print("\n");
-	    print("\tnsects %lu\n", msg->sg.nsects);
-	    print("\tflags %lu\n", msg->sg.flags);
+	    print("\tnsects %u\n", msg->sg.nsects);
+	    print("\tflags %u\n", msg->sg.flags);
 #ifdef RLD
 	    print("\tset_num %lu\n", msg->set_num);
 #endif /* RLD */
@@ -6049,11 +6084,11 @@ char *string)
 		print("\t    Section (%.16s,%.16s)\n",
 		       ms->s.segname, ms->s.sectname);
 		print("\t\taddr 0x%x\n", (unsigned int)ms->s.addr);
-		print("\t\tsize %lu\n", ms->s.size);
-		print("\t\toffset %lu\n", ms->s.offset);
-		print("\t\talign %lu\n", ms->s.align);
-		print("\t\tnreloc %lu\n", ms->s.nreloc);
-		print("\t\treloff %lu\n", ms->s.reloff);
+		print("\t\tsize %u\n", ms->s.size);
+		print("\t\toffset %u\n", ms->s.offset);
+		print("\t\talign %u\n", ms->s.align);
+		print("\t\tnreloc %u\n", ms->s.nreloc);
+		print("\t\treloff %u\n", ms->s.reloff);
 		print("\t\tflags %s\n",
 		      section_flags[ms->s.flags & SECTION_TYPE]);
 #ifdef RLD
@@ -6095,11 +6130,11 @@ char *string)
 		print("\t    Section (%.16s,%.16s)\n",
 		       ms->s.segname, ms->s.sectname);
 		print("\t\taddr 0x%x\n", (unsigned int)ms->s.addr);
-		print("\t\tsize %lu\n", ms->s.size);
-		print("\t\toffset %lu\n", ms->s.offset);
-		print("\t\talign %lu\n", ms->s.align);
-		print("\t\tnreloc %lu\n", ms->s.nreloc);
-		print("\t\treloff %lu\n", ms->s.reloff);
+		print("\t\tsize %u\n", ms->s.size);
+		print("\t\toffset %u\n", ms->s.offset);
+		print("\t\talign %u\n", ms->s.align);
+		print("\t\tnreloc %u\n", ms->s.nreloc);
+		print("\t\treloff %u\n", ms->s.reloff);
 		print("\t\tflags %s\n",
 		      section_flags[ms->s.flags & SECTION_TYPE]);
 #ifdef RLD

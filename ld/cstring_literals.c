@@ -556,7 +556,7 @@ struct merged_section *ms)
 #if defined(DEBUG) && defined(PROBE_COUNT)
 	    data->nprobes++;
 #endif
-	hashval = hash_string(cstring) % CSTRING_HASHSIZE;
+	hashval = hash_string(cstring, NULL) % CSTRING_HASHSIZE;
 	for(bp = data->hashtable[hashval]; bp; bp = bp->next){
 	    if(strcmp(cstring, bp->cstring) == 0)
 		return(bp->offset);
@@ -747,7 +747,7 @@ struct merged_section *ms)
 	    return;
 	print("literal cstring section (%.16s,%.16s) contains:\n",
 	      ms->s.segname, ms->s.sectname);
-	print("    %lu bytes of merged strings\n", ms->s.size);
+	print("    %u bytes of merged strings\n", ms->s.size);
 	print("    from %lu files and %lu total bytes from those "
 	      "files\n", data->nfiles, data->nbytes);
 	print("    average number of bytes per file %g\n",

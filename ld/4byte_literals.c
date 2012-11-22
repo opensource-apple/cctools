@@ -427,7 +427,7 @@ struct merged_section *ms)
 	    return;
 	print("literal4 section (%.16s,%.16s) contains:\n",
 	      ms->s.segname, ms->s.sectname);
-	print("    %lu merged literals \n", ms->s.size / 4);
+	print("    %u merged literals \n", ms->s.size / 4);
 	print("    from %lu files and %lu total literals from those "
 	      "files\n", data->nfiles, data->nliterals);
 	print("    average number of literals per file %g\n",

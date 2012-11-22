@@ -55,6 +55,7 @@
  */
 struct merged_symbol {
     struct nlist nlist;		/* the nlist structure of this merged symbol */
+    unsigned long name_len;	/* the size of the symbol name */
     struct object_file		/* pointer to the object file this symbol is */
 	*definition_object;	/*  defined in */
     struct dynamic_library	/* pointer to the dynamic library this symbol */
@@ -295,6 +296,12 @@ struct indr_symbol_pair {
 };
 __private_extern__ struct indr_symbol_pair *indr_symbol_pairs;
 __private_extern__ unsigned long nindr_symbol_pairs;
+
+/*
+ * merged_symbols_relocated is set when the merged symbols are relocated to
+ * have addresses and section numbers as they would in the output file.
+ */
+__private_extern__ enum bool merged_symbols_relocated;
 
 /*
  * The strings in the string table can't start at offset 0 because a symbol with
