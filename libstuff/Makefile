@@ -5,9 +5,10 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double ; \
+	     echo -Wno-long-double -no-cpp-precomp ; \
 	     fi; )
 endif
+
 
 USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
 	     echo YES ; else echo NO ; \
@@ -39,7 +40,7 @@ CFILES = allocate.c errors.c arch.c execute.c bytesex.c round.c hppa.c \
 	  set_arch_flag_name.c seg_addr_table.c dylib_table.c \
 	  breakout.c writeout.c checkout.c fatal_arch.c ofile_get_word.c \
 	  vm_flush_cache.c hash_string.c dylib_roots.c guess_short_name.c \
-	  SymLoc.c get_arch_from_host.c crc32.c
+	  SymLoc.c get_arch_from_host.c crc32.c macosx_deployment_target.c
 OBJS = $(CFILES:.c=.o)
 INSTALL_FILES = $(CFILES) Makefile notes
 

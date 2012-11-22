@@ -1,3 +1,7 @@
+Changes for the 5.10 release (the cctools-414 release):
+- Changed the calls to mach_host_self() in NXGetLocalArchInfo() in arch.c to
+  call mach_port_deallocate() on the port after the call.  Radar bug #2895931.
+
 Changes for the 5.10 release (the cctools-403 release):
 - Changed the macos_lib_ofiles_install target in the Makefile to work when
   $SYMROOT is not set.  So the top level Makefile can do a make install and

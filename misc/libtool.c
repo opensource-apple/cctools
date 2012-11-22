@@ -647,7 +647,9 @@ char **envp)
 			strcmp(argv[i], "-flat_namespace") == 0 ||
 			strcmp(argv[i], "-nomultidefs") == 0 ||
 			strcmp(argv[i], "-headerpad_max_install_names") == 0 ||
-			strcmp(argv[i], "-prebind_all_twolevel_modules") == 0){
+			strcmp(argv[i], "-prebind_all_twolevel_modules") == 0 ||
+			strcmp(argv[i], "-ObjC") == 0 ||
+			strcmp(argv[i], "-M") == 0){
 		    if(cmd_flags.ranlib == TRUE){
 			error("unknown option: %s", argv[i]);
 			usage();
@@ -1391,9 +1393,26 @@ struct ofile *ofile)
 	     * library to be created fat unless there are object going into
 	     * the library that are fat.
 	     */
-	    if(cmd_flags.dynamic == TRUE &&
-	       ofile->mh->filetype == MH_DYLIB)
+	    if(ofile->mh->filetype == MH_DYLIB){
+		/*
+		 * If we are building a static library we should not put a
+		 * dynamic library Mach-O file into the static library.  This
+		 * can happen if a libx.a file is really a dynamic library and
+		 * someone is using -lx when creating a static library.
+		 */
+		if(cmd_flags.dynamic != TRUE){
+		    if(ofile->member_ar_hdr != NULL){
+			warning("file: %s(%.*s) is a dynamic library, not "
+				"added to the static library", 
+			        ofile->file_name, (int)ofile->member_name_size,
+			        ofile->member_name);
+		    }
+		    else
+			warning("file: %s is a dynamic library, not added to "
+				"the static library", ofile->file_name);
+		}
 		return;
+	    }
 	    /*
 	     * If -arch_only is specified then only add this file if it matches
 	     * the architecture specified.

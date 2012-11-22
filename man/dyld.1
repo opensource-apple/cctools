@@ -1,4 +1,4 @@
-.TH DYLD 1 "February 27, 2001" "Apple Computer, Inc."
+.TH DYLD 1 "March 27, 2002" "Apple Computer, Inc."
 .SH NAME
 dyld \- the dynamic link editor
 .SH SYNOPSIS
@@ -60,10 +60,12 @@ and
 .SM DYLD_FALLBACK_LIBRARY_PATH
 in turn.
 .IP
-You can view which version of the framework that the dyld uses with the
+Use the
 .B \-L
-option to
+option to 
 .IR otool (1).
+to discover the frameworks and shared libraries that the executable
+is linked against.
 .TP
 .B DYLD_FALLBACK_FRAMEWORK_PATH
 This is a colon separated list of directories that contain frameworks.
@@ -88,10 +90,12 @@ and
 .SM DYLD_FALLBACK_LIBRARY_PATH
 in turn.
 .IP
-You can view which version of the library that the dyld uses with the
+Use the
 .B \-L
-option to
+option to 
 .IR otool (1).
+to discover the frameworks and shared libraries that the executable
+is linked against.
 .TP
 .B DYLD_FALLBACK_LIBRARY_PATH
 This is a colon separated list of directories that contain libraries.
@@ -188,7 +192,7 @@ linker clears out the value of the dyld path and insertion environment
 variables.  This is so that if a program is
 .IR exec (2)'ed
 from a secure program too will not have it's libraries searched for, as well.
-For staticly linked secure programs that
+For statically linked secure programs that
 .IR exec (2) 
 other programs that might use the dynamic linker, they too should clear out the
 values of the dyld path and insertion environment variables.
@@ -215,7 +219,7 @@ private libraries.  Setting the
 .SM DYLD_NEW_LOCAL_SHARED_REGIONS
 flag will cause
 all children of the current process to have their own set of sub-maps.  In this
-way the libraries found in the childrens' submaps will not be caused to be
+way the libraries found in the children's submaps will not be caused to be
 present in the submaps shared by the rest of the system.
 
 .SM DYLD_NEW_LOCAL_SHARED_REGIONS

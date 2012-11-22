@@ -101,7 +101,8 @@ enum needs_redo_prebinding_retval {
     PREBINDING_UPTODATE,  /* a binary who's prebinding is up todate */
     PREBINDING_OUTOFDATE, /* a binary who's prebinding is out of date */
     NOT_PREBOUND,	  /* a binary, but not built prebound */
-    NOT_PREBINDABLE,	  /* not a binary, prebinding does not apply */
+    NOT_PREBINDABLE,	  /* not a binary or statically linked,
+			     prebinding does not apply */
     PREBINDING_UNKNOWN	  /* a binary who's prebinding can't be determined
 			     because it is malformed, a library it depends
 			     on is missing, etc. */

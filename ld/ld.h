@@ -65,6 +65,13 @@ enum read_only_reloc_check_level {
     READ_ONLY_RELOC_SUPPRESS
 };
 
+/* The error level check for section difference relocs */
+enum sect_diff_reloc_check_level {
+    SECT_DIFF_RELOC_ERROR,
+    SECT_DIFF_RELOC_WARNING,
+    SECT_DIFF_RELOC_SUPPRESS
+};
+
 /* The error handling for weak reference mismatches */
 enum weak_reference_mismatches_handling {
     WEAK_REFS_MISMATCH_ERROR,
@@ -72,14 +79,8 @@ enum weak_reference_mismatches_handling {
     WEAK_REFS_MISMATCH_NON_WEAK
 };
 
-/* The Mac OS X deployment targets */
-enum macosx_deployment_target_value {
-    MACOSX_DEPLOYMENT_TARGET_10_1,
-    MACOSX_DEPLOYMENT_TARGET_10_2
-};
-__private_extern__ enum macosx_deployment_target_value
-    macosx_deployment_target;
-__private_extern__ char *macosx_deployment_target_name;
+__private_extern__ enum macosx_deployment_target_value macosx_deployment_target;
+__private_extern__ const char *macosx_deployment_target_name;
 
 /* name of this program as executed (argv[0]) */
 __private_extern__ char *progname;
@@ -123,10 +124,8 @@ __private_extern__
 enum bool bind_at_load;		/* mark the output for dyld to be bound
 				   when loaded */
 __private_extern__
-enum bool lazy_init;		/* mark the shared library to have its
-				   init routine to be run lazily via
-				   catching memory faults to its
-				   writeable segments */
+enum bool no_fix_prebinding;	/* mark the output for dyld to never
+				   run fix_prebinding */
 __private_extern__
 enum bool load_map;		/* print a load map */
 __private_extern__
@@ -191,6 +190,9 @@ __private_extern__ enum bool nomultidefs;
 
 /* The checking for read only relocs */
 __private_extern__ enum read_only_reloc_check_level read_only_reloc_flag;
+
+/* The checking for pic relocs */
+__private_extern__ enum sect_diff_reloc_check_level sect_diff_reloc_flag;
 
 /* The handling for weak reference mismatches */
 __private_extern__ enum weak_reference_mismatches_handling

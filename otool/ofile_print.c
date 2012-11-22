@@ -1164,6 +1164,10 @@ NS32:
 		printf(" NOMULTIDEFS");
 		flags &= ~MH_NOMULTIDEFS;
 	    }
+	    if(flags & MH_NOFIXPREBINDING){
+		printf(" NOFIXPREBINDING");
+		flags &= ~MH_NOFIXPREBINDING;
+	    }
 	    if(flags != 0 || mh->flags == 0)
 		printf(" 0x%08x", (unsigned int)flags);
 	    printf("\n");
@@ -1790,6 +1794,8 @@ enum bool verbose)
 		printf(" PURE_INSTRUCTIONS");
 	    if(section_attributes & S_ATTR_NO_TOC)
 		printf(" NO_TOC");
+	    if(section_attributes & S_ATTR_STRIP_STATIC_SYMS)
+		printf(" STRIP_STATIC_SYMS");
 	    if(section_attributes & S_ATTR_SOME_INSTRUCTIONS)
 		printf(" SOME_INSTRUCTIONS");
 	    if(section_attributes & S_ATTR_EXT_RELOC)
@@ -4897,7 +4903,8 @@ long l1,
 double d)
 {
 	printf("0x%08x 0x%08x", (unsigned int)l0, (unsigned int)l1);
-	if(finite(d))
+	/* l0 is the high word, so this is equivalent to if(isfinite(d)) */
+	if((l0 & 0x7ff00000) != 0x7ff00000)
 	    printf(" (%.16e)\n", d);
 	else{
 	    if(l0 == 0x7ff00000 && l1 == 0)

@@ -35,6 +35,8 @@ extern int add_profil(char *, int, int, int);
 #import <sys/stat.h>
 #import <mach/mach.h>
 #import "stuff/openstep_mach.h"
+#import <servers/bootstrap.h>
+#import "_dyld_prebind.h"
 #import <mach-o/fat.h>
 #import <mach-o/loader.h>
 #import <mach-o/dyld_debug.h>
@@ -384,6 +386,18 @@ static void call_dependent_init_routines(
     module_state *module,
     enum bool use_header_dependencies);
 static void notify_prebinding_agent(void);
+#ifdef SYSTEM_REGION_BACKED
+/*
+ * We do not cause the prebinding to be fixed if the program is not using the
+ * system shared regions.  This information is returned in the flags of the
+ * load_shared_file() call.  Once this information is determined then this
+ * is set to true.  If notify_prebinding_agent() is called and this is not
+ * yet set to TRUE then it will make a nop call to load_shared_file() to
+ * determined if the system shared regions are being used.  If they are not
+ * then it will return and do nothing.
+ */
+static enum bool determined_system_region_backed = FALSE;
+#endif /* SYSTEM_REGION_BACKED */
 
 /*
  * The address of these symbols are written in to the (__DATA,__dyld) section
@@ -428,7 +442,7 @@ unsigned long *entry_point)
     struct object_image *object_image;
     enum bool change_protect_on_reloc, cache_sync_on_reloc,
 	      has_coalesced_sections, seg1addr_found;
-    char *dylib_name, *p;
+    char *dylib_name, *p, *passed_dylib_name;
 #ifdef __ppc__
     unsigned long images_dyld_stub_binding_helper;
 
@@ -724,12 +738,20 @@ unsigned long *entry_point)
 			   "DYLD_INSERT_LIBRARIES being set\n",
 			   executables_name);
 		prebinding = FALSE;
-		(void)load_library_image(NULL, dylib_name, FALSE, FALSE, NULL);
+		passed_dylib_name = allocate(strlen(dylib_name) + 1);
+		strcpy(passed_dylib_name, dylib_name);
+		(void)load_library_image(NULL, passed_dylib_name, FALSE, FALSE,
+					 NULL);
 		if(p == NULL){
 		    break;
 		}
 		else{
-		    *p = ':';
+		    /*
+		     * Do not put colons put back in the string as we are using
+		     * a pointer to it as the dylib_name.  Note that
+		     * dyld_insert_libraries is a copy of the environment string
+		     * as made in pickup_enviroment_strings().
+		     */
 		    dylib_name = p + 1;
 		}
 	    }
@@ -856,6 +878,7 @@ char *suffix)
     char *new_dylib_name, *ext;
     struct stat stat_buf;
     long nmlen;
+    int r;
 
 	if(suffix == NULL){
 	    return(NULL);
@@ -873,7 +896,8 @@ char *suffix)
 	    strcpy(new_dylib_name, dylib_name);
 	    strcat(new_dylib_name, suffix);
 	}
-	if(stat(new_dylib_name, &stat_buf) == 0){
+	r = stat(new_dylib_name, &stat_buf);
+	if(r == 0 && (stat_buf.st_mode & S_IFMT) == S_IFREG){
 	    return(new_dylib_name);
 	}
 	free(new_dylib_name);
@@ -892,6 +916,7 @@ char *suffix)
 {
     char *constructed_name, *new_dylib_name;
     struct stat stat_buf;
+    int r;
 
 	constructed_name = NULL;
 	if(strncmp(dylib_name, "@executable_path/",
@@ -904,7 +929,8 @@ char *suffix)
 		    free(constructed_name);
 		    return(new_dylib_name);
 		}
-		if(stat(constructed_name, &stat_buf) == 0){
+		r = stat(constructed_name, &stat_buf);
+		if(r == 0 && (stat_buf.st_mode & S_IFMT) == S_IFREG){
 		    return(constructed_name);
 		}
 		free(constructed_name);
@@ -929,21 +955,22 @@ char *suffix)
  * into memory and added to the dynamic link editor data structures to use it.
  * Specifically this routine takes a pointer to a dylib_command for a library
  * and finds and opens the file corresponding to it (or if that is NULL then
- * the specified dylib_name).  It deals with the file being fat and then calls
- * map_library_image() to have the library's segments mapped into memory.  For
- * two-level images that depend on this library, image_pointer is the address
- * of a pointer to an image struct to be set (if not NULL) after this image is
- * loaded.
+ * the specified passed_dylib_name).  It deals with the file being fat and then
+ * calls map_library_image() to have the library's segments mapped into memory.
+ * For two-level images that depend on this library, image_pointer is the
+ * address of a pointer to an image struct to be set (if not NULL) after this
+ * image is loaded.  If passed_dylib_name is not NULL it is always free()'ed
+ * before returning.
  */
 enum bool
 load_library_image(
 struct dylib_command *dl, /* allow NULL for NSAddLibrary() to use this */
-char *dylib_name,
+char *passed_dylib_name,
 enum bool force_searching,
 enum bool match_filename_by_installname,
 struct image **image_pointer)
 {
-    char *new_dylib_name, *constructed_name;
+    char *dylib_name, *new_dylib_name, *constructed_name;
     int fd, errnum, save_errno;
     struct stat stat_buf;
     unsigned long file_size;
@@ -956,6 +983,10 @@ struct image **image_pointer)
 
 	new_dylib_name = NULL;
 	constructed_name = NULL;
+	if(dl != NULL)
+	    dylib_name = (char *)dl + dl->dylib.name.offset;
+	else
+	    dylib_name = passed_dylib_name;
         
         DYLD_TRACE_IMAGES_NAMED_START(DYLD_TRACE_load_library_image,dylib_name);
 
@@ -966,7 +997,6 @@ struct image **image_pointer)
 	 * for any library marked with match_filename_by_installname.
 	 */
 	if(some_libraries_match_filename_by_installname == TRUE && dl != NULL){
-	    dylib_name = (char *)dl + dl->dylib.name.offset;
 	    if(is_library_loaded_by_matching_installname(dylib_name, dl,
 		image_pointer) == TRUE){
 		DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
@@ -980,8 +1010,6 @@ struct image **image_pointer)
 	 * the name passed in.
 	 */
 	if(dl != NULL || force_searching == TRUE){
-	    if(dl != NULL)
-		dylib_name = (char *)dl + dl->dylib.name.offset;
 	    /*
 	     * If the dyld_framework_path is set and this dylib_name is a
 	     * framework name, use the first file that exists in the framework
@@ -1037,13 +1065,12 @@ struct image **image_pointer)
 	 */
 	if(is_library_loaded_by_name(dylib_name, dl, image_pointer) == TRUE){
             DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
+	    if(passed_dylib_name != NULL)
+		free(passed_dylib_name);
 	    if(new_dylib_name != NULL)
 		free(new_dylib_name);
 	    if(constructed_name != NULL)
 		free(constructed_name);
-	    /* if dl is NULL free() the NSAddLibrary() allocated dylib_name */
-	    if(dl == NULL)
-		free(dylib_name);
 	    return(TRUE);
 	}
 
@@ -1115,11 +1142,11 @@ struct image **image_pointer)
 	     * then open it.  If no name was ever found put back the errno
 	     * from the original open that failed.
 	     */
-	    if(new_dylib_name != NULL) {
+	    if(new_dylib_name != NULL){
 		dylib_name = new_dylib_name;
 		fd = open(dylib_name, O_RDONLY, 0);
 	    }
-	    else {
+	    else{
 		errno = save_errno;
 	    }
 	}
@@ -1150,11 +1177,12 @@ struct image **image_pointer)
 		link_edit_error(DYLD_FILE_ACCESS, errnum, dylib_name);
 	    }
             DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
+	    if(passed_dylib_name != NULL)
+		free(passed_dylib_name);
 	    if(new_dylib_name != NULL)
 		free(new_dylib_name);
-	    if(constructed_name != NULL) {
+	    if(constructed_name != NULL)
 		free(constructed_name);
-            }
 	    return(FALSE);
 	}
 
@@ -1177,13 +1205,12 @@ struct image **image_pointer)
 	   == TRUE){
 	    close(fd);
             DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
+	    if(passed_dylib_name != NULL)
+		free(passed_dylib_name);
 	    if(new_dylib_name != NULL)
 		free(new_dylib_name);
 	    if(constructed_name != NULL)
 		free(constructed_name);
-	    /* if dl is NULL free() the NSAddLibrary() allocated dylib_name */
-	    if(dl == NULL)
-		free(dylib_name);
 	    return(TRUE);
 	}
 	/*
@@ -1316,6 +1343,8 @@ struct image **image_pointer)
 				     file_size, 0, file_size, stat_buf.st_dev,
 				     stat_buf.st_ino, image_pointer,
 				     match_filename_by_installname);
+	    if(return_value == FALSE)
+		goto load_library_image_cleanup3;
 	    DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
 	    return(return_value);
 
@@ -1336,7 +1365,10 @@ load_library_image_cleanup2:
 		 dylib_name);
 	    link_edit_error(DYLD_UNIX_RESOURCE, errnum, dylib_name);
 	}
+load_library_image_cleanup3:
         DYLD_TRACE_IMAGES_END(DYLD_TRACE_load_library_image);
+	if(passed_dylib_name != NULL)
+	    free(passed_dylib_name);
 	if(new_dylib_name != NULL)
 	    free(new_dylib_name);
 	if(constructed_name != NULL)
@@ -1461,6 +1493,7 @@ char *name,
 unsigned long *short_name_size)
 {
     char *a, *b, *c;
+    enum bool saw_version_letter;
 
 	*short_name_size = 0;
 	/* pull off the suffix after the "." and make a point to it */
@@ -1473,8 +1506,13 @@ unsigned long *short_name_size)
 	    return(NULL);
 
 	/* first pull off the version letter for the form Foo.A.dylib */
-	if(a - name >= 3 && a[-2] == '.')
+	if(a - name >= 3 && a[-2] == '.'){
 	    a = a - 2;
+	    saw_version_letter = TRUE;
+	}
+	else{
+	    saw_version_letter = FALSE;
+	}
 
 	b = look_back_for_slash(name, a);
 	if(b == name)
@@ -1488,6 +1526,11 @@ unsigned long *short_name_size)
 	    }
 	    else
 		*short_name_size = a - name;
+	    /* there are incorrect library names of the form:
+	       libSystem.B_debug.dylib so check for these */
+	    if(saw_version_letter == FALSE &&
+	       *short_name_size >= 3 && name[*short_name_size - 2] == '.')
+		    *short_name_size -= 2;
 	    return(name);
 	}
 	else{
@@ -1499,6 +1542,11 @@ unsigned long *short_name_size)
 	    }
 	    else
 		*short_name_size = a - (b+1);
+	    /* there are incorrect library names of the form:
+	       libSystem.B_debug.dylib so check for these */
+	    if(saw_version_letter == FALSE &&
+	       *short_name_size >= 3 && b[*short_name_size - 1] == '.')
+		    *short_name_size -= 2;
 	    return(b+1);
 	}
 }
@@ -1537,6 +1585,7 @@ char *suffix)
 {
     char *dylib_name, *new_dylib_name, *p;
     struct stat stat_buf;
+    int r;
 
 	dylib_name = allocate(strlen(name) + strlen(path) + 2);
 	for(;;){
@@ -1559,7 +1608,8 @@ char *suffix)
 		    *p = ':';
 		return(new_dylib_name);
 	    }
-	    if(stat(dylib_name, &stat_buf) == 0){
+	    r = stat(dylib_name, &stat_buf);
+	    if(r == 0 && (stat_buf.st_mode & S_IFMT) == S_IFREG){
 		if(p != NULL)
 		    *p = ':';
 		return(dylib_name);
@@ -2292,7 +2342,8 @@ unsigned long *images_dyld_stub_binding_helper)
 		    if((sg->initprot & VM_PROT_WRITE) == VM_PROT_WRITE &&
 		       sg->vmaddr < *segs_read_write_addr)
 			*segs_read_write_addr = sg->vmaddr;
-		    if(sg->fileoff == 0)
+		    if(sg->fileoff == 0 && sg->filesize != 0 &&
+		       mach_header_segment_vmaddr == 0)
 			mach_header_segment_vmaddr = sg->vmaddr;
 		}
 		lc = (struct load_command *)((char *)lc + lc->cmdsize);
@@ -2352,6 +2403,22 @@ unsigned long *images_dyld_stub_binding_helper)
 #endif /* NEW_LOCAL_SHARED_REGIONS */
 	    ret = load_shared_file(name, (caddr_t)file_addr, file_size,
 		(caddr_t *)&base_address, nsegs, m, &flags);
+#ifdef SYSTEM_REGION_BACKED
+	    if(determined_system_region_backed == FALSE &&
+	       (flags & SYSTEM_REGION_BACKED) != SYSTEM_REGION_BACKED){
+		dyld_no_fix_prebinding = TRUE;
+		if(dyld_prebind_debug != 0)
+		    print("dyld: in map_image() determined the "
+			  "system shared regions are NOT used\n");
+	    }
+	    else{
+		if(determined_system_region_backed == FALSE &&
+		   dyld_prebind_debug != 0)
+		    print("dyld: in map_image() determined the "
+			  "system shared regions ARE used\n");
+	    }
+	    determined_system_region_backed = TRUE;
+#endif /* SYSTEM_REGION_BACKED */
 	    if(ret == -1){
 		flags |= ALTERNATE_LOAD_SITE;
 		ret = load_shared_file(name, (caddr_t)file_addr, file_size,
@@ -2541,7 +2608,8 @@ unsigned long *images_dyld_stub_binding_helper)
 			goto map_image_cleanup0;
 		    }
 		}
-		if(sg->fileoff == 0)
+		if(sg->fileoff == 0 && sg->filesize != 0 &&
+		   mach_header_segment_vmaddr == 0)
 		    mach_header_segment_vmaddr = sg->vmaddr;
 		break;
 	    }
@@ -4255,7 +4323,7 @@ void)
 }
 
 /*
- * check_linkedit_info() checks the mach_header and load_commands of an image.
+ * check_image() checks the mach_header and load_commands of an image.
  * The image is assumed to be mapped into memory at the mach_header pointer for
  * a sizeof image_size.  The strings name and image_type are used for error
  * messages.  TRUE is returned if everything is ok else FALSE is returned after 
@@ -4466,6 +4534,7 @@ unsigned long *high_addr)
 			  "required for execution)", image_type, name, i,
 			  (unsigned int)(lc->cmd));
 		    link_edit_error(DYLD_FILE_FORMAT, EBADMACHO, name);
+		    return(FALSE);
 		}
 		break;
 	    }
@@ -6226,62 +6295,185 @@ void
 notify_prebinding_agent(
 void)
 {
-    pid_t childPid;
     struct statfs sb;
+    int ret;
+    struct stat fileStat, rootStat;
+
+    struct timeval currentTime;
+    struct timezone currentTimezone;
+
+    char *serviceName;
+    port_t serverPort;
+    port_t bootstrapPort;
+
+	DYLD_TRACE_IMAGES_NAMED_START(DYLD_TRACE_notify_prebinding_agent,
+				      executables_path);
 
 	/*
 	 * If the DYLD_NO_FIX_PREBINDING environment variable was picked up
-	 * then don't notify the prebinding agent.
+	 * or if fix_prebinding was determined not to be done then the variable
+	 * dyld_no_fix_prebinding would have been set to TRUE.  If so then don't
+	 * notify the prebinding agent.
 	 */
 	if(dyld_no_fix_prebinding == TRUE)
-	    return;
+	    goto leave_notify_prebinding_agent;
+
+#ifdef SYSTEM_REGION_BACKED
+	/*
+ 	 * If we have not determined if the system shared regions are being used
+	 * then make a nop call to load_shared_file() to determined this.  If
+	 * they are not used return and do nothing.
+	 */
+	if(determined_system_region_backed == FALSE){
+	    int flags;
+	    vm_address_t base_address;
+
+	    determined_system_region_backed = TRUE;
+	    flags = QUERY_IS_SYSTEM_REGION;
+	    (void)load_shared_file(NULL, (caddr_t)NULL, 0,
+		(caddr_t *)&base_address, 0, NULL, &flags);
+	    if((flags & SYSTEM_REGION_BACKED) != SYSTEM_REGION_BACKED){
+		if(dyld_prebind_debug != 0)
+		    print("dyld: in notify_prebinding_agent() determined the "
+			  "system shared regions are NOT used\n");
+		goto leave_notify_prebinding_agent;
+	    }
+	    else{
+		if(dyld_prebind_debug != 0)
+		    print("dyld: in notify_prebinding_agent() determined the "
+			  "system shared regions ARE used\n");
+	    }
+	}
+#endif /* SYSTEM_REGION_BACKED */
+
 
 	/*
 	 * Check the write access of the root file system.  If it is mounted
 	 * read-only then we're probably still starting up the OS and we won't
 	 * be able to write files so just return.
 	 */
-	if(statfs("/", &sb) == -1 || (sb.f_flags & MNT_RDONLY) != 0)
-	    return;
+	ret = statfs("/", &sb);
+	if(ret == -1 || (sb.f_flags & MNT_RDONLY) != 0)
+	    goto leave_notify_prebinding_agent;
 
-	DYLD_TRACE_IMAGES_NAMED_START(DYLD_TRACE_notify_prebinding_agent,
-				      executables_path);
-        /*
-	 * Don't run fixPrebinding on itself, or we'll get in an infinite loop.
-	 * Check the last componet of the path and just ignore any binary with
-	 * this name.  A symlink with a different name will not be caught
-	 * however.  A realpath() is a bit too expensive to avoid this case.
+	/*
+	 * Paths longer than PATH_MAX won't trigger prebinding, just so
+	 * we don't need to do anything clever with longer paths and
+	 * mach messages. 
+	 *
+	 * I think that this is not needed as the name is sent in out of line
+	 * data with a length.
 	 */
-	if((executables_pathlen - 1) >= sizeof("fix_prebinding") -1 &&
-	   strcmp(executables_path + ((executables_pathlen - 1) -
-				      (sizeof("fix_prebinding") -1)),
-		  "fix_prebinding") != 0){
-	    childPid = vfork();
-	    if(childPid == -1){
-		if(dyld_prebind_debug != 0)
-		    print("dyld: vfork() failed in trying to run prebinding "
-			  "agent (%s, errno = %d)\n", strerror(errno), errno);
-	    }
-	    else{
-		if(childPid == 0){
-		    if(dyld_prebind_debug != 0)
-			print("dyld: running prebinding agent: %s on: %s\n",
-			      "/usr/bin/fix_prebinding", executables_path);
-		    /*
-		     * Tell the prebinding agent that executables_path was
-		     * launched not using its prebinding information so it
-		     * can fix it.
-		     */
-		    execl("/usr/bin/fix_prebinding", "/usr/bin/fix_prebinding",
-			  executables_path, NULL);
-		    exit(0);
-		}
-	    }
+	if(executables_pathlen >= PATH_MAX)
+	    goto leave_notify_prebinding_agent;
+
+	/*
+	 * Until fix_prebinding is build with the ld(1) flag -nofixprebinding
+	 * we check the name of the executable.  This code will be removed at
+	 * some point.
+	 *
+	 * If the name's too short to be fix_prebinding, or if the compare
+	 * doesn't work, then do the re-prebinding.  We need to do the test
+	 * here because notifying fix_prebinding of a problem with
+	 * fix_prebinding can put us in an endless loop.  fix_prebinding can't
+	 * do the check because it would only be able to check after the
+	 * trouble has been started.
+	 */
+	if((executables_pathlen >= sizeof("fix_prebinding")) &&
+	   (strcmp(executables_path +
+		   ((executables_pathlen - 1) - (sizeof("fix_prebinding") -1)),
+	          "fix_prebinding")) == 0){
+	    goto leave_notify_prebinding_agent;
 	}
-	else{
+
+	/*
+	 * The next bit of code should not be in dyld and it is making policy
+	 * on what will have its prebinding fixed.  Also this has to stat()
+	 * calls that are very expensive in the program launch path.
+	 *
+	 * Determine if the executable is not on the root volume.
+	 * If we ever start re-prebinding remote files (or files on other
+	 * local volumes) this code would have to change.
+	 */
+ 
+	/*
+	 * Get the device number for the root directory. If we get an error
+	 * just return and don't fix the prebinding.
+	 */
+	if(stat("/", &rootStat) != 0)
+	    goto leave_notify_prebinding_agent;
+
+	/*
+	 * Get the device number for the executable.  Again if get an error
+	 * just return and don't fix the prebinding.
+	 */
+	if(stat(executables_path, &fileStat) != 0)
+	    goto leave_notify_prebinding_agent;
+
+	/*
+	 * If the device numbers are not the same it is not on the root volume
+	 * so just return and don't fix the prebinding.
+	 */
+	if(fileStat.st_dev != rootStat.st_dev){
 	    if(dyld_prebind_debug != 0)
-		print("dyld: not running prebinding agent on: %s\n",
-		      executables_path);
+	    print("dyld: %s is not on root volume, not re-prebinding.\n",
+		  executables_path);
+	    goto leave_notify_prebinding_agent;
 	}
+
+	/*
+	 * Collect all the information to send to the prebinding server that
+	 * it needs to decide whether the file's prebinding will be fixed.
+	 * If some part of this information can't be gathered then we just
+	 * return and don't fix the prebinding.
+	 */
+
+	/*
+	 * Get the current time.  This is used this to decide whether the
+	 * problems noted in a queued up prebinding warning might have already
+	 * been fixed by the time fix_prebinding gets to work on the file.  The
+	 * value is will be compared against the modification dates of all
+	 * files that need changing; if any were changed after we noted the
+	 * prebinding problem, we assume the problem may have been fixed, and
+	 * fix_prebinding will choose not to fix the binary.
+	 */
+	if(gettimeofday(&currentTime, &currentTimezone) != 0)
+	    goto leave_notify_prebinding_agent;
+
+	/*
+	 * Find the "PrebindServer" service that we'll send the message to.
+	 * This code should be the same when we're communicating with a service
+	 * started by mach_init.
+	 */
+	ret = task_get_bootstrap_port(mach_task_self(), &bootstrapPort);
+	if(ret != KERN_SUCCESS){
+	    if(dyld_prebind_debug != 0)
+		print("dyld: task_get_bootstrap_port() failed with: %d\n", ret);
+	    goto leave_notify_prebinding_agent;
+	}
+
+	serviceName = "PrebindService";
+	serverPort = PORT_NULL;
+	ret = bootstrap_look_up(bootstrapPort,serviceName,&serverPort);
+	if(ret != KERN_SUCCESS){
+	    if(dyld_prebind_debug != 0)
+		print("dyld: bootstrap_look_up() for: %s failed with: %d\n",
+		      serviceName, ret);
+	    goto leave_notify_prebinding_agent;
+	}
+
+
+	/*
+	 * Call the mig stub to actually get the message sent. The mig-generated
+	 * code will actually send the message to fix_prebinding.
+	 */
+	(void)warnBadlyPrebound(serverPort,
+				currentTime,
+				rootStat.st_dev, rootStat.st_ino,
+				executables_path, strlen(executables_path) + 1,
+				0);
+  
+leave_notify_prebinding_agent:
+
 	DYLD_TRACE_IMAGES_END(DYLD_TRACE_notify_prebinding_agent);
 }

@@ -1,4 +1,4 @@
-.TH LD 1 "February 25, 2002" "Apple Computer, Inc."
+.TH LD 1 "May 30, 2002" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -113,13 +113,16 @@ option is specified).
 .SH STATIC ARCHIVE LIBRARIES
 .PP
 .I ld
-supports two types of libraries: static archive libraries and dynamic shared libraries. Searching for undefined symbols is peformed differently for dynamic shared libraries than it is for static archive libraries. The searching of dynamic shared libraries is described later. 
+supports two types of libraries: static archive libraries and dynamic shared
+libraries.  Searching for undefined symbols is performed differently for dynamic
+shared libraries than it is for static archive libraries.  The searching of
+dynamic shared libraries is described later. 
 .PP
 When a static archive library is specified as an argument to 
 .IR ld , 
 it is searched exactly once, at the 
 point it is encountered in the argument list.  Only those members defining an unresolved external
-reference, as defined by the static archive libary's table of contents,
+reference, as defined by the static archive library's table of contents,
 are loaded.  To produce the table of contents, all static archive libraries must be processed by 
 .IR ranlib (1).
 .PP
@@ -203,7 +206,7 @@ and
 .BI \-undefined " suppress"
 can't be used.  The specific library definition recorded
 for each reference is the first library that has a definition as listed on the
-link line.  Listing an umbrella framework implys all of its sub-frameworks,
+link line.  Listing an umbrella framework implies all of its sub-frameworks,
 sub-umbrellas and sub-libraries.  For any reference to a definition found in
 an umbrella framework's sub-framework, sub-umbrella or sub-library will be
 recorded as coming from the umbrella framework.  Then at execution time the
@@ -475,6 +478,28 @@ Which cause the treatment of relocation entries in read-only sections as either,
 errors, warnings, or suppressed messages.
 The default is to treat these as errors.
 .TP
+.BI \-sect_diff_relocs " treatment"
+Specifies how section difference relocation enries are to be treated when
+.B \-dynamic
+and
+.B \-execute
+are used.
+To get the best possible code generation the compiler should not generate code
+for executables (MH_EXECUTE format outputs) that have any section difference
+relocation entries.  The
+.IR gcc (1)
+compiler has the
+.B \-mdynamic-no-pic
+flag for generating code for executables.  The default treatment is
+.I suppress,
+where no message is printed.  The other treatments are
+.I error
+or
+.I warning.
+This option can also be specified by setting the environment variable
+.SM LD_SECT_DIFF_RELOCS
+to the treatment values.
+.TP
 .BI \-weak_reference_mismatches " treatment"
 Specifies how to treat mismatches of symbol references in the the object files
 being linked. Normally the all the undefined symbol references of the object
@@ -535,11 +560,18 @@ environment variable
 Have the static linker,
 .IR ld (1),
 mark all modules from prebound two-level namespace dynamic libraries as used
-by the program even if they are not staticly referenced.  This can provide
+by the program even if they are not statically referenced.  This can provide
 improved launch time for programs like Objective-C programs that use symbols
 indirectly through NIB files. This option can also be specified by setting the
 environment variable
 .SM LD_PREBIND_ALL_TWOLEVEL_MODULES.
+.TP
+.B \-nofixprebinding
+Have the static linker,
+.IR ld (1),
+mark the executable so that the dynamic linker will never notify the prebinding
+agent if this launched and its prebinding is out of date.  This is used when
+building the prebinding agent itself.
 .PP
 The following flags are related to libraries:
 .TP 
@@ -676,7 +708,7 @@ This option was previously
 which will continue to be recognized.
 .TP
 .B "\-dylib"
-Produce a Mach-O dynamicly linked shared library format file.  The headers are
+Produce a Mach-O dynamically linked shared library format file.  The headers are
 placed in the first segment.  All sections are placed in their proper segments
 and they are padded to the segment alignment.  This has a file type of
 .SM MH_DYLIB.
@@ -821,7 +853,7 @@ are any combination of the characters `r' (for read), `w' (for write),
 `x' (for execute) and '\-' (no access).  The default is `rwx' for the maximum
 protection for all segments.
 The default for the initial protection for all segments is `rw' unless the
-segment contains a section which contains some machine insructions, in which
+segment contains a section which contains some machine instructions, in which
 case the default for the initial protection is `rwx'.
 The default for the initial protection for the
 .SM "``_\|_TEXT''"
@@ -1060,11 +1092,18 @@ flag relative to the dynamic libraries.  If the the bundle being created with
 then the searching of the executable is done before all dynamic libraries.
 .TP 
 .B \-private_bundle
-This specifies that the bundle output file being created with
-.B \-flat_namespace
-in effect is going to be loaded by the executable in the
+This allows symbols defined in the output to also be defined in executable in
+the
 .B \-bundle_loader
-argument with the
+argument
+when
+.B \-flat_namespace
+is in effect.
+This implies that the bundle output file being created is going to be loaded by
+the executable with the
+.B NSLINKMODULE_OPTION_PRIVATE
+option to
+.IR NSLinkModule (3).
 .TP 
 .B \-twolevel_namespace_hints
 Specifies to create the output with the two-level namespace hints table to be
@@ -1119,10 +1158,10 @@ The default for unused multiply defined symbols is to suppress these messages.
 .TP
 .B -nomultidefs
 specifying this flag marks the umbrella being created such that the dynamic
-linker is guaranteed that no multiple defintions of symbols in the umbrella's
+linker is guaranteed that no multiple definitions of symbols in the umbrella's
 sub-images will ever exist.  This allows the dynamic linker to always use the
 two-level namespace lookup hints even if the timestamps of the sub-images
-do not match.  This flag implys
+do not match.  This flag implies
 .BI \-multiply_defined " error".
 
 .PP
@@ -1410,9 +1449,9 @@ option.  This subframework can then only be linked into the umbrella framework
 with the same
 .I framework_name
 or another subframework with the same umbrella framework name.  Any other
-attempt to staticly link this subframework directly will result in an error
+attempt to statically link this subframework directly will result in an error
 stating to link with the umbrella framework instead.  When building the umbrella
-framework that uses this subframework no addtional options are required.
+framework that uses this subframework no additional options are required.
 However the install name of the umbrella framework, required to be specified
 with
 .BR \-dylib_install_name ,

@@ -49,6 +49,7 @@
 #include <mach-o/reloc.h>
 #include "stuff/bool.h"
 #include "stuff/bytesex.h"
+#include "stuff/macosx_deployment_target.h"
 
 #include "ld.h"
 #include "objects.h"

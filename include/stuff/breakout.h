@@ -73,6 +73,9 @@ struct arch {
     /* if this is an unknown file: the addr and size of the file */
     char *unknown_addr;
     unsigned long unknown_size;
+
+    /* don't update LC_ID_DYLIB timestamp */
+    enum bool dont_update_LC_ID_DYLIB_timestamp;
 };
 
 struct member {

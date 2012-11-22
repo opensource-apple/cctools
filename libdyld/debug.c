@@ -926,6 +926,7 @@ struct _dyld_debug_task_state *state)
     kern_return_t k;
     struct host_sched_info info;
     enum bool core_task;
+    mach_port_t my_mach_host_self;
 
 	state->debug_thread = MACH_PORT_NULL;
 	state->debug_port = MACH_PORT_NULL;
@@ -1114,8 +1115,10 @@ struct _dyld_debug_task_state *state)
 	     * section of that task.
 	     */
 	    count1 = HOST_SCHED_INFO_COUNT;
-	    k = host_info(mach_host_self(), HOST_SCHED_INFO,
+	    my_mach_host_self = mach_host_self();
+	    k = host_info(my_mach_host_self, HOST_SCHED_INFO,
 			  (host_info_t)(&info), &count1);
+	    mach_port_deallocate(mach_task_self(), my_mach_host_self);
 	    if(k != KERN_SUCCESS){
 		SET_MACH_DYLD_DEBUG_ERROR(k, 56);
 		return(DYLD_FAILURE);

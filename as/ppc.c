@@ -787,15 +787,6 @@ char *op)
 			"as RB)");
 	}
 	/*
-	 * The "branch conditional to count register" (bcctr and bcctrl) can't 
-	 * use the "decrement and test CTR" option.
-	 */
-	if((insn.opcode & 0xfc0007fe) == 0x4c000420 &&
-	   (insn.opcode & 0x00400000) == 0x00400000){
-	    as_warn("Invalid form of the instruction (branch conditional to "
-		    "count register can't use the decrement and test count "			    "register option)");
-	}
-	/*
 	 * The 64-bit compares are invalid on 32-bit implementations.  Since
 	 * we don't expect to ever use the 620 all 64-bit instructions require
 	 * the -force_cpusubtype_ALL option to not be flagged as invalid.
@@ -1080,7 +1071,8 @@ enum branch_prediction prediction)
 	    if (param == NULL)
 		return(0);
 	}
-	if(format->ops[0].type == NONE && *param != '\0'){
+	if((parcnt == 5 && *param != '\0') ||
+	   (format->ops[0].type == NONE && *param != '\0')){
 	    error_param_message = "too many parameters";
 	    return(0);
 	}
@@ -1096,9 +1088,9 @@ enum branch_prediction prediction)
 		     * PPC_RELOC_BR14_predicted.
 		     */
 		    insn->reloc = PPC_RELOC_BR14_predicted;
-		    if(prediction == '+')
+		    if(prediction == BRANCH_PREDICTION_LIKELY_TAKEN)
 			insn->opcode |= Y_BIT;
-		    else{ /* prediction == '-' */
+		    else{ /* prediction == BRANCH_PREDICTION_LIKELY_NOT_TAKEN */
 			if((insn->opcode & Y_BIT) != 0)
 			    as_warn("branch prediction ('-') ignored (specified"
 				    " operand has prediction bit set)");
@@ -2174,6 +2166,8 @@ int nsect)
 
 	case PPC_RELOC_BR14:
 	case PPC_RELOC_BR14_predicted:
+	    if(fixP->fx_pcrel)
+		val += 4;
 	    if((val & 0xffff8000) && ((val & 0xffff8000) != 0xffff8000))
 		as_warn("Fixup of %ld too large for field width of 16 bits",
                         val);
@@ -2206,8 +2200,6 @@ int nsect)
 		    buf[3] = opcode;
 		}
 	    }
-	    if(fixP->fx_pcrel)
-		val += 4;
 	    buf[2] = val >> 8;
 	    buf[3] |= val & 0xfc;
 	    /* change any PPC_RELOC_BR14_predicted back to PPC_RELOC_BR14
@@ -2216,13 +2208,13 @@ int nsect)
 	    break;
 
 	case PPC_RELOC_BR24:
+	    if(fixP->fx_pcrel)
+		val += 4;
 	    if((val & 0xfc000000) && ((val & 0xfc000000) != 0xfc000000))
 		as_warn("Fixup of %ld too large for field width of 26 bits",
                         val);
 	    if((val & 0x3) != 0)
 		as_warn("Fixup of %ld is not to a 4 byte address", val);
-	    if(fixP->fx_pcrel)
-		val += 4;
 	    buf[0] |= (val >> 24) & 0x03;
 	    buf[1] = val >> 16;
 	    buf[2] = val >> 8;

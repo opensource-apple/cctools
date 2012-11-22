@@ -761,6 +761,10 @@ struct object *object)
     struct scattered_relocation_info *sreloc;
     long missing_reloc_symbols;
     unsigned long stride, section_type, nitems, index;
+#ifdef NMEDIT
+    char *contents;
+    unsigned long value;
+#endif /* NMEDIT */
 
 	host_byte_sex = get_host_byte_sex();
 
@@ -1143,6 +1147,15 @@ struct object *object)
 			if(object->object_byte_sex != host_byte_sex)
 			    swap_relocation_info(relocs, s->nreloc,
 						 host_byte_sex);
+#ifdef NMEDIT
+			if(s->offset + s->size > object->object_size){
+			    fatal_arch(arch, member, "truncated or malformed "
+				"object (contents of section (%.16s,"
+				"%.16s) extends past the end of the file)",
+				s->segname, s->sectname);
+			}
+			contents = object->object_addr + s->offset;
+#endif /* NMEDIT */
 			for(k = 0; k < s->nreloc; k++){
 			    if((relocs[k].r_address & R_SCATTERED) == 0 &&
 			       relocs[k].r_extern == 1){
@@ -1152,6 +1165,7 @@ struct object *object)
 					"(%.16s,%.16s) in: ", k, s->segname,
 					  s->sectname);
 				}
+#ifndef NMEDIT
 				if(saves[relocs[k].r_symbolnum] == 0){
 				    if(missing_reloc_symbols == 0){
 					error_arch(arch, member, "symbols "
@@ -1163,6 +1177,68 @@ struct object *object)
 					  [relocs[k].r_symbolnum].n_un.n_strx);
 				    saves[relocs[k].r_symbolnum] = -1;
 				}
+#else /* defined(NMEDIT) */
+				/*
+				 * We are letting nmedit change global coalesed
+				 * symbols into statics in MH_OBJECT file types
+				 * only. Relocation entries to global coalesced
+			 	 * symbols are external relocs. 
+				 */
+				if((new_symbols[saves[relocs[k].r_symbolnum]-1].
+				    n_type & N_EXT) != N_EXT){
+				    /*
+				     * We need to do the relocation for this
+				     * external relocation entry so the item
+				     * to be relocated is correct for a local
+				     * relocation entry.
+				     */
+				    if(relocs[k].r_address + sizeof(long) >
+				       s->size){
+					fatal_arch(arch, member, "truncated or "
+					  "malformed object (r_address of "
+					  "relocation entry %lu of section "
+					  "(%.16s,%.16s) extends past the end "
+					  "of the section)", k, s->segname,
+					  s->sectname);
+				    }
+				    value = *(unsigned long *)
+					     (contents + relocs[k].r_address);
+				    /*
+				     * We handle a very limited form here.  Only
+				     * VANILLA (r_type == 0) long (r_length==2)
+				     * non-pcrel that won't need a scattered
+				     * relocation entry.
+				     */
+				    if(relocs[k].r_type != 0 ||
+				       relocs[k].r_length != 2 ||
+				       relocs[k].r_pcrel != 0 ||
+				       value != 0){
+					fatal_arch(arch, member, "don't have "
+					  "code to convert external relocation "
+					  "entry %ld in section (%.16s,%.16s) "
+					  "for global coalesced symbol: %s "
+					  "in: ", k, strings + symbols[
+					  relocs[k].r_symbolnum].n_un.n_strx,
+	   				  s->segname, s->sectname);
+				    }
+				    if(object->object_byte_sex != host_byte_sex)
+					value = SWAP_LONG(value);
+				    value += symbols[relocs[k].
+						r_symbolnum].n_value;
+				    if(object->object_byte_sex != host_byte_sex)
+					value = SWAP_LONG(value);
+				    *(unsigned long *)
+					(contents + relocs[k].r_address) = 
+					value;
+				    /*
+				     * Turn the extern reloc into a local.
+				     */
+				    relocs[k].r_symbolnum =
+					new_symbols[saves[relocs[k].
+					r_symbolnum] - 1].n_sect;
+				    relocs[k].r_extern = 0;
+				}
+#endif /* NMEDIT */
 				if(saves[relocs[k].r_symbolnum] != -1){
 				    relocs[k].r_symbolnum =
 					saves[relocs[k].r_symbolnum] - 1;
@@ -1278,7 +1354,8 @@ struct object *object)
 				    "entry %ld (past the end of the symbol "
 				    "table) in: ", s->reserved1 + k);
 #ifdef NMEDIT
-			    if(nmedits[index] == TRUE && saves[index] != -1)
+			    if(pflag == 0 &&
+			       nmedits[index] == TRUE && saves[index] != -1)
 #else
 			    if(saves[index] == 0)
 #endif
@@ -1696,16 +1773,30 @@ unsigned long nindirectsyms)
 			    if(Xflag == 0 ||
 			       (symbols[i].n_un.n_strx != 0 &&
 		                strings[symbols[i].n_un.n_strx] != 'L')){
-				new_strsize += strlen(strings +
+				/*
+				 * If this file is a for the dynamic linker and
+				 * this symbol is in a section marked so that
+				 * static symbols are stripped then don't
+				 * keep this symbol.
+				 */
+				if((object->mh->flags & MH_DYLDLINK) !=
+				    MH_DYLDLINK ||
+				   (symbols[i].n_type & N_TYPE) != N_SECT ||
+			   	   (sections[symbols[i].n_sect - 1]->flags &
+				    S_ATTR_STRIP_STATIC_SYMS) != 
+					      S_ATTR_STRIP_STATIC_SYMS){
+				    new_strsize += strlen(strings +
 						  symbols[i].n_un.n_strx) + 1;
-				new_nlocalsym++;
-				new_nsyms++;
-				saves[i] = new_nsyms;
+				    new_nlocalsym++;
+				    new_nsyms++;
+				    saves[i] = new_nsyms;
+				}
 			    }
 			}
 			/*
 			 * Treat a local symbol that was a private extern as if
-			 * were global if it is not referenced by a module.
+			 * were global if it is referenced by a module and save
+			 * it.
 			 */
 			if((symbols[i].n_type & N_PEXT) == N_PEXT){
 			    if(saves[i] == 0 &&
@@ -2592,8 +2683,10 @@ unsigned long nextrefsyms)
 				       "table entry %lu in: ", i);
 			    return(FALSE);
 			}
-			if((sections[symbols[i].n_sect - 1]->flags &
-			    SECTION_TYPE) == S_COALESCED){
+			if(((sections[symbols[i].n_sect - 1]->flags &
+			     SECTION_TYPE) == S_COALESCED) &&
+			   pflag == FALSE &&
+			   object->mh->filetype != MH_OBJECT){
 			    /* this remains a global defined symbol */
 			    new_nextdefsym++;
 			    new_ext_strsize += len;
@@ -3125,6 +3218,7 @@ change_symbol:
 			     * by turning off the extern bit.
 			     */
 			    new_symbols[inew_syms].n_type &= ~N_EXT;
+			    new_symbols[inew_syms].n_desc &= ~N_WEAK_DEF;
 			    if(symbols[i].n_un.n_strx != 0){
 				strcpy(q, strings + symbols[i].n_un.n_strx);
 				new_symbols[inew_syms].n_un.n_strx =

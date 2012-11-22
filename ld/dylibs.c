@@ -145,6 +145,11 @@ merge_dylibs(void)
 		    lc->cmd != LC_LOAD_WEAK_DYLIB) || mh->filetype != MH_DYLIB){
 		    dl = (struct dylib_command *)lc;
 		    mdl = lookup_merged_dylib(dl);
+		    if(filetype == MH_DYLIB && dylib_install_name != NULL &&
+		       strcmp(mdl->dylib_name, dylib_install_name) == 0)
+			error_with_cur_obj("can't be linked because it has the "
+			   "same install_name (%s) as the output", 
+			   dylib_install_name);
 		    p = add_dynamic_lib(DYLIB, dl, cur_obj);
 		    mdl->dynamic_library = p;
 		}

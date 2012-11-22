@@ -57,6 +57,7 @@
 #endif /* defined(RLD) && !defined(SA_RLD) &&
 	  !(defined(KLD) && defined(__STATIC__)) */
 #include "stuff/arch.h"
+#include "stuff/macosx_deployment_target.h"
 
 #include "ld.h"
 #include "specs.h"
@@ -297,12 +298,12 @@ layout(void)
 	 */
 	layout_segments();
 
+#ifndef RLD
 	/*
 	 * For symbol from dylibs reset the prebound symbols if not prebinding.
 	 */
 	reset_prebound_undefines();
 
-#ifndef RLD
 	if(load_map)
 	    print_load_map();
 #endif !defined(RLD)
@@ -1173,6 +1174,8 @@ layout_segments(void)
 		output_mach_header.flags |= MH_FORCE_FLAT;
 	    if(nomultidefs)
 		output_mach_header.flags |= MH_NOMULTIDEFS;
+	    if(no_fix_prebinding)
+		output_mach_header.flags |= MH_NOFIXPREBINDING;
 	}
 
 	/*
@@ -1614,6 +1617,8 @@ layout_segments(void)
 	    }
 	    p = &(msg->next);
 	}
+	if(i > MAX_SECT)
+	    fatal("too many sections used, maximum is: %d", MAX_SECT);
 
 #ifndef RLD
 	/*

@@ -1,3 +1,39 @@
+Changes for the 5.10 release (the cctools-422 release):
+- Added the section attribute S_ATTR_STRIP_STATIC_SYMS to <mach-o/loader.h>.
+  Radar bug #2945659.
+  
+Changes for the 5.10 release (the cctools-421 release):
+- Added the constant MH_NOFIXPREBINDING to <mach-o/loader.h> so that the
+  fix_prebinding(1) program can be marked with this.  Radar bug #2941669.
+
+Changes for the 5.10 release (the cctools-420 release):
+- Changed the comment on the constant NOT_PREBINDABLE in
+  <mach-o/redo_prebinding.h> to include "or statically linked" to indicate
+  that it will be returned for statically linked binaries.  Radar bug #2934831.
+
+Changes for the 5.10 release (the cctools-416 release):
+- Added the N_WEAK_DEF define to <mach-o/nlist.h> to support weak definitions
+  and non-weak definitions in the same coalesced section. Radar bug #2919646.
+- Removed the section attribute S_ATTR_WEAK_DEFS to <mach-o/loader.h> .
+  Radar bug #2919646.
+- Added the dont_update_LC_ID_DYLIB_timestamp field to the arch struct in
+  breakout.h .  Radar bug #2914003.
+
+Changes for the 5.10 release (the cctools-414 release):
+- Added the section attribute S_ATTR_WEAK_DEFS to <mach-o/loader.h> for weak
+  definitions to be used with coalesced sections for supporting explicit
+  template instantiation.  Radar bug #2898558.
+
+Changes for the 5.10 release (the cctools-412 release):
+- Added the no_error_if_missing parameter to symLocForDylib(), dstLocForDylib()
+  and LocForDylib() in stuff/SymLoc.h .  Radar bug #2882324.
+- Added the no_error_if_missing parameter to get_symfile_for_dylib() and
+  get_dstfile_for_dylib() in stuff/dylib_roots.h.  Radar bug #2882324.
+
+Changes for the 5.10 release (the cctools-411 release):
+- Added the header file <stuff/macosx_deployment_target.h> so that both the
+  ld(1) code and the seg_addr_table(1) code can use them.
+
 Changes for the 5.10 release (the cctools-408 release):
 - Changed the comments in <mach-o/loader.h> where it used sizeof(unsigned long)
   to 4 bytes.

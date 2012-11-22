@@ -1,4 +1,4 @@
-.TH NMEDIT 1 "February 5, 2002" "Apple Computer, Inc."
+.TH NMEDIT 1 "March 19, 2002" "Apple Computer, Inc."
 .SH NAME
 nmedit \- change global symbols to local symbols
 .SH SYNOPSIS
@@ -33,7 +33,7 @@ like
 .IR strip (1)
 is useful to limit the symbols for use with later linking.
 This allows control of the interface that the executable wants to provide to the
-objects that it will dynamiclly load, and it will not have to publish symbols
+objects that it will dynamically load, and it will not have to publish symbols
 that are not part of its interface.  For example an executable that wishes to
 allow only a subset of its global symbols but all of the shared libraries
 globals to be used would have its symbol table edited with:
@@ -44,7 +44,7 @@ where the file
 .I interface_symbols
 would contain only those symbols from the executable
 that it wishes the objects loaded at runtime to have access to.
-Another example is an object that is maded up of a number of other objects that
+Another example is an object that is made up of a number of other objects that
 will be loaded into an executable would built and then have its symbol table
 edited with:
 .RS
@@ -92,7 +92,7 @@ and a
 .BI \-s " filename"
 are given the symbols listed in the
 .BI \-R " filename"
-are basicly ignored and only those symbols listed in the
+are basically ignored and only those symbols listed in the
 .BI \-s " filename"
 are saved.
 .TP

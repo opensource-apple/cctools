@@ -180,3 +180,5 @@ extern void vadd_error_string(
 extern void print(
     const char *format,
     ...) __attribute__ ((format (printf, 1, 2)));
+
+extern void halt(void);

@@ -1,9 +1,9 @@
 <HTML>
-<!--This file created 2/27/02 6:37 PM by Claris Home Page version 3.0-->
+<!--This file created 7/12/02 5:34 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=74 BOTTOM=849 LEFT=479 RIGHT=1109>
+   <X-CLARIS-WINDOW TOP=67 BOTTOM=842 LEFT=203 RIGHT=833>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
@@ -12,7 +12,7 @@
 Computer, Inc. All Rights Reserved.</FONT></P>
 
 <H2>Private MacOS X 10.2 Release Notes:<BR>
-Compiler Tools (cctools-409)</H2>
+Compiler Tools (cctools-435)</H2>
 
 <P>This file contains release notes for the 5.10 release of the
 Compiler Tools for the MacOS X 10.2 Release. This file contains
@@ -74,6 +74,495 @@ MACOSX_DEPLOYMENT_TARGET environment variable.</P>
 <P>The <I>redo_prebinding</I>(1) command and the
 <I>redo_prebinding</I>(3) API now can slide dymamic libraries to new
 prefered addresses (see the man page for more details).</P>
+
+<H3><FONT SIZE="+1">Support for weak definitions in coalesced
+sections</FONT></H3>
+
+<P>There is now support for the <I>.weak_definition</I>
+<B>symbol_name</B> assembler directive for symbols in a coalesced
+section. This is used by the C++ compiler to support explicit
+template instantiation. The assembler symtax for this is:</P>
+
+<BLOCKQUOTE>.section __TEXT, __template, coalesced<BR>
+   .private_extern _template_func<BR>
+   .weak_definition _template_func<BR>
+   _template_func:<BR>
+   li r3,1<BR>
+   blr</BLOCKQUOTE>
+
+<P>The compiler uses a coalesced section with the
+<I>.weak_definition</I> directive for implicitly instantiated
+templates. And uses a regualr section (.text, .data, etc) for an
+explicit template instantiation.</P>
+
+<P>The static link editor then discards all of the copies of a weak
+symbol in a coalesced section if the same symbol is defined in
+another section. If there exists only definitions of the weak symbols
+in a coalesced section then the one from the first object file being
+linked will be used and the others will be discarded.</P>
+
+<P>The support for flat namespace images using weak symbols from a
+coalesced section is likely to be buggy as the semantics for it and
+lazy binding are not well defined.</P>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-434 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Change redo_prebinding(1)(3) to not attempt to redo the
+   prebinding on any file that has a resource fork. (Radar bug
+   #2987656).</LI>
+   
+   <LI>Fixed a bug in the redo_prebinding(3) APIs of
+   get_prebind_cksums() and object_file_type() where its error
+   handling code was causing a crash in processing the error. (Radar
+   bug #2992414).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-433 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the nmedit(1) tool when the -p option was used
+   that incorrectly changed the indirect symbol table entries to be
+   marked as INDIRECT_SYMBOL_LOCAL which it shouldn't do when the -p
+   option is used. (Radar bug #2986703).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-432 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the dynamic linker handling of global coalesced
+   symbols in two-level prebound images to be faster. (Radar bug
+   #2951657).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-431 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Change libtool(1) when the -static is in effect to not copy a
+   dynamic library file that is on the command line into the output
+   file. (Radar bug #2970223).</LI>
+   
+   <LI>Fixed a bug in the static link editor that was incorrectly
+   setting the weak definition bit on an undefined symbol. (Radar bug
+   #2969501).</LI>
+   
+   <LI>Fixed a bug in the static link editor that was incorrectly
+   produce the error message "illegal reference to symbol defined in
+   indirectly referenced dynamic library" when the -r option was
+   used. (Radar bug #2969437).</LI>
+   
+   <LI>Fixed a crash in the static link editor that was introduced
+   with the change for Radar bug #2969353. (Radar bug #2969353).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-430 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the static link editor that caused it to
+   produce the internal error message:
+   
+   <P>ld: internal error: output_section() count of external
+   relocation entries does not match</P>
+   
+   <P>when the input object files contained a reference to a
+   coalesced symbol and a definition of the symbol in a different
+   object file and -bundle was used.(Radar bug #2963045).</P></LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last releases (cctools-427,8,9
+for the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the nmedit(1) tool so that with the -s option when run
+   on MH_OBJECT files it turns global coalesced symbols into static
+   symbols. (Radar bug #2957909).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-426 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the static linker, ld(1), when creating a
+   two-level namespace image where it was producing a bad image when
+   a symbol from an object was discared and became an illegal
+   reference to an indirectly referenced dylib. (Radar bug
+   #2956332).</LI>
+   
+   <LI>Changed the nmedit(1) tool so that with the -p option it turns
+   global coalesced symbols into private extern symbols. (Radar bug
+   #2956057).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-425 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>The fix below in the static linker, ld(1), was still
+   incomplete. If multiple weak private externs are seen then a
+   non-weak global symbol was seen it was also have the same problem.
+   (Radar bug #2952209).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-424 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>The fix below in the static linker, ld(1), was incomplete. If
+   the second symbol came from a dynamic library or the
+   -bundle_loader argument it was also have the same problem. (Radar
+   bug #2952209).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-423 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the static linker, ld(1), when creating a
+   dynamic library. The bug was when the static linker first sees a
+   weak private extern symbol from an object file, which is later
+   discarded for a non-weak symbol the resulting dynamic library has
+   the wrong reference type for the symbol in the module created for
+   the object file with the weak private extern symbol. This would
+   result in a error of the form: (Radar bug #2952209).
+   
+   <UL>
+      <LI>ld: /usr/local/lib/private/libstdc++.dylib(strstream.o)
+      isym field (2683) of reference table entry 609 for private
+      reference not in the local symbols for any module</LI>
+   </UL>
+   </LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-422 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Re-fixed a bug in the dynamic linker that caused it to crash
+   if it loaded an image with a zero sized segment. (Radar bug
+   #2931784).</LI>
+   
+   <LI>Changed the dynamic linker's default error handling to cause a
+   break point trap instead of exiting. (Radar bug #2405619).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-421 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a small memory leak when malformed library is loaded via
+   a search path in the dynamic linker. (Radar bug #2914747).</LI>
+   
+   <LI>Added some pentium pro instructions to the Intel assembler and
+   disassembler in otool(1). (Radar bug #2928507).</LI>
+   
+   <LI>Added the section attribute strip_static_syms to be used by
+   the compiler for the C++ exception frame section. This will cause
+   the static symbols in that section to be stripped by the strip(1)
+   tool when they are in a binary built for the dynamic linker.
+   (Radar bug #2945659).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-420 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the dynamic linker to use the mach service interface
+   for the prebinding on demand feature to allow dyld to send a mach
+   message to a server registered with the bootstrap port. (Radar bug
+   #2944779).</LI>
+   
+   <LI>Changed the dynamic linker to not trigger the prebinding on
+   demand feature when the program is not using the system shared
+   regions. (Radar bug #2942209).</LI>
+   
+   <LI>Added the new -nofixprebinding option to ld(1) to be used when
+   building the tool fix_prebinding(1). Since this is likely not to
+   be needed by any other program it will need to be passed to ld(1)
+   via the -Wl,-nofixprebinding compiler driver flag. (Radar bug
+   #2941669).</LI>
+   
+   <LI>Added the new -relayout_nonsplit option to the
+   seg_addr_table(1) tool that could be run in tandem with the
+   -update_overlaps option to assign new addresses to all flat
+   libraries and fix up any overlaps found in the split region.
+   (Radar bug #2935630).</LI>
+   
+   <LI>Fixed a bug in the redo_prebinding(3) APIs where calling a
+   sequence of the redo_prebinding(3) APIs caused one of the later
+   API to give the wrong answer. (Radar bug #2933102).</LI>
+   
+   <LI>Changed the libkld libraries to not call the routine
+   reset_prebound_undefines() to avoid a possible kernel panic.
+   (Radar bug #2931331).</LI>
+   
+   <LI>Changed the way the gprof(1) tool reads the gmon.out file to
+   be faster. (Radar bug #2876478).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-419 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a problem introduced in cctools-419 where the libkld
+   libraries had an undefined symbol for get_output_section. (Radar
+   bug #2936244</LI>
+   
+   <LI>Changed the libtool(1) command to take and pass through the
+   ld(1) -M option. (Radar bug #2935497).</LI>
+   
+   <LI>Updated the size(1) man page in include the description of te
+   -arch flag that was missing from the man page. (Radar bug
+   #2934869).</LI>
+   
+   <LI>Changed the return values for redo_prebinding(3) API's for
+   statically linked executables. So needs_redo_prebinding(3) returns
+   NOT_PREBINDABLE and redo_prebinding(3) when the only_if_needed
+   parameter is non-zero returns REDO_PREBINDING_NOT_NEEDED. (Radar
+   bug #2934831).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-418 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the dynamic linker that caused it to crash if
+   it loaded an image with a zero sized segment. (Radar bug
+   #2931784).</LI>
+   
+   <LI>Fixed a bug in the static link editor that caused it to
+   produce a bad object file with the -r option if the input object
+   files contained a weak coalesced symbol and a non-weak symbol that
+   has a reference to the symbol coalesced symbol. (Radar bug
+   #2931708).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-417 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the assembler to not cause an error if a section
+   attribute is used with out -dynamic. (Radar bug #2929120).</LI>
+   
+   <LI>Changed the dynamic linker to ignore any filename that is
+   matched when using a DYLD PATH environment variable that is a
+   directory. (Radar bug #2917660).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-416 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the static linker that would cause incorrect
+   "illegal reference" error messages (Radar bug #2925564).</LI>
+   
+   <LI>Changed the compiler tools project to build a -static compiled
+   version of libredo_prebinding for fix_prebinding(1) to link with
+   when it is compiled -static. (Radar bug #2922145).</LI>
+   
+   <LI>Changed the dynamic linker to never run fix_prebinding(1) when
+   any of its DYLD PATH or INSERT environment variables are set.
+   (Radar bug #2921735).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-415 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the static linker to not generate multiply defined
+   warnings and errors when one of the multiple symbols comes from a
+   indirectly referenced dynamic library (Radar bug #2921080).</LI>
+   
+   <LI>Changed the support for weak coalesced symbols to not use the
+   <I>weak_definitions</I> attribute for coalesced sections but use a
+   <I>.weak_definition</I> <B>symbol_name</B> assembler directive
+   (see the notes above for the new features) (Radar bug
+   #2919646).</LI>
+   
+   <LI>Fixed a bug in ld(1) where it was incorrectly generating a
+   warning message about archives that did not match the -arch flag
+   when the -no_arch_warnings flag was specified.(Radar bug
+   #2918296).</LI>
+   
+   <LI>Fixed a bug in the redo_prebinding(3) API when the
+   allow_missing_architectures prarmeter was non-zero and one of the
+   dependent library's architecture was missing. The code incorrectly
+   updated the timestamp in the dylib for all architectutes when it
+   should not have done this for architectures it did not update the
+   prebinding. (Radar bug #2914003).</LI>
+   
+   <LI>Fixed a bug in the PowerPC assembler that did not correctly
+   generate an error when a 5 parameter instruction had more than 5
+   parameters (Radar bug #2911611).</LI>
+   
+   <LI>Added the -m option to otool(1) to not treat the filenames
+   containing parenthesis as archive and an archive member syntax
+   Radar bug #2904708).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-414 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the static linker that would cause incorrect
+   "illegal reference to a coalesced section" error messages when a
+   symbol from a regular section is used in place of discarded symbol
+   in a coalesced section with the weak_definitions attribute (Radar
+   bug #2911339).</LI>
+   
+   <LI>Changed the i386 assembler to assemble fildll and fistpll as
+   fildq and fistpq (Radar bug #2909568).</LI>
+   
+   <LI>Changed the incomplete implementation of dlopen()'s dlsym()
+   routine to append '_' to names passed to it (Radar bug
+   #2908831).</LI>
+   
+   <LI>Fixed a bug in the redo_prebinding(1)(3) code where it would
+   not preserve all two-level modules as linked if an executable was
+   built with -prebind_all_twolevel_modules flag (Radar bug
+   #2909518).</LI>
+   
+   <LI>Fixed a bug in the dynamic linker that would caused undefined
+   symbol errors from sub-libraries when the DYLD_IMAGE_SUFFIX
+   environment variable is used (Radar bug #2906863).</LI>
+   
+   <LI>Fixed a bug in the PowerPC assembler that did not correctly
+   set the branch hints bit for some conditional branches (Radar bug
+   #2905071).</LI>
+   
+   <LI>Re-fixed a bug in the dynamic linker where it would get a
+   malloc(3) double free(3) error with the NSAddImage(3) API when the
+   NSADDIMAGE_OPTION_WITH_SEARCHING is specified and the library was
+   searched for and found to already be loaded. (Radar bug
+   #2892860).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-413 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Added support for weak_definitions in coalesced sections (see
+   the notes above for the new features). (Radar bug #2898558).</LI>
+   
+   <LI>The DYLD_TRACE variable has been turned back off by default
+   (Radar bug #2859113).</LI>
+   
+   <LI>Fixed a bug in the dynamic linker where it would get a
+   malloc(3) double free(3) error with the NSAddImage(3) API when the
+   NSADDIMAGE_OPTION_WITH_SEARCHING is specified and the library was
+   searched for and found to already be loaded. (Radar bug
+   #2892860).</LI>
+   
+   <LI>Fixed a bug in needs_redo_prebinding(3), and
+   redo_prebinding(1)(3) where it would not determine the file needs
+   to be rebuilt when its dependent libraries install names changed
+   (Radar bug #2894021).</LI>
+   
+   <LI>Fixed some bugs in the cctools code base where there could be
+   a possible leak of a Mach privileged host port. (Radar bug
+   #2895931).</LI>
+   
+   <LI>Changed the <I>seg_addr_table</I>(1) tool's default starting
+   address for allocating flat shared libraries to 0x8fe00000 not
+   0x7fe00000. Also changed the default address of dyld to 0x8fe00000
+   not 0x7fe00000. (Radar bug #2897418).</LI>
+   
+   <LI>Added a check in the static link editor, ld(1), to not allow a
+   shared library to be linked against another shared library that
+   has the same install name.. (Radar bug #2890446).</LI>
+   
+   <LI>Fixed a bug in the PowerPC assembler in the range checking for
+   16 bit branch displacements so the maximum negative range is not
+   treated as an error. (Radar bug #2890217).</LI>
+   
+   <LI>Changed the <I>dyld</I>(1) man page to be clearer on what the
+   otool -L option does. (Radar bug #2710374).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-412 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed the <I>seg_addr_table</I>(1) tool's default starting
+   address for allocating flat shared libraries to 0x7fe00000 not
+   0x7ffc0000. Also changed the default address of dyld to 0x7fe00000
+   not 0x7ffc0000. (Fix to Radar bug #2848945).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-411 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the cctools project to no longer build the file(1)
+   command. This is now done by the by the System Commands project.
+   (Radar bug #2883427).</LI>
+   
+   <LI>Fixed a bug in the dynamic link editor's error handling of
+   unknown load commands with the LC_REQ_DYLD bit set. This only
+   showed up with RETURN_ON_ERROR options to the dyld APIs. (Radar
+   bug #2882932).</LI>
+   
+   <LI>Fixed some some problems with mutiple calls to the
+   redo_prebinding(3) routines that did not correctly reset the
+   initial state later calls did not work correctly. (Radar bug
+   #2882844).</LI>
+   
+   <LI>Changed the dynamic link editor's internal handling of the
+   DYLD_INSERT_LIBRARIES string to match what gdb(1) wants. It now
+   copies the string and replaces the colon characters with null
+   characters. (Radar bug #2882739).</LI>
+   
+   <LI>Changed the static link editor, <I>ld</I>(1), to generate an
+   error message when too many sections are used. (Radar bug
+   #2882553).</LI>
+   
+   <LI>Changed the seg_addr_table(1) command to not cause an error
+   when dylibs in the seg_addr_table are not found when the tool is
+   run in the -update or -update_overlaps mode. (Radar bug
+   #2882324).</LI>
+   
+   <LI>Added the -sect_diff_relocs flag and LD_SECT_DIFF_RELOCS
+   environment variable to ld(1) to allow checking that things were
+   compiled with -mdynamic-no-pic (see the man page for more
+   details). (Radar bug #2870529).</LI>
+   
+   <LI>Changed the strings(1) command to process non-object files by
+   default as if the '-' (single dash) option were given. (Radar bug
+   #2868578).</LI>
+   
+   <LI>Fixed some spelling errors in the dyld(1), dylibprof(1), ld(1)
+   and nmedit(1). (Radar bugs #2854497, #2854501, #2854516 and
+   #2854539).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-410 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the <I>seg_addr_table</I>(1) tool's default address
+   ranges for allocating shared libraries (see the
+   <I>seg_addr_table</I>(1) man page for details). Also changed the
+   default address of dyld to 0x7ffc0000. Once the shared libaries
+   have been moved to the new addresses this will allow a larger
+   maximum limit for malloc()'s by a program (Radar bug
+   #2848945).</LI>
+   
+   <LI>Removed the dummy versions of __isinfd(), __isnand() and
+   __inf() from dyld as these were put back in libc.a .</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-409 for
+the 5.10 MacOS 10.2 release) </FONT></H5>
+
+<UL>
+   <LI>Changed dyld to defined dummy versions of __isinfd(),
+   __isnand() and __inf() deal with these symbols being moved out of
+   libc.a</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-408 for
 the 5.10 MacOS 10.2 release) </FONT></H5>

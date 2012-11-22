@@ -1,5 +1,5 @@
 <HTML>
-<!--This file created 4/2/02 11:24 AM by Claris Home Page version 3.0-->
+<!--This file created 1/7/02 2:10 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Mac OS X 10.1 Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
@@ -7,7 +7,7 @@
    <X-CLARIS-TAGVIEW MODE=minimal>
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<H1>Mac OS X April 2002 Developer Release Notes:<BR>
+<H1>Mac OS X 10.2 Release Notes:<BR>
 Compiler Tools</H1>
 
 <P><!-- start of path --> <TABLE BORDER=0 CELLSPACING=0 WIDTH=600 valign=left>
@@ -21,9 +21,8 @@ Compiler Tools</H1>
 <BR>
 <!-- end of path --> <A HREF="index.html"><IMG SRC="Images/up.gif" WIDTH=36 HEIGHT=16 BORDER=0 ALIGN=bottom></A></P>
 
-<P>These notes are for the Mac OS X April 2002 Release of the
-compiler tools. They contain information about the following
-topics:</P>
+<P>These notes are for the Mac OS X 10.2 Release of the compiler
+tools. They contain information about the following topics:</P>
 
 <UL>
    <LI>The Mac OS X Mach-O GNU-based assemblers</LI>
@@ -36,9 +35,52 @@ topics:</P>
    on)</LI>
 </UL>
 
-<H2>Notes Specific to Mac OS April 2002 Release</H2>
+<H2>Notes Specific to Mac OS X 10.2 Release</H2>
+
+<P>The compiler tools for the MacOS X 10.2 Release must be used with
+prebound images (executables, and shared libraries) from the MacOS X
+10.2 User Release. The compiler tools in MacOS 10.1 will not work
+with prebound images from with the MacOS X 10.2 User Release. If the
+10.1 compiler tools are used on prebound images from the MacOS X 10.2
+User Release the compiler tools will generate error messages
+indicating that the image is a malformed file.</P>
 
 <H2>New Features</H2>
+
+<H3><FONT SIZE="+1">The dynamic linker now supports weak references
+and weak dylibs</FONT></H3>
+
+<P>The dynamic linker now supports weak symbol references and weak
+dymamic libraries. When creating a binary with the static link editor
+if all the symbols referenced from a given dependent dynamic library
+are weak references then the library is marked weak. When the binary
+is used at execution time and a weak library is missing the dynamic
+linker will not cause an error. For all weak symbols that are missing
+execution time the dynamic linker uses zero as their address. This
+allows a weak symbol's address to be tested for zero at runtime
+allowing the code to avoid using the weak symbol when it is missing.
+Binaries that use weak references require a dynamic linker from Mac
+OS X 10.2 or later.</P>
+
+<P>To indicate a symbol is to be a weak reference the
+__attribute((weak_import)) is used on the prototype of the symbol.
+When a binary is created by the static link editor normally the all
+the undefined symbol references of the object files being linked
+should be consistent for each undefined symbol. That is all undefined
+symbols should either be weak or non-weak references. If they are not
+by default this is treated as an error and can be changed with the
+ld(1) <B>-weak_reference_mismatches</B> <I>treatment</I> flag (see
+the ld(1) man page for more details).</P>
+
+<P>Weak referenced symbols and weak libraries are only created in the
+output by the static link editor, <I>ld</I>(1), when the
+MACOSX_DEPLOYMENT_TARGET environment variable is set to 10.2. If not
+a warning is generated when a weak reference would be in the output
+and it is not marked weak. Note the default for the
+MACOSX_DEPLOYMENT_TARGET environment variable 10.1 so weak referenced
+symbols and weak libraries are not created by default. See the
+<I>ld</I>(1) man page for more information on the
+MACOSX_DEPLOYMENT_TARGET environment variable.</P>
 
 <H3><FONT SIZE="+1">redo_prebinding can now slide dylibs</FONT></H3>
 

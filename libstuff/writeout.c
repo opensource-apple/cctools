@@ -116,6 +116,7 @@ unsigned long *throttle)
     unsigned long mh_flags;
     struct load_command *lc;
     struct dylib_command *dl;
+    mach_port_t my_mach_host_self;
 
     /*
      * The time the table of contents' are set to and the time to base the
@@ -419,7 +420,9 @@ unsigned long *throttle)
 		    for(j = 0; j < archs[i].object->mh->ncmds; j++){
 			if(lc->cmd == LC_ID_DYLIB){
 			    dl = (struct dylib_command *)lc;
-			    dl->dylib.timestamp = timestamp;
+			    if(archs[i].dont_update_LC_ID_DYLIB_timestamp ==
+			       FALSE)
+				dl->dylib.timestamp = timestamp;
 			    break;
 			}
 			lc = (struct load_command *)((char *)lc + lc->cmdsize);
@@ -493,10 +496,13 @@ unsigned long *throttle)
 	    bytes_written = 0;
 	    bytes_per_second = 0;
 	    count = HOST_SCHED_INFO_COUNT;
-	    if((r = host_info(mach_host_self(), HOST_SCHED_INFO, (host_info_t)
+	    my_mach_host_self = mach_host_self();
+	    if((r = host_info(my_mach_host_self, HOST_SCHED_INFO, (host_info_t)
 			      (&info), &count)) != KERN_SUCCESS){
+		mach_port_deallocate(mach_task_self(), my_mach_host_self);
 		my_mach_error(r, "can't get host sched info");
 	    }
+	    mach_port_deallocate(mach_task_self(), my_mach_host_self);
 	    if(gettimeofday(&start, &tz) == -1)
 		goto no_throttle;
 #undef THROTTLE_DEBUG

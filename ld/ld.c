@@ -40,6 +40,7 @@
 #include "stuff/arch.h"
 #include "stuff/version_number.h"
 #include "stuff/guess_short_name.h"
+#include "stuff/macosx_deployment_target.h"
 #if !(defined(KLD) && defined(__STATIC__))
 #include <stdio.h>
 #include <signal.h>
@@ -134,6 +135,9 @@ __private_extern__
 enum bool bind_at_load = FALSE;		/* mark the output for dyld to be bound
 					   when loaded */
 __private_extern__
+enum bool no_fix_prebinding = FALSE;	/* mark the output for dyld to never
+					   run fix_prebinding */
+__private_extern__
 enum bool load_map = FALSE;		/* print a load map */
 __private_extern__
 enum bool define_comldsyms = TRUE;	/* define common and link-editor defined
@@ -223,26 +227,18 @@ static enum bool multiply_defined_unused_flag_specified = FALSE;
 __private_extern__ enum read_only_reloc_check_level
     read_only_reloc_flag = READ_ONLY_RELOC_ERROR;
 
+/* The checking for section difference relocs */
+__private_extern__ enum sect_diff_reloc_check_level
+    sect_diff_reloc_flag = SECT_DIFF_RELOC_SUPPRESS;
+
 /* The handling for weak reference mismatches */
 __private_extern__ enum weak_reference_mismatches_handling
     weak_reference_mismatches = WEAK_REFS_MISMATCH_ERROR;
 
-/* The Mac OS X deployment targets */
+/* The Mac OS X deployment target */
 __private_extern__ enum macosx_deployment_target_value
-    macosx_deployment_target = MACOSX_DEPLOYMENT_TARGET_10_1;
-__private_extern__ char *macosx_deployment_target_name = "10.1";
-#ifndef RLD
-struct macosx_deployment_target_pair {
-    const char *name;
-    enum macosx_deployment_target_value value;
-};
-static const struct macosx_deployment_target_pair
-    macosx_deployment_target_pairs[] = {
-    { "10.1", MACOSX_DEPLOYMENT_TARGET_10_1 },
-    { "10.2", MACOSX_DEPLOYMENT_TARGET_10_2 },
-    { NULL, 0 }
-};
-#endif /* !defined(RLD) */
+	macosx_deployment_target = 0;
+__private_extern__ const char *macosx_deployment_target_name = NULL;
 
 /* The prebinding optimization */
 #ifndef RLD
@@ -253,6 +249,7 @@ __private_extern__ enum bool prebind_allow_overlap = FALSE;
 __private_extern__ enum bool prebind_all_twolevel_modules = FALSE;
 #ifndef RLD
 static enum bool read_only_reloc_flag_specified = FALSE;
+static enum bool sect_diff_reloc_flag_specified = FALSE;
 static enum bool weak_reference_mismatches_specified = FALSE;
 #endif
 
@@ -437,6 +434,7 @@ char *envp[])
     enum multiply_defined_check_level new_multiply_defined_flag,
 	new_multiply_defined_unused_flag;
     enum read_only_reloc_check_level new_read_only_reloc_flag;
+    enum sect_diff_reloc_check_level new_sect_diff_reloc_flag;
     enum weak_reference_mismatches_handling new_weak_reference_mismatches;
     enum bool is_framework;
     char *has_suffix;
@@ -656,7 +654,7 @@ char *envp[])
 			break;
 		    }
 		    else if(strcmp(p, "run_init_lazily") == 0){
-			warning("-run_init_lazily is obsolete\n");
+			warning("-run_init_lazily is obsolete");
 			break;
 		    }
 		    if(p[1] != '\0')
@@ -743,7 +741,7 @@ char *envp[])
 			if(file_name == NULL ||
 			   file_name[1] == '\0' || argv[i][0] == ':')
 			    fatal("-dylib_file argument: %s must have a ':' "
-				  "between it's file names", argv[i]);
+				  "between its file names", argv[i]);
 			dylib_files = reallocate(dylib_files,
 					(ndylib_files + 1) * sizeof(char *));
 			dylib_files[ndylib_files++] = argv[i];
@@ -781,6 +779,9 @@ char *envp[])
 		case 'n':
 		    if(strcmp(p, "noflush") == 0){
 			flush = FALSE;
+		    }
+		    else if(strcmp(p, "nofixprebinding") == 0){
+			no_fix_prebinding = TRUE;
 		    }
 		    else if(strcmp(p, "no_arch_warnings") == 0){
 			no_arch_warnings = TRUE;
@@ -1004,6 +1005,28 @@ char *envp[])
 		    }
 		    else if(strcmp(p, "sectorder_detail") == 0){
 			sectorder_detail = TRUE;
+		    }
+		    else if(strcmp(p, "sect_diff_relocs") == 0){
+			if(++i >= argc)
+			    fatal("-sect_diff_relocs: argument missing");
+			if(strcmp(argv[i], "error") == 0)
+			    new_sect_diff_reloc_flag = SECT_DIFF_RELOC_ERROR;
+			else if(strcmp(argv[i], "warning") == 0)
+			    new_sect_diff_reloc_flag = SECT_DIFF_RELOC_WARNING;
+			else if(strcmp(argv[i], "suppress") == 0)
+			    new_sect_diff_reloc_flag = SECT_DIFF_RELOC_SUPPRESS;
+			else{
+			    fatal("-sect_diff_relocs: unknown argument: %s",
+				  argv[i]);
+			    new_sect_diff_reloc_flag = SECT_DIFF_RELOC_SUPPRESS;
+			}
+			if(sect_diff_reloc_flag_specified == TRUE &&
+			   new_sect_diff_reloc_flag != sect_diff_reloc_flag)
+			    fatal("more than one value specified for "
+				  "-sect_diff_relocs");
+			sect_diff_reloc_flag_specified = TRUE;
+			sect_diff_reloc_flag = new_sect_diff_reloc_flag;
+			break;
 		    }
 		    /*
 		     * Flags for specifing information about segments.
@@ -1325,7 +1348,7 @@ char *envp[])
 			if(indr_symbol_name == NULL ||
 			   indr_symbol_name[1] == '\0' || *symbol_name == ':')
 			    fatal("-i argument: %s must have a ':' between "
-				  "it's symbol names", p + 1);
+				  "its symbol names", p + 1);
 			/* the creating of the symbol is done in the next pass
 			   of parsing arguments */
 		    }
@@ -1693,19 +1716,39 @@ unknown_flag:
 	/*
 	 * Pick up the Mac OS X deployment target.
 	 */
-	p = getenv("MACOSX_DEPLOYMENT_TARGET");
-	if(p != NULL){
-	    for(i = 0; macosx_deployment_target_pairs[i].name != NULL; i++){
-		if(strcmp(macosx_deployment_target_pairs[i].name, p) == 0){
-		    macosx_deployment_target =
-			macosx_deployment_target_pairs[i].value;
-		    break;
+	get_macosx_deployment_target(&macosx_deployment_target,
+				     &macosx_deployment_target_name);
+
+	/*
+	 * If the -sect_diff_relocs is specified check to see it can be used
+	 * else pick up the LD_SECT_DIFF_RELOC if that can be used.
+	 */
+	if(sect_diff_reloc_flag_specified == TRUE){
+	    if(filetype != MH_EXECUTE || dynamic == FALSE)
+		fatal("can't use -sect_diff_relocs unless both -execute and "
+		      "-dynamic are in effect");
+	}
+	else{
+	    /*
+	     * The -sect_diff_relocs flag was not specified on the command
+	     * line, so if both -execute and -dynamic are in effect see if
+	     * LD_SECT_DIFF_RELOCS is specified as an environment variable and
+	     * use that value.
+	     */
+	    if(filetype == MH_EXECUTE && dynamic == TRUE){
+		p = getenv("LD_SECT_DIFF_RELOCS");
+		if(p != NULL){
+		    if(strcmp(p, "error") == 0)
+			sect_diff_reloc_flag = SECT_DIFF_RELOC_ERROR;
+		    else if(strcmp(p, "warning") == 0)
+			sect_diff_reloc_flag = SECT_DIFF_RELOC_WARNING;
+		    else if(strcmp(p, "suppress") == 0)
+			sect_diff_reloc_flag = SECT_DIFF_RELOC_SUPPRESS;
+		    else{
+			fatal("Unknown LD_SECT_DIFF_RELOCS environment variable"
+			      " %s value", p);
+		    }
 		}
-	    }
-	    if(macosx_deployment_target_pairs[i].name == NULL){
-		warning("unknown MACOSX_DEPLOYMENT_TARGET environment variable "
-			"value: %s ignored (using %s)", p, 
-			macosx_deployment_target_name);
 	    }
 	}
 
@@ -2322,6 +2365,7 @@ unknown_flag:
 		            strcmp(p, "sectorder") == 0)
 			i += 3;
 		    else if(strcmp(p, "segaddr") == 0 ||
+			    strcmp(p, "sect_diff_relocs") == 0 ||
 		            strcmp(p, "sectobjectsymbols") == 0)
 			i += 2;
 		    else if(strcmp(p, "seg1addr") == 0 ||

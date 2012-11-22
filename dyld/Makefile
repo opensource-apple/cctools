@@ -19,16 +19,22 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
 
 OFLAG = -O
 
-# This won't happen for a while 
-#ifeq "macos" "$(RC_OS)"
-# PRIVATEHEADERS := $(shell if [ "$(RC_RELEASE)" = "Beaker" ] ||    \
-#			       [ "$(RC_RELEASE)" = "Bunsen" ] ||    \
-#			       [ "$(RC_RELEASE)" = "Gonzo" ]; then \
-#			 echo /System/Library; else echo /MacOSX/System; fi; \
-#		)/Frameworks/System.framework/PrivateHeaders
-#else
-#  PRIVATEHEADERS = /System/Library/Frameworks/System.framework/PrivateHeaders
-#endif
+MACOSX_10_1_SEG1ADDR = 41100000
+MACOSX_10_2_SEG1ADDR = 8fe00000
+ifeq "macos" "$(RC_OS)"
+  SEG1ADDR := $(shell if [ "$(RC_RELEASE)" = "Beaker"  ] || \
+			 [ "$(RC_RELEASE)" = "Bunsen"  ] || \
+			 [ "$(RC_RELEASE)" = "Gonzo"   ] || \
+			 [ "$(RC_RELEASE)" = "Kodiak"  ] || \
+			 [ "$(RC_RELEASE)" = "Cheetah" ] || \
+			 [ "$(RC_RELEASE)" = "Puma"    ]; then \
+			    echo $(MACOSX_10_1_SEG1ADDR) ; \
+			else \
+			    echo $(MACOSX_10_2_SEG1ADDR) ; fi; )
+else
+   SEG1ADDR = $(MACOSX_10_1_SEG1ADDR)
+endif
+
 PRIVATEHEADERS = /System/Library/Frameworks/System.framework/PrivateHeaders
 
 ifeq "macos" "$(RC_OS)"
@@ -36,7 +42,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double ; \
+	     echo -Wno-long-double -no-cpp-precomp ; \
 	     fi; )
 endif
 ifeq "mwccppc" "$(notdir $(CC))"
@@ -91,14 +97,14 @@ CFILES1 = dyld_init.c images.c errors.c allocate.c symbols.c reloc.c \
 	  malloc.c getsecbyname.c mig_support.c ppc_reloc.c trace.c
 CFILES2 = dyld_reloc.c
 SFILES1 = section_order.s stub_binding_helper.s machdep_lock.s cache_flush.s \
-	  fp_save_restore.s
+	  fp_save_restore.s halt.s
 SFILES2 = dyld_start.s
 HFILES = dyld_init.h images.h errors.h allocate.h symbols.h reloc.h \
 	 entry_point.h lock.h debug.h mod_init_funcs.h register_funcs.h \
 	 zoneprotect.h cthread_internals.h fp_save_restore.h inline_bsearch.h \
 	 inline_strcmp.h trace.h
 MIGFILES = dyld_debug.defs dyld_debug_defs.h dyld_event.defs dyld_event_defs.h \
-	   dyld_event_MsgError.h
+	   dyld_event_MsgError.h dyld_prebind.defs dyld_prebind_defs.h
 OBJS1 = $(SFILES1:.s=.o) $(CFILES1:.c=.o) profile_client.o vers.o
 OBJS2 = $(CFILES2:.c=.o) $(SFILES2:.s=.o)
 INSTALL_FILES = $(CFILES1) $(CFILES2) $(SFILES1) $(SFILES2) $(HFILES) \
@@ -108,10 +114,10 @@ PRODUCT = dyld
 all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS1) $(OBJS2) _dyld_debugServer.o \
-		_dyld_eventUser.o $(GMON)
+		_dyld_eventUser.o _dyld_prebindUser.o $(GMON)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OBJS1) $(OBJS2) _dyld_debugServer.o \
-		_dyld_eventUser.o $(GMON) $(LIBSTUFF) $(LIBC) \
-		-segprot __TEXT rwx rwx -seg1addr 41100000 \
+		_dyld_eventUser.o _dyld_prebindUser.o $(GMON) $(LIBSTUFF) \
+	        $(LIBC) -segprot __TEXT rwx rwx -seg1addr $(SEG1ADDR) \
 		-o $(SYMROOT)/$@ -Wl,-e,__dyld_start -nostdlib \
 		-Wl,-dylinker -Wl,-dylinker_install_name,$(USRLIBDIR)/$(PRODUCT)
 
@@ -119,8 +125,8 @@ $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS1) $(OBJS2) _dyld_debugServer.o \
 # calls _dyld_init() directly in place of having the kernel support.
 #dyld.o: $(OFILE_DIR) $(OBJS1)
 #	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r -d \
-#		-o $(OFILE_DIR)/dyld.o $(OBJS1) \
-#		_dyld_debugServer.o _dyld_eventUser.o $(LIBSTUFF)
+#		-o $(OFILE_DIR)/dyld.o $(OBJS1) _dyld_debugServer.o \
+#		_dyld_eventUser.o _dyld_prebindUser.o $(LIBSTUFF)
 #	nmedit -arch all -s dyld_api $(OFILE_DIR)/dyld.o
 
 _dyld_debugServer.c: dyld_debug.defs
@@ -160,6 +166,26 @@ _dyld_eventUser.c: dyld_event.defs dyld_event_MsgError.h
 _dyld_eventUser.o: _dyld_eventUser.c
 	cd $(OBJROOT); \
 	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c _dyld_eventUser.c
+
+images.c: _dyld_prebind.h
+_dyld_prebind.h: _dyld_prebindUser.c
+
+_dyld_prebindUser.c: dyld_prebind.defs
+	@if [ $(SRCROOT) = . ];						\
+	then								\
+	    echo "$(MIG) $(MIG_FLAGS) $(SRCROOT)/dyld_prebind.defs";	\
+	    $(MIG) $(MIG_FLAGS) $(SRCROOT)/dyld_prebind.defs;		\
+	    rm -f _dyld_prebindServer.c;				\
+	else								\
+	    echo -n "cd $(OBJROOT); "					\
+	    echo "$(MIG) $(MIG_FLAGS) $(SRCROOT)/dyld_prebind.defs";	\
+	    cd $(OBJROOT); $(MIG) $(MIG_FLAGS) $(SRCROOT)/dyld_prebind.defs; \
+	    cd $(OBJROOT); rm -f _dyld_prebindServer.c;			\
+	fi
+
+_dyld_prebindUser.o: _dyld_prebindUser.c
+	cd $(OBJROOT); \
+	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c _dyld_prebindUser.c
 
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@
@@ -222,7 +248,9 @@ shlib_clean:
 	-cd $(OFILE_DIR); rm -r -f _dyld_debugUser.o _dyld_debugServer.o
 	-cd $(OFILE_DIR); rm -r -f _dyld_eventUser.c _dyld_eventServer.c
 	-cd $(OFILE_DIR); rm -r -f _dyld_eventUser.o _dyld_eventServer.o
-	-cd $(OFILE_DIR); rm -r -f _dyld_debug.h _dyld_event.h
+	-cd $(OFILE_DIR); rm -r -f _dyld_prebindUser.c _dyld_prebindServer.c
+	-cd $(OFILE_DIR); rm -r -f _dyld_prebindUser.o _dyld_prebindServer.o
+	-cd $(OFILE_DIR); rm -r -f _dyld_debug.h _dyld_event.h _dyld_prebind.h
 	-rm -f $(OFILE_DIR)/dyld.o
 	-rm -f $(OFILE_DIR)/Makedep make.out
 

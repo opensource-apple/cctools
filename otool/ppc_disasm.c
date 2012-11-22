@@ -192,8 +192,8 @@ enum bool verbose)
 
 	switch(opcode & 0xfc000000){
 	case 0x00000000:
-	    if(opcode == 0x00000200){
-		printf("attn\n");
+	    if((opcode & 0xfc0007ff) == 0x00000200){
+		printf("attn\t0x%x\n", (unsigned int)((opcode >> 11) & 0x7fff));
 		break;
 	    }
 	    printf(".long 0x%08x\n", (unsigned int)opcode);

@@ -3,6 +3,34 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.10 release (the cctools-422 release):
+- Added the disassembly of some pentium pro instructions in i386_disasm.c.
+  Radar bug #2928507.
+- Added printing S_ATTR_STRIP_STATIC_SYMS to print_section() in ofile_print.c .
+  Radar bug #2945659.
+
+Changes for the 5.10 release (the cctools-421 release):
+- Added printing MH_NOFIXPREBINDING in print_mach_header() in ofile_print.c .
+  Radar bug #2941669.
+
+Changes for the 5.10 release (the cctools-416 release):
+- Removed the printing S_ATTR_WEAK_DEFS to print_section() in ofile_print.c.
+  Radar bug #2919646.
+- Added the -m option to not use the archive(member_syntax) for file names.
+  Radar bug #2904708.
+
+Changes for the 5.10 release (the cctools-414 release):
+- Added printing S_ATTR_WEAK_DEFS to print_section() in ofile_print.c.
+  Radar bug #2898558.
+
+Changes for the 5.10 release (the cctools-409.1 release):
+- Changed print_literal8() in ofile_print.c to use:
+	/* l0 is the high word, so this is equivalent to if(isfinite(d)) */
+	if((l0 & 0x7ff00000) != 0x7ff00000)
+  instead of:
+	if(finite(d))
+  so otool will not have to link with libm.  The Makefile was also changed.
+
 Changes for the 5.10 release (the cctools-403 release):
 - Removed the hack in the Makefile to use cc when $(CC) is gcc3 when linking
   to work that was working around Radar bug #2814731 now that gcc-1009 fixes it.

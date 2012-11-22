@@ -302,9 +302,13 @@ static char * get_install_name(
     unsigned long narchs);
 #endif /* !defined(LIBRARY_API) */
 
+static enum bool has_resource_fork(
+    char *filename);
+
 static void process_archs(
     struct arch *archs,
-    unsigned long narchs);
+    unsigned long narchs,
+    enum bool has_resource_fork);
 
 static unsigned long get_dylib_address(
     void);
@@ -320,6 +324,8 @@ static enum bool load_library(
     unsigned long *image_pointer);
 
 static enum bool load_dependent_libraries(void);
+
+static void check_for_extra_LC_PREBOUND_DYLIB(void);
 
 static void print_two_level_info(
     struct lib *lib);
@@ -759,9 +765,9 @@ char *envp[])
 		if(entry == NULL){
 		    fprintf(stderr, "%s: no entry in -seg_addr_table %s for "
 			    "input file's (%s) %s %s\n", progname,
+			    seg_addr_table_name, input_file,
 			    seg_addr_table_filename != NULL ?
 			    "-seg_addr_table_filename" : "install name:",
-			    seg_addr_table_name, input_file,
 			    seg_addr_table_filename != NULL ?
 			    seg_addr_table_filename : install_name);
 		    exit(2);
@@ -786,7 +792,7 @@ char *envp[])
 	}
 
 	/* process the input file */
-	process_archs(archs, narchs);
+	process_archs(archs, narchs, has_resource_fork(input_file));
 	if(errors)
 	    exit(2);
 
@@ -989,6 +995,14 @@ void)
 static NXZone *library_zone = NULL;
 
 /*
+ * These two variables are used to support redo_prebinding()'s only_if_needed
+ * parameter.
+ */
+static enum bool check_if_needed = FALSE;
+static enum bool redo_prebinding_needed = FALSE;
+static enum redo_prebinding_retval only_if_needed_retval;
+
+/*
  * reset_statics() is used by the library api's to get all the static variables
  * in this file back to their initial values.
  */
@@ -1006,6 +1020,7 @@ void)
 	root_dir = NULL;
 	executable_path = NULL;
 	new_dylib_address = 0;
+	dylib_vmslide = 0;
 	debug = FALSE;
 	arch_processed = FALSE;
 	arch = NULL;
@@ -1049,6 +1064,8 @@ void)
 	last = NULL;
 	left = 0;
 	errors = 0;
+	check_if_needed = FALSE;
+	redo_prebinding_needed = FALSE;
 }
 
 /*
@@ -1229,13 +1246,6 @@ error_return:
 	return(NULL);
 }
 
-/*
- * These two variables are used to support redo_prebinding()'s only_if_needed
- * parameter.
- */
-static enum bool check_if_needed = FALSE;
-static enum bool redo_prebinding_needed = FALSE;
-static enum redo_prebinding_retval only_if_needed_retval;
 
 /*
  * redo_prebinding() takes a file_name of a binary and redoes the prebinding on
@@ -1343,7 +1353,7 @@ unsigned long *throttle)
 	    goto error_return;
 
 	/* process the archs redoing the prebinding */
-	process_archs(archs, narchs);
+	process_archs(archs, narchs, has_resource_fork((char *)file_name));
 	if(errors)
 	    goto error_return;
 
@@ -1542,7 +1552,7 @@ cpu_type_t allow_missing_architectures)
 	 * If arch_processed is TRUE then set retval to PREBINDING_OUTOFDATE
 	 * else used the assumed initialized value PREBINDING_UPTODATE.
 	 */
-	process_archs(archs, narchs);
+	process_archs(archs, narchs, has_resource_fork((char *)file_name));
 
 return_point:
 	free_archs(archs, narchs);
@@ -1574,9 +1584,19 @@ char **error_message)
     enum object_file_type_retval retval;
 
 	reset_statics();
+	ofile = NULL;
 	progname = (char *)program_name;
 	if(error_message != NULL)
 	    *error_message = NULL;
+
+	/*
+	 * Set up to handle recoverable errors and longjmp's from the
+	 * redo_exit() routine.
+	 */
+	if(setjmp(library_env) != 0){
+	    retval = OFT_FILE_ERROR;
+	    goto done;
+	}
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, &archs, &narchs, FALSE);
@@ -1680,6 +1700,16 @@ char **error_message)
 	if(error_message != NULL)
 	    *error_message = NULL;
 	*cksums = NULL;
+	ofile = NULL;
+
+	/*
+	 * Set up to handle recoverable errors and longjmp's from the
+	 * redo_exit() routine.
+	 */
+	if(setjmp(library_env) != 0){
+	    retval = 1;
+	    goto done;
+	}
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, &archs, &narchs, FALSE);
@@ -1789,7 +1819,8 @@ static
 void
 process_archs(
 struct arch *archs,
-unsigned long narchs)
+unsigned long narchs,
+enum bool has_resource_fork)
 {
     unsigned long i;
 
@@ -1816,6 +1847,37 @@ unsigned long narchs)
 		    fatal_arch(arch, NULL, "file is not a Mach-O file: ");
 		}
 	    }
+
+	    /*
+	     * The statically linked executable case.
+	     */
+	    if(arch->object->mh->filetype == MH_EXECUTE &&
+	       (arch->object->mh->flags & MH_DYLDLINK) != MH_DYLDLINK){
+		if(check_for_dylibs == TRUE){
+		    if(seen_a_dylib == TRUE)
+			exit(2);
+		    seen_a_non_dylib = TRUE;
+		}
+#ifdef LIBRARY_API
+		else if(check_if_needed == TRUE){
+		    only_if_needed_retval = REDO_PREBINDING_NOT_NEEDED;
+		    return;
+		}
+		else if(check_only == TRUE){
+		    retval = NOT_PREBINDABLE;
+		    return;
+		}
+#endif
+		else if(check_only == TRUE ||
+		   ignore_non_prebound == TRUE ||
+		   check_for_non_prebound == TRUE)
+		    continue;
+		else{
+		    fatal_arch(arch, NULL, "file is Mach-O executable that is"
+			       "not dynamically linked: ");
+		}
+	    }
+
 	    if(arch->object->mh->filetype != MH_EXECUTE &&
 	       arch->object->mh->filetype != MH_DYLIB){
 		if(check_for_dylibs == TRUE){
@@ -1879,6 +1941,16 @@ unsigned long narchs)
 	    }
 	    if(check_for_non_prebound == TRUE)
 		continue;
+
+	    /*
+	     * How we are actually ready to redo the prebinding on this file.
+	     * If it has a resource fork then don't do it as we will loose the
+	     * resource fork when creating the new output file.
+	     */
+	    if(has_resource_fork == TRUE)
+		fatal_arch(arch, NULL, "redoing the prebinding can't be done "
+			   "because file has a resource fork or "
+			   "type/creator: ");
 
 	    /* Now redo the prebinding for this arch[i] */
 	    process_arch();
@@ -2042,6 +2114,15 @@ void)
 	     */
 	    if(old_dylib_address != new_dylib_address)
 		redo_exit(1);
+	}
+
+	/*
+	 * If this is an executable, make sure there are no extra
+	 * LC_PREBOUND_DYLIB load commands as dyld will check this not
+	 * use the prebinding.
+	 */
+	if(arch->object->mh->filetype == MH_EXECUTE){
+	    check_for_extra_LC_PREBOUND_DYLIB();
 	}
 	
 	/*
@@ -2335,6 +2416,72 @@ void)
 	    }
 	}
 	return(TRUE);
+}
+
+/*
+ * check_for_extra_LC_PREBOUND_DYLIB() checks to see that all the libraries for
+ * the LC_PREBOUND_DYLIB() load commands have been loaded by the dependent
+ * libraries.  If there are extra LC_PREBOUND_DYLIB() load commands for
+ * libraries that are not loaded this reports the errors and calls redo_exit(1).
+ */
+static
+void
+check_for_extra_LC_PREBOUND_DYLIB(
+void)
+{
+    unsigned long i, j;
+    struct load_command *lc, *load_commands;
+    struct prebound_dylib_command *pbdylib;
+    char *dylib_name;
+    enum bool found, found_by_stat;
+    struct stat stat_buf;
+
+	load_commands = arch->object->load_commands;
+	lc = load_commands;
+	for(i = 0; i < arch->object->mh->ncmds; i++){
+	    if(lc->cmd == LC_PREBOUND_DYLIB){
+		pbdylib = (struct prebound_dylib_command *)lc;
+		dylib_name = (char *)pbdylib + pbdylib->name.offset;
+		if(stat(dylib_name, &stat_buf) == -1){
+		    stat_buf.st_dev = 0;
+		    stat_buf.st_ino = 0;
+		}
+		found = FALSE;
+		found_by_stat = FALSE;
+		for(j = 0; j < nlibs; j++){
+		    if(strcmp(libs[j].dylib_name, dylib_name) == 0){
+			found = TRUE;
+			break;
+		    }
+		    if(stat_buf.st_dev == libs[j].dev && 
+		       stat_buf.st_ino == libs[j].ino){
+			found_by_stat = TRUE;
+			break;
+		    }
+		}
+		if(found_by_stat == TRUE){
+		    error("executable: %s (architecture %s) must be rebuilt, "
+			  "dynamic shared library: %s does not match its "
+			  "install_name: %s", arch->file_name, arch_name,
+			  dylib_name, libs[j].dylib_name);
+#ifdef LIBRARY_API
+		    if(check_if_needed == TRUE){
+			only_if_needed_retval = 
+			    REDO_PREBINDING_NEEDS_REBUILDING;
+		    }
+#endif
+		    redo_exit(1);
+		}
+		if(found == FALSE && check_only == TRUE){
+		    error("executable: %s (architecture %s) must be rebuilt, "
+			  "LC_PREBOUND_DYLIB found for dynamic shared library: "
+			  "%s but it was not loaded", arch->file_name,
+			  arch_name, dylib_name);
+		    redo_exit(1);
+		}
+	    }
+	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	}
 }
 
 /*
@@ -2904,8 +3051,19 @@ good:
 	    libs = reallocate(libs, (nlibs + 1) * sizeof(struct lib));
 	    memset(libs + nlibs, '\0', sizeof(struct lib));
 	    libs[nlibs].file_name = dylib_name;
-	    libs[nlibs].dylib_name = (char *)dl_load +
-				     dl_load->dylib.name.offset;
+	    /*
+	     * We must get the install_name as the name in the LC_DYLIB_LOAD
+	     * command may not be the install_name.
+	     */
+	    lc = ofile->load_commands;
+	    for(i = 0; i < ofile->mh->ncmds; i++){
+		if(lc->cmd == LC_ID_DYLIB){
+		    dl_id = (struct dylib_command *)lc;
+		    libs[nlibs].dylib_name = (char *)dl_id +
+					     dl_id->dylib.name.offset;
+		}
+		lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	    }
 	    libs[nlibs].umbrella_name = guess_short_name(libs[nlibs].dylib_name,
 							 &is_framework,
 							 &suffix);
@@ -4341,8 +4499,10 @@ enum bool missing_arch)
 	 * has missing architecures for its dependent libraries we are done and
 	 * can return.
 	 */
-	if(missing_arch == TRUE)
+	if(missing_arch == TRUE){
+	    arch->dont_update_LC_ID_DYLIB_timestamp = TRUE;
 	    return;
+	}
 
 	/*
 	 * Update the objc_module_info_addr fields if this is slid.
@@ -6367,7 +6527,7 @@ unsigned long vmslide)
     struct section *s;
     char *dylib_name, *linked_modules;
     struct routines_command *rc;
-    enum bool found;
+    enum bool found, prebind_all_twolevel_modules;
 
 	/*
 	 * First copy the time stamps for the dependent libraries from the
@@ -6460,6 +6620,19 @@ unsigned long vmslide)
 	    return;
 
 	/*
+	 * We need to figure out if this executable was built with the
+	 * -prebind_all_twolevel_modules flag so to preserve this. We assume
+	 * that it is and check all the linked_modules bit vectors in the
+	 * existing LC_PREBOUND_DYLIB in the next loop.  If we find a module
+	 * that is not bound in a two-level namespace image this is set to
+	 * FALSE.  It is also set to FALSE here if the -force_flat_namespace
+	 * was used.
+	 */
+	prebind_all_twolevel_modules = TRUE;
+	if(arch_force_flat_namespace == TRUE)
+	    prebind_all_twolevel_modules = FALSE;
+
+	/*
 	 * For each library the executable uses determine the size we need for
 	 * the LC_PREBOUND_DYLIB load command for it.  If their is an exising
 	 * LC_PREBOUND_DYLIB command use it if there is enough space in the
@@ -6515,6 +6688,22 @@ unsigned long vmslide)
 			}
 			ncmds += 1;
 			sizeofcmds += libs[i].LC_PREBOUND_DYLIB_size;
+			/*
+			 * See if all two-level modules were linked.
+			 */
+			if(prebind_all_twolevel_modules == TRUE &&
+			   (libs[i].ofile->mh->flags & MH_TWOLEVEL) ==
+			    MH_TWOLEVEL){
+			    linked_modules = (char *)pbdylib1 +
+					     pbdylib1->linked_modules.offset;
+			    for(j = 0; j < pbdylib1->nmodules; j++){
+				if(((linked_modules[j/8] >> (j%8)) & 1) == 0){
+				    /* found a module that is not linked */
+				    prebind_all_twolevel_modules = FALSE;
+				    break;
+				}
+			    }
+			}
 			break;
 		    }
 		}
@@ -6624,7 +6813,10 @@ unsigned long vmslide)
                                 sizeof(struct prebound_dylib_command) +
                                 round(strlen(dylib_name) + 1, sizeof(long));
 			for(k = 0; k < libs[j].nmodtab; k++){
-			    if(libs[j].module_states[k] == LINKED)
+			    if(libs[j].module_states[k] == LINKED ||
+			       (prebind_all_twolevel_modules == TRUE &&
+			        (libs[j].ofile->mh->flags & MH_TWOLEVEL) ==
+				 MH_TWOLEVEL))
 				linked_modules[k / 8] |= 1 << k % 8;
 			}
 			lc2 = (struct load_command *)
@@ -7251,3 +7443,77 @@ const char *format, ...)
 	errors++;
 }
 #endif /* defined(LIBRARY_API) */
+
+#include <sys/attr.h>
+/*
+ * Structure defining what's returned from getattrlist.  It returns all the
+ * values we want in some order (probably from largest bit representation to
+ * smallest.
+ */
+struct fileinfobuf {   
+    unsigned long info_length;
+    /*
+     * The first two words contain the type and creator.  I have no idea what's
+     * in the rest of the info.
+     */
+    unsigned long finderinfo[8];
+    /*
+     * Note that the file lengths appear to be long long.  I have no idea where
+     * the sizes of different values are defined.
+     */
+    unsigned long long data_length;
+    unsigned long long resource_length;
+};
+
+/*
+ * has_resource_fork() returns TRUE if the filename contains a resource fork or
+ * type/creator, FALSE otherwise.
+ */
+static
+enum bool
+has_resource_fork(
+char *filename)
+{
+    int err;
+    struct attrlist alist;
+    struct fileinfobuf finfo;
+
+	/*
+	 * Set up the description of what info we want.  We'll want the finder
+	 * info on this file as well as info on the resource fork's length.
+	 */
+	alist.bitmapcount = 5;
+	alist.reserved = 0;
+	alist.commonattr = ATTR_CMN_FNDRINFO;
+	alist.volattr = 0;
+	alist.dirattr = 0;
+	alist.fileattr = ATTR_FILE_DATALENGTH | ATTR_FILE_RSRCLENGTH;
+	alist.forkattr = 0;
+
+	err = getattrlist(filename, &alist, &finfo, sizeof(finfo), 0);
+	/*
+	 * If non-zero either not a file on an HFS disk, file does not exist, 
+	 * or something went wrong.
+	 */
+	if(err != 0)
+	    return(FALSE);
+
+	if(debug == TRUE){
+	    printf("Resource fork len is %lld\n", finfo.resource_length);
+	    printf("Data fork len is %lld\n", finfo.data_length);
+	}
+
+    	/* see if it has a resource fork */
+	if(finfo.resource_length != 0)
+	    return(TRUE);
+
+	/*
+	 * If the type/creator wasn't just zero -- probably has a value.
+	 * type/creator represented by spaces would also count as having a
+	 * value.
+	 */
+	if((finfo.finderinfo[0] != 0) || (finfo.finderinfo[1] != 0))
+	    return(TRUE);
+
+	return(FALSE);
+}

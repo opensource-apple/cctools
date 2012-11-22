@@ -894,10 +894,11 @@ char *arch_name)
 		break;
 	    case N_SECT:
 		if(symbols[i].n_sect >= 1 &&
-		   symbols[i].n_sect <= process_flags->nsects)
+		   symbols[i].n_sect <= process_flags->nsects){
 		    printf(" (%.16s,%.16s) ",
 		       process_flags->sections[symbols[i].n_sect-1]->segname,
 		       process_flags->sections[symbols[i].n_sect-1]->sectname);
+		}
 		else
 		    printf(" (?,?) ");
 		break;
@@ -909,10 +910,15 @@ char *arch_name)
 	    if(symbols[i].n_type & N_EXT){
 		if(symbols[i].n_desc & REFERENCED_DYNAMICALLY)
 		    printf("[referenced dynamically] ");
-		if(symbols[i].n_type & N_PEXT)
-		    printf("private external ");
+		if(symbols[i].n_type & N_PEXT){
+		    if((symbols[i].n_desc & N_WEAK_DEF) == N_WEAK_DEF)
+			printf("weak private external ");
+		    else
+			printf("private external ");
+		}
 		else{
-		    if(symbols[i].n_desc & N_WEAK_REF)
+		    if((symbols[i].n_desc & N_WEAK_REF) == N_WEAK_REF ||
+		       (symbols[i].n_desc & N_WEAK_DEF) == N_WEAK_DEF)
 			printf("weak external ");
 		    else
 			printf("external ");

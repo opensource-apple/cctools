@@ -31,12 +31,13 @@ get_symfile_for_dylib(
 char *install_name,
 char *release_name,
 enum bool *found_project,
-enum bool disablewarnings)
+enum bool disablewarnings,
+enum bool no_error_if_missing)
 {
     const char *symroot;
 
 	symroot = symLocForDylib(install_name, release_name, found_project,
-				 disablewarnings);
+				 disablewarnings, no_error_if_missing);
 	if(symroot == NULL)
 	    return(NULL);
 	return(find_dylib_in_root(install_name, symroot));
@@ -47,7 +48,8 @@ get_dstfile_for_dylib(
 char *install_name,
 char *release_name,
 enum bool *found_project,
-enum bool disablewarnings)
+enum bool disablewarnings,
+enum bool no_error_if_missing)
 {
     const char *dstroot;
     char *image_file_name;
@@ -55,7 +57,7 @@ enum bool disablewarnings)
     struct stat stat_buf;
 
 	dstroot = dstLocForDylib(install_name, release_name, found_project,
-				 disablewarnings);
+				 disablewarnings, no_error_if_missing);
 	if(dstroot == NULL)
 	    return(NULL);
 

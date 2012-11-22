@@ -98,7 +98,7 @@ struct mach_header {
 
 /* Constants for the flags field of the mach_header */
 #define	MH_NOUNDEFS	0x1		/* the object file has no undefined
-					   references, can be executed */
+					   references */
 #define	MH_INCRLINK	0x2		/* the object file is the output of an
 					   incremental link against a base file
 					   and can't be link edited again */
@@ -124,6 +124,9 @@ struct mach_header {
 					   defintions of symbols in its
 					   sub-images so the two-level namespace
 					   hints can alwasys be used. */
+#define MH_NOFIXPREBINDING 0x400	/* do not have dyld notify the
+					   prebinding agent about this
+					   executable */
 /*
  * The load commands directly follow the mach_header.  The total size of all
  * of the commands is given by the sizeofcmds field in the mach_header.  All
@@ -326,6 +329,9 @@ struct section {
 						   symbols that are not to be
 						   in a ranlib table of
 						   contents */
+#define S_ATTR_STRIP_STATIC_SYMS 0x20000000	/* ok to strip static symbols
+						   in this section in files
+						   with the MH_DYLDLINK flag */
 #define SECTION_ATTRIBUTES_SYS	 0x00ffff00	/* system setable attributes */
 #define S_ATTR_SOME_INSTRUCTIONS 0x00000400	/* section contains some
 						   machine instructions */

@@ -1522,7 +1522,7 @@ down:
 		       undefined->merged_symbol->nlist.n_type == (N_UNDF|N_EXT)
 		       && undefined->merged_symbol->nlist.n_value == 0){
 			error("malformed table of contents in library: %s "
-			      "(member %.*s did not defined symbol %s)",
+			      "(member %.*s did not define symbol %s)",
 			      file_name, (int)j, ar_name,
 			      undefined->merged_symbol->nlist.n_un.n_name);
 		    }
@@ -1746,7 +1746,8 @@ unsigned long file_size)
 	    length = round(obj_size, sizeof(short));
 	    offset += length;
 	}
-	if(arch_flag.cputype != 0 && mixed_types == FALSE &&
+	if(no_arch_warnings == FALSE &&
+	   arch_flag.cputype != 0 && mixed_types == FALSE &&
 	   arch_flag.cputype != cputype && cputype != 0){
 	    new_arch = get_arch_name_from_types(cputype, cpusubtype);
 	    prev_arch = get_arch_name_from_types(arch_flag.cputype,
@@ -2536,7 +2537,7 @@ undefined_twolevel_reference:
 			    (N_UNDF|N_EXT)
 			   && undefined->merged_symbol->nlist.n_value == 0){
 			    error("malformed table of contents in library: "
-			       "%s (module %s did not defined symbol %s)",
+			       "%s (module %s did not define symbol %s)",
 			       cur_obj->file_name, bsearch_strings +
 			       cur_obj->dylib_module->module_name,
 			       undefined->merged_symbol->nlist.n_un.n_name);
@@ -2621,7 +2622,7 @@ undefined_twolevel_reference:
 			   (N_UNDF|N_EXT)
 			   && undefined->merged_symbol->nlist.n_value == 0){
 			    error("malformed table of contents in library: %s "
-				  "(member %.*s did not defined symbol %s)",
+				  "(member %.*s did not define symbol %s)",
 				  p->file_name, (int)j, ar_name,
 				  undefined->merged_symbol->nlist.n_un.n_name);
 			}
@@ -2694,7 +2695,7 @@ undefined_twolevel_reference:
 			       (N_UNDF|N_EXT)
 			       && undefined->merged_symbol->nlist.n_value == 0){
 				error("malformed table of contents in library: "
-				   "%s (member %.*s did not defined symbol %s)",
+				   "%s (member %.*s did not define symbol %s)",
 				   p->file_name, (int)j, ar_name,
 				   undefined->merged_symbol->nlist.n_un.n_name);
 			    }
@@ -2738,7 +2739,7 @@ undefined_twolevel_reference:
 			    (N_UNDF|N_EXT)
 			   && undefined->merged_symbol->nlist.n_value == 0){
 			    error("malformed external defined symbols of "
-			       "-bundle_loader: %s (it did not defined symbol "
+			       "-bundle_loader: %s (it did not define symbol "
 			       "%s)", cur_obj->file_name,
 			       undefined->merged_symbol->nlist.n_un.n_name);
 			}
@@ -4301,10 +4302,7 @@ enum bool bundle_loader)
 		       section_type != S_NON_LAZY_SYMBOL_POINTERS &&
 		       section_type != S_LAZY_SYMBOL_POINTERS &&
 		       section_type != S_SYMBOL_STUBS &&
-#define ENABLE_COALESCED
-#ifdef ENABLE_COALESCED
 		       section_type != S_COALESCED &&
-#endif
 		       section_type != S_MOD_INIT_FUNC_POINTERS &&
 		       section_type != S_MOD_TERM_FUNC_POINTERS){
 			error_with_cur_obj("unknown flags (type) of section %lu"
@@ -5319,9 +5317,7 @@ unsigned long strsize)
 		       section_type != S_NON_LAZY_SYMBOL_POINTERS &&
 		       section_type != S_LAZY_SYMBOL_POINTERS &&
 		       section_type != S_SYMBOL_STUBS &&
-#ifdef ENABLE_COALESCED
 		       section_type != S_COALESCED &&
-#endif
 		       section_type != S_MOD_INIT_FUNC_POINTERS &&
 		       section_type != S_MOD_TERM_FUNC_POINTERS){
 			error_with_cur_obj("unknown flags (type) of section %lu"

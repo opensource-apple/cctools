@@ -1033,7 +1033,7 @@ static const struct ppc_opcode ppc_opcodes[] = {
  { 0x7c0002e6, "mftb",    {{21,5,GREG}, {11,10,SPREG}} },
  { 0x7c0c42e6, "mftb",    {{21,5,GREG}} },
  { 0x7c0d42e6, "mftbu",   {{21,5,GREG}} },
- { 0x00000200, "attn",    {{0}},	 OPTIONAL },
+ { 0x00000200, "attn",    {{11,15,NUM}},	 OPTIONAL },
 
 /* Instructions (from book IV) */
  { 0x24000000, "dozi",    {{21,5,GREG}, {16,5,GREG}, {0,16,SI}}, CPU601 },

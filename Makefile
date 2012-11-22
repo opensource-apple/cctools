@@ -24,9 +24,22 @@ DSTROOT = /
 RC_OS = macos
 RC_CFLAGS =
 
-APPLE_SUBDIRS = ar file
+INSTALLSRC_SUBDIRS = $(COMMON_SUBDIRS) ar file include
 COMMON_SUBDIRS = libstuff as gprof misc libmacho ld dyld libdyld \
 		 mkshlib otool profileServer RelNotes man
+ifeq "macos" "$(RC_OS)"
+  APPLE_SUBDIRS := $(shell if [ "$(RC_RELEASE)" = "Beaker"  ] || \
+			      [ "$(RC_RELEASE)" = "Bunsen"  ] || \
+			      [ "$(RC_RELEASE)" = "Gonzo"   ] || \
+			      [ "$(RC_RELEASE)" = "Kodiak"  ] || \
+			      [ "$(RC_RELEASE)" = "Cheetah" ] || \
+			      [ "$(RC_RELEASE)" = "Puma"    ]; then \
+				echo "ar file" ; \
+			    else \
+				echo "ar" ; fi; )
+else
+  APPLE_SUBDIRS = ar file
+endif
 
 ifeq "nextstep" "$(RC_OS)"
   SUBDIRS = $(COMMON_SUBDIRS)
@@ -220,7 +233,7 @@ lib_ofiles lib_ofiles_install: installhdrs
 installsrc: SRCROOT
 	$(MKDIRS) $(SRCROOT)
 	cp Makefile APPLE_LICENSE PB.project $(SRCROOT)
-	for i in `echo $(SUBDIRS) include`; \
+	for i in `echo $(INSTALLSRC_SUBDIRS)`; \
 	  do \
 		echo =========== $(MAKE) $@ for $$i =============;	\
 		(cd $$i; $(MAKE) SRCROOT=$$SRCROOT/$$i $@) || exit 1;	\

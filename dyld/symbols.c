@@ -108,6 +108,9 @@ static enum bool are_symbols_coalesced(
     struct nlist *symbol1,
     struct image *image2,
     struct nlist *symbol2);
+static enum bool is_symbol_coalesced_and_weak(
+    struct image *image,
+    struct nlist *symbol);
 static enum bool is_section_coalesced(
     struct image *image,
     unsigned int nsect);
@@ -347,6 +350,10 @@ void)
     struct relocation_info *relocs;
     struct dylib_table_of_contents *tocs, *toc;
     enum bool flat_reference;
+    int number_of_global_coalesced_symbols;
+    int total_number_of_global_coalesced_symbols;
+
+    total_number_of_global_coalesced_symbols = 0;
 
 	/*
 	 * The executable is the first object on the object_image list.  So
@@ -354,6 +361,7 @@ void)
 	 */
 	image = &object_images.images[0].image;
 	if(image->has_coalesced_sections == TRUE){
+	    number_of_global_coalesced_symbols = 0;
 	    linkedit_segment = image->linkedit_segment;
 	    st = image->st;
 	    dyst = image->dyst;
@@ -362,7 +370,8 @@ void)
 				  MH_TWOLEVEL) != MH_TWOLEVEL;
 	    else
 		flat_reference = TRUE;
-	    if(linkedit_segment != NULL && st != NULL && dyst != NULL){
+	    if(linkedit_segment != NULL && st != NULL && dyst != NULL &&
+	       flat_reference == TRUE){
 		/*
 		 * The vmaddr_slide of an executable is always 0, no need to add
 		 * it when figuring out these pointers.
@@ -383,11 +392,14 @@ void)
 		    if((symbol->n_type & N_TYPE) == N_SECT &&
 		       is_section_coalesced(image, symbol->n_sect - 1) == TRUE){
 			symbol_name = strings + symbol->n_un.n_strx;
+			number_of_global_coalesced_symbols += 1;
 			add_to_being_linked_list(symbol_name, symbol, image,
 						 flat_reference);
 		    }
 		}
 	    }
+	    total_number_of_global_coalesced_symbols +=
+		number_of_global_coalesced_symbols;
 	}
 
 	/*
@@ -397,8 +409,16 @@ void)
 	q = &library_images;
 	do{
 	    for(i = 0; i < q->nimages; i++){
+		number_of_global_coalesced_symbols = 0;
 		image = &(q->images[i].image);
 		if(image->has_coalesced_sections == FALSE)
+		    continue;
+		if(force_flat_namespace == FALSE)
+		    flat_reference = (image->mh->flags &
+				      MH_TWOLEVEL) != MH_TWOLEVEL;
+		else
+		    flat_reference = TRUE;
+		if(flat_reference == FALSE)
 		    continue;
 		linkedit_segment = image->linkedit_segment;
 		st = image->st;
@@ -423,11 +443,6 @@ void)
 		     linkedit_segment->vmaddr +
 		     dyst->extrefsymoff -
 		     linkedit_segment->fileoff);
-		if(force_flat_namespace == FALSE)
-		    flat_reference = (image->mh->flags &
-				      MH_TWOLEVEL) != MH_TWOLEVEL;
-		else
-		    flat_reference = TRUE;
 		for(j = 0; j < image->dyst->nmodtab; j++){
 		    link_state = GET_LINK_STATE(q->images[i].modules[j]);
 		    if(link_state != FULLY_LINKED)
@@ -445,6 +460,7 @@ void)
 				TRUE){
 
 			    symbol_name = strings + symbol->n_un.n_strx;
+			    number_of_global_coalesced_symbols += 1;
 
 			    /* check being_linked_list of symbols */
 			    found = FALSE;
@@ -464,9 +480,18 @@ void)
 			}
 		    }
 		}
+		total_number_of_global_coalesced_symbols +=
+		    number_of_global_coalesced_symbols;
 	    }
 	    q = q->next_images;
 	}while(q != NULL);
+
+	/*
+	 * If there were no global coalesed symbols in two-level namespace
+	 * images then nothing should need to be done.
+	 */
+	if(total_number_of_global_coalesced_symbols == 0)
+	    return;
 
 	/*
 	 * Get the symbol pointers relocated to the coalesced symbols being
@@ -1229,7 +1254,7 @@ struct nlist *symbol2)
 }
 
 /*
- * is_symbol_coalesced() is passed a pointer to an image and a symbols in that
+ * is_symbol_coalesced() is passed a pointer to an image and a symbol in that
  * image.  If the symbol is a coalesced symbol then TRUE is returned else FALSE
  * is returned.
  */
@@ -1241,6 +1266,26 @@ struct nlist *symbol)
 	if((symbol->n_type & N_TYPE) != N_SECT)
 	    return(FALSE);
 	return(is_section_coalesced(image, symbol->n_sect - 1));
+}
+
+/*
+ * is_symbol_coalesced_and_weak() is passed a pointer to an image and a symbol
+ * in that image.  If the symbol is a coalesced weak symbol then TRUE is
+ * returned else FALSE is returned.
+ */
+static
+enum bool
+is_symbol_coalesced_and_weak(
+struct image *image,
+struct nlist *symbol)
+{
+	if((symbol->n_type & N_TYPE) != N_SECT)
+	    return(FALSE);
+	if(is_section_coalesced(image, symbol->n_sect - 1) == FALSE)
+	    return(FALSE);
+	if((symbol->n_desc & N_WEAK_DEF) != N_WEAK_DEF)
+	    return(FALSE);
+	return(TRUE);
 }
 
 /*
@@ -1476,9 +1521,13 @@ enum bool launching_with_prebound_libraries)
 			prev_library_name = NULL;
 			prev_module_name = prev_image->name;
 		    }
-		    if(image->has_coalesced_sections == TRUE &&
-		       are_symbols_coalesced(image, symbols + i, 
-					     prev_image, prev_symbol) == TRUE){
+		    if((image->has_coalesced_sections == TRUE &&
+		        (are_symbols_coalesced(image, symbols + i, 
+					prev_image,prev_symbol) == TRUE ||
+		        is_symbol_coalesced_and_weak(image, symbols + i))) ||
+			(prev_image->has_coalesced_sections == TRUE &&
+			 is_symbol_coalesced_and_weak(prev_image,
+					prev_symbol) == TRUE) ){
 			/* check being_linked_list of symbols */
 			found = FALSE;
 			for(being_linked = being_linked_list.next;
@@ -1489,9 +1538,52 @@ enum bool launching_with_prebound_libraries)
 				break;
 			    }
 			}
-			if(found == FALSE)
-			    add_to_being_linked_list(symbol_name, prev_symbol,
-						     prev_image,flat_reference);
+			/*
+			 * If one the previous symbol is a weak coalesced symbol
+			 * then use this one.
+			 */
+			if(prev_image->has_coalesced_sections == TRUE &&
+			   is_symbol_coalesced_and_weak(prev_image,
+				prev_symbol) == TRUE){
+			    /* remove prev_symbol from being_linked,
+			       only if the flat_reference matches? */
+			    if(found == TRUE){
+				/* take this off the being_linked list */
+				being_linked->prev->next = being_linked->next;
+				being_linked->next->prev = being_linked->prev;
+
+				/* put this at the end of the free_list list */
+				being_linked->prev = free_list.prev;
+				being_linked->next = &free_list;
+
+				/* clear the pointers */
+				being_linked->name = NULL;
+				being_linked->symbol = NULL;
+				being_linked->image = NULL;
+				being_linked->remove_on_error = FALSE;
+				being_linked->bind_fully = FALSE;
+				being_linked->flat_reference = FALSE;
+			    }
+			    /* add (image,symbols[i]) to being linked list */
+			    /* check being_linked_list of symbols */
+			    found = FALSE;
+			    for(being_linked = being_linked_list.next;
+				being_linked != &being_linked_list;
+				being_linked = being_linked->next){
+				if(being_linked->symbol == symbols + i){
+				    found = TRUE;
+				    break;
+				}
+			    }
+			    if(found == FALSE)
+				add_to_being_linked_list(symbol_name,
+				    symbols + i, image, flat_reference);
+			}
+			else{
+			    if(found == FALSE)
+				add_to_being_linked_list(symbol_name,
+				    prev_symbol, prev_image, flat_reference);
+			}
 			continue;
 		    }
 
@@ -2024,10 +2116,14 @@ enum bool bind_fully)
 			prev_library_name = NULL;
 			prev_module_name = prev_image->name;
 		    }
-		    if(object_image->image.has_coalesced_sections == TRUE &&
-		       are_symbols_coalesced(&(object_image->image), symbols+i, 
-					     prev_image, prev_symbol) == TRUE){
-			discard_symbol(&(object_image->image), symbols + i);
+		    if((object_image->image.has_coalesced_sections == TRUE &&
+		        (are_symbols_coalesced(&(object_image->image),
+				symbols + i, prev_image, prev_symbol) == TRUE ||
+		        is_symbol_coalesced_and_weak(&(object_image->image),
+				symbols + i))) ||
+			(prev_image->has_coalesced_sections == TRUE &&
+			 is_symbol_coalesced_and_weak(prev_image,
+					prev_symbol) == TRUE) ){
 			/* check being_linked_list of symbols */
 			found = FALSE;
 			for(being_linked = being_linked_list.next;
@@ -2038,9 +2134,54 @@ enum bool bind_fully)
 				break;
 			    }
 			}
-			if(found == FALSE)
-			    add_to_being_linked_list(symbol_name, prev_symbol,
-						     prev_image,flat_reference);
+			/*
+			 * If one the previous symbol is a weak coalesced symbol
+			 * then use this one.
+			 */
+			if(prev_image->has_coalesced_sections == TRUE &&
+			   is_symbol_coalesced_and_weak(prev_image,
+				prev_symbol) == TRUE){
+			    /* remove prev_symbol from being_linked,
+			       only if the flat_reference matches? */
+			    if(found == TRUE){
+				/* take this off the being_linked list */
+				being_linked->prev->next = being_linked->next;
+				being_linked->next->prev = being_linked->prev;
+
+				/* put this at the end of the free_list list */
+				being_linked->prev = free_list.prev;
+				being_linked->next = &free_list;
+
+				/* clear the pointers */
+				being_linked->name = NULL;
+				being_linked->symbol = NULL;
+				being_linked->image = NULL;
+				being_linked->remove_on_error = FALSE;
+				being_linked->bind_fully = FALSE;
+				being_linked->flat_reference = FALSE;
+			    }
+			    /* add (image,symbols[i]) to being linked list */
+			    /* check being_linked_list of symbols */
+			    found = FALSE;
+			    for(being_linked = being_linked_list.next;
+				being_linked != &being_linked_list;
+				being_linked = being_linked->next){
+				if(being_linked->symbol == symbols + i){
+				    found = TRUE;
+				    break;
+				}
+			    }
+			    if(found == FALSE)
+				add_to_being_linked_list(symbol_name,
+				    symbols + i, &(object_image->image),
+				    flat_reference);
+			}
+			else{
+			    discard_symbol(&(object_image->image), symbols + i);
+			    if(found == FALSE)
+				add_to_being_linked_list(symbol_name,
+				    prev_symbol, prev_image, flat_reference);
+			}
 			continue;
 		    }
 		    multiply_defined_error(symbol_name,
@@ -4166,6 +4307,7 @@ unsigned long lazy_symbol_pointer_address)
 	    error("bad mach header passed to stub_binding_helper");
 	    link_edit_error(DYLD_OTHER_ERROR, DYLD_LAZY_BIND, NULL);
             DYLD_TRACE_SYMBOLS_END(DYLD_TRACE_bind_lazy_symbol_reference);
+	    halt();
 	    exit(DYLD_EXIT_FAILURE_BASE + DYLD_OTHER_ERROR);
 	}
 
@@ -4216,6 +4358,7 @@ unsigned long lazy_symbol_pointer_address)
 		  "stub_binding_helper");
 	    link_edit_error(DYLD_OTHER_ERROR, DYLD_LAZY_BIND, NULL);
             DYLD_TRACE_SYMBOLS_END(DYLD_TRACE_bind_lazy_symbol_reference);
+	    halt();
 	    exit(DYLD_EXIT_FAILURE_BASE + DYLD_OTHER_ERROR);
 	}
 

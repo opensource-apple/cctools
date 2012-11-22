@@ -6,7 +6,7 @@ ifeq "macos" "$(RC_OS)"
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
 			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
 			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double ; \
+	     echo -Wno-long-double -no-cpp-precomp ; \
 	     fi; )
 endif
 
@@ -33,9 +33,9 @@ else
   SYSTEMDIR = /Local/Developer/System
 endif
 ifeq "macos" "$(RC_OS)"
-  LIBS = -L$(NEXT_ROOT)$(SYSTEMDIR) -lm_static -lc_static
+  LIBS = -L$(NEXT_ROOT)$(SYSTEMDIR) -lc_static
 else
-  LIBS = -lm -lc_static
+  LIBS = -lc_static
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

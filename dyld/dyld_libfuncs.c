@@ -2730,7 +2730,6 @@ unsigned long options)
 	return_value = load_library_image(NULL, p, force_searching,
 					  match_filename_by_installname,&image);
 	if(return_on_error == TRUE && return_value == FALSE){
-	    free(p);
             DYLD_TRACE_LIBFUNC_END(DYLD_TRACE_NSAddImage);
 	    /* release lock for dyld data structures */
 	    release_lock();
@@ -2746,7 +2745,6 @@ unsigned long options)
 	     * returns FALSE since return_on_error was set to true before
 	     * the call to load_library_image().
 	     */
-	    free(p);
             DYLD_TRACE_LIBFUNC_END(DYLD_TRACE_NSAddImage);
 	    /* release lock for dyld data structures */
 	    release_lock();

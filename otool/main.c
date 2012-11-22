@@ -215,13 +215,14 @@ char **envp)
     unsigned long i, j, nfiles;
     struct arch_flag *arch_flags;
     unsigned long narch_flags;
-    enum bool all_archs;
+    enum bool all_archs, use_member_syntax;
     char **files;
 
 	progname = argv[0];
 	arch_flags = NULL;
 	narch_flags = 0;
 	all_archs = FALSE;
+	use_member_syntax = TRUE;
 
 	if(argc <= 1)
 	    usage();
@@ -380,6 +381,9 @@ char **envp)
 		case 'Z':
 		    Zflag = TRUE;
 		    break;
+		case 'm':
+		    use_member_syntax = FALSE;
+		    break;
 		default:
 		    error("unknown char `%c' in flag %s\n", argv[i][j],argv[i]);
 		    usage();
@@ -419,7 +423,7 @@ char **envp)
 
 	for(i = 0; i < nfiles; i++){
 	    ofile_process(files[i], arch_flags, narch_flags, all_archs, TRUE,
-			  TRUE, TRUE, processor, NULL);
+			  TRUE, use_member_syntax, processor, NULL);
 	}
 
 	if(errors)
@@ -437,7 +441,7 @@ usage(
 void)
 {
 	fprintf(stderr,
-		"Usage: %s [-fahlLtdorSvVc] <object file> ...\n",
+		"Usage: %s [-fahlLDtdorSTMRIHvVcXm] <object file> ...\n",
 		progname);
 
 	fprintf(stderr, "\t-f print the fat headers\n");
@@ -467,6 +471,7 @@ void)
 	fprintf(stderr, "\t-V print disassembled operands symbolicly\n");
 	fprintf(stderr, "\t-c print argument strings of a core file\n");
 	fprintf(stderr, "\t-X print no leading addresses or headers\n");
+	fprintf(stderr, "\t-m don't use archive(member) syntax\n");
 	exit(EXIT_FAILURE);
 }
 

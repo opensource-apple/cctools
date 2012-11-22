@@ -5,6 +5,28 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.10 release (the cctools-416 release):
+- Changed writeout() in writeout.c to not update the LC_ID_DYLIB timestamp if
+  the new dont_update_LC_ID_DYLIB_timestamp is TRUE.  Radar bug #2914003.
+
+Changes for the 5.10 release (the cctools-414 release):
+- Changed the two calls to mach_host_self() in get_arch_from_host.c and
+  writeout.c to call mach_port_deallocate() on the port after the calls.  Radar
+  bug #2895931.
+
+Changes for the 5.10 release (the cctools-412 release):
+- Added the no_error_if_missing parameter to symLocForDylib(), dstLocForDylib()
+  and LocForDylib() in SymLoc.c .  In LocForDylib() no call to error() is made
+  if the installName can't be found.  Radar bug #2882324.
+- Added the no_error_if_missing parameter to get_symfile_for_dylib() and
+  get_dstfile_for_dylib() in dylib_roots.c which is pass through to
+  symLocForDylib() or dstLocForDylib().  Radar bug #2882324.
+
+Changes for the 5.10 release (the cctools-411 release):
+- Added the header file macosx_deployment_target.c to libstuff so that both the
+  ld(1) code and the seg_addr_table(1) code can use the same code. Radar bug
+  #2848945.
+
 Changes for the 5.10 release (the cctools-404 release):
 - Changed crc32() in crc32.c to be a __private_extern__.  Radar bug #2859919.
 

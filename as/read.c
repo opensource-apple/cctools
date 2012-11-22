@@ -247,11 +247,12 @@ static struct attribute_name attribute_names[] = {
     { "none",	  0 },
     { "pure_instructions", S_ATTR_PURE_INSTRUCTIONS },
     { "no_toc", S_ATTR_NO_TOC },
+    { "strip_static_syms", S_ATTR_STRIP_STATIC_SYMS },
     { NULL, 0 }
 };
 
 /*
- * These are the built in sections know to the assembler with a directive.
+ * These are the built in sections known to the assembler with a directive.
  * They are known as which segment and section name as well as the type &
  * attribute, and default alignment.
  */
@@ -375,6 +376,7 @@ static void s_set(int value);
 static void s_reference(int value);
 static void s_lazy_reference(int value);
 static void s_weak_reference(int value);
+static void s_weak_definition(int value);
 static void s_include(int value);
 static void s_dump(int value);
 static void s_load(int value);
@@ -434,6 +436,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "reference",s_reference,	0	},
   { "lazy_reference",s_lazy_reference,	0	},
   { "weak_reference",s_weak_reference,	0	},
+  { "weak_definition",s_weak_definition,	0	},
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
   { "endmacro",	s_endmacro,	0	},
@@ -2416,9 +2419,6 @@ int value)
 		as_fatal("incompatible feature used: section type %s (must "
 			 "specify \"-dynamic\" to be "
 			 "used)", type_name->name);
-	    if(attribute != 0)
-		as_fatal("incompatible feature used: section attributes "
-			 "(must specify \"-dynamic\" to be used)");
 	}
 
 	frcP = section_new(segname, sectname, type, attribute, sizeof_stub);
@@ -2644,6 +2644,39 @@ int value)
 	symbolP = symbol_find_or_make(name);
 	if((symbolP->sy_type & N_TYPE) == N_UNDF && symbolP->sy_value == 0)
 	    symbolP->sy_desc |= N_WEAK_REF;
+	*p = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * s_weak_definition() implements the pseudo op:
+ *	.weak_definition name
+ */
+static
+void
+s_weak_definition(
+int value)
+{
+    char *name;
+    char c;
+    char *p;
+    symbolS *symbolP;
+
+	if(* input_line_pointer == '"')
+	    name = input_line_pointer + 1;
+	else
+	    name = input_line_pointer;
+	c = get_symbol_end();
+	p = input_line_pointer;
+
+	*p = 0;
+	symbolP = symbol_find_or_make(name);
+        if((symbolP->sy_type & N_TYPE) != N_UNDF &&
+	   ((symbolP->sy_type & N_TYPE) != N_SECT ||
+	   is_section_coalesced(symbolP->sy_other) == FALSE))
+	      as_fatal("symbol: %s can't be a weak_definition (currently "
+		       "only supported in section of type coalesced)", name);
+	symbolP->sy_desc |= N_WEAK_DEF;
 	*p = c;
 	demand_empty_rest_of_line();
 }
