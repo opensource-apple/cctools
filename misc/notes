@@ -9,6 +9,46 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.28 release (the cctools-782 release):
+- Added the -U option to nm(1) to not print undefined symbols. Radar bug
+  #7761111.
+- Changed nm(1)'s -m printing to support 'weak symbol automatically hidden' in
+  print_mach_symbols() in nm.c.  Radar bug #5021217.
+
+Changes for the 5.28 release (the cctools-781 release):
+- Changed codesign_allocate(1) to allow it to be used on any Mach-O file.
+  Radar bug #7689781.
+- Added the program ctf_insert(1) to add a (__CTF,__ctf) section to a statically
+  linked Mach-O file.  Radar bug #7016839.
+- Added support for LC_LOAD_UPWARD_DYLIB in update_load_commands() in
+  install_name_tool.c, in nm() in nm.c and in replace_sections() in segedit.c .
+  Radar bug #7659206.
+
+Changes for the 5.28 release (the cctools-780 release):
+- Changed trunc() to trnc() in libtool.c and removed -fno-builtin-trunc from the
+  Makefile.
+- Improved the error checking in the redo_prebinding code so that
+  contents_pointer_for_vmaddr() checks to make sure the pointer is not in the
+  object's headers or link edit information.  Radar bug #6081358.
+
+Changes for the 5.28 release (the cctools-779 release):
+- Fixed bugs in install_name_tool.c in parsing -change and -rpath. Radar bug
+  #7477104.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed round() to rnd() and stuff/round.h to stuff/rnd.h in all files and
+  removed -fno-builtin-round from the Makefile.  Radar bug #7475139.
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+- Change contents_pointer_for_vmaddr() in redo_prebinding.c to ignore segments
+  with a zero vmaddr since these are unmapped segments.  Radar bug #7467115.
+
+Changes for the 5.28 release (the cctools-776 release):
+- Improved the error checking in the redo_prebinding code so that
+  contents_pointer_for_vmaddr() checks to make sure the pointer is in the
+  section's contents of the segment.  Checks also added to libstuff's
+  check_Mach_O() in ofile.c to make sure that sections are contained in
+  their segments.  Radar bug #6081358.
+
 Changes for the 5.27 release (the cctools-773 release):
 - Fixed a typo in two lipo(1) error messages where "it's" should have been
   "its".  Radar bug 7362293.

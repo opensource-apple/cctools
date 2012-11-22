@@ -27,11 +27,12 @@
 #endif
 #ifdef ARM
 #include <mach-o/arm/reloc.h>
+#include "arm_reloc.h"
 #endif
 #if defined(I386) && defined(ARCH64)
 #include <mach-o/x86_64/reloc.h>
 #endif
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 #include "stuff/bytesex.h"
 #include "stuff/errors.h"
 #include "as.h"
@@ -286,7 +287,7 @@ char *out_file_name)
 	    reloc_segment.vmsize = frchainP->frch_section.addr +
 				   frchainP->frch_section.size;
 	}
-	offset = round(offset, sizeof(int32_t));
+	offset = rnd(offset, sizeof(int32_t));
 
 	/*
 	 * Count the number of relocation entries for each section.
@@ -301,7 +302,7 @@ char *out_file_name)
 	/*
 	 * Fill in the offset to the relocation entries of the sections.
 	 */
-	offset = round(offset, sizeof(int32_t));
+	offset = rnd(offset, sizeof(int32_t));
 	reloff = offset;
 	nrelocs = 0;
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
@@ -363,8 +364,8 @@ char *out_file_name)
 	    symbol_table.stroff = 0;
 	else
 	    symbol_table.stroff = offset;
-	symbol_table.strsize = round(strsize, sizeof(uint32_t));
-	offset += round(strsize, sizeof(uint32_t));
+	symbol_table.strsize = rnd(strsize, sizeof(uint32_t));
+	offset += rnd(strsize, sizeof(uint32_t));
 
 	/*
 	 * The second group of things to do is now with the size of everything
@@ -1075,6 +1076,13 @@ struct fix *fixP)
 	   fixP->fx_r_type == SPARC_RELOC_LO10)
 	    return(2);
 #endif
+#ifdef ARM
+	if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_RELOC_HI16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_HI16)
+	    return(2);
+#endif
 	return(1);
 }
 
@@ -1113,6 +1121,16 @@ uint32_t debug_section)
 	memset(riP, '\0', sizeof(struct relocation_info));
 	symbolP = fixP->fx_addsy;
 
+#ifdef ARM
+	/* see arm_reloc.h for the encodings in the low 2 bits */
+	if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_RELOC_HI16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_HI16){
+	    riP->r_length = fixP->fx_r_type & 0x3;
+	}
+	else
+#endif
 	switch(fixP->fx_size){
 	    case 1:
 		riP->r_length = 0;
@@ -1142,6 +1160,15 @@ uint32_t debug_section)
 	riP->r_pcrel = fixP->fx_pcrel;
 	riP->r_address = fixP->fx_frag->fr_address + fixP->fx_where -
 			 sect_addr;
+#ifdef ARM
+	if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_RELOC_HI16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_HI16){
+	    riP->r_type = ARM_RELOC_HALF;
+	}
+	else
+#endif
 	riP->r_type = fixP->fx_r_type;
 	/*
 	 * For undefined symbols this will be an external relocation entry.
@@ -1237,6 +1264,14 @@ uint32_t debug_section)
 		    sectdiff = SPARC_RELOC_LO10_SECTDIFF;
 		else
 #endif
+#ifdef ARM
+		if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+		   fixP->fx_r_type == ARM_RELOC_HI16 ||
+		   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+		   fixP->fx_r_type == ARM_THUMB_RELOC_HI16)
+		    sectdiff = ARM_RELOC_HALF_SECTDIFF;
+		else
+#endif
 		{
 		    if(fixP->fx_r_type != 0){
 			layout_file = fixP->file;
@@ -1252,6 +1287,15 @@ uint32_t debug_section)
 		}
 		memset(&sri, '\0',sizeof(struct scattered_relocation_info));
 		sri.r_scattered = 1;
+#ifdef ARM
+		/* see arm_reloc.h for the encodings in the low 2 bits */
+		if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+		   fixP->fx_r_type == ARM_RELOC_HI16 ||
+		   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+		   fixP->fx_r_type == ARM_THUMB_RELOC_HI16)
+		    sri.r_length = fixP->fx_r_type & 0x3;
+		else
+#endif
 		sri.r_length    = riP->r_length;
 		sri.r_pcrel     = riP->r_pcrel;
 		sri.r_address   = riP->r_address;
@@ -1301,6 +1345,18 @@ uint32_t debug_section)
 		    sri.r_address = ((symbolP->sy_value -
 				      fixP->fx_subsy->sy_value +
 				      fixP->fx_offset) >> 10) & 0x3fffff;
+		}
+#endif
+#ifdef ARM
+		else if(sectdiff == ARM_RELOC_HALF_SECTDIFF){
+		    if((sri.r_length & 0x1) == 0x1)
+			sri.r_address = (symbolP->sy_value -
+					 fixP->fx_subsy->sy_value
+					 + fixP->fx_offset) & 0xffff;
+		    else
+			sri.r_address = ((symbolP->sy_value -
+					  fixP->fx_subsy->sy_value +
+					  fixP->fx_offset) >> 16) & 0xffff;
 		}
 #endif
 		*riP = *((struct relocation_info *)&sri);
@@ -1391,11 +1447,23 @@ uint32_t debug_section)
 	   fixP->fx_r_type == SPARC_RELOC_LO10)
 #endif
 #ifdef ARM
-	if(FALSE) /* currently don't have any arm machine specific relocs
-		     that have a pair relocation entry */
+	if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_RELOC_HI16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+	   fixP->fx_r_type == ARM_THUMB_RELOC_HI16)
 #endif
 	{
 	    memset(riP, '\0', sizeof(struct relocation_info));
+#ifdef ARM
+	    /* see arm_reloc.h for the encodings in the low 2 bits */
+	    if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+	       fixP->fx_r_type == ARM_RELOC_HI16 ||
+	       fixP->fx_r_type == ARM_THUMB_RELOC_LO16 ||
+	       fixP->fx_r_type == ARM_THUMB_RELOC_HI16){
+		riP->r_length = fixP->fx_r_type & 0x3;
+	    }
+	    else
+#endif
 	    switch(fixP->fx_size){
 		case 1:
 		    riP->r_length = 0;
@@ -1490,6 +1558,15 @@ uint32_t debug_section)
 		riP->r_address = fixP->fx_value & 0x3ff;
 	    else if (fixP->fx_r_type == SPARC_RELOC_LO10)
 		riP->r_address = (fixP->fx_value >> 10) & 0x3fffff;
+#endif
+#ifdef ARM
+	    riP->r_type = ARM_RELOC_PAIR;
+	    if(fixP->fx_r_type == ARM_RELOC_HI16 ||
+	       fixP->fx_r_type == ARM_THUMB_RELOC_HI16)
+		riP->r_address = 0xffff & fixP->fx_value;
+	    else if(fixP->fx_r_type == ARM_RELOC_LO16 ||
+		    fixP->fx_r_type == ARM_THUMB_RELOC_LO16)
+		riP->r_address = 0xffff & (fixP->fx_value >> 16);
 #endif
 	    count = 2;
 	}

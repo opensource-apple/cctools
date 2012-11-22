@@ -1,7 +1,7 @@
 export USE_APPLE_PB_SUPPORT = all
-OFLAG = -O
+OFLAG = -Os
 RC_OS = macos
-X_CFLAGS = -fno-builtin-round
+X_CFLAGS =
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)

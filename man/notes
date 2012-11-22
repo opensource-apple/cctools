@@ -2,6 +2,11 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.27 release (the cctools-782 release):
+- Added the -U option to nm(1).  Radar bug #7761111.
+- Added an ALSO SEE to the otool(1) man page that listed install_name_tool(1),
+  dyld(1) and libtool(1).  Radar bug #7531315. 
+
 Changes for the 5.27 release (the cctools-773 release):
 - Changed the description of otool(1)'s -X flag.  Radar bug #7328418.
 

@@ -25,6 +25,77 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.28 release (the cctools-782 release):
+- Added the .weak_def_can_be_hidden to read.c and changed colon() in symbols.c
+  to also preserve N_WEAK_DEF bit.  Radar bug #5021217.
+- Fixed the arm assembler to correctly detect errors with floating point to
+  integer conversion instruction that use the rounding mode (vcvtr.*) when they
+  are not valid and generate an error.  The fix was in do_vfp_nsyn_cvtr() in
+  arm.c to cause an error if one has not already be caught by checking that
+  the flavour index into the static arrary enc[] does not have a null value.
+  Radar bug #7719236.
+- Added the Intel aes instructions.  Radar bug #7709572.
+
+Changes for the 5.28 release (the cctools-780 release):
+- Changed the Makefile to use -Os for OFLAG in building the driver.
+- Fixed a bug in parse_neon_mov() in arm.c that caused assembling:
+    vmov.f32 s2, s1
+  to end up with an undefined symbol named "s1" in the output file.  This was
+  caused by the call to parse_big_immediate().  Which was incorrectly called
+  before trying arm_typed_reg_parse().  The call to parse_big_immediate()
+  failed but as a side effect created the undefined symbol and then the later
+  call to arm_typed_reg_parse() did not fail.  Reversing the two removes the
+  problem and then in the case when parse_big_immediate() fails it causes an
+  error.  Radar bug #7567713.
+- Fixed arm.c that incorrectly had an ARM_VARIANT set for the Thumb only
+  instructions cbnz and cbz.  Also fixed do_neon_mov() in arm.c when it was
+  called for something like "vshr q0,d0,#0" to not abort() in the switch(rs)
+  case for default if a inst.error and just return and let the error get
+  reported.  Radar bug #7559323.
+
+Changes for the 5.28 release (the cctools-779 release):
+- Changed the test in encode_thumb2_ldmstm() for the warning of the value
+  stored is UNPREDICTABLE to check that writeback is set before the rest of the
+  checks such as the base is in the list and is also not the lowest register
+  in the mask.  Radar bug #7528057.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed round() to rnd() and stuff/round.h to stuff/rnd.h in all files and
+  removed -fno-builtin-round from the Makefile.  Radar bug #7475139.
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
+Changes for the 5.28 release (the cctools-775 release):
+- Added support for the new arm ARM_RELOC_HALF and ARM_RELOC_HALF_SECTDIFF
+  relocation entries used with the movw and movt instruction immediates.
+  - Added a new file arm_reloc.h to have internal #defines for
+    ARM_{,THUMB_}RELOC_{LO16,HI16} with notes about the encodings for the
+    reloc entries in <mach-o/arm/reloc.h> .
+  - In arm.c assigned the enum BFD_RELOC_{ARM,THUMB}_MOV{W,T} values
+    ARM_{,THUMB_}RELOC_{LO16,HI16} from arm_reloc.h .
+  - Fixed the code in md_apply_fix() for the BFD_RELOC_{ARM,THUMB}_MOV{W,T}
+    case values so the *_MOVT values would have high 16 bits of the value used.
+  - Fixed the code in write_object.c to correctly deal with the ARM relocs.
+    - In nrelocs_for_fix() added the #ifdef ARM code for the paired relocs.
+    - In fix_to_relocation_entries() added the #ifdef ARM code for the handling
+      of the LO16,HI16 and SECTDIFF ARM relocs.
+  Radar bug #7421496.
+
+Changes for the 5.28 release (the cctools-774 release):
+- Added the invvpid and invept instructions to i386-opcode.h .
+  Radar bug #7383743.
+- Fixed x86_64 instructions that have a 0xf2, 0xf3, etc. "mandatory" prefixes to
+  follow optional prefixes.   This is done by adding a entry in the i.prefix[]
+  array, increasing MAX_PREFIXES in i386.h by one and adding MAN_PREFIX just
+  before REX_PREFIX.  Then add_prefix() in i386.c had the parameter mandatory
+  added to it which was passed MAN_PREFIX when called with a mandatory prefix or
+  0 otherwise.  Then add_prefix() had code added to it to place the passed
+  prefix into i.prefix[mandatory] when mandatory was not zero and return 1
+  to indicate a prefix was added but was not a REP prefix.  Radar bug #7403143.
+- Fixed the i386 bound instruction to take WordMem, WordReg not WordReg,
+  WordMem . Radar bug #7394709.
+- Update the i386-check.c program to work for both i386 and x86_64 and added in
+  the Makefile an ax86_64_test target.
+
 Changes for the 5.27 release (the cctools-772 release):
 - Fixed the arm's assembler's vmls.f32 and vmls.f64 encodings, the changes were
   in do_vfp_nsyn_mla_mls() in arm.c to use "fnmacs" instead of "fmscs" and

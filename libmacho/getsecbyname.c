@@ -275,6 +275,7 @@ unsigned long *size)
 
 	zero = 0;
 	find = 0;
+	sp = 0;
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
 	for(i = 0; i < mhp->ncmds; i++){
@@ -307,7 +308,42 @@ unsigned long *size)
 	return(0);
 done:
 	*size = sp->size;
-	return((char *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
+	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
+}
+
+uint8_t * 
+getsegmentdata(
+const struct mach_header *mhp,
+const char *segname,
+unsigned long *size)
+{
+    struct segment_command *sgp, *zero, *find;
+    uint32_t i;
+
+	zero = 0;
+	find = 0;
+	sgp = (struct segment_command *)
+	      ((char *)mhp + sizeof(struct mach_header));
+	for(i = 0; i < mhp->ncmds; i++){
+	    if(sgp->cmd == LC_SEGMENT){
+		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
+		    zero = sgp;
+		    if(find != 0)
+			goto done;
+		}
+		if(find == 0 &&
+		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		    find = sgp;
+		    if(zero != 0)
+			goto done;
+		}
+	    }
+	    sgp = (struct segment_command *)((char *)sgp + sgp->cmdsize);
+	}
+	return(0);
+done:
+	*size = sgp->vmsize;
+	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sgp->vmaddr));
 }
 
 #else /* defined(__LP64__) */
@@ -325,6 +361,7 @@ unsigned long *size)
 
 	zero = 0;
 	find = 0;
+	sp = 0;
 	sgp = (struct segment_command_64 *)
 	      ((char *)mhp + sizeof(struct mach_header_64));
 	for(i = 0; i < mhp->ncmds; i++){
@@ -357,7 +394,42 @@ unsigned long *size)
 	return(0);
 done:
 	*size = sp->size;
-	return((char *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
+	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
+}
+
+uint8_t * 
+getsegmentdata(
+const struct mach_header_64 *mhp,
+const char *segname,
+unsigned long *size)
+{
+    struct segment_command_64 *sgp, *zero, *find;
+    uint32_t i;
+
+	zero = 0;
+	find = 0;
+	sgp = (struct segment_command_64 *)
+	      ((char *)mhp + sizeof(struct mach_header_64));
+	for(i = 0; i < mhp->ncmds; i++){
+	    if(sgp->cmd == LC_SEGMENT_64){
+		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
+		    zero = sgp;
+		    if(find != 0)
+			goto done;
+		}
+		if(find == 0 &&
+		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		    find = sgp;
+		    if(zero != 0)
+			goto done;
+		}
+	    }
+	    sgp = (struct segment_command_64 *)((char *)sgp + sgp->cmdsize);
+	}
+	return(0);
+done:
+	*size = sgp->vmsize;
+	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sgp->vmaddr));
 }
 
 #endif /* defined(__LP64__) */

@@ -1,3 +1,24 @@
+Changes for the 5.27 release (the cctools-783 release):
+- Fixed a comment typo in loader.h where rebase should have been bind.
+  Radar bug #6789853.
+
+Changes for the 5.27 release (the cctools-781 release):
+- Added support in "stuff/breakout.h" to add content to Mach-O files so the
+  program ctf_insert(1) can add a (__CTF,__ctf) section to a statically
+  linked Mach-O file.  Radar bug #7016839.
+- Added LC_LOAD_UPWARD_DYLIB to <mach-o/loader.h> . Radar bug #7659206.
+
+Changes for the 5.27 release (the cctools-780 release):
+- Added getsegmentdata() API to mach-o/getsect.h . Radar bug #7588238.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed round() to rnd() and moved stuff/round.h to stuff/rnd.h .
+  Radar bug #7475139.
+
+Changes for the 5.28 release (the cctools-775 release):
+- Added new ARM_RELOC_HALF and ARM_RELOC_HALF_SECTDIFF relocation entries to
+ <mach-o/arm/reloc.h> for the movw and movt instructions.  Radar bug #7421496.
+
 Changes for the 5.27 release (the cctools-772 release):
 - Added getsectiondata() API to mach-o/getsect.h . Radar bug #5724145.
 

@@ -222,6 +222,9 @@ struct load_command *load_commands)
 	    case LC_REEXPORT_DYLIB:
 		cmd_name = "LC_REEXPORT_DYLIB";
 		goto check_dylib_command;
+	    case LC_LOAD_UPWARD_DYLIB:
+		cmd_name = "LC_LOAD_UPWARD_DYLIB";
+		goto check_dylib_command;
 	    case LC_LAZY_LOAD_DYLIB:
 		cmd_name = "LC_LAZY_LOAD_DYLIB";
 		goto check_dylib_command;
@@ -1141,6 +1144,7 @@ check_dylib_command:
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LOAD_UPWARD_DYLIB:
 	    case LC_LAZY_LOAD_DYLIB:
 		dl = (struct dylib_command *)lc;
 		swap_dylib_command(dl, target_byte_sex);

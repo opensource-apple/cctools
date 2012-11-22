@@ -1,3 +1,17 @@
+Changes for the 5.27 release (the cctools-782 release):
+- Changed the Makefile to build dylibs and place them in /usr/lib/system.
+  Radar bug #7733446.
+
+Changes for the 5.27 release (the cctools-780 release):
+- Added getsegmentdata() API to getsecbyname.c . Radar bug #7588238.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
+Changes for the 5.27 release (the cctools-776 release):
+- Fixes a warning in the getsectiondata() return statement to cast to the 
+  correct type.
+
 Changes for the 5.27 release (the cctools-773 release):
 - Added getsectiondata() API to getsecbyname.c . Radar bug #5724145.
 

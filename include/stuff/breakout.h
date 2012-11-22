@@ -159,6 +159,13 @@ struct object {
      */
     uint32_t calculated_input_prebind_cksum;
 
+    /*
+     * New content to be added to the output file just after where the input
+     * sym info was.
+     */
+    char *output_new_content;
+    uint32_t output_new_content_size;
+
     uint32_t input_sym_info_size;
     uint32_t output_sym_info_size;
 

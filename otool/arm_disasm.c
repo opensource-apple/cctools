@@ -110,7 +110,11 @@ struct disassemble_info { /* HACK'ed up for just what we need here */
 
   /* Function called to print ADDR.  */
   void (*print_address_func)
-    (bfd_vma addr, struct disassemble_info *info);
+    (bfd_vma pc, bfd_vma addr, struct disassemble_info *info);
+
+  /* Function called to print IMM for movw and movt.  */
+  void (*print_immediate_func)
+    (bfd_vma pc, unsigned int imm, struct disassemble_info *info);
 
   /* For use by the disassembler.
      The top 16 bits are reserved for public use (and are documented here).
@@ -1840,7 +1844,7 @@ print_insn_coprocessor (bfd_vma pc, struct disassemble_info *info, int32_t given
 			    func (stream, "\t; ");
                             /* FIXME: Unsure if info->bytes_per_chunk is the
                                right thing to use here.  */
-			    info->print_address_func (offset + pc
+			    info->print_address_func (pc, offset + pc
                               + info->bytes_per_chunk * 2, info);
 			  }
 		      }
@@ -2246,7 +2250,7 @@ print_arm_address (bfd_vma pc, struct disassemble_info *info, int32_t given)
 	}
 
       func (stream, "\t; ");
-      info->print_address_func (offset, info);
+      info->print_address_func (pc, offset, info);
     }
   else
     {
@@ -2833,7 +2837,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			    offset = -offset;
 
 			  func (stream, "[pc, #%d]\t; ", offset);
-			  info->print_address_func (offset + pc + 8, info);
+			  info->print_address_func (pc, offset + pc + 8, info);
 			}
 		      else
 			{
@@ -2892,7 +2896,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		    case 'b':
 		      {
 			int disp = (((given & 0xffffff) ^ 0x800000) - 0x800000);
-			info->print_address_func (disp*4 + pc + 8, info);
+			info->print_address_func (pc, disp*4 + pc + 8, info);
 		      }
 		      break;
 
@@ -2999,7 +3003,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			  /* H bit allows addressing to 2-byte boundaries.  */
 			  address += 2;
 
-		        info->print_address_func (address, info);
+		        info->print_address_func (pc, address, info);
 		      }
 		      break;
 
@@ -3117,7 +3121,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			  int32_t hi = (given & 0x000f0000) >> 4;
 			  int32_t lo = (given & 0x00000fff);
 			  int32_t imm16 = hi | lo;
-			  func (stream, "#%lu\t; 0x%lx", imm16, imm16);
+			  info->print_immediate_func (pc, imm16, info);
 			}
 			break;
 
@@ -3274,7 +3278,7 @@ print_insn_thumb16 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  bfd_vma address = (pc + 4
 				     + ((given & 0x00f8) >> 2)
 				     + ((given & 0x0200) >> 3));
-		  info->print_address_func (address, info);
+		  info->print_address_func (pc, address, info);
 		}
 		break;
 
@@ -3341,7 +3345,7 @@ print_insn_thumb16 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			       bits of the address are dropped
 			       before the calculation.  */
 			    info->print_address_func
-			      (((pc + 4) & ~3) + (reg << 2), info);
+			      (pc, ((pc + 4) & ~3) + (reg << 2), info);
 			    break;
 
 			  case 'x':
@@ -3350,7 +3354,7 @@ print_insn_thumb16 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 
 			  case 'B':
 			    reg = ((reg ^ (1 << bitend)) - (1 << bitend));
-			    info->print_address_func (reg * 2 + pc + 4, info);
+			    info->print_address_func (pc, reg * 2 + pc+4, info);
 			    break;
 
 			  case 'c':
@@ -3507,7 +3511,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  imm |= (given & 0x00007000u) >> 4;
 		  imm |= (given & 0x04000000u) >> 15;
 		  imm |= (given & 0x000f0000u) >> 4;
-		  func (stream, "#%u\t; 0x%x", imm, imm);
+		  info->print_immediate_func (pc, imm, info);
 		}
 		break;
 
@@ -3517,7 +3521,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  imm |= (given & 0x000f0000u) >> 16;
 		  imm |= (given & 0x00000ff0u) >> 0;
 		  imm |= (given & 0x0000000fu) << 12;
-		  func (stream, "#%u\t; 0x%x", imm, imm);
+		  info->print_immediate_func (pc, imm, info);
 		}
 		break;
 
@@ -3630,7 +3634,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  if (Rn == 15)
 		    {
 		      func (stream, "\t; ");
-		      info->print_address_func (((pc + 4) & ~3) + offset, info);
+		      info->print_address_func(pc, ((pc+4) & ~3) +offset, info);
 		    }
 		}
 	      skip:
@@ -3735,7 +3739,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  offset |= (given & 0x000007ff) << 1;
 		  offset -= (1 << 20);
 
-		  info->print_address_func (pc + 4 + offset, info);
+		  info->print_address_func (pc, pc + 4 + offset, info);
 		}
 		break;
 
@@ -3758,7 +3762,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  if ((given & 0x00001000u) == 0)
 		      offset &= ~2u;
 
-		  info->print_address_func (offset, info);
+		  info->print_address_func (pc, offset, info);
 		}
 		break;
 
@@ -4252,6 +4256,7 @@ print_insn_little_arm (bfd_vma pc, struct disassemble_info *info)
 static
 void
 print_address_func(
+bfd_vma pc,
 bfd_vma addr,
 struct disassemble_info *info)
 {
@@ -4264,7 +4269,7 @@ struct disassemble_info *info)
     uint32_t nsymbols = info->nsymbols;
     char *strings = info->strings;
     uint32_t strings_size = info->strings_size;
-    bfd_vma r_address = addr - info->sect_addr;
+    bfd_vma r_address = pc - info->sect_addr;
 
     if(info->verbose){
 	/* If there's a relocation at this address, include the referenced
@@ -4303,8 +4308,308 @@ struct disassemble_info *info)
 		info->nindirect_symbols, info->symbols, NULL,
 		info->nsymbols, info->strings, info->strings_size);
 	if(indirect_symbol_name != NULL)
-	    printf("\t; symbol stub for: %s", indirect_symbol_name);
+	    fprintf(stream, "\t; symbol stub for: %s", indirect_symbol_name);
     }
+}
+
+static
+void
+print_immediate_func(
+bfd_vma pc,
+unsigned int value,
+struct disassemble_info *info)
+{
+    int32_t low, high, mid, reloc_found, offset;
+    uint32_t i, r_address, r_symbolnum, r_type, r_extern, r_length,
+	     r_value, r_scattered, pair_r_type, pair_r_value;
+    uint32_t other_half;
+    const char *name, *add, *sub;
+    struct relocation_info *rp, *pairp;
+    struct scattered_relocation_info *srp, *spairp;
+    uint32_t n_strx;
+
+    void *stream = info->stream;
+    struct relocation_info *relocs = info->relocs;
+    uint32_t nrelocs = info->nrelocs;
+    struct nlist *symbols = info->symbols;
+    char *strings = info->strings;
+    uint32_t strings_size = info->strings_size;
+    bfd_vma sect_offset = pc - info->sect_addr;
+
+	r_symbolnum = 0;
+	r_type = 0;
+	r_extern = 0;
+	r_value = 0;
+	r_scattered = 0;
+	other_half = 0;
+	pair_r_value = 0;
+	n_strx = 0;
+	r_length = 0;
+
+	if(info->verbose == FALSE){
+	    fprintf(stream, "#%u\t; 0x%x", value, value);
+	    return;
+	}
+	reloc_found = 0;
+	for(i = 0; i < nrelocs; i++){
+	    rp = &relocs[i];
+	    if(rp->r_address & R_SCATTERED){
+		srp = (struct scattered_relocation_info *)rp;
+		r_scattered = 1;
+		r_address = srp->r_address;
+		r_extern = 0;
+		r_length = srp->r_length;
+		r_type = srp->r_type;
+		r_value = srp->r_value;
+	    }
+	    else{
+		r_scattered = 0;
+		r_address = rp->r_address;
+		r_symbolnum = rp->r_symbolnum;
+		r_extern = rp->r_extern;
+		r_length = rp->r_length;
+		r_type = rp->r_type;
+	    }
+	    if(r_type == ARM_RELOC_PAIR){
+		fprintf(stderr, "Stray ARM_RELOC_PAIR relocation entry "
+			"%u\n", i);
+		continue;
+	    }
+	    if(r_address == sect_offset){
+		if(r_type == ARM_RELOC_HALF ||
+		   r_type == ARM_RELOC_SECTDIFF ||
+		   r_type == ARM_RELOC_LOCAL_SECTDIFF ||
+		   r_type == ARM_RELOC_HALF_SECTDIFF){
+		    if(i+1 < nrelocs){
+			pairp = &rp[1];
+			if(pairp->r_address & R_SCATTERED){
+			    spairp = (struct scattered_relocation_info *)
+				     pairp;
+			    other_half = spairp->r_address & 0xffff;
+			    pair_r_type = spairp->r_type;
+			    pair_r_value = spairp->r_value;
+			}
+			else{
+			    other_half = pairp->r_address & 0xffff;
+			    pair_r_type = pairp->r_type;
+			}
+			if(pair_r_type != ARM_RELOC_PAIR){
+			    fprintf(stderr, "No ARM_RELOC_PAIR relocation "
+				    "entry after entry %u\n", i);
+			    continue;
+			}
+		    }
+		}
+		reloc_found = 1;
+		break;
+	    }
+	    if(r_type == ARM_RELOC_HALF ||
+	       r_type == ARM_RELOC_SECTDIFF ||
+	       r_type == ARM_RELOC_LOCAL_SECTDIFF ||
+	       r_type == ARM_RELOC_HALF_SECTDIFF){
+		if(i+1 < nrelocs){
+		    pairp = &rp[1];
+		    if(pairp->r_address & R_SCATTERED){
+			spairp = (struct scattered_relocation_info *)pairp;
+			pair_r_type = spairp->r_type;
+		    }
+		    else{
+			pair_r_type = pairp->r_type;
+		    }
+		    if(pair_r_type == ARM_RELOC_PAIR)
+			i++;
+		    else
+			fprintf(stderr, "No ARM_RELOC_PAIR relocation "
+				"entry after entry %u\n", i);
+		}
+	    }
+	}
+
+	if(reloc_found && r_extern == 1){
+	    if(symbols != NULL)
+		n_strx = symbols[r_symbolnum].n_un.n_strx;
+	    if(n_strx >= strings_size)
+		name = "bad string offset";
+	    else
+		name = strings + n_strx;
+	    if(value != 0){
+		switch(r_type){
+		case ARM_RELOC_HALF:
+		    if((r_length & 0x1) == 1){
+			value = value << 16 | other_half;
+			fprintf(stream, ":upper16:%s+0x%x", name,
+				(unsigned int)value);
+		    }
+		    else{
+			value = other_half << 16 | value;
+			fprintf(stream, ":lower16:%s+0x%x", name,
+				(unsigned int)value);
+		    }
+		    break;
+		default:
+		    fprintf(stream, "%s+0x%x", name, (unsigned int)value);
+		    break;
+		}
+	    }
+	    else{
+		switch(r_type){
+		case ARM_RELOC_HALF:
+		    if((r_length & 0x1) == 1){
+			value = value << 16 | other_half;
+			if(value == 0)
+			    fprintf(stream, ":upper16:%s", name);
+			else
+			    fprintf(stream, ":upper16:%s+0x%x", name,
+				    (unsigned int)value);
+		    }
+		    else{
+			value = other_half << 16 | value;
+			if(value == 0)
+			    fprintf(stream, ":lower16:%s", name);
+			else
+			    fprintf(stream, ":lower16:%s+0x%x", name,
+				    (unsigned int)value);
+		    }
+		    break;
+		default:
+		    if(value == 0)
+			fprintf(stream, "%s", name);
+		    else
+			fprintf(stream, "%s+0x%x", name, (unsigned int)value);
+		}
+	    }
+	    return;
+	}
+
+	offset = 0;
+	if(reloc_found){
+	    if(r_type == ARM_RELOC_HALF ||
+	       r_type == ARM_RELOC_HALF_SECTDIFF){
+		if((r_length & 0x1) == 1)
+		    value = value << 16 | other_half;
+		else
+		    value = other_half << 16 | value;
+	    }
+	    if(r_scattered &&
+               (r_type != ARM_RELOC_HALF &&
+                r_type != ARM_RELOC_HALF_SECTDIFF)){
+		offset = value - r_value;
+		value = r_value;
+	    }
+	}
+
+	if(reloc_found && r_type == ARM_RELOC_HALF_SECTDIFF){
+	    if((r_length & 0x1) == 1)
+		fprintf(stream, ":upper16:");
+	    else
+		fprintf(stream, ":lower16:");
+	    add = guess_symbol(r_value, info->sorted_symbols,
+			       info->nsorted_symbols, info->verbose);
+	    sub = guess_symbol(pair_r_value, info->sorted_symbols,
+			       info->nsorted_symbols, info->verbose);
+	    offset = value - (r_value - pair_r_value);
+	    if(add != NULL)
+		fprintf(stream, "%s", add);
+	    else
+		fprintf(stream, "0x%x", (unsigned int)r_value);
+	    if(sub != NULL)
+		fprintf(stream, "-%s", sub);
+	    else
+		fprintf(stream, "-0x%x", (unsigned int)pair_r_value);
+	    if(offset != 0)
+		fprintf(stream, "+0x%x", (unsigned int)offset);
+	    return;
+	}
+
+	low = 0;
+	high = info->nsorted_symbols - 1;
+	mid = (high - low) / 2;
+	while(high >= low){
+	    if(info->sorted_symbols[mid].n_value == value){
+		if(reloc_found){
+		    switch(r_type){
+		    case ARM_RELOC_HALF:
+			if((r_length & 0x1) == 1){
+			    if(offset == 0)
+				fprintf(stream, ":upper16:%s",
+				       info->sorted_symbols[mid].name);
+			    else
+				fprintf(stream, ":upper16:%s+0x%x",
+					info->sorted_symbols[mid].name,
+					(unsigned int)offset);
+			}
+			else{
+			    if(offset == 0)
+				fprintf(stream, ":lower16:%s",
+				       info->sorted_symbols[mid].name);
+			    else
+				fprintf(stream, ":lower16:%s+0x%x",
+				       info->sorted_symbols[mid].name,
+				       (unsigned int)offset);
+			}
+			break;
+		    default:
+			if(offset == 0)
+			    fprintf(stream,"%s",info->sorted_symbols[mid].name);
+			else
+			    fprintf(stream, "%s+0x%x",
+				   info->sorted_symbols[mid].name,
+				   (unsigned int)offset);
+			break;
+		    }
+		}
+		else{
+		    if(offset == 0)
+			fprintf(stream, "%s",info->sorted_symbols[mid].name);
+		    else
+			fprintf(stream, "%s+0x%x",
+			       info->sorted_symbols[mid].name,
+			       (unsigned int)offset);
+		}
+		return;
+	    }
+	    if(info->sorted_symbols[mid].n_value > value){
+		high = mid - 1;
+		mid = (high + low) / 2;
+	    }
+	    else{
+		low = mid + 1;
+		mid = (high + low) / 2;
+	    }
+	}
+	if(offset == 0){
+	    if(reloc_found){
+		if(r_type == ARM_RELOC_HALF){
+		    if((r_length & 0x1) == 1)
+			fprintf(stream, ":upper16:0x%x", (unsigned int)value);
+		    else
+			fprintf(stream, ":lower16:0x%x", (unsigned int)value);
+		}
+		else
+		    fprintf(stream, "0x%x", (unsigned int)value);
+	    }
+	    else
+		fprintf(stream, "0x%x", (unsigned int)value);
+	}
+	else{
+	    if(reloc_found){
+		if(r_type == ARM_RELOC_HALF){
+		    if((r_length & 0x1) == 1)
+			fprintf(stream, ":upper16:0x%x+0x%x",
+				(unsigned int)value, (unsigned int)offset);
+		    else
+			fprintf(stream, ":lower16:0x%x+0x%x)",
+				(unsigned int)value, (unsigned int)offset);
+		}
+		else
+		    fprintf(stream, "0x%x+0x%x",
+			    (unsigned int)value, (unsigned int)offset);
+	    }
+	    else
+		fprintf(stream, "0x%x+0x%x",
+			(unsigned int)value, (unsigned int)offset);
+	}
+	return;
 }
 
 /* Stubbed out for now */
@@ -4400,6 +4705,7 @@ enum bool verbose)
 	dis_info.fprintf_func = (fprintf_ftype)fprintf;
   	dis_info.stream = stdout;
 	dis_info.print_address_func = print_address_func;
+	dis_info.print_immediate_func = print_immediate_func;
 
 	dis_info.mach = 0;
 	dis_info.bytes_per_line = 8;

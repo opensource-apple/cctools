@@ -1,21 +1,21 @@
 <HTML>
-<!--This file created 11/5/09 10:17 AM by Claris Home Page version 3.0-->
+<!--This file created 3/29/10 1:32 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=82 BOTTOM=1131 LEFT=611 RIGHT=1353>
+   <X-CLARIS-WINDOW TOP=92 BOTTOM=1141 LEFT=542 RIGHT=1284>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 3.2.2 Developer Release Copyright
-2009 by Apple, Inc. All Rights Reserved.</FONT></P>
+<P><FONT SIZE="-1">Mac OS X Xcode 3.2.3 Developer Release Copyright
+2010 by Apple, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 3.2.2 Developer Release:<BR>
-Compiler Tools (cctools-773)</H2>
+<H2>Private Mac OS X Xcode 3.2.3 Developer Release:<BR>
+Compiler Tools (cctools-782)</H2>
 
-<P>This file contains release notes for the 5.27 release of the
-Compiler Tools for the Mac OS X Xcode 3.2.2 Developer Release. This
+<P>This file contains release notes for the 5.28 release of the
+Compiler Tools for the Mac OS X Xcode 3.2.3 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -27,24 +27,208 @@ file contains information about the following topics:</P>
    on)&nbsp;</LI>
 </UL>
 
+<H2>Notes Specific to Release 5.28 (Mac OS X Xcode 3.2.3 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-781 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added support for the Intel AES instructions. Radar bug
+   #7709572.</LI>
+   
+   <LI>Fixed the arm assembler so it correctly detects errors with
+   floating point to integer conversion instructions that use the
+   rounding mode (vcvtr.*) when they are not valid. Radar
+   #7719236.</LI>
+   
+   <LI>Added support for .weak_def_can_be_hidden in the assemblers
+   and nm(1). Radar bug #5021217.</LI>
+   
+   <LI>Changed the cctools project to also build a libmacho as a
+   dylib. Radar bug #7733446.</LI>
+   
+   <LI>Added the -U option to nm(1) to not print undefined symbols.
+   Radar bug #7761111.</LI>
+   
+   <LI>Added an ALSO SEE to the otool(1) man page that listed
+   install_name_tool(1), dyld(1) and libtool(1). Radar bug
+   #7531315.</LI>
+   
+   <LI>Fixed a typo in a comment in &lt;mach-o/loader.h&gt; where
+   rebase should have been bind. Radar bug #6789853.</LI>
+   
+   <LI>Fixes a bug in otool(1)'s dissassembly of the intel crc32b
+   instruction in 64-bit objects when a register greater than 8 is
+   used.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-780 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added support for LC_LOAD_UPWARD_DYLIB load command. Radar bug
+   #7659206.</LI>
+   
+   <LI>Added the ctf_insert(1) command. Radar bug #7016839.</LI>
+   
+   <LI>Fixed a check that was checking that the addr field of section
+   less than the segment's vmaddr to not do that check if the Mach-O
+   file was an MH_DYLIB_STUB. Radar bug #7709068.</LI>
+   
+   <LI>Removed an incorrect check for the LC_ENCRYPTION_INFO
+   overlapping other elements in a Mach-O file. Also fixed the
+   overlapping checking that was not catching the size and offset
+   completely covering an element in list. Radar bug #7690872.</LI>
+   
+   <LI>Changed codesign_allocate(1) to allow it to be used on any
+   Mach-O file. Radar bug #7689781.</LI>
+   
+   <LI>In otool(1)'s -tv option fixed a problem with 64-bit
+   disassembly of call instructions getting the incorrect target.
+   Radar bug #7615109.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-779 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the arm assembler that caused undefined symbols
+   for things like "vmov.f32 s2, s1" where "s1" would be an undefined
+   symbol in the output file. Radar bug #7567713.</LI>
+   
+   <LI>Fixed a couple of bugs in the arm assembler where it would
+   abort(3) if the thumb only instructions cbnz and cbz were used in
+   arm mode instead of just printing an error, and also for "vshr
+   q0,d0,#0" which should just get an error. Radar bug #7559323.</LI>
+   
+   <LI>Fixed verification warnings where -O was used when -Os should
+   have been used. And removed the -fno-builtin-trunc option.</LI>
+   
+   <LI>Improved the error checking in the redo_prebinding code for
+   malformed relocation entries. Radar bug #6081358.</LI>
+   
+   <LI>Added the getsegmentdata() API. Radar bug #7588238.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-778 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the arm assember to not warm that the value stored for
+   a base register is UNPREDICTABLE if writeback is not being used.
+   Radar bug #7528057.</LI>
+   
+   <LI>Fixed the error checking of Mach-O files in the tools for
+   making sure that the module table does not overlap with other
+   elements. Radar bug #7520315.</LI>
+   
+   <LI>Fixed the parsing and error checking in install_name_tool (1)
+   of the -change and -rpath arguments. Radar bug #7477104.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-777 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed the error checking of Mach-O files in the tools for
+   making sure that the local relocation enties does not overlap with
+   other elements. Radar bug #7479717.</LI>
+   
+   <LI>Changed the code to not define its own trunc function and not
+   use -fno-builtin-trunc. Radar bug #7481062.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-776 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the optimization level to -Os in places it was using
+   -O. Radar bug #7475093.</LI>
+   
+   <LI>Changed the code to not define its own round function and not
+   use -fno-builtin-round. Radar bug #7475139.</LI>
+   
+   <LI>Fixed the error checking of Mach-O files in the tools for
+   making sure that sections are contained in their segments to allow
+   for unmapped segments with a vmsize of zero. Radar bug
+   #7467115.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-775 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Improved the error checking of Mach-O files in the tools to
+   make sure that elements don't overlap.. Radar bug #6083845.</LI>
+   
+   <LI>Improved the error checking archinve files in the tools to
+   make sure that the size of a member does not extend past the end
+   of the file. Radar bug #6078200.</LI>
+   
+   <LI>Improved the error checking of Mach-O files in the tools to
+   make sure that flavor and count that follow a thread command fits
+   in side their command. Radar bug #6179251.</LI>
+   
+   <LI>Improved the error checking of Mach-O files in the tools to
+   make sure that load commands fit inside their cmdsize. Also that
+   thread states fit in side their thread command. Radar bug
+   #6077166.</LI>
+   
+   <LI>Improved the error checking of fat files or the checkes for
+   offset plus size of the fat arch is detected in the case of
+   integer overflow. Radar bug #6076414.</LI>
+   
+   <LI>Improved the error checking of Mach-O files in the tools to
+   make sure that sections are contained in their segments. Radar bug
+   #6081358.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-774 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added support for upper / lower 16 bit relocation for arm movw
+   and movt instructions. Radar bug #7421496.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-773 for
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed the x86_64 assembler to put out the optional prefixes
+   (like Address-Size Override) before the manditory REX Prefixes.
+   Radar bug #7403143</LI>
+   
+   <LI>Switched the i386 bound instruction operand order so it would
+   be correct for AT&amp;T syntax order. Radar bug #7394709.</LI>
+   
+   <LI>Added the intel invvpid and invept instructions to the
+   assembler and otool(1). Radar bug 7383743.</LI>
+   
+   <LI>Fixed many small issues in the disassembly of intel
+   instructions in otool(1) so that all instructions disassemble will
+   reassemble. Radar bug #7414888.</LI>
+</UL>
+
 <H2>Notes Specific to Release 5.27 (Mac OS X Xcode 3.2.2 Developer
 Release)</H2>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-772 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Added the getsectiondata(3) API. Radar bug 5724145.</LI>
    
-   <LI>Changed the description of otool(1)'s -X flag.  Radar bug
+   <LI>Changed the description of otool(1)'s -X flag. Radar bug
    #7328418.</LI>
    
    <LI>Fixed a typo in two lipo(1) error messages where "it's" should
-   have been "its".  Radar bug 7362293.</LI>
+   have been "its". Radar bug 7362293.</LI>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-771 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed the arm's assembler's vmls.f32, vmls.f64, vnmla.f32,
@@ -71,7 +255,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-770 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the arm assember to set the low bit of expressions of
@@ -84,7 +268,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-769 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed problems with ld_classic(1) incorrectly causing an error
@@ -93,7 +277,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-768 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed problems with the assember not incorrectly handing
@@ -101,7 +285,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-767 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed checksyms(1) to check for read-only-relocs in 64-bit
@@ -110,7 +294,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-766 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with get_byte_sex_from_flag () not knowing
@@ -121,7 +305,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-765 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed problems with the armv7 assember incorrectly using wide
@@ -130,7 +314,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-764 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Added the armv7 assember orn (immediate) instructions. Radar
@@ -145,7 +329,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-763 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the license on all otool source files. Radar bug
@@ -153,7 +337,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-762 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Added the armv7 assember orn instructions. Radar bug
@@ -164,7 +348,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-761 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a probem with the arm assembler crashing if a .set
@@ -176,7 +360,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-760 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a probem with mtoc(1) crashing if the -p option is used
@@ -187,7 +371,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-759 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a probem with otool(1) only printing only a 32-bit
@@ -199,7 +383,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-758 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Added the armv7 assember instructions pldw, vcvt.f32.f16,
@@ -217,7 +401,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-757 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the armv7 assember to no longer mark 32-bit branch
@@ -234,7 +418,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-756 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with the arm assembler assemling the rbit
@@ -254,7 +438,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-755 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed problems with ar(1), libtool(1), redo_prebinding(1) and
@@ -263,7 +447,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-754 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with otool -oV printing incorrect values for
@@ -275,7 +459,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-753 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with otool -ov printing meaningless strings
@@ -291,7 +475,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-752 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the cctools sources so it builds with respect to
@@ -299,7 +483,7 @@ the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-751 for
-the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+the 5.27 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed the cctools sources so it builds with clang and without

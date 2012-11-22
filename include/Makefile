@@ -24,7 +24,7 @@ LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
 	   cbt/libsyminfo.h mach-o/dyld_priv.h
 
 # Note that OTHER_SRCS do NOT get installed
-GAS_OTHER_SRCS = stuff/bytesex.h stuff/bool.h stuff/round.h stuff/errors.h \
+GAS_OTHER_SRCS = stuff/bytesex.h stuff/bool.h stuff/rnd.h stuff/errors.h \
 		 stuff/openstep_mach.h opcode/arm.h
 OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/allocate.h stuff/arch.h stuff/execute.h \

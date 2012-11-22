@@ -1058,7 +1058,7 @@ enum bool force_weak)
 			  "load from it)", file_name);
 		    return;
 		}
-		offset += round(symdef_length, sizeof(short));
+		offset += rnd(symdef_length, sizeof(short));
 	    }
 	    if(ld_trace_archives == TRUE && ld_trace_archive_printed == FALSE){
 		char resolvedname[MAXPATHLEN];
@@ -1255,7 +1255,7 @@ down:
 		    print("loaded because of -all_load flag\n");
 		}
 		merge(FALSE, FALSE, force_weak);
-		length = round(ar_size + ar_name_size, sizeof(short));
+		length = rnd(ar_size + ar_name_size, sizeof(short));
 		offset = (offset - ar_name_size) + length;
 	    }
 	    return;
@@ -1772,7 +1772,7 @@ uint32_t size)
 	ar_hdr = (struct ar_hdr *)(addr + SARMAG);
 
 	p = addr + SARMAG + sizeof(struct ar_hdr) +
-	    round(strtoul(ar_hdr->ar_size, NULL, 10), sizeof(short));
+	    rnd(strtoul(ar_hdr->ar_size, NULL, 10), sizeof(short));
 	while(p + sizeof(struct ar_hdr) + sizeof(uint32_t) < addr + size){
 	    ar_hdr = (struct ar_hdr *)p;
 	    if(strncmp(ar_hdr->ar_name, AR_EFMT1, sizeof(AR_EFMT1) - 1) == 0)
@@ -1788,7 +1788,7 @@ uint32_t size)
 		    magic == SWAP_INT(MH_MAGIC_64))
 		return(get_host_byte_sex() == BIG_ENDIAN_BYTE_SEX ?
 		       LITTLE_ENDIAN_BYTE_SEX : BIG_ENDIAN_BYTE_SEX);
-	    p += round(strtoul(ar_hdr->ar_size, NULL, 10), sizeof(short));
+	    p += rnd(strtoul(ar_hdr->ar_size, NULL, 10), sizeof(short));
 	}
 	return(UNKNOWN_BYTE_SEX);
 }
@@ -1854,7 +1854,7 @@ unsigned long file_size)
 		      "load from it)", file_name);
 		return(FALSE);
 	    }
-	    offset += round(symdef_length, sizeof(short));
+	    offset += rnd(symdef_length, sizeof(short));
 	}
 	while(offset < file_size){
 	    if(offset + sizeof(struct ar_hdr) > file_size){
@@ -1899,7 +1899,7 @@ unsigned long file_size)
 		    }
 		}
 	    }
-	    length = round(obj_size, sizeof(short));
+	    length = rnd(obj_size, sizeof(short));
 	    offset += length;
 	}
 	if(arch_flag.cputype != 0 && mixed_types == FALSE &&
@@ -2430,8 +2430,8 @@ void)
 			if(nmodules < 64)
 			    nmodules = 64;
 			size = sizeof(struct prebound_dylib_command) +
-			       round(strlen(p->dylib_name) + 1, sizeof(long)) +
-			       round(nmodules / 8, sizeof(long));
+			       rnd(strlen(p->dylib_name) + 1, sizeof(long)) +
+			       rnd(nmodules / 8, sizeof(long));
 			p->pbdylib = allocate(size);
 			memset(p->pbdylib, '\0', size);
 			p->pbdylib->cmd = LC_PREBOUND_DYLIB;
@@ -2445,10 +2445,10 @@ void)
 				p->definition_obj->dysymtab->nmodtab;
 			p->pbdylib->linked_modules.offset =
 				sizeof(struct prebound_dylib_command) +
-				round(strlen(p->dylib_name) + 1, sizeof(long));
+				rnd(strlen(p->dylib_name) + 1, sizeof(long));
 			p->linked_modules = ((char *)p->pbdylib) +
 				sizeof(struct prebound_dylib_command) +
-				round(strlen(p->dylib_name) + 1, sizeof(long));
+				rnd(strlen(p->dylib_name) + 1, sizeof(long));
 		    }
 		}
 	    }

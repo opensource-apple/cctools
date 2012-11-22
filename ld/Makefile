@@ -1,6 +1,6 @@
 export USE_APPLE_PB_SUPPORT = all
 RC_OS = macos
-OFLAG = -O
+OFLAG = -Os
 ifneq "$(RC_MAJOR_RELEASE_TRAIN)" "Tiger"
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -msoft-float -nostdinc \
@@ -23,7 +23,7 @@ endif
 
 KERN += -D__DARWIN_UNIX03=__arm__
 
-X_CFLAGS = -fno-builtin-round -fno-builtin-trunc
+X_CFLAGS =
 
 ifneq "clang" "$(notdir $(CC))"
   GCC_FLAGS = $(X_CFLAGS)

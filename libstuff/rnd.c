@@ -26,13 +26,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdint.h>
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 /*
- * round() rounds v to a multiple of r.
+ * rnd() rounds v to a multiple of r.
  */
 __private_extern__
 uint64_t
-round(
+rnd(
 uint64_t v,
 uint64_t r)
 {

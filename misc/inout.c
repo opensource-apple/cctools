@@ -25,7 +25,7 @@
 #include <string.h>
 #include "stuff/errors.h"
 #include "stuff/breakout.h"
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 
 /* used by error routines as the name of the program */
 char *progname = NULL;
@@ -134,7 +134,7 @@ uint32_t narchs)
 		    archs[i].members[j].offset = offset;
 		    size = 0;
 		    if(archs[i].members[j].member_long_name == TRUE){
-			size = round(archs[i].members[j].member_name_size,
+			size = rnd(archs[i].members[j].member_name_size,
 				     sizeof(int32_t));
 			archs[i].toc_long_name = TRUE;
 		    }
@@ -291,7 +291,7 @@ struct object *object)
 		    sizeof(struct twolevel_hint);
 	    }
 	    if(object->code_sig_cmd != NULL){
-		object->input_sym_info_size = round(object->input_sym_info_size,
+		object->input_sym_info_size = rnd(object->input_sym_info_size,
 						    16);
 		object->input_sym_info_size += object->code_sig_cmd->datasize;
 	    }

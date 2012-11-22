@@ -1,3 +1,9 @@
+Changes for the 5.28 release (the cctools-781 release):
+- Added support for LC_LOAD_UPWARD_DYLIB to libsyminfo.c . Radar bug #7659206.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
 Changes for the 5.27 release (the cctools-762 release):
 - Changed the Makefile to set CC when when SDKROOT is set.  Radar bug #7078805.
 

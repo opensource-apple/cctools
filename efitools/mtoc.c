@@ -34,7 +34,7 @@
 #include "stuff/errors.h"
 #include "stuff/allocate.h"
 #include "stuff/reloc.h"
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 
 #include "coff/ms_dos_stub.h"
 #include "coff/filehdr.h"
@@ -739,7 +739,7 @@ struct arch *arch)
 		    scnhdrs[j].s_vsize = sg->vmsize;
 #endif
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
+		    scnhdrs[j].s_size = rnd(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -757,7 +757,7 @@ struct arch *arch)
 		    scnhdrs[j].s_vsize = sg->vmsize;
 #endif
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
+		    scnhdrs[j].s_size = rnd(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -804,7 +804,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".import");
 		    scnhdrs[j].s_vsize = sg->vmsize;
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
+		    scnhdrs[j].s_size = rnd(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -821,7 +821,7 @@ struct arch *arch)
 			    continue;
 			scnhdrs[j].s_vsize = s->size;
 			scnhdrs[j].s_vaddr = s->addr;
-			scnhdrs[j].s_size = round(s->size, file_alignment);
+			scnhdrs[j].s_size = rnd(s->size, file_alignment);
 			scnhdrs[j].s_relptr = 0;
 			scnhdrs[j].s_lnnoptr = 0;
 			scnhdrs[j].s_nlnno = 0;
@@ -845,9 +845,9 @@ struct arch *arch)
 	if(reloc_size != 0){
 	    strcpy(scnhdrs[j].s_name, ".reloc");
 	    scnhdrs[j].s_vsize = reloc_size;
-	    reloc_addr = round(reloc_addr, section_alignment);
+	    reloc_addr = rnd(reloc_addr, section_alignment);
 	    scnhdrs[j].s_vaddr = reloc_addr;
-	    scnhdrs[j].s_size = round(reloc_size, file_alignment);
+	    scnhdrs[j].s_size = rnd(reloc_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;
 	    scnhdrs[j].s_lnnoptr = 0;
 	    scnhdrs[j].s_nlnno = 0;
@@ -860,14 +860,14 @@ struct arch *arch)
 	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
 	}
 	else{
-	    debug_addr = round(reloc_addr, section_alignment);
+	    debug_addr = rnd(reloc_addr, section_alignment);
 	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
 	    scnhdrs[j].s_vsize = debug_size;
 	    scnhdrs[j].s_vaddr = debug_addr;
-	    scnhdrs[j].s_size = round(debug_size, file_alignment);
+	    scnhdrs[j].s_size = rnd(debug_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;
 	    scnhdrs[j].s_lnnoptr = 0;
 	    scnhdrs[j].s_nlnno = 0;
@@ -1061,7 +1061,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".text");
 		    scnhdrs[j].s_vsize = sg64->vmsize;
 		    scnhdrs[j].s_vaddr = sg64->vmaddr;
-		    scnhdrs[j].s_size = round(sg64->filesize, file_alignment);
+		    scnhdrs[j].s_size = rnd(sg64->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -1075,7 +1075,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".data");
 		    scnhdrs[j].s_vsize = sg64->vmsize;
 		    scnhdrs[j].s_vaddr = sg64->vmaddr;
-		    scnhdrs[j].s_size = round(sg64->filesize, file_alignment);
+		    scnhdrs[j].s_size = rnd(sg64->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -1104,7 +1104,7 @@ struct arch *arch)
 		    /* NOTE zerofill sections are not handled */
 		    scnhdrs[j].s_vsize = s64->size;
 		    scnhdrs[j].s_vaddr = s64->addr;
-		    scnhdrs[j].s_size = round(s64->size, file_alignment);
+		    scnhdrs[j].s_size = rnd(s64->size, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -1123,9 +1123,9 @@ struct arch *arch)
 	if(reloc_size != 0){
 	    strcpy(scnhdrs[j].s_name, ".reloc");
 	    scnhdrs[j].s_vsize = reloc_size;
-	    reloc_addr = round(reloc_addr, section_alignment);
+	    reloc_addr = rnd(reloc_addr, section_alignment);
 	    scnhdrs[j].s_vaddr = reloc_addr;
-	    scnhdrs[j].s_size = round(reloc_size, file_alignment);
+	    scnhdrs[j].s_size = rnd(reloc_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;
 	    scnhdrs[j].s_lnnoptr = 0;
 	    scnhdrs[j].s_nlnno = 0;
@@ -1140,14 +1140,14 @@ struct arch *arch)
 	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
 	}
 	else{
-	    debug_addr = round(reloc_addr, section_alignment);
+	    debug_addr = rnd(reloc_addr, section_alignment);
 	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
 	    scnhdrs[j].s_vsize = debug_size;
 	    scnhdrs[j].s_vaddr = debug_addr;
-	    scnhdrs[j].s_size = round(debug_size, file_alignment);
+	    scnhdrs[j].s_size = rnd(debug_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;
 	    scnhdrs[j].s_lnnoptr = 0;
 	    scnhdrs[j].s_nlnno = 0;
@@ -1192,7 +1192,7 @@ struct ofile *ofile)
 	    header_size += sizeof(struct aouthdr);
 	else
 	    header_size += sizeof(struct aouthdr_64);
-	header_size = round(header_size, file_alignment);
+	header_size = rnd(header_size, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	/* for some unknown reason the header size is 0x488 not 0x400 */
 	if(ofile->mh64 != NULL)
@@ -1239,13 +1239,13 @@ struct ofile *ofile)
 #ifdef HACK_TO_MATCH_TEST_CASE
 		if(ofile->mh != NULL)
 #endif
-		    offset = round(offset, file_alignment);
+		    offset = rnd(offset, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 		else{
 		    /* for some unknown reason the next offset is moved up
 		       0x200 then rounded to 8 bytes */
 		    offset += 0x200;
-		    offset = round(offset, 8);
+		    offset = rnd(offset, 8);
 		}
 #endif
 	    }
@@ -1335,7 +1335,7 @@ struct ofile *ofile)
 				     scnhdrs[i].s_size;
 		}
 	    }
-	    aouthdr.bsize = round(aouthdr.bsize, file_alignment);
+	    aouthdr.bsize = rnd(aouthdr.bsize, file_alignment);
 
 	    aouthdr.entry = entry;
 
@@ -1364,14 +1364,14 @@ struct ofile *ofile)
 	    aouthdr.MajorSubsystemVersion = 0;
 	    aouthdr.MinorSubsystemVersion = 0;
 	    aouthdr.Win32VersionValue = 0;
-	    aouthdr.SizeOfImage = round(header_size, section_alignment) +
-				  round(aouthdr.tsize, section_alignment) +
-				  round(aouthdr.dsize, section_alignment) +
-				  round(aouthdr.bsize, section_alignment) +
-				  round(nsyments * sizeof(struct syment),
+	    aouthdr.SizeOfImage = rnd(header_size, section_alignment) +
+				  rnd(aouthdr.tsize, section_alignment) +
+				  rnd(aouthdr.dsize, section_alignment) +
+				  rnd(aouthdr.bsize, section_alignment) +
+				  rnd(nsyments * sizeof(struct syment),
 					section_alignment) +
-				  round(strsize, section_alignment) +
-				  round(header_size, section_alignment);
+				  rnd(strsize, section_alignment) +
+				  rnd(header_size, section_alignment);
 	    aouthdr.SizeOfHeaders = header_size;
 	    aouthdr.CheckSum = 0;
 	    aouthdr.Subsystem = Subsystem;
@@ -1411,7 +1411,7 @@ struct ofile *ofile)
 		    aouthdr64.bsize += scnhdrs[i].s_vsize;
 		}
 	    }
-	    aouthdr64.bsize = round(aouthdr64.bsize, file_alignment);
+	    aouthdr64.bsize = rnd(aouthdr64.bsize, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* with the IMAGE_SCN_CNT_CODE flag set on all sections this is
 	       just a quick hack to match the PECOFF file */
@@ -1447,14 +1447,14 @@ struct ofile *ofile)
 	    aouthdr64.MajorSubsystemVersion = 0;
 	    aouthdr64.MinorSubsystemVersion = 0;
 	    aouthdr64.Win32VersionValue = 0;
-	    aouthdr64.SizeOfImage = round(header_size, section_alignment) +
-				    round(aouthdr64.tsize, section_alignment) +
-				    round(aouthdr64.dsize, section_alignment) +
-				    round(aouthdr64.bsize, section_alignment) +
-				    round(nsyments * sizeof(struct syment),
+	    aouthdr64.SizeOfImage = rnd(header_size, section_alignment) +
+				    rnd(aouthdr64.tsize, section_alignment) +
+				    rnd(aouthdr64.dsize, section_alignment) +
+				    rnd(aouthdr64.bsize, section_alignment) +
+				    rnd(nsyments * sizeof(struct syment),
 					  section_alignment) +
-				    round(strsize, section_alignment) +
-				    round(header_size, section_alignment);
+				    rnd(strsize, section_alignment) +
+				    rnd(header_size, section_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* this is a hack as it seams that the minimum size is 0x10000 */
 	    if(aouthdr64.SizeOfImage < 0x10000)

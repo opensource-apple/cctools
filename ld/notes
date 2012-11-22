@@ -23,6 +23,15 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.28 release (the cctools-778 release):
+- Changed trunc() to trnc() in pass2.c and removed -fno-builtin-trunc from the
+  Makefile.  Radar bug #7481062.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Changed round() to rnd() in all files and removed -fno-builtin-round from the
+  Makefile.  Radar bug #7475139.
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
 Changes for the 5.27 release (the cctools-770 release):
 - Copied the get_toc_byte_sex() routine from libstuff/get_toc_byte_sex.c into
   pass1.c to avoid the problem of the wrong round() being called from that code

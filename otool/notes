@@ -3,6 +3,39 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.28 release (the cctools-782 release):
+- Fixed a bug with disassembling crc32b in 64-bit when a register greater than
+  8 is used.  In i386_disasm.c the array REG64_BYTE[] was extended to include
+  the other 8 register names and the code that uses it had (REX_B(rex) << 3)
+  or'ed into the index with the existing r_m bits.  
+- Added support for disassembling the Intel aes instructions.  Radar bug
+  #7709572.
+
+Changes for the 5.28 release (the cctools-781 release):
+- Added support for LC_LOAD_UPWARD_DYLIB to print_loadcmds(), print_libraries(),
+  print_dylib_command() and print_hints() in ofile_print.c . Radar bug #7659206.
+- Fixed a problem with 64-bit disassembly of call instructions getting the
+  incorrect target.  Radar bug #7615109.
+
+Changes for the 5.28 release (the cctools-777 release):
+- Removed -fno-builtin-round from the Makefile.  Radar bug #7475139.
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
+Changes for the 5.27 release (the cctools-775 release):
+- Added the print_immediate_func() to arm_disasm.c to print out the movw and
+  movt instruction immediates with the new arm HALF relocation entries.
+  Updated print_relocs() in ofile_print.c to print out the new arm HALF 
+  relocation entries.  Radar bug #7421496.
+- Fixed a bug in the print_address_func() in arm_disasm.c where it needed the
+  pc also passed to it be able to match that up with the r_address of a
+  relocation entry.
+
+Changes for the 5.27 release (the cctools-774 release):
+- Fixed the intel disassembly in i386_disasm.c so that make a386_test and make
+  ax86_64_test targets in the cctools as directory will work.  Radar bug 7414888
+- Added the disassembly of the invvpid and invept instructions to
+  i386_disasm.c .  Radar bug #7383743.
+
 Changes for the 5.27 release (the cctools-772 release):
 - Fixed the disassembly of vshll where the table entry on line 751 had the first
   and second register operands switched.  Radar bug 7308888.

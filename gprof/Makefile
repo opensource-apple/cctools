@@ -1,5 +1,5 @@
 RC_OS = macos
-OFLAG = -O
+OFLAG = -Os
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 
 ifneq "clang" "$(notdir $(CC))"

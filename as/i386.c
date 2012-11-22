@@ -116,7 +116,7 @@ static INLINE int fits_in_unsigned_long PARAMS ((offsetT));
 static INLINE int fits_in_signed_long PARAMS ((offsetT));
 static int smallest_imm_type PARAMS ((offsetT));
 static offsetT offset_in_range PARAMS ((offsetT, int));
-static int add_prefix PARAMS ((unsigned int));
+static int add_prefix PARAMS ((unsigned int, unsigned int));
 static void set_code_flag PARAMS ((uintptr_t));
 static void set_16bit_gcc_code_flag PARAMS ((uintptr_t));
 static void set_intel_syntax PARAMS ((uintptr_t));
@@ -816,8 +816,9 @@ struct symbol *sym)
    class already exists, 1 if non rep/repne added, 2 if rep/repne
    added.  */
 static int
-add_prefix (prefix)
-     unsigned int prefix;
+add_prefix(
+unsigned int prefix,
+unsigned int mandatory)
 {
   int ret = 1;
   int q;
@@ -868,6 +869,11 @@ add_prefix (prefix)
     }
 
   i.prefixes += 1;
+  if (mandatory)
+    {
+      i.prefix[mandatory] = prefix;
+      return 1;
+    }
   i.prefix[q] = prefix;
   return ret;
 }
@@ -1618,7 +1624,7 @@ md_assemble (line)
     }
 
   if (i.tm.opcode_modifier & FWait)
-    if (!add_prefix (FWAIT_OPCODE))
+    if (!add_prefix (FWAIT_OPCODE, 0))
       return;
 
   /* Check string instruction segment overrides.  */
@@ -1763,7 +1769,7 @@ md_assemble (line)
     }
 
   if (i.rex != 0)
-    add_prefix (REX_OPCODE | i.rex);
+    add_prefix (REX_OPCODE | i.rex, 0);
 
 #ifdef NeXT_MOD	/* generate stabs for debugging assembly code */
   /*
@@ -1861,7 +1867,7 @@ parse_insn (line, mnemonic)
 	      return NULL;
 	    }
 	  /* Add prefix, checking for repeated prefixes.  */
-	  switch (add_prefix (current_templates->start->base_opcode))
+	  switch (add_prefix (current_templates->start->base_opcode, 0))
 	    {
 	    case 0:
 	      return NULL;
@@ -1933,13 +1939,13 @@ parse_insn (line, mnemonic)
 	{
 	  if (l[2] == 't')
 	    {
-	      if (!add_prefix (DS_PREFIX_OPCODE))
+	      if (!add_prefix (DS_PREFIX_OPCODE, 0))
 		return NULL;
 	      l += 3;
 	    }
 	  else if (l[2] == 'n')
 	    {
-	      if (!add_prefix (CS_PREFIX_OPCODE))
+	      if (!add_prefix (CS_PREFIX_OPCODE, 0))
 		return NULL;
 	      l += 3;
 	    }
@@ -2699,7 +2705,7 @@ process_suffix (void)
 	  if (i.tm.opcode_modifier & JumpByte) /* jcxz, loop */
 	    prefix = ADDR_PREFIX_OPCODE;
 
-	  if (!add_prefix (prefix))
+	  if (!add_prefix (prefix, 0))
 	    return 0;
 	}
 
@@ -3104,7 +3110,7 @@ process_operands ()
      always be used.  */
   if ((i.seg[0]) && (i.seg[0] != default_seg))
     {
-      if (!add_prefix (i.seg[0]->seg_prefix))
+      if (!add_prefix (i.seg[0]->seg_prefix, 0))
 	return 0;
     }
   return 1;
@@ -3157,7 +3163,7 @@ build_modrm_byte ()
 	  if (!((i.types[0] | i.types[1]) & Control))
 	    abort ();
 	  i.rex &= ~(REX_EXTX | REX_EXTZ);
-	  add_prefix (LOCK_PREFIX_OPCODE);
+	  add_prefix (LOCK_PREFIX_OPCODE, 0);
 	}
     }
   else
@@ -3697,7 +3703,7 @@ output_insn ()
 
 	  if (prefix != REPE_PREFIX_OPCODE
 	      || i.prefix[LOCKREP_PREFIX] != REPE_PREFIX_OPCODE)
-	    add_prefix (prefix);
+	    add_prefix (prefix, MAN_PREFIX);
 	}
       else
 	if ((i.tm.cpu_flags & CpuPadLock) == 0
@@ -3714,10 +3720,10 @@ output_insn ()
 #ifdef NeXT_MOD
       {
 	      prefix_shift = (i.tm.cpu_flags & CpuMNI) ? 24 : 16;
-	      add_prefix ((i.tm.base_opcode >> prefix_shift) & 0xff);
+	      add_prefix ((i.tm.base_opcode >> prefix_shift) & 0xff,MAN_PREFIX);
       }
 #else
-	  add_prefix ((i.tm.base_opcode >> 16) & 0xff);
+	  add_prefix ((i.tm.base_opcode >> 16) & 0xff, MAN_PREFIX);
 #endif
 
       /* The prefix bytes.  */
@@ -6810,7 +6816,7 @@ intel_e09_1 ()
 	  else if (!intel_parser.got_a_float)
 	    {
 	      if (flag_code == CODE_16BIT)
-		add_prefix (DATA_PREFIX_OPCODE);
+		add_prefix (DATA_PREFIX_OPCODE, 0);
 	      suffix = LONG_DOUBLE_MNEM_SUFFIX;
 	    }
 	  else

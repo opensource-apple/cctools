@@ -1,9 +1,9 @@
 RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
-OFLAG = -O
+OFLAG = -Os
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
-X_CFLAGS = -fno-builtin-round
+X_CFLAGS =
 
 ifeq "macos" "$(RC_OS)"
   STATIC := $(shell if [ "$(RC_RELEASE)" = "Beaker"    ] || \

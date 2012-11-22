@@ -1895,6 +1895,7 @@ enum bool very_verbose)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LOAD_UPWARD_DYLIB:
 	    case LC_LAZY_LOAD_DYLIB:
 		memset((char *)&dl, '\0', sizeof(struct dylib_command));
 		size = left < sizeof(struct dylib_command) ?
@@ -2215,6 +2216,7 @@ enum bool verbose)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LOAD_UPWARD_DYLIB:
 	    case LC_LAZY_LOAD_DYLIB:
 		if(just_id == TRUE)
 		    break;
@@ -2252,11 +2254,13 @@ enum bool verbose)
 		    else if(l.cmd == LC_LOAD_DYLIB)
 			printf("LC_LOAD_DYLIB ");
 		    else if(l.cmd == LC_LOAD_WEAK_DYLIB)
-			printf("LC_REEXPORT_DYLIB ");
+			printf("LC_LOAD_WEAK_DYLIB ");
 		    else if(l.cmd == LC_LAZY_LOAD_DYLIB)
 			printf("LC_LAZY_LOAD_DYLIB ");
 		    else if(l.cmd == LC_REEXPORT_DYLIB)
-			printf("LC_LOAD_WEAK_DYLIB ");
+			printf("LC_REEXPORT_DYLIB ");
+		    else if(l.cmd == LC_LOAD_UPWARD_DYLIB)
+			printf("LC_LOAD_UPWARD_DYLIB ");
 		    else
 			printf("LC_??? ");
 		    printf("command %u\n", i);
@@ -2806,9 +2810,9 @@ struct load_command *lc)
 }
 
 /*
- * print an LC_ID_DYLIB, LC_LOAD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB or
- * LC_LAZY_LOAD_DYLIB command.  The dylib_command structure specified must be
- * aligned correctly and in the host byte sex.
+ * print an LC_ID_DYLIB, LC_LOAD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB,
+ * LC_LAZY_LOAD_DYLIB, or LC_LOAD_UPWARD_DYLIB command.  The dylib_command
+ * structure specified must be aligned correctly and in the host byte sex.
  */
 void
 print_dylib_command(
@@ -2828,6 +2832,8 @@ struct load_command *lc)
 	    printf("          cmd LC_REEXPORT_DYLIB\n");
 	else if(dl->cmd == LC_LAZY_LOAD_DYLIB)
 	    printf("          cmd LC_LAZY_LOAD_DYLIB\n");
+	else if(dl->cmd == LC_LOAD_UPWARD_DYLIB)
+	    printf("          cmd LC_LOAD_UPWARD_DYLIB\n");
 	else
 	    printf("          cmd %u (unknown)\n", dl->cmd);
 	printf("      cmdsize %u", dl->cmdsize);
@@ -5805,7 +5811,7 @@ enum bool verbose)
     uint32_t j;
     struct relocation_info *r, reloc;
     struct scattered_relocation_info *sr;
-    enum bool previous_sectdiff, previous_ppc_jbsr, predicted;
+    enum bool previous_sectdiff, previous_ppc_jbsr, previous_arm_half,predicted;
     uint32_t sectdiff_r_type;
     uint32_t n_strx;
 
@@ -5813,6 +5819,7 @@ enum bool verbose)
 
 	previous_sectdiff = FALSE;
 	previous_ppc_jbsr = FALSE;
+	previous_arm_half = FALSE;
 	sectdiff_r_type = 0;
 	for(j = 0 ;
 	    j < nreloc &&
@@ -5855,40 +5862,55 @@ enum bool verbose)
 			printf("True  ");
 		    else
 			printf("False ");
-		    switch(sr->r_length){
-		    case 0:
-			printf("byte   ");
-			break;
-		    case 1:
-			printf("word   ");
-			break;
-		    case 2:
-			printf("long   ");
-			break;
-		    case 3:
-			/*
-			 * The value of 3 for r_length for PowerPC is to encode
-			 * that a conditional branch using the Y-bit for static
-			 * branch prediction was predicted in the assembly
-			 * source.
-			 */
-			if((cputype == CPU_TYPE_POWERPC64 && 
-			    reloc.r_type == PPC_RELOC_VANILLA) ||
-			   cputype == CPU_TYPE_X86_64) {
-                                printf("quad   ");
-			}
-			else if(cputype == CPU_TYPE_POWERPC ||
-				cputype == CPU_TYPE_POWERPC64 || 
-				cputype == CPU_TYPE_VEO){
-			    printf("long   ");
-			    predicted = TRUE;
-			}
+		    if(cputype == CPU_TYPE_ARM && 
+		       (sr->r_type == ARM_RELOC_HALF ||
+			sr->r_type == ARM_RELOC_HALF_SECTDIFF ||
+			previous_arm_half == TRUE)){
+			if((sr->r_length & 0x1) == 0)
+			    printf("lo/");
 			else
+			    printf("hi/");
+			if((sr->r_length & 0x2) == 0)
+			    printf("arm ");
+			else
+			    printf("thm ");
+		    }
+		    else{
+			switch(sr->r_length){
+			case 0:
+			    printf("byte   ");
+			    break;
+			case 1:
+			    printf("word   ");
+			    break;
+			case 2:
+			    printf("long   ");
+			    break;
+			case 3:
+			    /*
+			     * The value of 3 for r_length for PowerPC is to
+			     * encode that a conditional branch using the Y-bit
+			     * for static branch prediction was predicted in
+			     * the assembly source.
+			     */
+			    if((cputype == CPU_TYPE_POWERPC64 && 
+				reloc.r_type == PPC_RELOC_VANILLA) ||
+			       cputype == CPU_TYPE_X86_64) {
+				    printf("quad   ");
+			    }
+			    else if(cputype == CPU_TYPE_POWERPC ||
+				    cputype == CPU_TYPE_POWERPC64 || 
+				    cputype == CPU_TYPE_VEO){
+				printf("long   ");
+				predicted = TRUE;
+			    }
+			    else
+				printf("?(%2d)  ", sr->r_length);
+			    break;
+			default:
 			    printf("?(%2d)  ", sr->r_length);
-			break;
-		    default:
-			printf("?(%2d)  ", sr->r_length);
-			break;
+			    break;
+			}
 		    }
 		    printf("n/a    ");
 		    print_r_type(cputype, sr->r_type, predicted);
@@ -5942,6 +5964,11 @@ enum bool verbose)
 			    printf(" other_half = 0x%04x ",
 				   (unsigned int)sr->r_address);
 		    }
+		    else if(cputype == CPU_TYPE_ARM &&
+			    sectdiff_r_type == ARM_RELOC_HALF_SECTDIFF){
+			    printf(" other_half = 0x%04x ",
+				   (unsigned int)sr->r_address);
+		    }
 		    if((cputype == CPU_TYPE_MC680x0 &&
 			(sr->r_type == GENERIC_RELOC_SECTDIFF ||
 			 sr->r_type == GENERIC_RELOC_LOCAL_SECTDIFF)) ||
@@ -5966,7 +5993,9 @@ enum bool verbose)
 			 sr->r_type == HPPA_RELOC_HI21_SECTDIFF ||
 			 sr->r_type == HPPA_RELOC_LO14_SECTDIFF)) ||
 		       (cputype == CPU_TYPE_ARM &&
-			 sr->r_type == ARM_RELOC_SECTDIFF) ||
+			(sr->r_type == ARM_RELOC_SECTDIFF ||
+			 sr->r_type == ARM_RELOC_LOCAL_SECTDIFF ||
+			 sr->r_type == ARM_RELOC_HALF_SECTDIFF)) ||
 		       (cputype == CPU_TYPE_SPARC &&
 			(sr->r_type == SPARC_RELOC_SECTDIFF ||
 			 sr->r_type == SPARC_RELOC_HI22_SECTDIFF ||
@@ -5983,6 +6012,12 @@ enum bool verbose)
 			previous_ppc_jbsr = TRUE;
 		    else
 			previous_ppc_jbsr = FALSE;
+		    if(cputype == CPU_TYPE_ARM &&
+		       (sr->r_type == ARM_RELOC_HALF ||
+		        sr->r_type == ARM_RELOC_HALF_SECTDIFF))
+			previous_arm_half = TRUE;
+		    else
+			previous_arm_half = FALSE;
 		    printf("\n");
 		}
 		else{
@@ -6015,40 +6050,55 @@ enum bool verbose)
 			printf("True  ");
 		    else
 			printf("False ");
-		    switch(reloc.r_length){
-		    case 0:
-			printf("byte   ");
-			break;
-		    case 1:
-			printf("word   ");
-			break;
-		    case 2:
-			printf("long   ");
-			break;
-		    case 3:
-			/*
-			 * The value of 3 for r_length for PowerPC is to encode
-			 * that a conditional branch using the Y-bit for static
-			 * branch prediction was predicted in the assembly
-			 * source.
-			 */
-			if((cputype == CPU_TYPE_POWERPC64 && 
-			    reloc.r_type == PPC_RELOC_VANILLA) ||
-			   cputype == CPU_TYPE_X86_64) {
-                                printf("quad   ");
-			}
-			else if(cputype == CPU_TYPE_POWERPC ||
-				cputype == CPU_TYPE_POWERPC64 ||
-				cputype == CPU_TYPE_VEO){
-			    printf("long   ");
-			    predicted = TRUE;
-			}
+		    if(cputype == CPU_TYPE_ARM && 
+		       (reloc.r_type == ARM_RELOC_HALF ||
+			reloc.r_type == ARM_RELOC_HALF_SECTDIFF ||
+			previous_arm_half == TRUE)){
+			if((reloc.r_length & 0x1) == 0)
+			    printf("lo/");
 			else
+			    printf("hi/");
+			if((reloc.r_length & 0x2) == 0)
+			    printf("arm ");
+			else
+			    printf("thm ");
+		    }
+		    else{
+			switch(reloc.r_length){
+			case 0:
+			    printf("byte   ");
+			    break;
+			case 1:
+			    printf("word   ");
+			    break;
+			case 2:
+			    printf("long   ");
+			    break;
+			case 3:
+			    /*
+			     * The value of 3 for r_length for PowerPC is to
+			     * encode that a conditional branch using the Y-bit
+			     * for static branch prediction was predicted in
+			     * the assembly source.
+			     */
+			    if((cputype == CPU_TYPE_POWERPC64 && 
+				reloc.r_type == PPC_RELOC_VANILLA) ||
+			       cputype == CPU_TYPE_X86_64) {
+				    printf("quad   ");
+			    }
+			    else if(cputype == CPU_TYPE_POWERPC ||
+				    cputype == CPU_TYPE_POWERPC64 ||
+				    cputype == CPU_TYPE_VEO){
+				printf("long   ");
+				predicted = TRUE;
+			    }
+			    else
+				printf("?(%2d)  ", reloc.r_length);
+			    break;
+			default:
 			    printf("?(%2d)  ", reloc.r_length);
-			break;
-		    default:
-			printf("?(%2d)  ", reloc.r_length);
-			break;
+			    break;
+			}
 		    }
 		    if(reloc.r_extern){
 			printf("True   ");
@@ -6083,8 +6133,6 @@ enum bool verbose)
 			}
 			else if((cputype == CPU_TYPE_HPPA &&
 				 reloc.r_type == HPPA_RELOC_PAIR) ||
-				(cputype == CPU_TYPE_ARM &&
-				 reloc.r_type == ARM_RELOC_PAIR) ||
 				(cputype == CPU_TYPE_SPARC &&
 				 reloc.r_type == SPARC_RELOC_PAIR)){
 			    printf(" other_part = 0x%06x\n",
@@ -6101,6 +6149,10 @@ enum bool verbose)
 				printf("other_part = 0x%08x\n",
 				       (unsigned int)reloc.r_address);
 			}
+			else if(cputype == CPU_TYPE_ARM &&
+				reloc.r_type == ARM_RELOC_PAIR)
+			    printf("other_half = 0x%04x\n",
+				   (unsigned int)reloc.r_address);
 			else{
 			    printf("%d ", reloc.r_symbolnum);
 			    if(reloc.r_symbolnum > nsects + 1)
@@ -6122,6 +6174,12 @@ enum bool verbose)
 			previous_ppc_jbsr = TRUE;
 		    else
 			previous_ppc_jbsr = FALSE;
+		    if(cputype == CPU_TYPE_ARM &&
+		       (reloc.r_type == ARM_RELOC_HALF ||
+		        reloc.r_type == ARM_RELOC_HALF_SECTDIFF))
+			previous_arm_half = TRUE;
+		    else
+			previous_arm_half = FALSE;
 		}
 		else{
 		    printf("%08x %1d     %-2d     %1d      %-7d 0"
@@ -6173,7 +6231,7 @@ static char *sparc_r_types[] = {
 
 static char *arm_r_types[] = {
 	"VANILLA ", "PAIR    ", "SECTDIFF", "LOCSDIF ", "PBLAPTR ",
-	"BR24    ", "T_BR22  ", "T_BR32  ", " 8 (?)  ", " 9 (?)  ", 
+	"BR24    ", "T_BR22  ", "T_BR32  ", "HALF    ", "HALFDIF ", 
 	" 10 (?) ", " 11 (?) ", " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
 };
 
@@ -6856,6 +6914,7 @@ enum bool verbose)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LOAD_UPWARD_DYLIB:
 	    case LC_LAZY_LOAD_DYLIB:
 		memset((char *)&dl, '\0', sizeof(struct dylib_command));
 		size = left < sizeof(struct dylib_command) ?

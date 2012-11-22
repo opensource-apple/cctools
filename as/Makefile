@@ -1,7 +1,7 @@
 RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -Os
-X_CFLAGS = -fno-builtin-round -mdynamic-no-pic
+X_CFLAGS = -mdynamic-no-pic
 
 ifneq "clang" "$(notdir $(CC))"
   GCC_FLAGS = -Wall $(X_CFLAGS)
@@ -95,7 +95,7 @@ HFILES = app.h as.h atof-ieee.h bignum.h expr.h fixes.h flonum.h frags.h \
 	 input-scrub.h layout.h m68k-opcode.h m88k-opcode.h ppc-opcode.h md.h \
 	 messages.h obstack.h read.h relax.h sections.h struc-symbol.h \
 	 symbols.h write_object.h xmalloc.h hppa-aux.h hppa-opcode.h \
-	 sparc-opcode.h arch64_32.h dwarf2dbg.h filenames.h
+	 sparc-opcode.h arch64_32.h dwarf2dbg.h filenames.h arm_reloc.h
 
 CHECK_FILES = m68k-check.c m88k-check.c i860-check.c i386-check.c ppc-check.c \
 	      hppa-check.c sparc-check.c
@@ -125,14 +125,14 @@ driver_build:	$(OBJROOT)/driver_dir
 	@if [ $(SRCROOT) = . ];						\
 	then								\
 	    cd driver_dir;  $(MAKE) -f ../Makefile driver VPATH=..	\
-		CFLAGS="-g -O -I../../include $(GCC_FLAGS) $(SDK)"	\
+		CFLAGS="-g -Os -I../../include $(GCC_FLAGS) $(SDK)"	\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)" OFILE_DIR=.	\
 		RC_FLAGS="$(RC_CFLAGS)" DEP_DIR=driver_dir;		\
 	else								\
 	    cd $(OBJROOT)/driver_dir; $(MAKE) -f $(SRCROOT)/Makefile	\
 		driver VPATH=$(SRCROOT) OFILE_DIR=$(OBJROOT)/driver_dir \
 		SYMROOT=$(SYMROOT)/driver_dir SRCROOT=$(SRCROOT)	\
-		CFLAGS="-g -O -I$(SRCROOT)/../include $(GCC_FLAGS) $(SDK)" \
+		CFLAGS="-g -Os -I$(SRCROOT)/../include $(GCC_FLAGS) $(SDK)" \
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_FLAGS="$(RC_CFLAGS)" DEP_DIR=driver_dir;		\
 	fi
@@ -199,6 +199,12 @@ a386_build:	$(OBJROOT)/a386_dir
 		RC_CFLAGS="$(RC_CFLAGS)"  DEP_DIR=a386_dir;		\
 	fi
 
+a386_test: a386_dir
+	cd a386_dir; $(MAKE) -f ../Makefile i386-check VPATH=.. OFILE_DIR=. \
+		SRCROOT=.. COPTS="-DI386 -Di486 -Di586 -Di686"
+	cd a386_dir; $(MAKE) -f ../Makefile test
+
+
 ax86_64_build:	$(OBJROOT)/ax86_64_dir
 	@if [ $(SRCROOT) = . ];						\
  	then								\
@@ -217,10 +223,10 @@ ax86_64_build:	$(OBJROOT)/ax86_64_dir
  		RC_CFLAGS="$(RC_CFLAGS)"  DEP_DIR=ax86_64_dir;		\
  	fi
  
-a386_test: a386_dir
-	cd a386_dir; $(MAKE) -f ../Makefile i386-check VPATH=.. OFILE_DIR=. \
-		SRCROOT=.. COPTS="-DI386 -Di486 -Di586 -Di686"
-	cd a386_dir; $(MAKE) -f ../Makefile test
+ax86_64_test: ax86_64_dir
+	cd ax86_64_dir; $(MAKE) -f ../Makefile x86_64-check VPATH=.. \
+	    OFILE_DIR=. SRCROOT=.. COPTS="-DI386 -Di486 -Di586 -Di686 -DARCH64"
+	cd ax86_64_dir; $(MAKE) -f ../Makefile test
 
 a860_build:	$(OBJROOT)/a860_dir
 	@if [ $(SRCROOT) = . ];						\
@@ -360,6 +366,9 @@ m88k-check:
 i386-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../i386-check.c
 
+x86_64-check:
+	$(CC) $(COPTS) $(CFLAGS) -DARCH64 -o check ../i386-check.c
+
 i860-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../i860-check.c
 
@@ -374,7 +383,7 @@ sparc-check:
 
 test:
 	./check > check.s
-	./as -force_cpusubtype_ALL $(ASFLAGS) -o check.o check.s
+	./as -W -force_cpusubtype_ALL $(ASFLAGS) -o check.o check.s
 	otool -X -tV check.o > check1.s
 	./as -force_cpusubtype_ALL $(ASFLAGS) -o check1.o check1.s
 	otool -X -tV check1.o > check2.s

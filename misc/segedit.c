@@ -46,7 +46,7 @@
 #include <mach/mach_error.h>
 #include "stuff/allocate.h"
 #include "stuff/errors.h"
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 #include "stuff/bytesex.h"
 
 /* These variables are set from the command line arguments */
@@ -624,6 +624,7 @@ replace_sections(void)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LOAD_UPWARD_DYLIB:
 	    case LC_ID_DYLIB:
 	    case LC_LOAD_DYLINKER:
 	    case LC_ID_DYLINKER:
@@ -722,7 +723,7 @@ replace_sections(void)
 					   sizeof(sp->sectname)) == 0){
 				    sects[k + j].rp = rp;
 				    segs[i].modified = 1;
-				    sp->size = round(rp->size, 1 << sp->align);
+				    sp->size = rnd(rp->size, 1 << sp->align);
 				    break;
 				}
 				rp = rp->next;
@@ -734,14 +735,14 @@ replace_sections(void)
 			}
 			if(strcmp(segs[i].sgp->segname, SEG_LINKEDIT) != 0 ||
 			   i != nsegs - 1){
-			    if(segs[i].sgp->filesize != round(oldsectsize,
+			    if(segs[i].sgp->filesize != rnd(oldsectsize,
 							      pagesize))
 				fatal("contents of input file: %s not in a "
 				      "format that the specified sections can "
 				      "be replaced by this program", input);
 			    segs[i].sgp->filesize =
-				round(newsectsize, pagesize);
-			    segs[i].sgp->vmsize = round(newsectsize, pagesize);
+				rnd(newsectsize, pagesize);
+			    segs[i].sgp->vmsize = rnd(newsectsize, pagesize);
 			    segs[i].padsize =
 				segs[i].sgp->filesize  - newsectsize;
 			}
@@ -790,7 +791,7 @@ replace_sections(void)
 					   sizeof(sp->sectname)) == 0){
 				    sects[k + j].rp = rp;
 				    segs[i].modified = 1;
-				    sp->size = round(rp->size, 1 << sp->align);
+				    sp->size = rnd(rp->size, 1 << sp->align);
 				    break;
 				}
 				rp = rp->next;
@@ -802,15 +803,15 @@ replace_sections(void)
 			}
 			if(strcmp(segs[i].sgp64->segname, SEG_LINKEDIT) != 0 ||
 			   i != nsegs - 1){
-			    if(segs[i].sgp64->filesize != round(oldsectsize,
+			    if(segs[i].sgp64->filesize != rnd(oldsectsize,
 							      pagesize))
 				fatal("contents of input file: %s not in a "
 				      "format that the specified sections can "
 				      "be replaced by this program", input);
 			    segs[i].sgp64->filesize =
-				round(newsectsize, pagesize);
+				rnd(newsectsize, pagesize);
 			    segs[i].sgp64->vmsize =
-				round(newsectsize, pagesize);
+				rnd(newsectsize, pagesize);
 			    segs[i].padsize =
 				segs[i].sgp64->filesize  - newsectsize;
 			}

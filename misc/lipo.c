@@ -198,7 +198,7 @@ static struct segalign *new_segalign(
 static int cmp_qsort(
     const struct thin_file *thin1,
     const struct thin_file *thin2);
-static uint32_t round(
+static uint32_t rnd(
     uint32_t v,
     uint32_t r);
 static enum bool ispoweroftwo(
@@ -868,7 +868,7 @@ create_fat(void)
 	offset = sizeof(struct fat_header) +
 		 nthin_files * sizeof(struct fat_arch);
 	for(i = 0; i < nthin_files; i++){
-	    offset = round(offset, 1 << thin_files[i].fat_arch.align);
+	    offset = rnd(offset, 1 << thin_files[i].fat_arch.align);
 	    thin_files[i].fat_arch.offset = offset;
 	    offset += thin_files[i].fat_arch.size;
 	}
@@ -1415,7 +1415,7 @@ cpu_subtype_t *cpusubtype)
 		    }
 		}
 	    }
-	    offset += round(strtoul(ar_hdr->ar_size, NULL, 10),
+	    offset += rnd(strtoul(ar_hdr->ar_size, NULL, 10),
 			    sizeof(short));
 	}
 }
@@ -2269,11 +2269,11 @@ const struct thin_file *thin2)
 }
 
 /*
- * round() rounds v to a multiple of r.
+ * rnd() rounds v to a multiple of r.
  */
 static
 uint32_t
-round(
+rnd(
 uint32_t v,
 uint32_t r)
 {

@@ -13,6 +13,7 @@
 #include "input-scrub.h"
 #include "sections.h"
 #include "dwarf2dbg.h"
+#include "arm_reloc.h"
 
 #include "opcode/arm.h"
 
@@ -101,8 +102,6 @@ enum {
   BFD_RELOC_ARM_LDR_SB_G0,
   BFD_RELOC_ARM_LDR_SB_G1,
   BFD_RELOC_ARM_LDR_SB_G2,
-  BFD_RELOC_ARM_MOVW,
-  BFD_RELOC_ARM_MOVT,
   BFD_RELOC_ARM_T32_CP_OFF_IMM,
   BFD_RELOC_ARM_PLT32,
   BFD_RELOC_ARM_SMC,
@@ -115,8 +114,6 @@ enum {
   BFD_RELOC_THUMB_PCREL_BRANCH25,
   BFD_RELOC_THUMB_PCREL_BRANCH7,
   BFD_RELOC_ARM_T32_OFFSET_U8,
-  BFD_RELOC_ARM_THUMB_MOVW,
-  BFD_RELOC_ARM_THUMB_MOVT,
   BFD_RELOC_ARM_PCREL_CALL,
   BFD_RELOC_ARM_PCREL_JUMP,
   BFD_RELOC_8,
@@ -129,7 +126,11 @@ enum {
   BFD_RELOC_32_PCREL,
   BFD_RELOC_THUMB_PCREL_BRANCH20,
   BFD_RELOC_THUMB_PCREL_BRANCH23 = ARM_THUMB_RELOC_BR22,
-  BFD_RELOC_ARM_PCREL_BRANCH = ARM_RELOC_BR24
+  BFD_RELOC_ARM_PCREL_BRANCH = ARM_RELOC_BR24,
+  BFD_RELOC_ARM_MOVW = ARM_RELOC_LO16,
+  BFD_RELOC_ARM_MOVT = ARM_RELOC_HI16,
+  BFD_RELOC_ARM_THUMB_MOVW = ARM_THUMB_RELOC_LO16,
+  BFD_RELOC_ARM_THUMB_MOVT = ARM_THUMB_RELOC_HI16
 };
 
 /* HACKS for the change in gas/expr.h to change from X_seg to X_op (expr type)*/
@@ -4151,10 +4152,6 @@ parse_neon_mov (char **str, int *which_operand)
              Case 10: VMOV.F32 <Sd>, #<imm>
              Case 11: VMOV.F64 <Dd>, #<imm>  */
         inst.operands[i].immisfloat = 1;
-      else if (parse_big_immediate (&ptr, i) == SUCCESS)
-          /* Case 2: VMOV<c><q>.<dt> <Qd>, #<imm>
-             Case 3: VMOV<c><q>.<dt> <Dd>, #<imm>  */
-        ;
       else if ((val = arm_typed_reg_parse (&ptr, REG_TYPE_NSDQ, &rtype,
                                            &optype)) != FAIL)
         {
@@ -4194,6 +4191,10 @@ parse_neon_mov (char **str, int *which_operand)
               inst.operands[i++].present = 1;
             }
         }
+      else if (parse_big_immediate (&ptr, i) == SUCCESS)
+          /* Case 2: VMOV<c><q>.<dt> <Qd>, #<imm>
+             Case 3: VMOV<c><q>.<dt> <Dd>, #<imm>  */
+        ;
       else
         {
           first_error (_("expected <Rm> or <Dm> or <Qm> operand"));
@@ -8145,7 +8146,8 @@ encode_thumb2_ldmstm (int base, unsigned mask, bfd_boolean writeback)
       if (mask & (1 << 15))
 	inst.error = _("PC not allowed in register list");
 
-      if ((mask & (1 << base)) &&
+      if (writeback &&
+	  (mask & (1 << base)) &&
 	  (mask & (0xffffffff >> (32 - (base -1)))) != 0)
 	as_warn (_("value stored for r%d is UNPREDICTABLE"), base);
     }
@@ -11797,8 +11799,13 @@ do_vfp_nsyn_cvtr (void)
       "ftouid",
     };
 
-  if (flavour >= 0 && flavour < (int) ARRAY_SIZE (enc) && enc[flavour])
-    do_vfp_nsyn_opcode (enc[flavour]);
+  if (flavour >= 0 && flavour < (int) ARRAY_SIZE (enc))
+   {
+     if (enc[flavour])
+       do_vfp_nsyn_opcode (enc[flavour]);
+     else
+       first_error (_("invalid instruction shape (using rounding mode)"));
+   }
 }
 
 static void
@@ -12409,6 +12416,8 @@ do_neon_mov (void)
       break;
     
     default:
+      if (inst.error)
+	break;
       abort ();
     }
 }
@@ -14455,6 +14464,9 @@ static const struct asm_opcode insns[] =
  TC3(ldrsbt,	03000d0, f9100e00, 2, (RR, ADDR), ldsttv4, t_ldstt),
  TC3(strht,	02000b0, f8200e00, 2, (RR, ADDR), ldsttv4, t_ldstt),
 
+ /* Thumb only instructions.  */
+#undef ARM_VARIANT
+#define ARM_VARIANT NULL
   UT(cbnz,      b900,    2, (RR, EXP), t_cbz),
   UT(cbz,       b100,    2, (RR, EXP), t_cbz),
  /* ARM does not really have an IT instruction, so always allow it.  */
@@ -17610,10 +17622,9 @@ md_apply_fix (fixS *	fixP,
     case BFD_RELOC_ARM_THUMB_MOVT:
 #ifdef NOTYET
       if (fixP->fx_done || !seg->use_rela_p)
-#else
-      if (fixP->fx_done || !0)
 #endif
 	{
+#ifdef NOTYET
 	  /* REL format relocations are limited to a 16-bit addend.  */
 	  if (!fixP->fx_done)
 	    {
@@ -17621,7 +17632,9 @@ md_apply_fix (fixS *	fixP,
 		  as_bad_where (fixP->fx_file, fixP->fx_line,
 				_("offset too big"));
 	    }
-	  else if (fixP->fx_r_type == BFD_RELOC_ARM_MOVT
+	  else
+#endif
+	    if (fixP->fx_r_type == BFD_RELOC_ARM_MOVT
 		   || fixP->fx_r_type == BFD_RELOC_ARM_THUMB_MOVT)
 	    {
 	      value >>= 16;

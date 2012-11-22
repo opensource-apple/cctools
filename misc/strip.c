@@ -40,7 +40,7 @@
 #include "stuff/breakout.h"
 #include "stuff/allocate.h"
 #include "stuff/errors.h"
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 #include "stuff/reloc.h"
 #include "stuff/reloc.h"
 #include "stuff/symbol_list.h"
@@ -879,14 +879,14 @@ enum bool all_archs)
 		    archs[i].members[j].offset = offset;
 		    size = 0;
 		    if(archs[i].members[j].member_long_name == TRUE){
-			size = round(archs[i].members[j].member_name_size, 8) +
-			       (round(sizeof(struct ar_hdr), 8) -
+			size = rnd(archs[i].members[j].member_name_size, 8) +
+			       (rnd(sizeof(struct ar_hdr), 8) -
 				sizeof(struct ar_hdr));
 			archs[i].toc_long_name = TRUE;
 		    }
 		    if(archs[i].members[j].object != NULL){
 			size += 
-			   round(archs[i].members[j].object->object_size -
+			   rnd(archs[i].members[j].object->object_size -
 			     archs[i].members[j].object->input_sym_info_size +
 			     archs[i].members[j].object->output_sym_info_size, 
 			     8);
@@ -1436,7 +1436,7 @@ struct object *object)
 		}
 		if(object->code_sig_cmd != NULL){
 		    object->input_sym_info_size =
-			round(object->input_sym_info_size, 16);
+			rnd(object->input_sym_info_size, 16);
 		    object->input_sym_info_size +=
 			object->code_sig_cmd->datasize;
 #ifndef NMEDIT
@@ -1447,7 +1447,7 @@ struct object *object)
 #endif /* !(NMEDIT) */
 		    {
 			object->output_sym_info_size =
-			    round(object->output_sym_info_size, 16);
+			    rnd(object->output_sym_info_size, 16);
 			object->output_sym_info_size +=
 			    object->code_sig_cmd->datasize;
 		    }
@@ -1630,7 +1630,7 @@ struct object *object)
 		    object->st->stroff = 0;
 
 		if(object->code_sig_cmd != NULL){
-		    offset = round(offset, 16);
+		    offset = rnd(offset, 16);
 		    object->code_sig_cmd->dataoff = offset;
 		    offset += object->code_sig_cmd->datasize;
 		}
@@ -3187,9 +3187,9 @@ uint32_t nextrefsyms)
 			  allocate(new_nsyms * sizeof(struct nlist_64));
 	}
 	if(object->mh != NULL)
-	    new_strsize = round(new_strsize, sizeof(int32_t));
+	    new_strsize = rnd(new_strsize, sizeof(int32_t));
 	else
-	    new_strsize = round(new_strsize, sizeof(int64_t));
+	    new_strsize = rnd(new_strsize, sizeof(int64_t));
 	new_strings = (char *)allocate(new_strsize);
 	if(object->mh != NULL){
 	    new_strings[new_strsize - 3] = '\0';
@@ -4911,7 +4911,7 @@ change_symbol:
 	    new_symbols64 = (struct nlist_64 *)
 			    allocate(new_nsyms * sizeof(struct nlist_64));
 	}
-	new_strsize = round(new_strsize, sizeof(int32_t));
+	new_strsize = rnd(new_strsize, sizeof(int32_t));
 	new_strings = (char *)allocate(new_strsize);
 	new_strings[new_strsize - 3] = '\0';
 	new_strings[new_strsize - 2] = '\0';

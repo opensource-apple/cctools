@@ -5,6 +5,11 @@ Add flags for:
 Add support for:
 - Remove empty __IMPORT segment
 
+Changes for the 5.28 release (the cctools-777 release):
+- Changed round() to rnd() and stuff/round.h to stuff/rnd.h in all files and
+  removed -fno-builtin-round from the Makefile.  Radar bug #7475139.
+- Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
+
 Changes for the 5.27 release (the cctools-765 release):
 - Moved the install location of motc(1) back to /usr/local/efi/bin . Radar bug
   #7117645.

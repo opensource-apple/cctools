@@ -102,7 +102,7 @@
 #import <stuff/best_arch.h>
 #import <stuff/allocate.h>
 #import <stuff/errors.h>
-#import <stuff/round.h>
+#import <stuff/rnd.h>
 #import <stuff/hppa.h>
 #import <stuff/execute.h>
 #import <stuff/guess_short_name.h>
@@ -5415,7 +5415,7 @@ enum bool missing_arch)
 	    sym_info_size +=
 		arch_nmodtab * sizeof(struct dylib_module_64) +
 		arch_nsyms * sizeof(struct nlist_64) +
-		round(arch_nindirectsyms * sizeof(uint32_t), 8);
+		rnd(arch_nindirectsyms * sizeof(uint32_t), 8);
 	}
 
 	if(arch->object->hints_cmd != NULL){
@@ -5431,7 +5431,7 @@ enum bool missing_arch)
 
 	if(arch->object->code_sig_cmd != NULL){
 	    sym_info_size =
-		round(sym_info_size, 16);
+		rnd(sym_info_size, 16);
 	    sym_info_size +=
 		arch->object->code_sig_cmd->datasize;
 	}
@@ -8136,25 +8136,50 @@ contents_pointer_for_vmaddr(
 uint32_t vmaddr,
 uint32_t size)
 {
-    uint32_t i, offset;
+    uint32_t i, j, header_size, offset;
     struct load_command *lc;
     struct segment_command *sg;
+    struct section *s;
     uint32_t ncmds;
     
 	lc = arch->object->load_commands;
-        if(arch->object->mh != NULL)
+        if(arch->object->mh != NULL){
             ncmds = arch->object->mh->ncmds;
-        else
+	    header_size = sizeof(struct mach_header) +
+			  arch->object->mh->sizeofcmds;
+	}
+        else{
             ncmds = arch->object->mh64->ncmds;
+	    header_size = sizeof(struct mach_header_64) +
+			  arch->object->mh64->sizeofcmds;
+	}
 	for(i = 0; i < ncmds; i++){
 	    if(lc->cmd == LC_SEGMENT){
 		sg = (struct segment_command *)lc;
 		if(vmaddr >= sg->vmaddr &&
 		   vmaddr + size <= sg->vmaddr + sg->vmsize){
 		    offset = vmaddr - sg->vmaddr;
-		    if(offset + size <= sg->filesize)
-			return(arch->object->object_addr +
-			       sg->fileoff + offset);
+		    if(offset + size > sg->filesize)
+			return(NULL);
+		    s = (struct section *)((char *)sg +
+					   sizeof(struct segment_command));
+		    for(j = 0 ; j < sg->nsects; j++){
+			if(vmaddr >= s->addr &&
+			   vmaddr + size <= s->addr + s->size){
+			    /*
+			     * Don't return pointers into the headers or
+			     * link edit information for bad relocation info.
+			     */
+			    if(sg->fileoff + offset < header_size ||
+			       sg->fileoff + offset >=
+				arch->object->object_size -
+				arch->object->input_sym_info_size)
+				return(NULL);
+			    return(arch->object->object_addr +
+				   sg->fileoff + offset);
+			}
+			s++;
+		    }
 		    return(NULL);
 		}
 	    }
@@ -8942,7 +8967,7 @@ uint32_t vmslide)
                                 */
                                 size = pbdylib1->cmdsize -
                                         (sizeof(struct prebound_dylib_command) +
-                                        round(strlen(dylib_name) + 1,
+                                        rnd(strlen(dylib_name) + 1,
 					      sizeof(uint32_t)));
                                 /*
                                  * Now see if the size left has enought space to
@@ -8966,9 +8991,9 @@ uint32_t vmslide)
                                         nmodules = 64;
                                     size = sizeof(struct
 						  prebound_dylib_command) +
-                                     round(strlen(dylib_name)+1,
+                                     rnd(strlen(dylib_name)+1,
 					   sizeof(uint32_t)) +
-                                     round(nmodules / 8, sizeof(uint32_t));
+                                     rnd(nmodules / 8, sizeof(uint32_t));
                                     libs[i].LC_PREBOUND_DYLIB_size = size;
                                 }
                             }
@@ -9016,8 +9041,8 @@ uint32_t vmslide)
                     if(nmodules < 64)
                         nmodules = 64;
                     size = sizeof(struct prebound_dylib_command) +
-                    round(strlen(libs[i].dylib_name) + 1, sizeof(uint32_t))+
-                    round(nmodules / 8, sizeof(uint32_t));
+                    rnd(strlen(libs[i].dylib_name) + 1, sizeof(uint32_t))+
+                    rnd(nmodules / 8, sizeof(uint32_t));
                     libs[i].LC_PREBOUND_DYLIB_size = size;
                     sizeofcmds += libs[i].LC_PREBOUND_DYLIB_size;
                     ncmds++;
@@ -9104,11 +9129,11 @@ uint32_t vmslide)
                             pbdylib2->nmodules = libs[j].nmodtab;
                             pbdylib2->linked_modules.offset =
                                     sizeof(struct prebound_dylib_command) +
-                                    round(strlen(dylib_name) + 1,
+                                    rnd(strlen(dylib_name) + 1,
 				    sizeof(uint32_t));
                             linked_modules = ((char *)pbdylib2) +
                                     sizeof(struct prebound_dylib_command) +
-                                    round(strlen(dylib_name) + 1,
+                                    rnd(strlen(dylib_name) + 1,
 				    sizeof(uint32_t));
                             if(libs[j].ofile->mh != NULL)
                                 mh_flags = libs[j].ofile->mh->flags;
@@ -9151,11 +9176,11 @@ uint32_t vmslide)
                     pbdylib2->nmodules = libs[i].nmodtab;
                     pbdylib2->linked_modules.offset =
                             sizeof(struct prebound_dylib_command) +
-                            round(strlen(libs[i].dylib_name) + 1,
+                            rnd(strlen(libs[i].dylib_name) + 1,
 			    sizeof(uint32_t));
                     linked_modules = ((char *)pbdylib2) +
                             sizeof(struct prebound_dylib_command) +
-                            round(strlen(libs[i].dylib_name) + 1,
+                            rnd(strlen(libs[i].dylib_name) + 1,
 			    sizeof(uint32_t));
                     if(libs[i].ofile->mh != NULL)
                         mh_flags = libs[i].ofile->mh->flags;

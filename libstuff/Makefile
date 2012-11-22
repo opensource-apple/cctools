@@ -1,5 +1,5 @@
 RC_OS = macos
-OFLAG = -O
+OFLAG = -Os
 LTO = -DLTO_SUPPORT
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
@@ -24,7 +24,7 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 endif
 
-X_CFLAGS = -fno-builtin-round
+X_CFLAGS =
 
 USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
 				  [ "$(RC_XBS)" != "YES" ]; then \
@@ -67,7 +67,7 @@ ifeq "$(EFITOOLS)" "efitools"
 else
 	COFF_BYTESEX =
 endif
-CFILES = allocate.c errors.c arch.c execute.c bytesex.c round.c hppa.c \
+CFILES = allocate.c errors.c arch.c execute.c bytesex.c rnd.c hppa.c \
 	  swap_headers.c reloc.c version_number.c get_toc_byte_sex.c \
 	  best_arch.c fatals.c arch_usage.c ofile.c ofile_error.c print.c \
 	  set_arch_flag_name.c seg_addr_table.c dylib_table.c \
@@ -282,7 +282,7 @@ installsrc:
 installGASsrc:
 	$(MKDIRS) $(SRCROOT)
 	chmod 755 $(SRCROOT)
-	gnutar cf - Makefile bytesex.c round.c | (cd $(SRCROOT); gnutar xf -)
+	gnutar cf - Makefile bytesex.c rnd.c | (cd $(SRCROOT); gnutar xf -)
 	chmod 444 $(SRCROOT)/*
 
 fromGASsrc: $(OBJROOT)/dynamic_obj
@@ -295,7 +295,7 @@ fromGASsrc: $(OBJROOT)/dynamic_obj
 	    SYMROOT=..							\
 	    COPTS="$(DYNAMIC)"						\
 	    OFLAG="$(OFLAG)"						\
-	    CFILES="bytesex.c round.c"					\
+	    CFILES="bytesex.c rnd.c"					\
 	    RC_CFLAGS="$(RC_CFLAGS)"					\
 	    RC_ARCHS="$(RC_ARCHS)";
 

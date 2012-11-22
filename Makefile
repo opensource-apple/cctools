@@ -232,22 +232,6 @@ install_tools: installhdrs
 			OBJROOT=$(OBJROOT)/$$i				\
 			SYMROOT=$(SYMROOT)/$$i install) || exit 1;	\
 	      done;							\
-	    if [ $(RC_RELEASE) ];					\
-	    then							\
-	      CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
-	      for i in `echo $(SUBDIRS)`;				\
-	        do							\
-		    echo ===== $(MAKE) shlib_clean for $$i ==========;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
-			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
-			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)"				\
-			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
-			SRCROOT=$(SRCROOT)/$$i				\
-			OBJROOT=$(OBJROOT)/$$i				\
-			SYMROOT=$(SYMROOT)/$$i shlib_clean) || exit 1;	\
-	      done							\
-	    fi								\
 	else								\
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    for i in `echo $(SUBDIRS)`;					\

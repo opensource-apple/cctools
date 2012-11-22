@@ -476,7 +476,8 @@ void *cookie)
 	    else if((mh_flags & MH_TWOLEVEL) == MH_TWOLEVEL &&
 		    (lc->cmd == LC_LOAD_DYLIB ||
 		     lc->cmd == LC_LOAD_WEAK_DYLIB ||
-		     lc->cmd == LC_REEXPORT_DYLIB)){
+		     lc->cmd == LC_REEXPORT_DYLIB ||
+		     lc->cmd == LC_LOAD_UPWARD_DYLIB)){
 		process_flags.nlibs++;
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
@@ -494,7 +495,8 @@ void *cookie)
 	    for(i = 0; i < ncmds; i++){
 		if(lc->cmd == LC_LOAD_DYLIB ||
 		   lc->cmd == LC_LOAD_WEAK_DYLIB ||
-		   lc->cmd == LC_REEXPORT_DYLIB){
+		   lc->cmd == LC_REEXPORT_DYLIB ||
+		   lc->cmd == LC_LOAD_UPWARD_DYLIB){
 		    dl = (struct dylib_command *)lc;
 		    process_flags.lib_names[j] =
 			savestr((char *)dl + dl->dylib.name.offset);
@@ -804,7 +806,8 @@ struct ofile *ofile)
 	for(j = 0; j < ncmds; j++) {
 	    if(lc->cmd == LC_LOAD_DYLIB ||
 	       lc->cmd == LC_LOAD_WEAK_DYLIB ||
-	       lc->cmd == LC_REEXPORT_DYLIB){
+	       lc->cmd == LC_REEXPORT_DYLIB ||
+	       lc->cmd == LC_LOAD_UPWARD_DYLIB){
 		char *longName;
 		char *shortName;
 		char *returnLongName;

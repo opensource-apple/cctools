@@ -19,7 +19,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include <stdlib.h>
 #include <string.h>
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 #include "as.h"
 #include "sections.h"
 #include "frags.h"
@@ -270,7 +270,7 @@ void)
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
 	    if((frchainP->frch_section.flags & SECTION_TYPE) == S_ZEROFILL)
 		continue;
-	    slide = round(slide, 1 << frchainP->frch_section.align);
+	    slide = rnd(slide, 1 << frchainP->frch_section.align);
 	    tmp = frchainP->frch_last->fr_address;
 	    if(slide != 0){
 		for(fragP = frchainP->frch_root; fragP; fragP = fragP->fr_next){
@@ -289,7 +289,7 @@ void)
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
 	    if((frchainP->frch_section.flags & SECTION_TYPE) != S_ZEROFILL)
 		continue;
-	    slide = round(slide, 1 << frchainP->frch_section.align);
+	    slide = rnd(slide, 1 << frchainP->frch_section.align);
 
 	    tmp = frchainP->frch_root->fr_address;
 	    frchainP->frch_root->fr_address = slide;

@@ -2,7 +2,7 @@ ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
 endif
-OFLAG = -O
+OFLAG = -Os
 ifeq "mwccppc" "$(notdir $(CC))"
   CFLAGS = -g $(OFLAG) -I$(SRCROOT)/../include $(SDK)
 else

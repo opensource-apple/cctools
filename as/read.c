@@ -37,7 +37,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 #include "stuff/arch.h"
 #include "stuff/best_arch.h"
 #include "as.h"
@@ -411,6 +411,7 @@ static void s_reference(uintptr_t value);
 static void s_lazy_reference(uintptr_t value);
 static void s_weak_reference(uintptr_t value);
 static void s_weak_definition(uintptr_t value);
+static void s_weak_def_can_be_hidden(uintptr_t value);
 static void s_no_dead_strip(uintptr_t value);
 static void s_include(uintptr_t value);
 static void s_dump(uintptr_t value);
@@ -493,6 +494,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "lazy_reference",s_lazy_reference,	0	},
   { "weak_reference",s_weak_reference,	0	},
   { "weak_definition",s_weak_definition,	0	},
+  { "weak_def_can_be_hidden",s_weak_def_can_be_hidden,	0	},
   { "no_dead_strip",s_no_dead_strip,	0	},
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
@@ -2156,8 +2158,8 @@ uintptr_t value)
 		memset(bss->frch_root, '\0', SIZEOF_STRUCT_FRAG);
 		bss->frch_last = bss->frch_root;
 	    }
-	    bss->frch_root->fr_address = round(bss->frch_root->fr_address,
-					       1 << align);
+	    bss->frch_root->fr_address = rnd(bss->frch_root->fr_address,
+					     1 << align);
 	    symbolP->sy_value = bss->frch_root->fr_address;
 	    symbolP->sy_type  = N_SECT;
 	    symbolP->sy_other = bss->frch_nsect;
@@ -2763,8 +2765,8 @@ uintptr_t value)
 	*p = c;
 
 	if((symbolP->sy_type & N_TYPE) == N_UNDF && symbolP->sy_value == 0){
-	    frcP->frch_root->fr_address = round(frcP->frch_root->fr_address,
-					        1 << align);
+	    frcP->frch_root->fr_address = rnd(frcP->frch_root->fr_address,
+					      1 << align);
 	    symbolP->sy_value = frcP->frch_root->fr_address;
 	    symbolP->sy_type  = N_SECT | (symbolP->sy_type & (N_EXT | N_PEXT));
 	    symbolP->sy_other = frcP->frch_nsect;
@@ -2896,6 +2898,34 @@ uintptr_t value)
 	*p = 0;
 	symbolP = symbol_find_or_make(name);
 	symbolP->sy_desc |= N_WEAK_DEF;
+	*p = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * s_weak_def_can_be_hidden() implements the pseudo op:
+ *	.weak_def_can_be_hidden name
+ */
+static
+void
+s_weak_def_can_be_hidden(
+uintptr_t value)
+{
+    char *name;
+    char c;
+    char *p;
+    symbolS *symbolP;
+
+	if(* input_line_pointer == '"')
+	    name = input_line_pointer + 1;
+	else
+	    name = input_line_pointer;
+	c = get_symbol_end();
+	p = input_line_pointer;
+
+	*p = 0;
+	symbolP = symbol_find_or_make(name);
+	symbolP->sy_desc |= (N_WEAK_DEF | N_WEAK_REF);
 	*p = c;
 	demand_empty_rest_of_line();
 }

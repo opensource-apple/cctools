@@ -25,7 +25,7 @@
 #include <string.h>
 #include "stuff/ofile.h"
 #include "stuff/breakout.h"
-#include "stuff/round.h"
+#include "stuff/rnd.h"
 
 static void check_object(
     struct arch *arch,
@@ -411,7 +411,7 @@ struct object *object)
  	object->input_indirectsym_pad = 0;
 	if(object->mh64 != NULL &&
 	   (object->dyst->nindirectsyms % 2) != 0){
-	    rounded_offset = round(offset, 8);
+	    rounded_offset = rnd(offset, 8);
 	}
 	else{
 	    rounded_offset = offset;
@@ -487,7 +487,7 @@ struct object *object)
 	    }
 	}
 	if(object->code_sig_cmd != NULL){
-	    rounded_offset = round(rounded_offset, 16);
+	    rounded_offset = rnd(rounded_offset, 16);
 	    if(object->code_sig_cmd->dataoff != rounded_offset)
 		order_error(arch, member, "code signature data out of place");
 	    rounded_offset += object->code_sig_cmd->datasize;
@@ -529,7 +529,7 @@ struct object *object)
 		 * string table may not be exactly at the end of the
 		 * object_size due to rounding.
 		 */
-		rounded_strend = round(strend, 8);
+		rounded_strend = rnd(strend, 8);
 		if(strend != end && rounded_strend != end)
 		    fatal_arch(arch, member, "string table not at the end "
 			"of the file (can't be processed) in file: ");
@@ -553,14 +553,15 @@ struct object *object)
 		    object->dyst->nindirectsyms * sizeof(uint32_t);
 
 		/*
-		 * If this is a 64-bit Mach-O file and has an odd number of indirect
-		 * symbol table entries the next offset MAYBE rounded to a multiple of
-		 * 8 or MAY NOT BE. This should done to keep all the tables aligned but
-		 * was not done for 64-bit Mach-O in Mac OS X 10.4.
+		 * If this is a 64-bit Mach-O file and has an odd number of
+		 * indirect symbol table entries the next offset MAYBE rounded
+		 * to a multiple of 8 or MAY NOT BE. This should done to keep
+		 * all the tables aligned but was not done for 64-bit Mach-O in
+		 * Mac OS X 10.4.
 		 */
 		if(object->mh64 != NULL &&
 		   (object->dyst->nindirectsyms % 2) != 0){
-		    rounded_indirectend = round(indirectend, 8);
+		    rounded_indirectend = rnd(indirectend, 8);
 		}
 		else{
 		    rounded_indirectend = indirectend;

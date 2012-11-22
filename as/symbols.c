@@ -461,7 +461,7 @@ int local_colon)/* non-zero if called from local_colon() */
 	      symbolP -> sy_type |= N_SECT; /* keep N_EXT bit */
 	      symbolP -> sy_other = frchain_now->frch_nsect;
 	      symbolP -> sy_desc &= ~REFERENCE_TYPE;
-	      symbolP -> sy_desc &= ~N_WEAK_REF;
+	      symbolP -> sy_desc &= ~(N_WEAK_REF & N_WEAK_DEF);
 	      symbol_assign_index(symbolP);
 #ifdef NeXT_MOD	/* generate stabs for debugging assembly code */
 	      if(flagseen['g'])
