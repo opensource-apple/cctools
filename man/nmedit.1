@@ -1,9 +1,9 @@
-.TH NMEDIT 1 "October 1, 2000" "Apple Computer, Inc."
+.TH NMEDIT 1 "October 29, 2001" "Apple Computer, Inc."
 .SH NAME
 nmedit \- change global symbols to local symbols
 .SH SYNOPSIS
 .B nmedit
-\-s list_file [\-R list_file] [-p] [\-A] [\-] [[\-arch arch_type] ...] object_file ...
+\-s list_file [\-R list_file] [-p] [\-A] [\-] [[\-arch arch_type] ...] object_file ... [-o output]
 .SH DESCRIPTION
 .I Nmedit
 changes the global symbols not listed in the
@@ -43,7 +43,7 @@ globals to be used would have it's symbol table edited with:
 where the file
 .I interface_symbols
 would contain only those symbols from the executable
-that it wishes the objects loaded with rld to have access to.
+that it wishes the objects loaded at runtime to have access to.
 Another example is an object that is maded up of a number of other objects that
 will be loaded into an executable would built and then have it's symbol table
 edited with:
@@ -107,8 +107,7 @@ are:
 .B \-A
 Leave all global absolute symbols except those with a value of zero, and save
 objective-C class symbols as globals.  This is intended for use of programs
-that use
-.IR rld (3)
+that load code at runtime
 and want the loaded code to use symbols from the shared libraries.
 .TP
 .B \-
@@ -130,8 +129,12 @@ can be
 to process all architectures in the file.
 The default is to process all architectures that are contained in
 the file.
+.TP
+.BI \-o " output"
+Write the result into the file
+.I output.
 .SH "SEE ALSO"
-strip(1), ld(1), rld(3), arch(3)
+strip(1), ld(1), arch(3)
 .SH BUGS
 The changing of the symbolic debugging information by
 .I nmedit

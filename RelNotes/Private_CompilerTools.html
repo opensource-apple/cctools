@@ -1,22 +1,22 @@
 <HTML>
-<!--This file created 8/20/01 3:44 PM by Claris Home Page version 3.0-->
+<!--This file created 11/8/01 7:30 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=72 BOTTOM=847 LEFT=479 RIGHT=1109>
+   <X-CLARIS-WINDOW TOP=70 BOTTOM=845 LEFT=479 RIGHT=1109>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">MacOS X 10.1 Release Copyright 2001 by Apple
-Computer, Inc. All Rights Reserved.</FONT></P>
+<P><FONT SIZE="-1">MacOS X December 2001 Developer Release Copyright
+2001 by Apple Computer, Inc. All Rights Reserved.</FONT></P>
 
-<H1>Private MacOS X 10.1 Notes:<BR>
-Compiler Tools (cctools-384)</H1>
+<H2>Private MacOS X December 2001Developer Release Notes:<BR>
+Compiler Tools (cctools-384.1)</H2>
 
-<P>This file contains release notes for the 5.9 release of the
-Compiler Tools for MacOS X 10.1. This file contains information about
-the following topics:</P>
+<P>This file contains release notes for the 5.10 release of the
+Compiler Tools for the MacOS X December 2001 Developer Release. This
+file contains information about the following topics:</P>
 
 <UL>
    <LI>The MacOS X Mach-O GNU-based assemblers</LI>
@@ -29,6 +29,27 @@ the following topics:</P>
 </UL>
 
 <P>&nbsp;</P>
+
+<H2>Notes Specific to Release 5.10 (December 2001 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-384 for
+the 5.9 MacOS 10.1 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the cctools project to no longer install the rld(3)
+   man page and removed references to rld from the nmedit(1) and
+   strip(1) man pages (Radar bug #2784528).</LI>
+   
+   <LI>The man pages for <I>Mach-O</I>(5), <I>ranlib</I>(5),
+   <I>stabs</I>(5) and <I>nlist</I>(3) were moved to the cctools
+   project from the man project and updated (Radar bug
+   #2793998).</LI>
+   
+   <LI>Changed the PowerPC assembler to not treat the fsel
+   instruction as optional so it can be used without specifing
+   <B>-force_cpusubtype_ALL</B>.</LI>
+</UL>
 
 <H3><FONT SIZE="+2">Notes Specific to Release 5.9 (MacOS X
 10.1)</FONT></H3>

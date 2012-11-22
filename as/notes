@@ -23,6 +23,9 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.10 release (the cctools-384.1 release):
+- Changed the PowerPC fsel instruction to not be marked as optional.
+
 Changes for the 5.9 release (the cctools-375 release):
 - Picked up patches to add ()'s around builtin ppc macros.  Radar bug #2717461.
 - Removed the references to libstreams by removing the use of the old

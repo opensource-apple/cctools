@@ -1,4 +1,4 @@
-.TH SEG_ADDR_TABLE l "June 21, 2000" "Apple Computer, Inc."
+.TH SEG_ADDR_TABLE l "November 8, 2001" "Apple Computer, Inc."
 .SH NAME
 seg_addr_table \- re-layout, update or check a segment address table
 .SH SYNOPSIS
@@ -114,14 +114,14 @@ Specifies the starting address to layout the read-only segments of ``split''
 libraries.
 .I addr
 is a hexadecimal number and should be a multiple of the target pagesize.
-The default if not specified is 0x20000000.
+The default if not specified is 0x70000000.
 .TP
 .BI "\-segs_read_write_addr" " addr"
 Specifies the starting address to layout the read-write segments of ``split''
 libraries.
 .I addr
 is a hexadecimal number and should be a multiple of the target pagesize.
-The default if not specified is 0x30000000.
+The default if not specified is 0x80000000.
 .PP
 The following options may be specified with any operation:
 .TP
