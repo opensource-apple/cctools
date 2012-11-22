@@ -627,6 +627,66 @@ char **envp)
 				as_fatal("I expected 'sparc' after "
 					 "-arch for this assembler.");
 #endif
+#ifdef ARM
+			    if(strcmp(*work_argv,
+					   "arm") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_V4T)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_V4T;
+			    }
+			    else if(strcmp(*work_argv,
+					   "armv4t") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_V4T)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_V4T;
+			    }
+			    else if(strcmp(*work_argv,
+					   "armv5") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_V5TEJ)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_V5TEJ;
+			    }
+			    else if(strcmp(*work_argv,
+					   "xscale") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_XSCALE)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_XSCALE;
+			    }
+			    else if(strcmp(*work_argv,
+					   "armv6") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_V6)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_V6;
+			    }
+			    else
+				as_fatal("I expected 'arm' after "
+					 "-arch for this assembler.");
+#endif
 			}
 			else
 			    as_fatal("I expected an <arch_type> "

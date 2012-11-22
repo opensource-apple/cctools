@@ -42,6 +42,7 @@
 #include "ppc_disasm.h"
 #include "hppa_disasm.h"
 #include "sparc_disasm.h"
+#include "arm_disasm.h"
 
 /* Name of this program for error messages (argv[0]) */
 char *progname = NULL;
@@ -73,6 +74,7 @@ enum bool iflag = FALSE; /* print the shared library initialization table */
 enum bool Wflag = FALSE; /* print the mod time of an archive as a number */
 enum bool Xflag = FALSE; /* don't print leading address in disassembly */
 enum bool Zflag = FALSE; /* don't use simplified ppc mnemonics in disassembly */
+enum bool Bflag = FALSE; /* force Thumb disassembly (ARM objects only) */
 char *pflag = NULL; 	 /* procedure name to start disassembling from */
 char *segname = NULL;	 /* name of the section to print the contents of */
 char *sectname = NULL;
@@ -226,7 +228,8 @@ static void print_text(
     uint32_t ncmds,
     uint32_t sizeofcmds,
     enum bool disassemble,
-    enum bool verbose);
+    enum bool verbose,
+    cpu_subtype_t cpusubtype);
 
 static void print_argstrings(
     uint32_t magic,
@@ -418,6 +421,9 @@ char **envp)
 		case 'm':
 		    use_member_syntax = FALSE;
 		    break;
+		case 'B':
+		    Bflag = TRUE;
+		    break;
 		default:
 		    error("unknown char `%c' in flag %s\n", argv[i][j],argv[i]);
 		    usage();
@@ -506,6 +512,7 @@ void)
 	fprintf(stderr, "\t-c print argument strings of a core file\n");
 	fprintf(stderr, "\t-X print no leading addresses or headers\n");
 	fprintf(stderr, "\t-m don't use archive(member) syntax\n");
+	fprintf(stderr, "\t-B force Thumb disassembly (ARM objects only)\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -531,6 +538,7 @@ void *cookie) /* cookie is not used */
     char *strings, *p;
     uint32_t n_strx;
     uint8_t n_type;
+    uint16_t n_desc;
     uint64_t n_value;
     char *sect;
     unsigned long sect_nrelocs, sect_flags, nrelocs, next_relocs, nloc_relocs;
@@ -894,11 +902,13 @@ void *cookie) /* cookie is not used */
 		    if(symbols != NULL){
 			n_strx = symbols[i].n_un.n_strx;
 			n_type = symbols[i].n_type;
+			n_desc = symbols[i].n_desc;
 			n_value = symbols[i].n_value;
 		    }
 		    else{
 			n_strx = symbols64[i].n_un.n_strx;
 			n_type = symbols64[i].n_type;
+			n_desc = symbols64[i].n_desc;
 			n_value = symbols64[i].n_value;
 		    }
 		    if(n_strx > 0 && n_strx < strings_size)
@@ -919,6 +929,8 @@ void *cookie) /* cookie is not used */
 			    continue;
 			sorted_symbols[nsorted_symbols].n_value = n_value;
 			sorted_symbols[nsorted_symbols].name = p;
+			sorted_symbols[nsorted_symbols].is_thumb =
+			    n_desc & N_ARM_THUMB_DEF;
 			nsorted_symbols++;
 		    }
 		}
@@ -1089,7 +1101,7 @@ void *cookie) /* cookie is not used */
 		       nsorted_symbols, symbols, symbols64, nsymbols, strings,
 		       strings_size, relocs, nrelocs, indirect_symbols,
 		       nindirect_symbols, ofile->load_commands, mh_ncmds,
-		       mh_sizeofcmds, vflag, Vflag);
+		       mh_sizeofcmds, vflag, Vflag, mh_cpusubtype);
 
 	    if(relocs != NULL && relocs != sect_relocs)
 		free(relocs);
@@ -2231,7 +2243,8 @@ struct load_command *load_commands,
 uint32_t ncmds,
 uint32_t sizeofcmds,
 enum bool disassemble,
-enum bool verbose)
+enum bool verbose,
+cpu_subtype_t cpusubtype)
 {
     enum byte_sex host_byte_sex;
     enum bool swapped;
@@ -2334,6 +2347,13 @@ enum bool verbose)
 				strings, strings_size, indirect_symbols,
 				nindirect_symbols, load_commands, ncmds,
 				sizeofcmds, verbose);
+		else if(cputype == CPU_TYPE_ARM)
+		    j = arm_disassemble(sect, size - i, cur_addr, addr,
+				object_byte_sex, relocs, nrelocs, symbols,
+				nsymbols, sorted_symbols, nsorted_symbols,
+				strings, strings_size, indirect_symbols,
+				nindirect_symbols, load_commands, ncmds,
+				sizeofcmds, cpusubtype, verbose);
 		else{
 		    printf("Can't disassemble unknown cputype %d\n", cputype);
 		    return;

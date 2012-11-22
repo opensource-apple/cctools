@@ -2,6 +2,17 @@ RC_OS = macos
 OFLAG = -O
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
+
+ifeq "" "$(NEXT_ROOT)"
+KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
+       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/libsa \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/bsd \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers \
+       -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
+else
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -force_cpusubtype_ALL -msoft-float -nostdinc \
 -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
@@ -10,6 +21,8 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/bsd \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
+endif
+
 ifeq "macos" "$(RC_OS)"
   X_CFLAGS := $(shell if [ "$(RC_RELEASE)" != "Beaker" ] &&    \
 			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \

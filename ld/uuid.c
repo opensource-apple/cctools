@@ -36,6 +36,7 @@
 #include <mach-o/dyld.h>
 #endif /* !(defined(KLD) && defined(__STATIC__)) */
 #include "ld.h"
+#include <stdlib.h>
 
 /*
  * uuid() is called to set the uuid[] bytes for the uuid load command.
@@ -82,6 +83,22 @@ uint8_t *uuid)
 		}
 		(void)close(fd);
 	    }
+	}
+	/*
+	 * For consistency, it would be better to create an enum bool in ld.c,
+	 * like we do for the other significant environment variables.
+	 * Unfortunately, the dyld bool definitions override the stuff/bool.h
+	 * definitions, prohibiting us from doing that here.  Since this is
+	 * the only place where we need to know the setting, we'll just read
+	 * it here.
+	 */
+	if((getenv("LD_TRACE_UUID") != NULL) ||
+	   (getenv("RC_TRACE_UUID") != NULL)){
+	    unsigned int pos;
+	    ld_trace("[Logging for XBS] Binary `%s' has UUID 0x", outputfile);
+	    for (pos = 0; pos < sizeof(u.uuid); pos++)
+	      ld_trace("%02x", uuid[pos]);
+	    ld_trace("\n");
 	}
 #else /* defined(KLD) && defined(__STATIC__) */
 	memset(uuid, '\0', sizeof(u.uuid));

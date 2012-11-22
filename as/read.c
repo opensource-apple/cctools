@@ -73,6 +73,13 @@ char *input_line_pointer = NULL;
  */
 char *buffer_limit = NULL;	/* -> 1 + last char in buffer. */
 
+/* FROM line 164 */
+#define TARGET_BYTES_BIG_ENDIAN 0 /* HACK */
+/* TARGET_BYTES_BIG_ENDIAN is required to be defined to either 0 or 1
+   in the tc-<CPU>.h file.  See the "Porting GAS" section of the
+   internals manual.  */
+int target_big_endian = TARGET_BYTES_BIG_ENDIAN;
+
 /*
  * This table is used by the macros is_name_beginner() and is_part_of_name()
  * defined in read.h .
@@ -484,6 +491,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
   { "endmacro",	s_endmacro,	0	},
+  { "endm",	s_endmacro,	0	},
   { "macros_on",s_macros_on,	0	},
   { "macros_off",s_macros_off,	0	},
   { "if",	s_if,		0	},

@@ -48,6 +48,7 @@
 #import <mach/i860/thread_status.h>
 #import <mach/i386/thread_status.h>
 #import <mach/sparc/thread_status.h>
+#import <mach/arm/thread_status.h>
 #include <mach-o/nlist.h>
 #include <mach-o/reloc.h>
 #include "stuff/bool.h"
@@ -68,10 +69,10 @@
 #include "ofile_print.h"
 static enum bool otool_first_ofile_map = TRUE;
 #else /* !define(OTOOL) */
-#if (!defined(m68k) && !defined(__i386__) && !defined(__ppc__))
+#if (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__))
 #define ALIGNMENT_CHECKS_ARCHIVE_64_BIT
 static enum bool archive_64_bit_align_warning = FALSE;
-#endif /* (!defined(m68k) && !defined(__i386__)) && !defined(__ppc__) */
+#endif /* (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__)) */
 #endif /* OTOOL */
 
 /* <mach/loader.h> */
@@ -4430,6 +4431,56 @@ check_dylib_command:
 			    if(swapped)
 				swap_sparc_thread_state_fpu(fpu, host_byte_sex);
 			    state += sizeof(struct sparc_thread_state_fpu);
+			    break;
+			default:
+			    if(swapped){
+				Mach_O_error(ofile, "malformed object (unknown "
+				    "flavor for flavor number %u in %s command"
+				    " %lu can't byte swap it)", nflavor,
+				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
+				    "LC_THREAD", i);
+				return(CHECK_BAD);
+			    }
+			    state += count * sizeof(long);
+			    break;
+			}
+			nflavor++;
+		    }
+		    break;
+		}
+	    	if(cputype == CPU_TYPE_ARM){
+		    arm_thread_state_t *cpu;
+
+		    nflavor = 0;
+		    p = (char *)ut + ut->cmdsize;
+		    while(state < p){
+			flavor = *((unsigned long *)state);
+			if(swapped){
+			    flavor = SWAP_LONG(flavor);
+			    *((unsigned long *)state) = flavor;
+			}
+			state += sizeof(unsigned long);
+			count = *((unsigned long *)state);
+			if(swapped){
+			    count = SWAP_LONG(count);
+			    *((unsigned long *)state) = count;
+			}
+			state += sizeof(unsigned long);
+			switch(flavor){
+			case ARM_THREAD_STATE:
+			    if(count != ARM_THREAD_STATE_COUNT){
+				Mach_O_error(ofile, "malformed object (count "
+				    "not ARM_THREAD_STATE_COUNT for "
+				    "flavor number %u which is a ARM_THREAD_"
+				    "STATE flavor in %s command %lu)",
+				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
+				    "LC_UNIXTHREAD" : "LC_THREAD", i);
+				return(CHECK_BAD);
+			    }
+			    cpu = (arm_thread_state_t *)state;
+			    if(swapped)
+				swap_arm_thread_state_t(cpu, host_byte_sex);
+			    state += sizeof(arm_thread_state_t);
 			    break;
 			default:
 			    if(swapped){

@@ -200,6 +200,7 @@
 #include <mach/i386/thread_status.h>
 #include <mach/hppa/thread_status.h>
 #include <mach/sparc/thread_status.h>
+#include <mach/arm/thread_status.h>
 #include <mach-o/nlist.h>
 #include <mach-o/reloc.h>
 #include <mach-o/ranlib.h>
@@ -2326,6 +2327,30 @@ enum byte_sex target_byte_sex)
 	    sfsr.u.word = SWAP_INT(sfsr.u.word);
 	    memcpy(&(fpu->fpu.Fpu_fsr), &sfsr, sizeof(struct swapped_fsr));
 	}
+}
+
+__private_extern__
+void
+swap_arm_thread_state_t(
+struct arm_thread_state *cpu,
+enum byte_sex target_byte_sex)
+{
+	cpu->r0 = SWAP_LONG(cpu->r0);
+	cpu->r1 = SWAP_LONG(cpu->r1);
+	cpu->r2 = SWAP_LONG(cpu->r2);
+	cpu->r3 = SWAP_LONG(cpu->r3);
+	cpu->r4 = SWAP_LONG(cpu->r4);
+	cpu->r5 = SWAP_LONG(cpu->r5);
+	cpu->r6 = SWAP_LONG(cpu->r6);
+	cpu->r7 = SWAP_LONG(cpu->r7);
+	cpu->r8 = SWAP_LONG(cpu->r8);
+	cpu->r9 = SWAP_LONG(cpu->r9);
+	cpu->r10 = SWAP_LONG(cpu->r10);
+	cpu->r11 = SWAP_LONG(cpu->r11);
+	cpu->r12 = SWAP_LONG(cpu->r12);
+	cpu->r13 = SWAP_LONG(cpu->r13);
+	cpu->r14 = SWAP_LONG(cpu->r14);
+	cpu->r15 = SWAP_LONG(cpu->r15);
 }
 
 __private_extern__

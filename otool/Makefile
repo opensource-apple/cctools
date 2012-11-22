@@ -95,10 +95,10 @@ USRBINDIR = /usr/bin
 
 CFILES = main.c ofile_print.c m68k_disasm.c i860_disasm.c \
 	 m88k_disasm.c i386_disasm.c ppc_disasm.c hppa_disasm.c \
-	 sparc_disasm.c print_objc.c print_objc2.c notify.c
+	 sparc_disasm.c print_objc.c print_objc2.c notify.c arm_disasm.c
 HFILES = otool.h ofile_print.h m68k_disasm.h i860_disasm.h \
 	 sparc_disasm.h m88k_disasm.h i386_disasm.h ppc_disasm.h hppa_disasm.h \
-	 notify.h
+	 notify.h arm_disasm.h arm-opc.h
 OBJS = $(CFILES:.c=.o) ofile.o vers.o
 INSTALL_FILES = $(CFILES) $(HFILES) Makefile notes
 
@@ -126,10 +126,11 @@ endif
 
 print_objc.o: print_objc.c
 ifeq "NO" "$(USE_DEPENDENCY_FILE)"
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $< -ObjC
+	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $< -ObjC \
+		 -fobjc-abi-version=1
 else
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file $(OFILE_DIR)/$*.d \
-		-o $(OFILE_DIR)/$*.o $< -ObjC
+		-o $(OFILE_DIR)/$*.o $< -ObjC -fobjc-abi-version=1
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
 endif
 

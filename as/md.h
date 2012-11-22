@@ -119,6 +119,8 @@ extern void md_number_to_chars(
     char *buf,
     signed_expr_t val,
     int n);
+/* FROM tc.h line 55 */
+void   md_apply_fix3 (fixS *, valueT *, segT);
 
 /*
  * md_number_to_imm() is the target machine dependent routine that puts out

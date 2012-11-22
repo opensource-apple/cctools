@@ -206,6 +206,17 @@ struct frag    *frag)	/* For sy_frag. */
 
   return (symbolP);
 }
+
+/* FROM line 136 */
+symbolS *
+symbol_create (const char *name, /* It is copied, the caller can destroy/modify.  */
+	       segT segment,	/* Segment identifier (SEG_<something>).  */
+	       valueT valu,	/* Symbol value.  */
+	       fragS *frag	/* Associated fragment.  */)
+{
+  /* FIXME */
+  return symbol_new ((char *)name, 0, segment, 0, valu, frag);
+}
 
 /*
  *			symbol_assign_index()
@@ -264,7 +275,7 @@ char *sym_name) /* symbol name, as a cannonical string */
 	     /* bug #50416 -O causes this not to work for:
 	     && ((symbolP->sy_desc) & (~REFERENCE_TYPE)) == 0
 	     */
-	     && (temp & (~(REFERENCE_TYPE | N_WEAK_REF | N_WEAK_DEF |
+	     && (temp & (~(REFERENCE_TYPE | N_WEAK_REF | N_WEAK_DEF | N_ARM_THUMB_DEF |
 			   N_NO_DEAD_STRIP | REFERENCED_DYNAMICALLY))) == 0
 	     && symbolP -> sy_value == 0)
 	    {
@@ -316,6 +327,9 @@ char *sym_name) /* symbol name, as a cannonical string */
 	  make_stab_for_symbol(symbolP);
 #endif
     }
+#ifdef tc_frob_label
+    tc_frob_label(symbolP);
+#endif
 }
 
 
@@ -567,5 +581,38 @@ unsigned long	offset)	  /* Offset from frag address. */
 	}
 	return(isymbolP);
 }
+
+const char *
+S_GET_NAME (symbolS *s)
+{
+  return s->sy_name;
+}
+
+int
+S_IS_DEFINED (symbolS *s)
+{
+  return (s->sy_type & N_TYPE) != N_UNDF;
+}
+
+/* FROM line 2317 */
+#ifdef TC_SYMFIELD_TYPE
+
+/* Get a pointer to the processor information for a symbol.  */
+
+TC_SYMFIELD_TYPE *
+symbol_get_tc (symbolS *s)
+{
+  return &s->sy_tc;
+}
+
+/* Set the processor information for a symbol.  */
+
+void
+symbol_set_tc (symbolS *s, TC_SYMFIELD_TYPE *o)
+{
+  s->sy_tc = *o;
+}
+
+#endif /* TC_SYMFIELD_TYPE */
 
 /* end: symbols.c */

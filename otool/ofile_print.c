@@ -209,6 +209,7 @@
 #include <mach-o/ppc/reloc.h>
 #include <mach-o/hppa/reloc.h>
 #include <mach-o/sparc/reloc.h>
+#include <mach-o/arm/reloc.h>
 #include "stuff/symbol.h"
 #include "stuff/ofile.h"
 #include "stuff/allocate.h"
@@ -1444,6 +1445,29 @@ NS32:
 		switch(cpusubtype & ~CPU_SUBTYPE_MASK){
 		case CPU_SUBTYPE_SPARC_ALL:
 		    printf("        ALL");
+		    break;
+		default:
+		    printf(" %10d", cpusubtype & ~CPU_SUBTYPE_MASK);
+		    break;
+		}
+		break;
+	    case CPU_TYPE_ARM:
+		printf("     ARM");
+		switch(cpusubtype){
+		case CPU_SUBTYPE_ARM_ALL:
+		    printf("        ALL");
+		    break;
+		case CPU_SUBTYPE_ARM_V4T:
+		    printf("        V4T");
+		    break;
+		case CPU_SUBTYPE_ARM_V5TEJ:
+		    printf("      V5TEJ");
+		    break;
+		case CPU_SUBTYPE_ARM_XSCALE:
+		    printf("     XSCALE");
+		    break;
+		case CPU_SUBTYPE_ARM_V6:
+		    printf("         V6");
 		    break;
 		default:
 		    printf(" %10d", cpusubtype & ~CPU_SUBTYPE_MASK);
@@ -5443,6 +5467,8 @@ enum bool verbose)
 			sr->r_type == HPPA_RELOC_PAIR) ||
 		       (cputype == CPU_TYPE_SPARC &&
 			sr->r_type == SPARC_RELOC_PAIR) ||
+		       (cputype == CPU_TYPE_ARM &&
+			sr->r_type == ARM_RELOC_PAIR) ||
 		       (cputype == CPU_TYPE_I860 &&
 			sr->r_type == I860_RELOC_PAIR))
 			    printf("         ");
@@ -5495,6 +5521,8 @@ enum bool verbose)
 			    sr->r_type == M88K_RELOC_PAIR) ||
 			   (cputype == CPU_TYPE_SPARC &&
 			    sr->r_type == SPARC_RELOC_PAIR) ||
+			   (cputype == CPU_TYPE_ARM &&
+			    sr->r_type == ARM_RELOC_PAIR) ||
 			   (cputype == CPU_TYPE_I860 &&
 			    sr->r_type == I860_RELOC_PAIR))
 			    printf(" half = 0x%04x ",
@@ -5560,6 +5588,8 @@ enum bool verbose)
 			(sr->r_type == HPPA_RELOC_SECTDIFF ||
 			 sr->r_type == HPPA_RELOC_HI21_SECTDIFF ||
 			 sr->r_type == HPPA_RELOC_LO14_SECTDIFF)) ||
+		       (cputype == CPU_TYPE_ARM &&
+			 sr->r_type == ARM_RELOC_SECTDIFF) ||
 		       (cputype == CPU_TYPE_SPARC &&
 			(sr->r_type == SPARC_RELOC_SECTDIFF ||
 			 sr->r_type == SPARC_RELOC_HI22_SECTDIFF ||
@@ -5597,6 +5627,8 @@ enum bool verbose)
 			reloc.r_type == HPPA_RELOC_PAIR) ||
 		       (cputype == CPU_TYPE_SPARC &&
 			reloc.r_type == SPARC_RELOC_PAIR) ||
+		       (cputype == CPU_TYPE_ARM &&
+			reloc.r_type == ARM_RELOC_PAIR) ||
 		       (cputype == CPU_TYPE_I860 &&
 			reloc.r_type == I860_RELOC_PAIR))
 			    printf("         ");
@@ -5674,6 +5706,8 @@ enum bool verbose)
 			}
 			else if((cputype == CPU_TYPE_HPPA &&
 				 reloc.r_type == HPPA_RELOC_PAIR) ||
+				(cputype == CPU_TYPE_ARM &&
+				 reloc.r_type == ARM_RELOC_PAIR) ||
 				(cputype == CPU_TYPE_SPARC &&
 				 reloc.r_type == SPARC_RELOC_PAIR)){
 			    printf(" other_part = 0x%06x\n",
@@ -5760,6 +5794,12 @@ static char *sparc_r_types[] = {
 	" 10 (?) ", " 11 (?) ", " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
 };
 
+static char *arm_r_types[] = {
+	"VANILLA ", "PAIR    ", "SECTDIFF", "LOCSDIF ", "PBLAPTR ",
+	"BR24    ", "T_BR22  ", " 7 (?)  ", " 8 (?)  ", " 9 (?)  ", 
+	" 10 (?) ", " 11 (?) ", " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
+};
+
 static
 void
 print_r_type(
@@ -5801,6 +5841,9 @@ enum bool predicted)
 	    break;
 	case CPU_TYPE_SPARC:
 	    printf("%s", sparc_r_types[r_type]);
+	    break;
+	case CPU_TYPE_ARM:
+	    printf("%s", arm_r_types[r_type]);
 	    break;
 	default:
 	    printf("%-7lu ", r_type);

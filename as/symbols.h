@@ -41,6 +41,11 @@ extern symbolS *symbol_new(
     short desc,
     valueT value,
     struct frag *frag);
+/* FROM line 58 */
+extern symbolS *symbol_create (const char *name,
+	       segT segment,
+	       valueT valu,
+	       fragS *frag);
 extern void symbol_assign_index(
     struct symbol *symbolP);
 extern void colon(
@@ -59,3 +64,34 @@ extern isymbolS *indirect_symbol_new(
     char *name,
     struct frag *frag,
     unsigned long offset);
+
+/* FROM line 98 */
+extern int S_IS_DEFINED (symbolS *);
+extern int S_FORCE_RELOC (symbolS *, int);
+extern int S_IS_DEBUG (symbolS *);
+extern int S_IS_LOCAL (symbolS *);
+extern int S_IS_EXTERN (symbolS *);
+extern int S_IS_STABD (symbolS *);
+extern const char *S_GET_NAME (symbolS *);
+extern segT S_GET_SEGMENT (symbolS *);
+extern void S_SET_SEGMENT (symbolS *, segT);
+extern void S_SET_EXTERNAL (symbolS *);
+extern void S_SET_NAME (symbolS *, const char *);
+extern void S_CLEAR_EXTERNAL (symbolS *);
+extern void S_SET_WEAK (symbolS *);
+extern void S_SET_THREAD_LOCAL (symbolS *);
+
+/* FROM line tc-arm.h 104 */
+#define TC_SYMFIELD_TYPE 	unsigned int
+
+/* FROM line 210 */
+#ifdef TC_SYMFIELD_TYPE
+TC_SYMFIELD_TYPE *symbol_get_tc (symbolS *);
+void symbol_set_tc (symbolS *, TC_SYMFIELD_TYPE *);
+#endif
+
+#ifdef ARM
+#define tc_frob_label arm_frob_label
+extern void arm_frob_label (symbolS *);
+#endif
+

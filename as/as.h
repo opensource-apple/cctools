@@ -129,6 +129,12 @@ typedef enum {
 
 #define absolute_section	SEG_ABSOLUTE
 
+/* FROM line 285 */
+typedef int subsegT;
+
+/* What subseg we are accessing now?  */
+extern subsegT now_subseg;
+
 /*
  * main program "as.c" (command arguments etc)
  */
@@ -138,6 +144,8 @@ extern char flagseen[128];
 
 /* name of emitted object file, argument to -o if specified */
 extern char *out_file_name;
+
+typedef struct frag fragS;
 
 /* TRUE if -force_cpusubtype_ALL is specified */
 extern int force_cpusubtype_ALL;
@@ -156,6 +164,28 @@ struct directory_stack {
 };
 extern struct directory_stack include_defaults[];
 extern struct directory_stack *include;
+
+/* FROM 317 */
+#define undefined_section	SEG_UNKNOWN
+
+#include "expr.h"
+#include "write_object.h"
+
+/* STUFF from write.h */
+/* This is the name of a fake symbol which will never appear in the
+   assembler output.  S_IS_LOCAL detects it because of the \001.  */
+#ifndef FAKE_LABEL_NAME
+#define FAKE_LABEL_NAME "L0\001"
+#endif
+
+#ifdef __GNUC__
+#define as_bad_where(MY_FILE, MY_LINE, ...)	\
+  do {						\
+    layout_file = MY_FILE;			\
+    layout_line = MY_LINE;			\
+    as_bad (__VA_ARGS__);			\
+} while (0)
+#endif
 
 /* FROM 317 */
 #define undefined_section	SEG_UNKNOWN

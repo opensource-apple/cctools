@@ -34,10 +34,44 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "i386.h"
 #endif
 
+int now_seg;
+
 #ifdef SPARC
 /* internal relocation types not to be emitted */
 #define SPARC_RELOC_13 (127)
 #define SPARC_RELOC_22 (126)
+#endif
+
+#ifdef ARM
+/* FROM tc-arm.h line 82 */
+int
+arm_force_relocation (struct fix * fixp);
+
+#define TC_FORCE_RELOCATION(FIX) arm_force_relocation (FIX)
+
+/* FROM tc-arm.h line 133 */
+/* This expression evaluates to true if the relocation is for a local
+   object for which we still want to do the relocation at runtime.
+   False if we are willing to perform this relocation while building
+   the .o file.  GOTOFF does not need to be checked here because it is
+   not pcrel.  I am not sure if some of the others are ever used with
+   pcrel, but it is easier to be safe than sorry.  */
+
+#define TC_FORCE_RELOCATION_LOCAL(FIX)			\
+  (!(FIX)->fx_pcrel					\
+   || TC_FORCE_RELOCATION (FIX))
+
+/* FROM write.c line 35 */
+#ifndef TC_FORCE_RELOCATION
+#define TC_FORCE_RELOCATION(FIX)		\
+  (0)
+#endif
+
+#endif /* ARM */
+
+/* FROM write.c line 96 */
+#ifndef	MD_PCREL_FROM_SECTION
+#define MD_PCREL_FROM_SECTION(FIX, SEC) md_pcrel_from (FIX)
 #endif
 
 static void fixup_section(
@@ -299,6 +333,7 @@ void)
 	 * For each section do the fixups for the frags.
 	 */
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
+	    now_seg = frchainP->frch_nsect;
 	    fixup_section(frchainP->frch_fix_root, frchainP->frch_nsect);
 	}
 }
@@ -359,6 +394,17 @@ int nsect)
 	    sub_symbolP = fixP->fx_subsy;
 	    value  	= fixP->fx_offset;
 	    pcrel       = fixP->fx_pcrel;
+
+#if ARM
+	    /* If the symbol is defined in this file, the linker won't set the
+	       low-order bit for a Thumb symbol, so we have to do it here.  */
+	    if(add_symbolP != NULL && add_symbolP->sy_desc & N_ARM_THUMB_DEF &&
+	       !(add_symbolP->sy_desc & N_WEAK_DEF) &&
+	       !(sub_symbolP != NULL && sub_symbolP->sy_desc & N_ARM_THUMB_DEF) &&
+	       !pcrel){
+	        value |= 1;
+	    }
+#endif
 
 	    add_symbol_N_TYPE = 0;
 	    add_symbol_nsect = 0;
@@ -506,15 +552,26 @@ int nsect)
 		 * do not want to force a pc-relative relocation entry (to
 		 * support scattered loading) then just calculate the value.
 		 */
-		if(add_symbol_nsect == nsect &&
-		   pcrel && !(fixP->fx_pcrel_reloc)){
+		if(add_symbol_nsect == nsect
+		   /* FROM write.c line 2659 */
+#ifdef ARM
+		   && !TC_FORCE_RELOCATION_LOCAL (fixP)
+#else
+		   && pcrel
+#endif
+		   && !(fixP->fx_pcrel_reloc)){
 		    /*
 		     * This fixup was made when the symbol's section was
 		     * unknown, but it is now in this section. So we know how
 		     * to do the address without relocation.
 		     */
 		    value += add_symbolP->sy_value;
+#ifdef ARM
+		    /* FROM write.c line 2667 */
+		    value -= where + fragP->fr_address;
+#else
 		    value -= size + where + fragP->fr_address;
+#endif
 		    pcrel = 0;	/* Lie. Don't want further pcrel processing. */
 		    fixP->fx_addsy = NULL; /* No relocations please. */
 		    /*
@@ -590,7 +647,11 @@ down:
 	     * subtracting off the pc value (where) and adjust for insn size.
 	     */
 	    if(pcrel){
-#if !(defined(I386) && defined(ARCH64))
+#ifdef ARM
+	        /* This should work for both */
+	        /* FROM write.c line 2688 */
+		value -= MD_PCREL_FROM_SECTION (fixP, nsect);
+#elif !(defined(I386) && defined(ARCH64))
 		/* Symbol offsets are not part of fixups for x86_64. */
 		value -= size + where + fragP->fr_address;
 #endif

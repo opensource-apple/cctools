@@ -52,6 +52,10 @@ typedef struct {
 
 extern char *input_line_pointer; /* -> char we are parsing now. */
 extern char *buffer_limit;	 /* -> 1 + last char in buffer. */
+
+/* FROM line 60 */
+extern int target_big_endian;
+
 extern
 #ifndef PPC
 const

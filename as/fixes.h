@@ -46,6 +46,32 @@ struct fix {
     long	 fx_value;	/* the relocated value placed in the frag */
     char	*file;		/* the file name this came from for errors */
     unsigned int line;		/* the line number this came from for errors */
+
+  /* FROM write.h line 82 */
+  /* Has this relocation already been applied?  */
+  unsigned fx_done : 1;
+
+  /* FROM write.h line 133 */
+  /* This field is sort of misnamed.  It appears to be a sort of random
+     scratch field, for use by the back ends.  The main gas code doesn't
+     do anything but initialize it to zero.  The use of it does need to
+     be coordinated between the cpu and format files, though.  E.g., some
+     coff targets pass the `addend' field from the cpu file via this
+     field.  I don't know why the `fx_offset' field above can't be used
+     for that; investigate later and document. KR  */
+  valueT fx_addnumber;
+
+  /* FROM write.h line 142 */
+  /* The location of the instruction which created the reloc, used
+     in error messages.  */
+#ifdef NOTYET
+  char *fx_file;
+  unsigned fx_line;
+#else
+  #define fx_file file
+  #define fx_line line
+  void *tc_fix_data;
+#endif
 };
 typedef struct fix fixS;
 
@@ -60,4 +86,11 @@ extern fixS *fix_new(
 	int	pcrel,		/* TRUE if PC-relative */
 	int	pcrel_reloc,	/* TRUE if must have relocation entry */
 	int	r_type);	/* relocation type */
+
+/* FROM write.h line 210 */
+#include "expr.h"
+extern fixS *fix_new_exp
+  (fragS * frag, int where, int size, expressionS *exp, int pcrel,
+   int pcrel_reloc, int r_type);
+
 #endif /* _FIXES_H_ */

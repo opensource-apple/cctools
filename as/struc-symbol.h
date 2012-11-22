@@ -48,6 +48,11 @@ struct symbol			/* our version of an nlist node */
   struct frag   *sy_frag;	/* NULL or -> frag this symbol attaches to. */
   struct symbol *sy_forward;	/* value is really that of this other symbol */
   void *expression;
+/* FROM line tc-arm.h 104 */
+#define TC_SYMFIELD_TYPE 	unsigned int
+#ifdef TC_SYMFIELD_TYPE
+  TC_SYMFIELD_TYPE sy_tc;
+#endif
 };
 
 typedef struct symbol symbolS;

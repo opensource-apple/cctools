@@ -172,6 +172,9 @@ architecture_banner(void)
 #ifdef SPARC
 	return("as: for architecture sparc\n");
 #endif
+#ifdef ARM
+	return("as: for architecture arm\n");
+#endif
 }
 
 /*

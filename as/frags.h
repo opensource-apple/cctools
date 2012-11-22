@@ -58,7 +58,6 @@ struct frag			/* a code fragment */
     char fr_literal[1];		/* Chars begin here. */
 				/* One day we will compile fr_literal[0]. */
 };
-typedef struct frag fragS;
 
 /* We want to say fr_literal[0] below */
 #define SIZEOF_STRUCT_FRAG \

@@ -148,6 +148,13 @@ __private_extern__ vm_prot_t get_segprot_from_flag(
     const struct arch_flag *flag);
 
 /*
+ * get_shared_region_size_from_flag() returns the size of the read only shared
+ * region.
+ */
+__private_extern__ unsigned long get_shared_region_size_from_flag(
+    const struct arch_flag *flag);
+
+/*
  * force_cpusubtype_ALL_for_cputype() takes a cputype and returns TRUE if for
  * that cputype the cpusubtype should always be forced to the ALL cpusubtype,
  * otherwise it returns FALSE.

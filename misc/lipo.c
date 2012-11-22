@@ -1822,6 +1822,24 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+	case CPU_TYPE_ARM:
+	    switch(fat_arch->cpusubtype){
+	    case CPU_SUBTYPE_ARM_V4T:
+		printf("armv4t");
+		break;
+	    case CPU_SUBTYPE_ARM_V5TEJ:
+		printf("armv5");
+		break;
+	    case CPU_SUBTYPE_ARM_XSCALE:
+		printf("xscale");
+		break;
+	    case CPU_SUBTYPE_ARM_V6:
+		printf("armv6");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
 	case CPU_TYPE_ANY:
 	    switch(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK){
 	    case CPU_SUBTYPE_MULTIPLE:
@@ -2052,6 +2070,32 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_SPARC_ALL:
 		printf("    cputype CPU_TYPE_SPARC\n"
 		       "    cpusubtype CPU_SUBTYPE_SPARC_ALL\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+	case CPU_TYPE_ARM:
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_ARM_V4T:
+		printf("    cputype CPU_TYPE_ARM\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM_V4T\n");
+		break;
+	    case CPU_SUBTYPE_ARM_V5TEJ:
+		printf("     cputype CPU_TYPE_ARM\n"
+		       "     cpusubtype CPU_SUBTYPE_ARM_V5TEJ\n");
+		break;
+	    case CPU_SUBTYPE_ARM_XSCALE:
+		printf("     cputype CPU_TYPE_ARM\n"
+		       "     cpusubtype CPU_SUBTYPE_ARM_XSCALE\n");
+		break;
+	    case CPU_SUBTYPE_ARM_V6:
+		printf("    cputype CPU_TYPE_ARM\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM_V6\n");
+		break;
+	    case CPU_SUBTYPE_ARM_ALL:
+		printf("    cputype CPU_TYPE_ARM\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM_ALL\n");
 		break;
 	    default:
 		goto print_arch_unknown;

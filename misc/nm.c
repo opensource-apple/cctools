@@ -1176,6 +1176,9 @@ char *arch_name)
 	       (symbols[i].nl.n_desc & N_NO_DEAD_STRIP) == N_NO_DEAD_STRIP)
 		    printf("[no dead strip] ");
 
+	    if((symbols[i].nl.n_desc & N_ARM_THUMB_DEF) == N_ARM_THUMB_DEF)
+		    printf("[Thumb] ");
+
 	    if((symbols[i].nl.n_type & N_TYPE) == N_INDR)
 		printf("%s (for %s)", symbols[i].name, symbols[i].indr_name);
 	    else

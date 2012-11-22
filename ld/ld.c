@@ -117,7 +117,9 @@ __private_extern__ struct arch_flag arch_flag =
     { "ppc",    CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL };
 #elif __i386__
     { "i386",   CPU_TYPE_I386,    CPU_SUBTYPE_I386_ALL };
-#elif
+#elif __arm__
+    { "arm",	CPU_TYPE_ARM,     CPU_SUBTYPE_ARM_ALL };
+#else
 #error "unsupported architecture for static KLD"
 #endif
 #else /* !(defined(KLD) && defined(__STATIC__)) */
@@ -1421,6 +1423,10 @@ char *envp[])
 				  "-arch %s", argv[i]);
 			    fatal("Usage: %s [options] file [...]", progname);
 			}
+			/* Default to -single_module on ARM. */
+			if(arch_flag.cputype == CPU_TYPE_ARM){
+			    multi_module_dylib = FALSE;
+			}
 			target_byte_sex = get_byte_sex_from_flag(&arch_flag);
 		    }
 		    /* specify an allowable client of this subframework
@@ -1884,6 +1890,19 @@ unknown_flag:
 	}
 
 	/*
+	 * -sub_umbrella and -sub_library are not supported on ARM.
+	 * See <rdar://problem/4771657>.
+	 */
+	if(arch_flag.cputype == CPU_TYPE_ARM){
+	    if(sub_umbrellas != NULL){
+	        fatal("-sub_umbrella is not supported on ARM");
+	    }
+	    if(sub_librarys != NULL){
+	        fatal("-sub_library is not supported on ARM");
+	    }
+	}
+
+	/*
 	 * If either -syslibroot or the environment variable NEXT_ROOT is set
 	 * prepend it to the standard paths for library searches.  This was
 	 * added to ease cross build environments.
@@ -2338,7 +2357,7 @@ unknown_flag:
 				seg_addr_table_entry->segs_read_write_addr;
 			if(segs_read_only_addr == 0 &&
 			   segs_read_write_addr == 0){
-			    segs_read_write_addr = 0x10000000;
+			    segs_read_write_addr = get_shared_region_size_from_flag(&arch_flag);
 			    warning("-segs_read_write_addr 0x0 ignored from "
 				    "segment address table: %s %s line %lu "
 				    "using -segs_read_write_addr 0x%x",
@@ -2459,13 +2478,21 @@ unknown_flag:
 	 */
 	if(macosx_deployment_target.major >= 4){
 	    if(filetype != MH_DYLIB){
-		if(prebinding_via_LD_PREBIND == FALSE &&
-		   prebinding_flag_specified == TRUE &&
-		   prebinding == TRUE){
-		    warning("-prebind ignored because MACOSX_DEPLOYMENT_TARGET "
-			    "environment variable greater or equal to 10.4");
+		/* 
+		 * If this is arm* or xscale, we want to prebind executables too, not just
+		 * dylibs and frameworks. 
+		 */
+		if (!((arch_flag.name != NULL) && 
+		      ((strncmp(arch_flag.name, "arm", 3) == 0) ||
+		       (strcmp(arch_flag.name, "xscale") == 0)))) {
+		    if(prebinding_via_LD_PREBIND == FALSE &&
+		       prebinding_flag_specified == TRUE &&
+		       prebinding == TRUE){
+			warning("-prebind ignored because MACOSX_DEPLOYMENT_TARGET "
+				"environment variable greater or equal to 10.4");
+		    }
+		    prebinding = FALSE;
 		}
-		prebinding = FALSE;
 	    }
 	    /*
 	     * This is an MH_DYLIB.  First see if it is on the list of libraries
@@ -2502,18 +2529,20 @@ unknown_flag:
 		     */
 		    if(seg_addr_table_entry == NULL &&
 		       getenv("LD_SPLITSEGS_NEW_LIBRARIES") != NULL){
+		    unsigned long arch_rw_addr = get_shared_region_size_from_flag(&arch_flag);
+
 			if(seg1addr_specified){
 			    warning("-seg1addr 0x%x ignored, using "
 				    "-segs_read_only_addr 0x%x and "
 				    "-segs_read_write_addr 0x%x because "
 				    "LD_SPLITSEGS_NEW_LIBRARIES environment is "
-				    "set",(unsigned int)seg1addr, 0,0x10000000);
+				    "set",(unsigned int)seg1addr, 0, arch_rw_addr);
 			}
 			seg1addr_specified = FALSE;
 			seg1addr = 0;
 			segs_read_only_addr_specified = TRUE;
 			segs_read_only_addr = 0;
-			segs_read_write_addr = 0x10000000;
+			segs_read_write_addr = arch_rw_addr;
 		    }
 		    /*
 		     * Finally if this is not a split library then turn off

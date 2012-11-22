@@ -190,7 +190,7 @@ struct nlist_64 {
  * REFERENCE_FLAG_DEFINED, is also used.
  */
 /* Reference type bits of the n_desc field of undefined symbols */
-#define REFERENCE_TYPE				0xf
+#define REFERENCE_TYPE				0x7
 /* types of references */
 #define REFERENCE_FLAG_UNDEFINED_NON_LAZY		0
 #define REFERENCE_FLAG_UNDEFINED_LAZY			1
@@ -279,6 +279,12 @@ struct nlist_64 {
  * that the undefined symbol should be resolved using flat namespace searching.
  */
 #define	N_REF_TO_WEAK	0x0080 /* reference to a weak symbol */
+
+/*
+ * The N_ARM_THUMB_DEF bit of the n_desc field indicates that the symbol is
+ * a defintion of a Thumb function.
+ */
+#define N_ARM_THUMB_DEF	0x0008 /* symbol is a Thumb function (ARM) */
 
 #ifndef __STRICT_BSD__
 /*

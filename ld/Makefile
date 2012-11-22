@@ -1,14 +1,27 @@
 export USE_APPLE_PB_SUPPORT = all
 RC_OS = macos
 OFLAG = -O
+
+ifeq "" "$(NEXT_ROOT)"
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -force_cpusubtype_ALL -msoft-float -nostdinc \
--I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
--I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/libsa \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/bsd \
+       -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers \
+       -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
+else
+KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
+       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
+       -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/libsa \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/bsd \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
+endif
+KERN += -D__DARWIN_UNIX03=__arm__
 
 
 MIG = $(NEXT_ROOT)/usr/bin/mig
@@ -75,13 +88,13 @@ HFILES = ld.h pass1.h objects.h sections.h cstring_literals.h symbols.h \
 	 sets.h 4byte_literals.h 8byte_literals.h literal_pointers.h dylibs.h \
 	 indirect_sections.h mod_sections.h i860_reloc.h ppc_reloc.h \
 	 m88k_reloc.h hppa_reloc.h sparc_reloc.h coalesced_sections.h \
-	 live_refs.h uuid.h debugcompunit.h dwarf2.h debugline.h
+	 live_refs.h arm_reloc.h uuid.h debugcompunit.h dwarf2.h debugline.h
 CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
 	 fvmlibs.c layout.c specs.c pass2.c generic_reloc.c rld.c sets.c \
 	 4byte_literals.c 8byte_literals.c literal_pointers.c dylibs.c \
 	 indirect_sections.c mod_sections.c i860_reloc.c ppc_reloc.c \
 	 m88k_reloc.c hppa_reloc.c sparc_reloc.c coalesced_sections.c uuid.c \
-	 debugcompunit.c debugline.c
+	 debugcompunit.c debugline.c arm_reloc.c
 OBJS = $(CFILES:.c=.o)
 INSTALL_FILES = $(CFILES) $(HFILES) Makefile notes \
 		make.defs make_defs.h librld.ofileList

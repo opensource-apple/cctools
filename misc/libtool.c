@@ -1043,6 +1043,7 @@ char **envp)
 		strcat(p, standard_dirs[i]);
 		standard_dirs[i] = p;
 	    }
+	    /*
 	    for(i = 0; i < cmd_flags.nLdirs ; i++){
 		if(cmd_flags.Ldirs[i][1] != 'L')
 		    continue;
@@ -1059,6 +1060,7 @@ char **envp)
 		    }
 		}
 	    }
+	    */
 	}
 
 	/* check the command line arguments for correctness */

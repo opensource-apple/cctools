@@ -72,7 +72,7 @@ else
   MKDIRS = /bin/mkdir -p
 endif
 
-all clean:
+all clean: $(DSTROOT)
 	@if [ "$(SRCROOT)" != "" ] && \
 	    [ "$(OBJROOT)" != "" ] && \
 	    [ "$(SYMROOT)" != "" ];			\

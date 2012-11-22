@@ -25,6 +25,9 @@
 #ifdef SPARC
 #include <mach-o/sparc/reloc.h>
 #endif
+#ifdef ARM
+#include <mach-o/arm/reloc.h>
+#endif
 #if defined(I386) && defined(ARCH64)
 #include <mach-o/x86_64/reloc.h>
 #endif
@@ -74,6 +77,11 @@
 #define RELOC_SECTDIFF		GENERIC_RELOC_SECTDIFF
 #define RELOC_LOCAL_SECTDIFF	GENERIC_RELOC_LOCAL_SECTDIFF
 #define RELOC_PAIR		GENERIC_RELOC_PAIR
+#endif
+#ifdef ARM
+#define RELOC_SECTDIFF		ARM_RELOC_SECTDIFF
+#define RELOC_LOCAL_SECTDIFF	ARM_RELOC_SECTDIFF
+#define RELOC_PAIR		ARM_RELOC_PAIR
 #endif
 
 /*
@@ -1386,6 +1394,10 @@ unsigned long debug_section)
 #ifdef SPARC
 	if(fixP->fx_r_type == SPARC_RELOC_HI22 ||
 	   fixP->fx_r_type == SPARC_RELOC_LO10)
+#endif
+#ifdef ARM
+	if(FALSE) /* currently don't have any arm machine specific relocs
+		     that have a pair relocation entry */
 #endif
 	{
 	    memset(riP, '\0', sizeof(struct relocation_info));
