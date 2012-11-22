@@ -23,6 +23,15 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.24 release (the cctools-622.9 release):
+- Changed check_cur_obj() in pass1.c to add a case statement for
+  LC_CODE_SIGNATURE and simply ignore it as it is not looked at for linking.
+  Radar bug #5467724.
+
+Changes for the 5.24 release (the cctools-622.8 release):
+- Changed main() in ld.c to construct the path to ld64 relative to the path of
+  the static linker being executed.  Radar bug #5051114.
+
 Changes for the 5.23 release (the cctools-619 release):
 - Fixed a bug that caused the "internal error: output_local_symbols()'
   inconsistent local symbol count" when discarding a weak symbol from an object

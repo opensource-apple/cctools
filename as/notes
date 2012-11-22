@@ -25,6 +25,10 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.24 release (the cctools-622.6 release):
+- Change the assembler driver to construct the paths to the assembler
+  relative to the path of the driver.  Radar bug #4841943.
+
 Changes for the 5.24 release (the cctools-622.5 release):
 - Support the new x86-64 relocation entry types for signed relocations
   with offsets.  Radar bug #4664658.

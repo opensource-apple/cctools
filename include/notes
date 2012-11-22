@@ -1,3 +1,6 @@
+Changes for the 5.23 release (the cctools-622.9 release):
+- Added LC_CODE_SIGNATURE constant to <mach-o/loader.h> . Radar bug #5467724.
+
 Changes for the 5.23 release (the cctools-622.5 release):
 - Support the new x86-64 relocation entry types for signed relocations
   with offsets.  Radar bug #4664658.

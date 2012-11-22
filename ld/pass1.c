@@ -5278,6 +5278,7 @@ enum bool bundle_loader)
 	    case LC_FVMFILE:
 	    case LC_PREPAGE:
 	    case LC_PREBOUND_DYLIB:
+	    case LC_CODE_SIGNATURE:
 		break;
 
 	    default:

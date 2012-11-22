@@ -992,6 +992,22 @@ char **envp)
 		strcat(p, standard_dirs[i]);
 		standard_dirs[i] = p;
 	    }
+	    for(i = 0; i < cmd_flags.nLdirs ; i++){
+		if(cmd_flags.Ldirs[i][1] != 'L')
+		    continue;
+		if(cmd_flags.Ldirs[i][2] == '/'){
+		    p = makestr(next_root, cmd_flags.Ldirs[i] + 2, NULL);
+		    if(access(p, F_OK) != -1){
+			free(p);
+			p = makestr("-L", next_root, cmd_flags.Ldirs[i] + 2,
+				    NULL);
+			cmd_flags.Ldirs[i] = p;
+		    }
+		    else{
+			free(p);
+		    }
+		}
+	    }
 	}
 
 	/* check the command line arguments for correctness */

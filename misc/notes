@@ -9,6 +9,10 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.23 release (the cctools-622.7 release)
+- Changed libtool(1) to prepend the value of -syslibroot to all absolute paths
+  of the -L flags if they exist in main() in libtool.c.  Radar bug #5000319.
+
 Changes for the 5.23 release (the cctools-618 release)
 - Changed checksyms(1) to not check for prebound files when
   MACOSX_DEPLOYMENT_TARGET >= 10.4 . The change was in check_dynamic_binary()

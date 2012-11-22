@@ -2026,7 +2026,25 @@ unknown_flag:
 	     * 64-bit architectures are handled by ld64
 	     */
 	    if(arch_flag.cputype & CPU_ARCH_ABI64) {
-	        argv[0] = "/usr/bin/ld64";
+		int i;
+		uint32_t bufsize;
+		char *p, *prefix, buf[MAXPATHLEN], resolved_name[PATH_MAX];
+
+		/*
+		 * Construct the prefix to the static linker.
+		 */
+		bufsize = MAXPATHLEN;
+		p = buf;
+		i = _NSGetExecutablePath(p, &bufsize);
+		if(i == -1){
+		    p = allocate(bufsize);
+		    _NSGetExecutablePath(p, &bufsize);
+		}
+		prefix = realpath(p, resolved_name);
+		p = rindex(prefix, '/');
+		if(p != NULL)
+		    p[1] = '\0';
+		argv[0] = mkstr(prefix, "ld64", NULL);
 	        ld_exit(!execute(argv, 0));
 	    }
 
