@@ -1,3 +1,7 @@
+Changes for the 5.27 release (the cctools-800.3 release):
+- Added entries in the ArchInfoTable[] for armv7[fk] to arch.c .  Radar bug
+  #8987684.
+
 Changes for the 5.27 release (the cctools-782 release):
 - Changed the Makefile to build dylibs and place them in /usr/lib/system.
   Radar bug #7733446.

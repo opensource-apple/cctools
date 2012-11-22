@@ -1,5 +1,5 @@
 <HTML>
-<!--This file created 6/14/11 3:38 PM by Claris Home Page version 3.0-->
+<!--This file created 8/9/11 2:34 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
@@ -8,14 +8,14 @@
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 4.1 Developer Release Copyright
+<P><FONT SIZE="-1">Mac OS X Xcode 4.2 Developer Release Copyright
 2011 by Apple, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 4.1 Developer Release:<BR>
-Compiler Tools (cctools-806)</H2>
+<H2>Private Mac OS X Xcode 4.2 Developer Release:<BR>
+Compiler Tools (cctools-809)</H2>
 
-<P>This file contains release notes for the 5.29 release of the
-Compiler Tools for the Mac OS X Xcode 4.1 Developer Release. This
+<P>This file contains release notes for the 5.30 release of the
+Compiler Tools for the Mac OS X Xcode 4.2 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -25,6 +25,38 @@ file contains information about the following topics:</P>
    
    <LI>Mach-O object tools (<B>nm</B>, <B>otool</B>, and so
    on)&nbsp;</LI>
+</UL>
+
+<H2>Notes Specific to Release 5.30 (Mac OS X Xcode 4.2 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-808 for
+the 5.30 Mac OS X Xcode 4.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed lipo(1) so it would recognize LLVM bit-code archives and
+   files. Radar bug #9087924.</LI>
+   
+   <LI>Changed the assembler driver to only use target assembers
+   installed under /usr/libexec/as and only install the target
+   assemblers there. Radar bug #9908131.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-807 for
+the 5.30 Mac OS X Xcode 4.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in ranlib(1) that caused it to crash. Radar bug
+   #9830754.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-806.2 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the assemblers to allow instructions that are being
+   assembled with things like .long to trigger debugging line
+   numbers. Radar bug #9811389.</LI>
 </UL>
 
 <H2>Notes Specific to Release 5.29 (Mac OS X Xcode 4.1 Developer

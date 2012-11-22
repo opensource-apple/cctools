@@ -52,6 +52,10 @@
 #include <mach-o/loader.h>
 #import <mach/m68k/thread_status.h>
 #import <mach/ppc/thread_status.h>
+#undef MACHINE_THREAD_STATE     /* need to undef these to avoid warnings */
+#undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #import <mach/m88k/thread_status.h>
 #import <mach/i860/thread_status.h>
 #import <mach/i386/thread_status.h>

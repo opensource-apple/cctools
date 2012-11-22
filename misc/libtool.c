@@ -2326,7 +2326,7 @@ struct ofile *ofile)
 			if(archs[0].members[j].offset == 
 			   archs[0].toc_ranlibs[i].ran_off){
 			    archs[0].toc_ranlibs[i].ran_off = 
-				archs[0].members[i].input_member_offset;
+				archs[0].members[j].input_member_offset;
 			    break;
 			}
 		    }

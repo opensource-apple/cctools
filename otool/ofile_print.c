@@ -588,6 +588,12 @@ struct fat_arch *fat_arch)
 	    case CPU_SUBTYPE_ARM_V7:
 		printf("armv7\n");
 		break;
+	    case CPU_SUBTYPE_ARM_V7F:
+		printf("armv7f\n");
+		break;
+	    case CPU_SUBTYPE_ARM_V7K:
+		printf("armv7k\n");
+		break;
 	    default:
 		goto print_arch_unknown;
 		break;
@@ -862,6 +868,14 @@ cpu_subtype_t cpusubtype)
 		printf("    cputype CPU_TYPE_ARM\n"
 		       "    cpusubtype CPU_SUBTYPE_ARM_V7\n");
 		break;
+	    case CPU_SUBTYPE_ARM_V7F:
+		printf("    cputype CPU_TYPE_ARM\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM_V7F\n");
+		break;
+	    case CPU_SUBTYPE_ARM_V7K:
+		printf("    cputype CPU_TYPE_ARM\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM_V7K\n");
+		break;
 	    default:
 		goto print_arch_unknown;
 	    }
@@ -942,7 +956,6 @@ enum bool print_offset)
 	for(i = sizeof(ar_hdr->ar_size) - 1; i >= 0 && size_buf[i] == ' '; i--)
 	    size_buf[i] = '\0';
 	size_buf[sizeof(ar_hdr->ar_size)] = '\0';
-
 
 	if(print_offset == TRUE)
 	    printf("%u\t", member_offset);
@@ -1556,6 +1569,12 @@ NS32:
 		    break;
 		case CPU_SUBTYPE_ARM_V7:
 		    printf("         V7");
+		    break;
+		case CPU_SUBTYPE_ARM_V7F:
+		    printf("        V7F");
+		    break;
+		case CPU_SUBTYPE_ARM_V7K:
+		    printf("        V7K");
 		    break;
 		default:
 		    printf(" %10d", cpusubtype & ~CPU_SUBTYPE_MASK);
@@ -5470,7 +5489,7 @@ print_x86_debug_state64:
 	    }
 	}
 	else if(cputype == CPU_TYPE_ARM){
-	    struct arm_thread_state cpu;
+	    arm_thread_state_t cpu;
 	    while(begin < end){
 		if(end - begin > (ptrdiff_t)sizeof(uint32_t)){
 		    memcpy((char *)&flavor, begin, sizeof(uint32_t));
@@ -5502,14 +5521,14 @@ print_x86_debug_state64:
 			printf("      count %u (not ARM_THREAD_STATE_"
 			       "COUNT)\n", count);
 		    left = end - begin;
-		    if(left >= sizeof(struct arm_thread_state)){
+		    if(left >= sizeof(arm_thread_state_t)){
 		        memcpy((char *)&cpu, begin,
-			       sizeof(struct arm_thread_state));
-		        begin += sizeof(struct arm_thread_state);
+			       sizeof(arm_thread_state_t));
+		        begin += sizeof(arm_thread_state_t);
 		    }
 		    else{
 		        memset((char *)&cpu, '\0',
-			       sizeof(struct arm_thread_state));
+			       sizeof(arm_thread_state_t));
 		        memcpy((char *)&cpu, begin, left);
 		        begin += left;
 		    }
@@ -5519,11 +5538,12 @@ print_x86_debug_state64:
 		       "\t    r0  0x%08x r1     0x%08x r2  0x%08x r3  0x%08x\n"
 		       "\t    r4  0x%08x r5     0x%08x r6  0x%08x r7  0x%08x\n"
 		       "\t    r8  0x%08x r9     0x%08x r10 0x%08x r11 0x%08x\n"
-		       "\t    r12 0x%08x r13    0x%08x r14 0x%08x r15 0x%08x\n"
-		       "\t    r16 0x%08x\n",
-			cpu.r0, cpu.r1, cpu.r2, cpu.r3, cpu.r4, cpu.r5, cpu.r6,
-			cpu.r7, cpu.r8, cpu.r9, cpu.r10, cpu.r11, cpu.r12,
-			cpu.r13, cpu.r14, cpu.r15, cpu.r16);
+		       "\t    r12 0x%08x sp     0x%08x lr  0x%08x pc  0x%08x\n"
+		       "\t   cpsr 0x%08x\n",
+			cpu.__r[0], cpu.__r[1], cpu.__r[2], cpu.__r[3],
+			cpu.__r[4], cpu.__r[5], cpu.__r[6], cpu.__r[7],
+			cpu.__r[8], cpu.__r[9], cpu.__r[10], cpu.__r[11],
+			cpu.__r[12], cpu.__sp, cpu.__lr, cpu.__pc, cpu.__cpsr);
 		    break;
 		default:
 		    printf("     flavor %u (unknown)\n", flavor);

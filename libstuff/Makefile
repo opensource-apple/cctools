@@ -74,7 +74,7 @@ CFILES = allocate.c errors.c arch.c execute.c bytesex.c rnd.c hppa.c \
 	  breakout.c writeout.c checkout.c fatal_arch.c ofile_get_word.c \
 	  vm_flush_cache.c hash_string.c dylib_roots.c guess_short_name.c \
 	  SymLoc.c get_arch_from_host.c crc32.c macosx_deployment_target.c \
-	  symbol_list.c unix_standard_mode.c lto.c $(COFF_BYTESEX)
+	  symbol_list.c unix_standard_mode.c lto.c llvm.c $(COFF_BYTESEX)
 OBJS = $(CFILES:.c=.o)
 INSTALL_FILES = $(CFILES) Makefile notes
 

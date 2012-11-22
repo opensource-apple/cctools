@@ -18270,6 +18270,8 @@ md_begin (void)
 	}
 	break;
       case CPU_SUBTYPE_ARM_V7:
+      case CPU_SUBTYPE_ARM_V7F:
+      case CPU_SUBTYPE_ARM_V7K:
 	{
 	  static const arm_feature_set arm_arch_v7_vfp_v3_plus_neon_v1 =
 	    ARM_FEATURE (ARM_AEXT_V7_ARM | ARM_EXT_V7M | ARM_EXT_DIV,

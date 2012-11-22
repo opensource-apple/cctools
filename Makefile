@@ -78,7 +78,8 @@ ifeq "macos" "$(RC_OS)"
 		     [ "$(RC_RELEASE)" = "BigBear" ]    || \
 		     [ "$(RC_RELEASE)" = "Homewood" ]   || \
 		     [ "$(RC_RELEASE)" = "Kirkwood" ]   || \
-		     [ "$(RC_RELEASE)" = "Northstar" ]; then \
+		     [ "$(RC_RELEASE)" = "Northstar" ]  || \
+		     [ "$(RC_PURPLE)" = "YES" ]; then \
 			    echo "" ; \
 			else \
 			    echo "-DTRIE_SUPPORT" ; fi; )

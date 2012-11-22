@@ -58,18 +58,8 @@ OFILE_DIRS = $(OBJROOT)/driver_dir \
 BINDIR = /bin
 USRBINDIR = /usr/bin
 ifeq "macos" "$(RC_OS)"
-       LIBDIR := $(shell if [ "$(RC_RELEASE)" = "Beaker" ] ||    \
-			    [ "$(RC_RELEASE)" = "Bunsen" ] ||    \
-			    [ "$(RC_RELEASE)" = "Gonzo"  ] ||    \
-			    [ "$(RC_RELEASE)" = "Kodiak" ]; then \
-	     echo /usr/libexec; else echo /usr/libexec/gcc/darwin; \
-	     fi; )
-       LOCLIBDIR := $(shell if [ "$(RC_RELEASE)" = "Beaker" ] ||    \
-			       [ "$(RC_RELEASE)" = "Bunsen" ] ||    \
-			       [ "$(RC_RELEASE)" = "Gonzo"  ] ||    \
-			       [ "$(RC_RELEASE)" = "Kodiak" ]; then \
-	     echo /usr/local/libexec; else echo /usr/local/libexec/gcc/darwin; \
-	     fi; )
+  LIBDIR = /usr/libexec/as
+  LOCLIBDIR = /usr/local/libexec/as
 else
   LIBDIR = /usr/libexec
   LOCLIBDIR = /usr/local/libexec

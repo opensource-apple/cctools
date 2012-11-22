@@ -34,6 +34,7 @@ endif
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  CXX = $(shell xcrun -find -sdk $(SDKROOT) g++)
 endif
 
 ifeq "clang" "$(notdir $(CC))"
@@ -115,7 +116,7 @@ all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r -o $(OBJROOT)/private.o \
 		$(OBJS) $(LIBSTUFF)
-	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/$@ $(OBJROOT)/private.o \
+	$(CXX) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/$@ $(OBJROOT)/private.o \
 		$(LIBSTUFF) $(LIBS)
 
 vers.c:

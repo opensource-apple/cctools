@@ -683,11 +683,11 @@ struct arch *arch)
 		        break;
 		    case CPU_TYPE_ARM:
 			switch(flavor){
-			struct arm_thread_state *cpu;
+			arm_thread_state_t *cpu;
 			case ARM_THREAD_STATE:
-			    cpu = (struct arm_thread_state *)state;
-			    entry = cpu->r15;
-			    state += sizeof(struct arm_thread_state);
+			    cpu = (arm_thread_state_t *)state;
+			    entry = cpu->__pc;
+			    state += sizeof(arm_thread_state_t);
 			    break;
 			default:
 			    state += count * sizeof(uint32_t);

@@ -216,4 +216,11 @@ __private_extern__ void Mach_O_error(
 #endif
     ;
 
+#ifdef LTO_SUPPORT
+__private_extern__ int is_llvm_bitcode(
+    struct ofile *ofile,
+    char *addr,
+    size_t size);
+#endif /* LTO_SUPPORT */
+
 #endif /* _STUFF_OFILE_H_ */

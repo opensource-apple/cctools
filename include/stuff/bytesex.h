@@ -304,7 +304,7 @@ __private_extern__ void swap_sparc_thread_state_fpu(
   enum byte_sex target_byte_order);
 
 __private_extern__ void swap_arm_thread_state_t(
-    struct arm_thread_state *cpu,
+    arm_thread_state_t *cpu,
     enum byte_sex target_byte_sex);
 
 __private_extern__ void swap_ident_command(

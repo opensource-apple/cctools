@@ -9,6 +9,18 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.30 release (the cctools-809 release):
+- Changed lipo(1) to determine the architecture of bitcode files, including
+  as archive members.  Radar bug #9087924.
+
+Changes for the 5.30 release (the cctools-808 release):
+- Fixed a bug in create_library() in the loop that adjusted the ranlib structs
+  ran_off was using the incorrect index value for:
+    archs[0].toc_ranlibs[i].ran_off = archs[0].members[i].input_member_offset;
+  which should have been:
+    archs[0].toc_ranlibs[i].ran_off = archs[0].members[j].input_member_offset;
+  Radar bug #9830754.
+
 Changes for the 5.29 release (the cctools-805 release):
 - Changed create_library() in libtool.c to check the new ofile bad_toc field
   and cause it to create a new library when this happens.  Radar bug #9475790.
@@ -44,6 +56,9 @@ Changes for the 5.29 release (the cctools-801 release):
   Radar bug #9354501.
 - Fixed a bug in the error handling of pagestuff(1) when used with the -arch
   argument but missing an argument for which page.  Radar bug #8979851.
+
+Changes for the 5.29 release (the cctools-800.3 release):
+- Added support for armv7[fk] to print_arch() in lipo.c .  Radar bug #8987684.
 
 Changes for the 5.28 release (the cctools-798 release):
 - Added this line to the Makefile:

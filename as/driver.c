@@ -1,10 +1,10 @@
 /*
- * The assembler driver that lives in /bin/as and runs the assembler for the
- * "-arch <arch_flag>" (if given) in /usr/libexec/gcc/darwin/<arch_flag>/as or
- * in /usr/local/libexec/gcc/darwin/<arch_flag>/as.  Or runs the assembler for
- * the host architecture as returned by get_arch_from_host().  The driver only
- * checks to make sure their are not multiple arch_flags and then passes all
- * flags to the assembler it will run.
+ * The assembler driver as and runs the assembler for the "-arch <arch_flag>"
+ * (if given) in ../libexec/as/<arch_flag>/as or
+ * ../local/libexec/as/<arch_flag>/as.  Or runs the assembler for the host
+ * architecture as returned by get_arch_from_host().  The driver only checks to
+ * make sure their are not multiple arch_flags and then passes all flags to the
+ * assembler it will run.
  */
 #include "stdio.h"
 #include "stdlib.h"
@@ -27,20 +27,8 @@ int argc,
 char **argv,
 char **envp)
 {
-    const char *LIB =
-#if defined(__OPENSTEP__) || defined(__HERA__) || \
-    defined(__GONZO_BUNSEN_BEAKER__) || defined(__KODIAK__)
-		    "../libexec/";
-#else
-		    "../libexec/gcc/darwin/";
-#endif
-    const char *LOCALLIB =
-#if defined(__OPENSTEP__) || defined(__HERA__) || \
-    defined(__GONZO_BUNSEN_BEAKER__) || defined(__KODIAK__)
-		    "../local/libexec/";
-#else
-		    "../local/libexec/gcc/darwin/";
-#endif
+    const char *LIB = "../libexec/as/";
+    const char *LOCALLIB = "../local/libexec/as/";
     const char *AS = "/as";
     const char *LLVM_MC = "llvm-mc";
 
@@ -239,12 +227,10 @@ char **envp)
 	    }
 
 	}
-
-	as = makestr(prefix, LIB, arch_name, AS, NULL);
-
 	/*
 	 * If this assembler exist try to run it else print an error message.
 	 */
+	as = makestr(prefix, LIB, arch_name, AS, NULL);
 	if(access(as, F_OK) == 0){
 	    argv[0] = as;
 	    if(execute(argv, verbose))
@@ -260,34 +246,31 @@ char **envp)
 	    else
 		exit(1);
 	}
-	else{
-	    printf("%s: assembler (%s or %s) for architecture %s not "
-		   "installed\n", progname, as, as_local, arch_name);
-	    arch_flags = get_arch_flags();
-	    count = 0;
-	    for(i = 0; arch_flags[i].name != NULL; i++){
-		as = makestr(prefix, LIB, arch_flags[i].name, AS, NULL);
-		if(access(as, F_OK) == 0){
+	printf("%s: assembler (%s or %s) for architecture %s not installed\n",
+	       progname, as, as_local, arch_name);
+	arch_flags = get_arch_flags();
+	count = 0;
+	for(i = 0; arch_flags[i].name != NULL; i++){
+	    as = makestr(prefix, LIB, arch_flags[i].name, AS, NULL);
+	    if(access(as, F_OK) == 0){
+		if(count == 0)
+		    printf("Installed assemblers are:\n");
+		printf("%s for architecture %s\n", as, arch_flags[i].name);
+		count++;
+	    }
+	    else{
+		as_local = makestr(prefix, LOCALLIB, arch_flags[i].name, AS,
+				   NULL);
+		if(access(as_local, F_OK) == 0){
 		    if(count == 0)
 			printf("Installed assemblers are:\n");
-		    printf("%s for architecture %s\n", as, arch_flags[i].name);
+		    printf("%s for architecture %s\n", as_local,
+			   arch_flags[i].name);
 		    count++;
 		}
-		else{
-		    as_local = makestr(prefix, LOCALLIB, arch_flags[i].name,
-				       AS, NULL);
-		    if(access(as_local, F_OK) == 0){
-			if(count == 0)
-			    printf("Installed assemblers are:\n");
-			printf("%s for architecture %s\n", as_local,
-			       arch_flags[i].name);
-			count++;
-		    }
-		}
 	    }
-	    if(count == 0)
-		printf("%s: no assemblers installed\n", progname);
-	    exit(1);
 	}
-	return(0);
+	if(count == 0)
+	    printf("%s: no assemblers installed\n", progname);
+	exit(1);
 }

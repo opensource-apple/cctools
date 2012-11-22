@@ -5,9 +5,15 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.27 release (the cctools-809 release):
+- Added is_llvm_bitcode_from_memory() to "stuff/lto.h" and changed
+  is_llvm_bitcode() to use it.  Changed set_lto_cputype() to get_lto_cputype()
+  and to take a pointer to an arch_flag struct.  Radar bug #9087924.
+
 Changes for the 5.27 release (the cctools-806 release):
 - Maded more changes to check_archive_toc() only set the new ofile bad_toc
-  field when the anything is bad about the table of contents.
+  field when the anything is bad about the table of contents.  Radar bug
+  #9594589.
 
 Changes for the 5.27 release (the cctools-805 release):
 - Changed check_archive_toc() to set the new ofile bad_toc field when the
@@ -29,6 +35,11 @@ Changes for the 5.28 release (the cctools-801 release):
   to pass it.  ofile_map_from_memory() then saves that into the ofile's new
   file_mtime field.  Changed breakout_mem() in breakout.c to pass 0 as the mtime
   parameter.  Radar bug #9354501
+
+Changes for the 5.28 release (the cctools-800.3 release):
+- Added armv7[fk] entries to arch_flags[] in arch.c, code in set_lto_cputype()
+  in lto.c, code in get_arch_from_host() in get_arch_from_host.c and code in
+  cpusubtype_findbestarch() in best_arch.c for these. Radar bug #8987684.
 
 Changes for the 5.28 release (the cctools-799 release):
 - Changed is_llvm_bitcode() in lto.c to check for a filesize of zero and just

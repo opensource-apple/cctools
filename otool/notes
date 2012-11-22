@@ -3,9 +3,13 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
-Changes for the 5.29 release (the cctools-800 release):
+Changes for the 5.29 release (the cctools-803 release):
 - Added printing archive member offsets when -aV is specified.  Radar bug
   #9354605.
+
+Changes for the 5.29 release (the cctools-800.3 release):
+- Added support for armv7[fk] to print_arch() and print_cputype() in
+  ofile_print.c and to print_text() in main.c . Radar bug #8987684.
 
 Changes for the 5.29 release (the cctools-800 release):
 - Fixed the arm VCVT (between half-precision and single-precision) instructions
