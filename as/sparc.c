@@ -43,8 +43,6 @@
 /* From GNU ansidecl.h */
 #define PARAMS(paramlist)		paramlist
 
-typedef long	offsetT;
-
 /*
  * These are the default cputype and cpusubtype for the Sparc architecture.
  */
@@ -85,7 +83,6 @@ static struct hash_control *op_hash = NULL;
 
 #ifdef	NeXT_MOD
 static void s_proc PARAMS ((int));
-static void s_ignore PARAMS ((int));
 extern void s_seg PARAMS ((int));
 #else	/* NeXT_MOD */
 static void s_data1 PARAMS ((void));
@@ -203,14 +200,6 @@ static int special_case_set = 0;
 
 static void
 s_proc (ignore)
-     int ignore;
-{
-  totally_ignore_line();
-}
-
-/* we simply ignore the rest of this statement */
-static void
-s_ignore (ignore)
      int ignore;
 {
   totally_ignore_line();

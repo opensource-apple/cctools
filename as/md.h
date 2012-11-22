@@ -155,3 +155,10 @@ extern int md_estimate_size_before_relax(
  */
 extern void md_convert_frag(
     fragS *fragP);
+
+/*
+ * md_pcrel_from() returns the PC-relative offset from the given fixup.
+ * This is not implemented or used for most targets.
+ */
+extern long md_pcrel_from(
+    const fixS *fixP);

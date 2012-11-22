@@ -1,5 +1,5 @@
 <HTML>
-<!--This file created 2/10/06 1:43 PM by Claris Home Page version 3.0-->
+<!--This file created 5/16/06 12:00 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Mac OS X Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
@@ -7,7 +7,7 @@
    <X-CLARIS-TAGVIEW MODE=minimal>
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<H1>Mac OS X Xcode 2.3 Release Notes:<BR>
+<H1>Mac OS X Xcode 3.0 Release Notes:<BR>
 Compiler Tools</H1>
 
 <P><!-- start of path --> <TABLE BORDER=0 CELLSPACING=0 WIDTH=600 valign=left>
@@ -21,8 +21,9 @@ Compiler Tools</H1>
 <BR>
 <!-- end of path --> <A HREF="index.html"><IMG SRC="../Images/up.gif" X-CLARIS-USEIMAGEWIDTH X-CLARIS-USEIMAGEHEIGHT ALIGN=bottom></A></P>
 
-<P>These notes are for the MacOS X Xcode 2.3 Release of the compiler
-tools. They contain information about the following topics:</P>
+<P>These notes are for the MacOS X Xcode 2.4 Release of the
+compiler tools. They contain information about the following
+topics:</P>
 
 <UL>
    <LI>The Mac OS X Mach-O GNU-based assemblers</LI>
@@ -32,6 +33,23 @@ tools. They contain information about the following topics:</P>
    <LI>Mach-O object file tools (<B>nm</B>, <B>otool</B>, and so
    on)</LI>
 </UL>
+
+<H2>Notes Specific to Mac OS X Xcode 3.0 Release</H2>
+
+<P>The tools now support development of 64-bit Mach-O binaries for
+Intel with the -arch x86_64 flag.</P>
+
+<P>The design of the relocation entries for the x86_64 architecture
+does not make it possible to strip local symbols from relocable
+object files. As such the feature of running strip(1) with the -x
+option to limit the symbols to just the exported symbols is not
+available on the x86_64 architecture. And the strip(1) -x option for
+an x86_64 object file does nothing.</P>
+
+<H2>Notes Specific to Mac OS X Xcode 2.4 Release</H2>
+
+<P>The one feature of this release is support for the Intel
+Vanderpool instructions in the assembler and disassembler.</P>
 
 <H2>Notes Specific to Mac OS X Xcode 2.3 Release</H2>
 

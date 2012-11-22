@@ -23,7 +23,29 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
-Changes for the 5.21 release (the cctools-590.42 release):
+Changes for the 5.23 release (the cctools-619 release):
+- Fixed a bug that caused the "internal error: output_local_symbols()'
+  inconsistent local symbol count" when discarding a weak symbol from an object
+  file for a symbol in a shared library.  The fix was to remove the call to
+  maybe_remove_dwarf_symbol() in merge_dylib_module_symbols() in symbols.c 
+  and let this call happen when it get to the label
+  use_symbol_definition_from_this_dylib.  The same change was also done in
+  merge_bundle_loader_symbols() in symbols.c .  Radar bug #4570143.
+- Fixed a bug in the parsing of the -allow_stack_execute flag.  In main() in
+  ld.c in the second loop over the argv[] to pick up the object files was
+  missing a test for "allow_stack_execute" and it was incorrectly thinking it
+  had an argument.  Radar bug #4571206.
+
+Changes for the 5.23 release (the cctools-617 release):
+- Changed pass1_archive() in pass1.c to no longer check the timestamp of the
+  archive against the table of contents archive member.  Radar bug #4462449.
+
+Changes for the 5.23 release (the cctools-613 release):
+- Changed layout.c to add macros that rename structure members of the 
+  ppc and i386 thread states for Unix conformance.  Radar bug #4508798.
+
+Changes for the 5.22 release picked up from cctools-590.42 (the cctools-610
+release):
 - Fixed another bug in the handling of the -Y undefined symbol tracing.  This 
   is more fall out of Radar bug #3737622.  Where the code was changed when
   linking two-level, to not search libraries that can't be encode as ordinals.  
@@ -31,6 +53,14 @@ Changes for the 5.21 release (the cctools-590.42 release):
   so that it ignores any object with cur_obj->dylib set to TRUE no matter if the
   if is for a module linked from a dylib or not (cur_obj->dylib_module != NULL).
   Radar bug #4521358.
+
+Changes for the 5.22 release (the cctools-590.40.1 release):
+- Ignore multiple -syslibroot flags if they specify the same argument. Radar
+  bug #4354876.
+
+Changes for the 5.22 release (the cctools-590.31.1 release):
+- Changed to invoke ld64 without any extra arguments when given a 64-bit
+  object file.
 
 Changes for the 5.21 release (the cctools-590.41 release):
 - Fixed problems with the handling of the ___dso_handle linker defined symbol

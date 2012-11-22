@@ -544,22 +544,6 @@ char *envp[])
 	/* If ProjectBuilder is around set up for it */
 	check_for_ProjectBuilder();
 
-	/*
-	 * Temporary hack to recognize a "-arch ppc64" in the command
-	 * line and invoke ld64 instead, passing all the arguments
-	 * verbatim.
-	 */
-	for(i = 1 ; i < argc ; i++){
-	    if(*argv[i] == '-' &&
-	       argv[i][1] == 'a' &&
-	       strcmp(argv[i], "-arch") == 0 &&
-	       i + 1 < argc &&
-	       strcmp(argv[i+1], "ppc64") == 0){
-		argv[0] = "/usr/bin/ld64";
-		ld_exit(!execute(argv, 0));
-	    }
-	}
-
 	/* This needs to be here so that we test the environment variable before
 	   the rest of options parsing.  */
 	if (getenv("LD_PRINT_OPTIONS") != NULL)
@@ -1370,7 +1354,7 @@ char *envp[])
 		    else if(strcmp(p, "syslibroot") == 0){
 			if(i + 1 >= argc)
 			    fatal("%s: argument missing", argv[i]);
-			if(syslibroot_specified == TRUE)
+			if(syslibroot_specified == TRUE && strcmp(next_root, argv[i+1]) != 0)
 			    fatal("%s: multiply specified", argv[i]);
 			next_root = argv[i+1];
 			syslibroot_specified = TRUE;
@@ -2037,6 +2021,15 @@ unknown_flag:
 	 * the handling of the cpusubtypes.
 	 */
 	if(arch_flag.name != NULL){
+
+	    /*
+	     * 64-bit architectures are handled by ld64
+	     */
+	    if(arch_flag.cputype & CPU_ARCH_ABI64) {
+	        argv[0] = "/usr/bin/ld64";
+	        ld_exit(!execute(argv, 0));
+	    }
+
 	    family_arch_flag = get_arch_family_from_cputype(arch_flag.cputype);
 	    if(family_arch_flag == NULL)
 		fatal("internal error: unknown cputype (%d) for -arch %s (this "
@@ -2815,7 +2808,8 @@ unknown_flag:
 		case 'a':
 		    if(strcmp(p, "all_load") == 0 ||
 		       strcmp(p, "arch_multiple") == 0 ||
-		       strcmp(p, "arch_errors_fatal") == 0)
+		       strcmp(p, "arch_errors_fatal") == 0 ||
+		       strcmp(p, "allow_stack_execute") == 0)
 			break;
 		    i++;
 		    break;
@@ -2913,6 +2907,16 @@ unknown_flag:
 		    break;
 		}
 	    }
+	}
+
+ 	/*
+	 * If the architecture was not specified, and was inferred
+	 * from the object files, see again if ld64 must be invoked.
+	 */
+	if(arch_flag.cputype != 0 &&
+	    arch_flag.cputype & CPU_ARCH_ABI64){
+	    argv[0] = "/usr/bin/ld64";
+	    ld_exit(!execute(argv, 0));
 	}
 
 	/*

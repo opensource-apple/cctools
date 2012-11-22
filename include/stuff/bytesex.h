@@ -227,7 +227,7 @@ __private_extern__ void swap_i386_thread_state(
 /* current i386 thread states */
 #if i386_THREAD_STATE == 1
 __private_extern__ void swap_i386_float_state(
-    struct i386_float_state *fpu,
+    struct __darwin_i386_float_state *fpu,
     enum byte_sex target_byte_sex);
 
 __private_extern__ void swap_i386_exception_state(
@@ -249,6 +249,32 @@ __private_extern__ void swap_i386_thread_cthreadstate(
     i386_thread_cthreadstate_t *user,
     enum byte_sex target_byte_sex);
 #endif /* i386_THREAD_STATE == -1 */
+
+#ifdef x86_THREAD_STATE64
+__private_extern__ void swap_x86_thread_state64(
+    x86_thread_state64_t *cpu,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_x86_float_state64(
+    x86_float_state64_t *fpu,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_x86_state_hdr(
+    struct x86_state_hdr *hdr,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_x86_exception_state64(
+    x86_exception_state64_t *exc,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_x86_debug_state32(
+    x86_debug_state32_t *debug,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_x86_debug_state64(
+    x86_debug_state64_t *debug,
+    enum byte_sex target_byte_sex);
+#endif /* x86_THREAD_STATE64 */
 
 __private_extern__ void swap_hppa_integer_thread_state(
     struct hp_pa_integer_thread_state *regs,

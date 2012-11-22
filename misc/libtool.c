@@ -612,7 +612,7 @@ char **envp)
 			error("missing argument to: %s option", argv[i]);
 			usage();
 		    }
-		    if(next_root != NULL){
+		    if(next_root != NULL && strcmp(next_root, argv[i+1]) != 0){
 			error("more than one: %s option specified", argv[i]);
 			usage();
 		    }

@@ -25,6 +25,143 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.23 release (the cctools-622.2 release):
+- Track symbols by definition order, not value.  Radar bug #4501115.
+- Add in a few lines which were approved but not checked in for 4577120.
+  Radar bug #4577120.
+
+Changes for the 5.23 release (the cctools-622.1 release):
+- Add S_16BYTE_LITERALS as a fixed-size data section.  Radar bug #4610297.
+
+Changes for the 5.23 release (the cctools-622 release):
+- In x86-64 code, synthesize a symbol for each fixup, which allows the
+  assembler to determine later whether to require a relocation entry for that
+  fixup.  Radar bug #4577120.
+
+Changes for the 5.23 release (the cctools-621 release):
+- Changed symbol_list_sort_by_value to perform a stable sort.  Radar bug
+  #4598955.
+
+Changes for the 5.23 release (the cctools-620 release):
+- Added symbol_list_sort_by_value, which we use to sort the sy_prev_by_value
+  list of symbols for x86-64 code.  Radar bug #4501115.
+
+Changes for the 5.23 release (the cctools-619 release):
+- Changed output_jump() in i386.c to used is_local_symbol() and not test
+  sy_name[0] != 'L' so it would not crash when sy_name is NULL.  Radar bug
+  #4523898.
+- Emit an X86_64_RELOC_BRANCH fixup for branches to local labels in x86-64
+  code.  Radar bug #4581768.
+
+Changes for the 5.23 release (the cctools-618 release):
+- Changed lex_got() in i386.c so that the symbol _GLOBAL_OFFSET_TABLE_ is not
+  created if it does not already exist.  Radar bug #4534951.
+- Add support for .literal16 sections.  Radar bug #4555162.
+
+Changes for the 5.23 release (the cctools-616 release):
+- Don't fix up internal relocations into external relocations in DWARF debug
+  sections in x86-64 code.  Radar bug #4498034.
+
+Changes for the 5.23 release (the cctools-615 release):
+- Added support for the GOT_LOAD relocation entry type to the x86-64 assembler.
+  Radar bug #4486815.
+- Fixed a problem with the .comm directive not correctly handling a value
+  greater than would fix in a 32-bit value.  The problem was the return type of 
+  get_absolute_expression() in read.[ch] was declared to return a long instead
+  of a signed_target_addr_t. Causing the value in the expression to be truncated
+  before the code in s_comm() in read.c could use it.  Radar bug #4177397.
+
+Changes for the 5.23 release (the cctools-613 release):
+- Changed as.h to #include <stdint.h> first so it does not get compile errors
+  on Mac OS X 10.3.9.  Radar bug #4508798.
+
+Changes for the 5.23 release (the cctools-613 release):
+- In some circumstances, the assembler would create an x86-64 fixup which was
+  PC-relative but not marked as having a PC-relative relocation entry, which
+  allowed fixup_section to optimize out the fixup.  For x86-64 we need to
+  create a relocation entry in that case when we're fixing up a non-local
+  symbol, so x86_64_fixup_symbol was changed to mark the fixup as having a
+  PC-relative relocation entry.  Radar bug #4545597.
+
+Changes for the 5.23 release (the cctools-611 release):
+- Fixed a regression introduced in cctools-590.37.3 (Radar bug #4486817) which
+  caused x86-64 non-PC-relative relocation entries in fixed-size-data sections
+  to be fixed up like relocation entries in non-fixed-size-data sections.
+  Radar bug #4536738.
+
+Changes for the 5.23 release taken from cctools-590.43 (the cctools-610
+release):
+- Added support for assembling the Vanderpool instructions to the i386
+  assembler.  Was Radar bug #4427573 in cctools-590.43.  Radar bug #4534436.
+
+Changes for the 5.22 release (the cctools-590.38.3 release):
+- Force GOT and GOT_LOAD relocations to be PC-relative, as they always should
+  be, so we don't eliminate them later in the assembler. Radar bug #4500790.
+- Support 64-bit constants in .code64 blocks in x86-64 assembly. Radar bug
+  #4439905.
+- Ignore stabs when fixing up x86-64 symbols in the assembler. Radar bug
+  #4502759.
+- Accept 'LL' and 'ULL' as suffixes for constants in assembly code. Radar bug
+  #4496022.
+- Get RIP-relative relocations correct for local symbols in non-fixed-size-data
+  sections. Radar bug #4497536.
+
+Changes for the 5.22 release (the cctools-590.37.3 release):
+- Get offsets right for RIP-relative non-external relocations in x86-64 code.
+  Radar bug #4486817.
+- Handle symbols with NULL names when fixing up x86-64 symbols. Radar bug
+  #4475602.
+- Fix a regression in the assembler which prevented it from reading 8-bit
+  characters. Radar bug #4488556.
+
+Changes for the 5.22 release (the cctools-590.37.2 release):
+- Don't go down the scattered relocation code path in the assembler for x86-64
+  relocation entries. Radar bug #4486807.
+- Don't allow illegal section types for x86-64 assembly. Radar bug #4475470.
+- Support 32-bit difference GOTPCREL syntax in x86-64 assembly. Radar bug
+  #4485082.
+- Generate the right relocation entry type for .long GOTPCREL expressions.
+  Radar bug #4486764.
+- Cleaned up some binutils merge issues in as/i386.c. Radar bug #4422698.
+
+Changes for the 5.22 release (the cctools-590.37.1 release):
+- Don't allow illegal section types in x86-64 assembly. Radar bug #4475470.
+
+Changes for the 5.22 release (the cctools-590.36.3 release):
+- Add support for the new relocation entry types for x86-64. Radar bug
+  #4475165.
+- Don't include symbol offsets in fixups for external symbols for x86-64 and
+  don't fix up x86_64 symbols in sections that always contain fixed-size data.
+  Also, rename i386_fixup_symbol to x86_64_fixup_symbol because it's only used
+  for x86_64 code. Radar bug #4475152.
+
+Changes for the 5.22 release (the cctools-590.34.1 release):
+- Improve the message that appears when we try to assemble 32-bit signed
+  static relocations in x86-64 code. Radar bug #4434039.
+- Fixed addends for relocation entries for RIP-relative x86-64
+  instructions. Radar bug #4440315.
+
+Changes for the 5.22 release (the cctools-590.31.4 release):
+- Converted more warnings in read.c to errors, as required by the as_warn
+  changes in cctools-590.31.1. Radar bug #4429135.
+- Correctly generate x86_64 relocation entries for files containing common
+  symbols and for local symbols that resolve to the same non-local symbol.
+  Radar bug #4427629.
+
+Changes for the 5.22 release (the cctools-590.31.2 release):
+- Fixed an incorrect merge of i386 relocation entry generation
+  for intersegment jumps. Radar bug #4421123.
+
+Changes for the 5.22 release (the cctools-590.31.1 release):
+- Added support for the x86_64 architecture.  Radar bug #4345090.
+- Added support for the Merom New Instructions.  Radar bug #4407298.
+- Merged the i386 assembler from GNU binutils 2.16.1 into the i386
+  assembler sources.
+- Changed as_warn to be a warning rather than an error, removed as_warning,
+  changed as_warning calls to as_warn, and changed as_warn calls which
+  expected to be errors to as_bad or as_fatal as appropriate. This matches
+  GNU binutils.
+
 Changes for the 5.21 release (the cctools-590.39 release):
 - Removed the -I flag for private headers as it would no longer compile with it.
 

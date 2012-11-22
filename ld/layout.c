@@ -20,6 +20,16 @@
  *
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#define __srr0 srr0
+#define __r1 r1
+#define __eip eip
+#define __esp esp
+#define __es es
+#define __ds ds
+#define __ss ss
+#define __cs cs
+
 #ifdef SHLIB
 #include "shlib.h"
 #endif /* SHLIB */

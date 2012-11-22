@@ -25,6 +25,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
  */
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 #include "stuff/round.h"
 #include "as.h"
@@ -38,6 +39,139 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "md.h"
 #include "messages.h"
 #include "sections.h"
+
+typedef char operator_rankT;
+
+/*
+ * The type operatorT is for the types of operators in expressions.
+ */
+typedef enum {
+    O_illegal,			/* (0)  what we get for illegal op */
+
+    O_multiply,			/* (1)  *  Ordered by rank*/
+    O_divide,			/* (2)  /  */
+    O_modulus,			/* (3)  %  */
+
+    O_add,			/* (4)  +  */
+    O_subtract,			/* (5)  -  */
+
+    O_right_shift,		/* (6)  >> */
+    O_left_shift,		/* (7)  << */
+
+    O_less_than,		/* (8)  <  */
+    O_greater_than,		/* (9)  >  */
+    O_less_than_or_equal,	/* (10) <= */
+    O_greater_than_or_equal,	/* (11) >= */
+
+    O_equal,			/* (12) == */
+    O_not_equal,		/* (13) != */ /* or <> */
+
+    O_bit_and,			/* (14) &  */
+
+    O_bit_exclusive_or,		/* (15) ^  */
+
+    O_bit_inclusive_or,		/* (16) |  */
+    O_bit_or_not,		/* (17) !  */
+    two_char_operator		/* (18) encoding for two char operator */
+} operatorT;
+
+static segT expr(
+    operator_rankT rank,
+    expressionS *resultP);
+
+static segT operand(
+    expressionS *expressionP);
+
+static void clean_up_expression(
+    expressionS *expressionP);
+
+static segT expr_part(
+    struct symbol **symbol_1_PP,
+    struct symbol *symbol_2_P);
+
+static operatorT two_char_op_encoding(
+    char first_op_char);
+
+static void ignore_c_ll_or_ull(
+    char c);
+
+/* Build a dummy symbol to hold a complex expression.  This is how we
+   build expressions up out of other expressions.  The symbol is put
+   into the fake section expr_section.  */
+
+symbolS *
+make_expr_symbol (expressionS *expressionP)
+{
+#ifdef NOTYET
+  expressionS zero;
+#endif
+  symbolS *symbolP;
+#ifdef NOTYET
+  struct expr_symbol_line *n;
+#endif
+
+  if (expressionP->X_op == O_symbol
+      && expressionP->X_add_number == 0)
+    return expressionP->X_add_symbol;
+
+#ifndef NOTYET
+  abort ();
+#else
+  if (expressionP->X_op == O_big)
+    {
+      /* This won't work, because the actual value is stored in
+	 generic_floating_point_number or generic_bignum, and we are
+	 going to lose it if we haven't already.  */
+      if (expressionP->X_add_number > 0)
+	as_bad (_("bignum invalid"));
+      else
+	as_bad (_("floating point number invalid"));
+      zero.X_op = O_constant;
+      zero.X_add_number = 0;
+      zero.X_unsigned = 0;
+      clean_up_expression (&zero);
+      expressionP = &zero;
+    }
+
+  /* Putting constant symbols in absolute_section rather than
+     expr_section is convenient for the old a.out code, for which
+     S_GET_SEGMENT does not always retrieve the value put in by
+     S_SET_SEGMENT.  */
+  symbolP = symbol_create (FAKE_LABEL_NAME,
+			   (expressionP->X_op == O_constant
+			    ? absolute_section
+			    : expr_section),
+			   0, &zero_address_frag);
+  symbol_set_value_expression (symbolP, expressionP);
+
+  if (expressionP->X_op == O_constant)
+    resolve_symbol_value (symbolP);
+
+  n = (struct expr_symbol_line *) xmalloc (sizeof *n);
+  n->sym = symbolP;
+  as_where (&n->file, &n->line);
+  n->next = expr_symbol_lines;
+  expr_symbol_lines = n;
+#endif
+
+  return symbolP;
+}
+
+/* Build an expression for an unsigned constant.
+   The corresponding one for signed constants is missing because
+   there's currently no need for it.  One could add an unsigned_p flag
+   but that seems more clumsy.  */
+
+symbolS *
+expr_build_uconstant (offsetT value)
+{
+  expressionS e;
+
+  e.X_op = O_constant;
+  e.X_add_number = value;
+  e.X_unsigned = 1;
+  return make_expr_symbol (&e);
+}
 
 char *seg_name[] = {
     "absolute",
@@ -101,39 +235,6 @@ FLONUM_TYPE generic_floating_point_number = {
 };
 
 /*
- * The type operatorT is for the types of operators in expressions.
- */
-typedef enum {
-    O_illegal,			/* (0)  what we get for illegal op */
-
-    O_multiply,			/* (1)  *  Ordered by rank*/
-    O_divide,			/* (2)  /  */
-    O_modulus,			/* (3)  %  */
-
-    O_add,			/* (4)  +  */
-    O_subtract,			/* (5)  -  */
-
-    O_right_shift,		/* (6)  >> */
-    O_left_shift,		/* (7)  << */
-
-    O_less_than,		/* (8)  <  */
-    O_greater_than,		/* (9)  >  */
-    O_less_than_or_equal,	/* (10) <= */
-    O_greater_than_or_equal,	/* (11) >= */
-
-    O_equal,			/* (12) == */
-    O_not_equal,		/* (13) != */ /* or <> */
-
-    O_bit_and,			/* (14) &  */
-
-    O_bit_exclusive_or,		/* (15) ^  */
-
-    O_bit_inclusive_or,		/* (16) |  */
-    O_bit_or_not,		/* (17) !  */
-    two_char_operator		/* (18) encoding for two char operator */
-} operatorT;
-
-/*
  * op_size is indexed by an operatorT and tells the size of the operator
  * which is used to advance the input_line_pointer over the operator.
  */
@@ -154,7 +255,6 @@ static int op_size [] =
  *	1	| !
  *	0	operand, (expression)
  */
-typedef char operator_rankT;
 static operator_rankT op_rank [] =
     { 0, 8, 8, 8, 7, 7, 6, 6, 5, 5, 5, 5, 4, 4, 3, 2, 1, 1 };
 
@@ -188,23 +288,6 @@ static const operatorT op_encoding [256] = {
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __
 };
-
-static segT expr(
-    operator_rankT rank,
-    expressionS *resultP);
-
-static segT operand(
-    expressionS *expressionP);
-
-static void clean_up_expression(
-    expressionS *expressionP);
-
-static segT expr_part(
-    struct symbol **symbol_1_PP,
-    struct symbol *symbol_2_P);
-
-static operatorT two_char_op_encoding(
-    char first_op_char);
 
 segT	/* Return resultP -> X_seg */
 expression(
@@ -801,18 +884,21 @@ expressionS *expressionP)
 			    expressionP->X_add_number      = 0;
 			}
 			else{	/* Really a number, not a local label. */
+			    ignore_c_ll_or_ull(c);
 			    expressionP->X_add_number = number;
 			    expressionP->X_seg        = SEG_ABSOLUTE;
 			    input_line_pointer--; /* restore following char */
 		        }
 		    }
 		    else{ /* a number >= 10 */
+			ignore_c_ll_or_ull(c);
 			expressionP->X_add_number = number;
 			expressionP->X_seg        = SEG_ABSOLUTE;
 			input_line_pointer--; /* restore following char */
 		    }
 		} /* not a small number encode returning a bignum */
 		else{
+		    ignore_c_ll_or_ull(c);
 		    expressionP->X_add_number = number;
 		    expressionP->X_seg = SEG_BIG;
 		    input_line_pointer--; /* -> char following number. */
@@ -827,11 +913,10 @@ expressionS *expressionP)
 
 		if(error_code){
 		    if(error_code == ERROR_EXPONENT_OVERFLOW){
-			as_warn("Bad floating-point constant: exponent "
-				"overflow, probably assembling junk" );
+			as_bad("Bad floating-point constant: exponent overflow" );
 		    }
 		    else{	      
-			as_warn("Bad floating-point constant: unknown error "
+			as_bad("Bad floating-point constant: unknown error "
 				"code=%d.", error_code);
 		    }
 		}
@@ -859,6 +944,7 @@ expressionS *expressionP)
 				 (valueT)(obstack_next_free(&frags) -
 					  frag_now->fr_literal),
 			         frag_now);
+		symbol_assign_index(symbolP);
 	    expressionP->X_add_number = 0;
 	    expressionP->X_add_symbol = symbolP;
 	    expressionP->X_seg = SEG_SECT;
@@ -1193,7 +1279,7 @@ expressionS *expressionP) /* Deliver result here. */
 
 	    /*
 	     * The flag -dynamic is encoded as -k.  If this is seen we can
-	     * use the general section differance relocation so we will leave
+	     * use the general section difference relocation so we will leave
 	     * it at that.
 	     */
 	    if(flagseen['k'])
@@ -1369,4 +1455,39 @@ void)
 	}
 	*--input_line_pointer = 0;
 	return(c);
+}
+
+/*
+ *			ignore_c_ll_or_ull
+ *
+ * Ignores 'LL' or 'ULL' after numbers.  On entrance, if 'c' is not 'U' or
+ * 'L', we return.  If 'c' is 'U' or 'L', input_line_pointer points to the
+ * next character.  On return, input_line_pointer will have been adjusted
+ * to be after 'ULL' or 'LL' if either of them starts with c followed by
+ * input_line_pointer.  If that is not the case, input_line_pointer will
+ * not be changed.
+ */
+static
+void
+ignore_c_ll_or_ull(
+char c)
+{
+	int charsRead = 0;
+	if(c != 'U' && c != 'L'){
+		return;
+	}
+	if(c == 'U'){
+		c = *input_line_pointer++;
+		charsRead++;
+	}
+	if(c == 'L'){
+		c = *input_line_pointer++;
+		charsRead++;
+	}
+	if(c == 'L'){
+		c = *input_line_pointer++;
+	}
+	else{
+		input_line_pointer -= charsRead;
+	}
 }

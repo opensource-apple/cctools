@@ -126,7 +126,7 @@ __private_extern__ char *standard_framework_dirs[] = {
     NULL
 };
 
-/* the pointer to the head of the base object file's segments */
+/* The pointer to the head of the base object file's segments */
 __private_extern__ struct merged_segment *base_obj_segments = NULL;
 #endif /* !defined(RLD) */
 
@@ -1334,11 +1334,6 @@ down:
 	offset += sizeof(struct ar_hdr) + ar_name_size;
 	if(strncmp(symdef_ar_name, SYMDEF, sizeof(SYMDEF) - 1) != 0){
 	    error("archive: %s has no table of contents, add one with "
-		  "ranlib(1) (can't load from it)", file_name);
-	    return;
-	}
-	if(stat_buf.st_mtime > strtol(symdef_ar_hdr->ar_date, NULL, 10)){
-	    error("table of contents for archive: %s is out of date; rerun "
 		  "ranlib(1) (can't load from it)", file_name);
 	    return;
 	}
@@ -4165,7 +4160,9 @@ enum bool dylib_only,
 enum bool bundle_loader)
 {
     unsigned long i, j, section_type;
+    uint32_t magic;
     struct mach_header *mh;
+    struct mach_header_64 *mh64;
     struct load_command l, *lc, *load_commands;
     struct segment_command *sg;
     struct section *s;
@@ -4206,18 +4203,57 @@ enum bool bundle_loader)
 			       "extends past the end of the file)");
 	    return;
 	}
-	mh = (struct mach_header *)cur_obj->obj_addr;
-	cur_obj->swapped = FALSE;
-	if(mh->magic == SWAP_LONG(MH_MAGIC)){
+
+	magic = *((uint32_t *)cur_obj->obj_addr);
+
+	if(magic ==  MH_MAGIC ||
+	   magic == SWAP_LONG(MH_MAGIC)){
+	  mh = (struct mach_header *)cur_obj->obj_addr;
+	  if(magic == MH_MAGIC){
+	    cur_obj->swapped = FALSE;
+	  }
+	  else{
 	    cur_obj->swapped = TRUE;
 	    swap_mach_header(mh, host_byte_sex);
+	  }
 	}
-	if(mh->magic != MH_MAGIC){
-	    if((mh->magic != MH_MAGIC_64 &&
-	        mh->magic != SWAP_LONG(MH_MAGIC_64)) ||
-	       no_arch_warnings != TRUE)
-		error_with_cur_obj("bad magic number (not a Mach-O file)");
-	    return;
+	else if(cur_obj->obj_size >= sizeof(struct mach_header_64) &&
+		(magic == MH_MAGIC_64 ||
+		 magic == SWAP_LONG(MH_MAGIC_64))){
+
+	  mh64 = (struct mach_header_64 *)cur_obj->obj_addr;
+	  if(magic == MH_MAGIC_64){
+	    cur_obj->swapped = FALSE;
+	  }
+	  else{
+	    cur_obj->swapped = TRUE;
+        swap_mach_header_64(mh64, host_byte_sex);
+	  }
+
+	  /* If no architecture has been explicitly given, and
+	   *  this is the first object seen, set up arch_flag
+	   *  without interrogating the object file further
+	   */
+	  if(!arch_flag.cputype) {
+		family_arch_flag = get_arch_family_from_cputype(mh64->cputype);
+		if(family_arch_flag == NULL){
+		    error_with_cur_obj("cputype (%d) unknown (file not loaded)",
+			 mh64->cputype);
+		    return;
+		}
+		arch_flag.cputype = mh64->cputype;
+		if(force_cpusubtype_ALL == TRUE)
+		    arch_flag.cpusubtype = family_arch_flag->cpusubtype;
+		else
+		    arch_flag.cpusubtype = mh64->cpusubtype;
+	  }
+
+	  return;
+	}
+	else{
+	  if(no_arch_warnings != TRUE)
+	    error_with_cur_obj("bad magic number (not a Mach-O file)");
+	  return;
 	}
 	if(mh->cputype != 0){
 	    if(target_byte_sex == UNKNOWN_BYTE_SEX){

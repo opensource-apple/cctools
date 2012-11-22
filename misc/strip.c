@@ -193,11 +193,13 @@ static void check_indirect_symtab(
     unsigned long nitems,
     unsigned long reserved1,
     unsigned long section_type,
+    char *contents,
     struct nlist *symbols,
     struct nlist_64 *symbols64,
     unsigned long nsyms,
     char *strings,
-    long *missing_reloc_symbols);
+    long *missing_reloc_symbols,
+    enum byte_sex host_byte_sex);
 
 #ifndef NMEDIT
 static enum bool strip_symtab(
@@ -1675,8 +1677,14 @@ struct object *object)
 			      "relocation entries that can't be stripped in: ");
 			    missing_reloc_symbols = 1;
 			}
-			fprintf(stderr, "%s\n", strings + symbols
-			      [relocs[i].r_symbolnum].n_un.n_strx);
+			if(object->mh != NULL){
+			    fprintf(stderr, "%s\n", strings + symbols
+			            [relocs[i].r_symbolnum].n_un.n_strx);
+			}
+			else {
+			    fprintf(stderr, "%s\n", strings + symbols64
+			            [relocs[i].r_symbolnum].n_un.n_strx);
+			}
 			saves[relocs[i].r_symbolnum] = -1;
 		    }
 		    if(saves[relocs[i].r_symbolnum] != -1){
@@ -1736,9 +1744,11 @@ struct object *object)
 			    continue;
 			}
 			nitems = s->size / stride;
+			contents = object->object_addr + s->offset;
 			check_indirect_symtab(arch, member, object, nitems,
-			    s->reserved1, section_type, symbols, symbols64,
-			    nsyms, strings, &missing_reloc_symbols);
+			    s->reserved1, section_type, contents, symbols,
+			    symbols64, nsyms, strings, &missing_reloc_symbols,
+			    host_byte_sex);
 			s++;
 		    }
 		}
@@ -1759,9 +1769,11 @@ struct object *object)
 			    continue;
 			}
 			nitems = s64->size / stride;
+			contents = object->object_addr + s64->offset;
 			check_indirect_symtab(arch, member, object, nitems,
-			    s64->reserved1, section_type, symbols, symbols64,
-			    nsyms, strings, &missing_reloc_symbols);
+			    s64->reserved1, section_type, contents, symbols,
+			    symbols64, nsyms, strings, &missing_reloc_symbols,
+			    host_byte_sex);
 			s64++;
 		    }
 		}
@@ -1798,9 +1810,11 @@ char *strings,
 long *missing_reloc_symbols,
 enum byte_sex host_byte_sex)
 {
-    unsigned long k, n_strx, n_value;
+    unsigned long k, n_strx;
+    uint64_t n_value;
 #ifdef NMEDIT
     unsigned long value, n_ext;
+    uint64_t value64; 
 #endif
     struct scattered_relocation_info *sreloc;
 
@@ -1834,7 +1848,7 @@ enum byte_sex host_byte_sex)
 		/*
 		 * We are letting nmedit change global coalesed symbols into
 		 * statics in MH_OBJECT file types only. Relocation entries to
-		 * global coalesced symbols are external relocs. 
+		 * global coalesced symbols are external relocs.
 		 */
 		if(object->mh != NULL)
 		    n_ext = new_symbols[saves[relocs[k].r_symbolnum] - 1].
@@ -1842,11 +1856,12 @@ enum byte_sex host_byte_sex)
 		else
 		    n_ext = new_symbols64[saves[relocs[k].r_symbolnum] - 1].
 				n_type & N_EXT;
-		if(n_ext != N_EXT){
+		if(n_ext != N_EXT &&
+		   object->mh_cputype != CPU_TYPE_X86_64){
 		    /*
 		     * We need to do the relocation for this external relocation
 		     * entry so the item to be relocated is correct for a local
-		     * relocation entry.
+		     * relocation entry. We don't need to do this for x86-64.
 		     */
 		    if(relocs[k].r_address + sizeof(long) > sectsize){
 			fatal_arch(arch, member, "truncated or malformed "
@@ -1854,27 +1869,54 @@ enum byte_sex host_byte_sex)
 			    "section (%.16s,%.16s) extends past the end "
 			    "of the section)", k, segname, sectname);
 		    }
-		    value = *(unsigned long *)(contents + relocs[k].r_address);
-		    if(object->object_byte_sex != host_byte_sex)
-			value = SWAP_LONG(value);
-		    /*
-		     * We handle a very limited form here.  Only VANILLA
-		     * (r_type == 0) long (r_length==2) absolute or pcrel that
-		     * won't need a scattered relocation entry.
-		     */
-		    if(relocs[k].r_type != 0 ||
-		       relocs[k].r_length != 2){
-			fatal_arch(arch, member, "don't have "
-			  "code to convert external relocation "
-			  "entry %ld in section (%.16s,%.16s) "
-			  "for global coalesced symbol: %s "
-			  "in: ", k, segname, sectname,
-			  strings + n_strx);
+		    if(object->mh != NULL){
+			value = *(unsigned long *)
+				 (contents + relocs[k].r_address);
+			if(object->object_byte_sex != host_byte_sex)
+			    value = SWAP_LONG(value);
+			/*
+			 * We handle a very limited form here.  Only VANILLA
+			 * (r_type == 0) long (r_length==2) absolute or pcrel
+			 * that won't need a scattered relocation entry.
+			 */
+			if(relocs[k].r_type != 0 ||
+			   relocs[k].r_length != 2){
+			    fatal_arch(arch, member, "don't have "
+			      "code to convert external relocation "
+			      "entry %ld in section (%.16s,%.16s) "
+			      "for global coalesced symbol: %s "
+			      "in: ", k, segname, sectname,
+			      strings + n_strx);
+			}
+			value += n_value;
+			if(object->object_byte_sex != host_byte_sex)
+			    value = SWAP_LONG(value);
+			*(unsigned long *)(contents + relocs[k].r_address) =
+			    value;
 		    }
-		    value += n_value;
-		    if(object->object_byte_sex != host_byte_sex)
-			value = SWAP_LONG(value);
-		    *(unsigned long *)(contents + relocs[k].r_address) = value;
+		    else{
+			value64 = *(uint64_t *)(contents + relocs[k].r_address);
+			if(object->object_byte_sex != host_byte_sex)
+			    value64 = SWAP_LONG_LONG(value64);
+			/*
+			 * We handle a very limited form here.  Only VANILLA
+			 * (r_type == 0) quad (r_length==3) absolute or pcrel
+			 * that won't need a scattered relocation entry.
+			 */
+			if(relocs[k].r_type != 0 ||
+			   relocs[k].r_length != 3){
+			    fatal_arch(arch, member, "don't have "
+			      "code to convert external relocation "
+			      "entry %ld in section (%.16s,%.16s) "
+			      "for global coalesced symbol: %s "
+			      "in: ", k, segname, sectname,
+			      strings + n_strx);
+			}
+			value64 += n_value;
+			if(object->object_byte_sex != host_byte_sex)
+			    value64 = SWAP_LONG_LONG(value);
+			*(uint64_t *)(contents + relocs[k].r_address) = value64;
+		    }
 		    /*
 		     * Turn the extern reloc into a local.
 		     */
@@ -1918,15 +1960,18 @@ struct object *object,
 unsigned long nitems,
 unsigned long reserved1,
 unsigned long section_type,
+char *contents,
 struct nlist *symbols,
 struct nlist_64 *symbols64,
 unsigned long nsyms,
 char *strings,
-long *missing_reloc_symbols)
+long *missing_reloc_symbols,
+enum byte_sex host_byte_sex)
 {
     unsigned long k, index;
     uint8_t n_type;
-    uint32_t n_strx;
+    uint32_t n_strx, value;
+    uint64_t value64;
     enum bool made_local;
 
 	for(k = 0; k < nitems; k++){
@@ -1967,6 +2012,18 @@ long *missing_reloc_symbols)
 			object->output_indirect_symtab[reserved1 + k] |=
 				INDIRECT_SYMBOL_ABS;
 		    made_local = TRUE;
+		    if(object->mh != NULL){
+			value = symbols[index].n_value;
+			if(object->object_byte_sex != host_byte_sex)
+			    value = SWAP_LONG(value);
+			*(uint32_t *)(contents + k * 4) = value;
+		    }
+		    else{
+			value64 = symbols64[index].n_value;
+			if(object->object_byte_sex != host_byte_sex)
+			    value64 = SWAP_LONG_LONG(value64);
+			*(uint64_t *)(contents + k * 8) = value64;
+		    }
 		}
 #ifdef NMEDIT
 		else {
@@ -2231,10 +2288,23 @@ unsigned long nindirectsyms)
 	    }
 	    if((n_type & N_EXT) == 0){ /* local symbol */
 		/*
+		 * strip -x on an x86_64 .o file should do nothing.
+		 */
+		if(object->mh == NULL && 
+		   object->mh64->cputype == CPU_TYPE_X86_64 &&
+		   object->mh64->filetype == MH_OBJECT &&
+		   xflag == 1){
+		    if(n_strx != 0)
+			new_strsize += strlen(strings + n_strx) + 1;
+		    new_nlocalsym++;
+		    new_nsyms++;
+		    saves[i] = new_nsyms;
+		}
+		/*
 		 * The cases a local symbol might be saved is with -X -S or
 		 * with -d filename.
 		 */
-		if((!strip_all && (Xflag || Sflag)) || dfile){
+		else if((!strip_all && (Xflag || Sflag)) || dfile){
 		    if(n_type & N_STAB){ /* debug symbol */
 			if(dfile && n_type == N_SO){
 			    if(n_strx != 0){
@@ -2507,12 +2577,29 @@ unsigned long nindirectsyms)
 		}
 		/*
 		 * We only need to save coalesced symbols that are used as
-		 * indirect symbols.
+		 * indirect symbols in 32-bit applications.
+		 *
+		 * In 64-bit applications, we only need to save coalesced
+		 * symbols that are used as weak definitions.
 		 */
-		if(saves[i] == 0 &&
+		if(object->mh != NULL &&
+		   saves[i] == 0 &&
 		   (n_type & N_TYPE) == N_SECT &&
 		   (s_flags & SECTION_TYPE) == S_COALESCED &&
 		   symbol_pointer_used(i, indirectsyms, nindirectsyms) == TRUE){
+		    if(n_strx != 0){
+			len = strlen(strings + n_strx) + 1;
+			new_strsize += len;
+			new_ext_strsize += len;
+		    }
+		    new_nextdefsym++;
+		    new_nsyms++;
+		    saves[i] = new_nsyms;
+		}
+		if(object->mh64 != NULL &&
+		   saves[i] == 0 &&
+		   (n_type & N_TYPE) == N_SECT &&
+		   (n_desc & N_WEAK_DEF) != 0){
 		    if(n_strx != 0){
 			len = strlen(strings + n_strx) + 1;
 			new_strsize += len;

@@ -261,6 +261,13 @@ extern void print_literal8_section(
     enum byte_sex literal_byte_sex,
     enum bool print_addresses);
 
+extern void print_literal16_section(
+    char *sect,
+    unsigned long sect_size,
+    unsigned long sect_addr,
+    enum byte_sex literal_byte_sex,
+    enum bool print_addresses);
+
 extern void print_literal_pointer_section(
     mach_header_t *mh,
     struct load_command *lc,

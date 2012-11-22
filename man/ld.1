@@ -1,4 +1,4 @@
-.TH LD 1 "January 26, 2006" "Apple Computer, Inc."
+.TH LD 1 "March 18, 2006" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -163,7 +163,7 @@ dynamic shared library is specified as an argument to
 .IR ld ,
 that library is placed in the dynamic shared library search list. The order of
 the search list is always the same order the libraries were encountered on the
-command line. When linking -flat_namesapce, all dynamic libraries that the
+command line. When linking -flat_namespace, all dynamic libraries that the
 dynamic libraries are dependent upon are added to the end of the search list.
 .PP
 Once the search list is constructed, the static link editor checks for undefined
@@ -210,7 +210,7 @@ the default).  When a program is using all flat namespace images then only one
 global symbol for each global symbol name is used by all images of the program
 (this was the default in MacOS X 10.0).
 .PP
-When creating a output file with the static link editor that links against
+When creating an output file with the static link editor that links against
 dynamic libraries, the references to symbols in those libraries can be recorded
 at static link time to bind to a specific library definition (two-level
 namespace) or left to be bound at execution time to the first library in the
