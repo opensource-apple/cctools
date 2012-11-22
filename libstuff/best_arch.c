@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -183,22 +182,30 @@ unsigned long nfat_archs)
 	    /*
 	     * An exact match as not found.  So for all the PowerPC subtypes
 	     * pick the subtype from the following order starting from a subtype
-	     * that will work (contains altivec if needed):
-	     *	790, 7450, 7400, 750, 604e, 604, 603ev, 603e, 603, ALL
+	     * that will work (contains 64-bit instructions or altivec if
+	     * needed):
+	     *	970, 7450, 7400, 750, 604e, 604, 603ev, 603e, 603, ALL
 	     * Note the 601 is NOT in the list above.  It is only picked via
 	     * an exact match.  For an unknown subtype pick only the ALL type if
 	     * it exists.
 	     */
 	    switch(cpusubtype){
+	    case CPU_SUBTYPE_POWERPC_ALL:
+		/*
+		 * The CPU_SUBTYPE_POWERPC_ALL is only used by the development
+		 * environment tools when building a generic ALL type binary.
+		 * In the case of a non-exact match we pick the most current
+		 * processor.
+		 */
 	    case CPU_SUBTYPE_POWERPC_970:
-	    case CPU_SUBTYPE_POWERPC_7450:
-	    case CPU_SUBTYPE_POWERPC_7400:
 		for(i = 0; i < nfat_archs; i++){
 		    if(fat_archs[i].cputype != cputype)
 			continue;
 		    if(fat_archs[i].cpusubtype == CPU_SUBTYPE_POWERPC_970)
 			return(fat_archs + i);
 		}
+	    case CPU_SUBTYPE_POWERPC_7450:
+	    case CPU_SUBTYPE_POWERPC_7400:
 		for(i = 0; i < nfat_archs; i++){
 		    if(fat_archs[i].cputype != cputype)
 			continue;
@@ -497,4 +504,270 @@ cpu_subtype_t cpusubtype2)
 	    return((cpu_subtype_t)-1);
 	}
 	return((cpu_subtype_t)-1); /* logically can't get here */
+}
+
+/*
+ * cpusubtype_execute() returns TRUE if the exec_cpusubtype can be used for
+ * execution on the host_cpusubtype for the specified cputype (this routine is
+ * used by the dynamic linker and should match the kernel's exec(2) code).  If
+ * the exec_cpusubtype can't be run on the host_cpusubtype FALSE is returned
+ * indicating it can't be run on that cpu.  This can also return FALSE and
+ * if new cputypes or cpusubtypes are added and an old version of this routine
+ * is used.  But if the cpusubtypes are the same they can always be executed
+ * and this routine will return TRUE.  And ALL subtypes are always allowed to be
+ * executed on unknown host_cpusubtype's.
+ */
+__private_extern__
+enum bool
+cpusubtype_execute(
+cpu_type_t host_cputype,
+cpu_subtype_t host_cpusubtype, /* can NOT be the ALL type */
+cpu_subtype_t exec_cpusubtype) /* can be the ALL type */
+{
+	if(host_cpusubtype == exec_cpusubtype)
+	    return(TRUE);
+
+	switch(host_cputype){
+	case CPU_TYPE_POWERPC:
+	    /*
+	     * The 970 has 64-bit and altivec instructions
+	     * The 7450 and 7400 have altivec instructions
+	     * The 601 has Power instructions (can only execute on a 601)
+	     * other known subtypes can execute anywhere
+	     * unknown hosts will only be allowed to execute the ALL subtype
+	     */
+	    switch(host_cpusubtype){
+	    case CPU_SUBTYPE_POWERPC_970:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_POWERPC_970:
+		case CPU_SUBTYPE_POWERPC_7450:
+		case CPU_SUBTYPE_POWERPC_7400:
+		case CPU_SUBTYPE_POWERPC_750:
+		case CPU_SUBTYPE_POWERPC_620:
+		case CPU_SUBTYPE_POWERPC_604e:
+		case CPU_SUBTYPE_POWERPC_604:
+		case CPU_SUBTYPE_POWERPC_603ev:
+		case CPU_SUBTYPE_POWERPC_603e:
+		case CPU_SUBTYPE_POWERPC_603:
+		case CPU_SUBTYPE_POWERPC_602:
+		case CPU_SUBTYPE_POWERPC_ALL:
+		    return(TRUE);
+		case CPU_SUBTYPE_POWERPC_601:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    case CPU_SUBTYPE_POWERPC_7450:
+	    case CPU_SUBTYPE_POWERPC_7400:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_POWERPC_7450:
+		case CPU_SUBTYPE_POWERPC_7400:
+		case CPU_SUBTYPE_POWERPC_750:
+		case CPU_SUBTYPE_POWERPC_620:
+		case CPU_SUBTYPE_POWERPC_604e:
+		case CPU_SUBTYPE_POWERPC_604:
+		case CPU_SUBTYPE_POWERPC_603ev:
+		case CPU_SUBTYPE_POWERPC_603e:
+		case CPU_SUBTYPE_POWERPC_603:
+		case CPU_SUBTYPE_POWERPC_602:
+		case CPU_SUBTYPE_POWERPC_ALL:
+		    return(TRUE);
+		case CPU_SUBTYPE_POWERPC_970:
+		case CPU_SUBTYPE_POWERPC_601:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    case CPU_SUBTYPE_POWERPC_750:
+	    case CPU_SUBTYPE_POWERPC_620:
+	    case CPU_SUBTYPE_POWERPC_604e:
+	    case CPU_SUBTYPE_POWERPC_604:
+	    case CPU_SUBTYPE_POWERPC_603ev:
+	    case CPU_SUBTYPE_POWERPC_603e:
+	    case CPU_SUBTYPE_POWERPC_603:
+	    case CPU_SUBTYPE_POWERPC_602:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_POWERPC_750:
+		case CPU_SUBTYPE_POWERPC_620:
+		case CPU_SUBTYPE_POWERPC_604e:
+		case CPU_SUBTYPE_POWERPC_604:
+		case CPU_SUBTYPE_POWERPC_603ev:
+		case CPU_SUBTYPE_POWERPC_603e:
+		case CPU_SUBTYPE_POWERPC_603:
+		case CPU_SUBTYPE_POWERPC_602:
+		case CPU_SUBTYPE_POWERPC_ALL:
+		    return(TRUE);
+		case CPU_SUBTYPE_POWERPC_970:
+		case CPU_SUBTYPE_POWERPC_7450:
+		case CPU_SUBTYPE_POWERPC_7400:
+		case CPU_SUBTYPE_POWERPC_601:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    case CPU_SUBTYPE_POWERPC_601:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_POWERPC_750:
+		case CPU_SUBTYPE_POWERPC_620:
+		case CPU_SUBTYPE_POWERPC_604e:
+		case CPU_SUBTYPE_POWERPC_604:
+		case CPU_SUBTYPE_POWERPC_603ev:
+		case CPU_SUBTYPE_POWERPC_603e:
+		case CPU_SUBTYPE_POWERPC_603:
+		case CPU_SUBTYPE_POWERPC_602:
+		case CPU_SUBTYPE_POWERPC_601:
+		case CPU_SUBTYPE_POWERPC_ALL:
+		    return(TRUE);
+		case CPU_SUBTYPE_POWERPC_970:
+		case CPU_SUBTYPE_POWERPC_7450:
+		case CPU_SUBTYPE_POWERPC_7400:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    default: /* unknown host */
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_POWERPC_ALL:
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+	    }
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_I386:
+	    /*
+	     * On i386 if it is any known subtype it is allowed to execute on
+	     * any host (even unknown hosts).  And the binary is expected to
+	     * have code to avoid instuctions that will not execute on the
+	     * host cpu.
+	     */
+	    switch(exec_cpusubtype){
+	    case CPU_SUBTYPE_I386_ALL: /* same as CPU_SUBTYPE_386 */
+	    case CPU_SUBTYPE_486:
+	    case CPU_SUBTYPE_486SX:
+	    case CPU_SUBTYPE_586: /* same as CPU_SUBTYPE_PENT */
+	    case CPU_SUBTYPE_PENTPRO:
+	    case CPU_SUBTYPE_PENTII_M3:
+	    case CPU_SUBTYPE_PENTII_M5:
+		return(TRUE);
+	    default:
+		return(FALSE);
+	    }
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_MC680x0:
+	    switch(host_cpusubtype){
+	    case CPU_SUBTYPE_MC68040:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_MC68040:
+		case CPU_SUBTYPE_MC680x0_ALL: /* same as CPU_SUBTYPE_MC68030 */
+		    return(TRUE);
+		case CPU_SUBTYPE_MC68030_ONLY:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    case CPU_SUBTYPE_MC68030:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_MC680x0_ALL: /* same as CPU_SUBTYPE_MC68030 */
+		case CPU_SUBTYPE_MC68030_ONLY:
+		    return(TRUE);
+		case CPU_SUBTYPE_MC68040:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+		
+	    default: /* unknown host */
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_MC680x0_ALL: /* same as CPU_SUBTYPE_MC68030 */
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+	    }
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_MC88000:
+	    switch(host_cpusubtype){
+	    case CPU_SUBTYPE_MC88110:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_MC88110:
+		case CPU_SUBTYPE_MC88000_ALL:
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    default: /* unknown host */
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_MC88000_ALL:
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+	    }
+	    break; /* logically can't get here */
+	    
+	case CPU_TYPE_HPPA:
+	    switch(host_cpusubtype){
+	    case CPU_SUBTYPE_HPPA_7100LC:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_HPPA_ALL: /* same as CPU_SUBTYPE_HPPA_7100 */
+		case CPU_SUBTYPE_HPPA_7100LC:
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    case CPU_SUBTYPE_HPPA_7100:
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_HPPA_ALL: /* same as CPU_SUBTYPE_HPPA_7100 */
+		    return(TRUE);
+		case CPU_SUBTYPE_HPPA_7100LC:
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+
+	    default: /* unknown host */
+		switch(exec_cpusubtype){
+		case CPU_SUBTYPE_HPPA_ALL: /* same as CPU_SUBTYPE_HPPA_7100 */
+		    return(TRUE);
+		default:
+		    return(FALSE);
+		}
+		break; /* logically can't get here */
+	    }
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_SPARC:
+	    /*
+	     * For Sparc we only have the ALL subtype defined.
+	     */
+	    switch(exec_cpusubtype){
+	    case CPU_SUBTYPE_SPARC_ALL:
+		return(TRUE);
+	    default:
+		return(FALSE);
+	    }
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_VEO:  /* not used with the dynamic linker */
+	case CPU_TYPE_I860: /* not used with the dynamic linker */
+	default:
+	    return(FALSE);
+	}
+	return(FALSE); /* logically can't get here */
 }

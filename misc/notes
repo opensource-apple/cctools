@@ -7,6 +7,13 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.13 release (the cctools-483 release):
+- Fixed a bug in libtool(1)'s handling of -weak_framework and -weak_library
+  flags.  The code in the routine process() in libtool.c needed the same check
+  for -framework to avoid thinking the flag as a file name and trying to open
+  it.  Radar bug #3318491.
+- Changed libtool(1) to pass the -m flag on to the linker.  Radar bug #3305123.
+
 Changes for the 5.12 release (the cctools-474 release):
 - Fixed a bug in redo_prebinding that was leaking memory if the
   allow_missing_architectures parameter was used and the fat file did not

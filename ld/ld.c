@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -206,6 +205,12 @@ __private_extern__ struct symbol_list *save_symbols = NULL;
 __private_extern__ unsigned long nsave_symbols = 0;
 __private_extern__ struct symbol_list *remove_symbols = NULL;
 __private_extern__ unsigned long nremove_symbols = 0;
+
+/*
+ * -executable_path option's argument, executable_path is used to replace
+ * @executable_path for dependent libraries.
+ */
+__private_extern__ char *executable_path = NULL;
 #endif /* RLD */
 
 
@@ -1555,6 +1560,15 @@ char *envp[])
 			setup_symbol_list(argv[i+1], &save_symbols,
 					  &nsave_symbols);
 			exported_symbols_list = argv[i+1];
+			i += 1;
+			break;
+		    }
+		    else if(strcmp(p, "executable_path") == 0){
+			if(i + 1 >= argc)
+			    fatal("%s: argument missing", argv[i]);
+			if(executable_path != NULL)
+			    fatal("%s: multiply specified", argv[i]);
+			executable_path = argv[i+1];
 			i += 1;
 			break;
 		    }

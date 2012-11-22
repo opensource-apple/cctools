@@ -1,3 +1,13 @@
+Changes for the 5.13 release (the cctools-490 release):
+- Added the proto type for the new routine cpusubtype_execute() to the header
+  file <stuff/best_arch.c> for use by the dynamic linker.  Radar bug #3387962.
+
+Changes for the 5.13 release (the cctools-482 release):
+- Added the file <mach-o/dyld_priv.h> that contains the new
+  NSFindSectionAndOffsetInObjectFileImage() SPI.  Radar bug #3318440.
+- Updated the Makefile to install the new file <mach-o/dyld_priv.h> .
+  Radar bug #3318440.
+
 Changes for the 5.12 release (the cctools-477 release):
 - Changed <mach-o/kld.h> to make kld_load_basefile_from_memory() available for
   both __DYNAMIC__ and __STATIC__  and added kld_set_link_options() as well as

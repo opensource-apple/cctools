@@ -14,7 +14,7 @@ FILES = mach-o/ldsyms.h mach-o/reloc.h mach-o/dyld.h \
 	mach-o/ppc/swap.h mach-o/ppc/reloc.h
 
 LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
-	   mach-o/redo_prebinding.h \
+	   mach-o/redo_prebinding.h mach-o/dyld_priv.h \
 	   mach-o/i860/swap.h mach-o/i860/reloc.h \
 	   mach-o/hppa/swap.h mach-o/hppa/reloc.h \
 	   mach-o/m88k/swap.h mach-o/m88k/reloc.h \
@@ -136,6 +136,7 @@ common_install:
 	    ${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o
 	cd mach-o; \
 	    install -c -m 444 ${IFLAGS} sarld.h kld.h redo_prebinding.h \
+	    dyld_priv.h \
 	    ${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o
 	cd stuff; \
 	    install -c -m 444 ${IFLAGS} bool.h \

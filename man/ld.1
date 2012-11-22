@@ -1,4 +1,4 @@
-.TH LD 1 "April 17, 2003" "Apple Computer, Inc."
+.TH LD 1 "August 12, 2003" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -676,14 +676,6 @@ differently. When this option is specified,
 searches for framework `\fIname\fR.framework/\fIname\fR'
 first in any directories
 specified with the 
-.TP
-.BI "\-weak_framework " name[,suffix]
-The is the same as the
-.BI "\-framework " name[,suffix]
-but forces the framework and all references to it to be marked as weak imports.
-Care must be taken when using this as the use of the non-weak symbol references
-in an object file may cause the program to crash when the symbol or framework is
-not present at execution time.
 .B \-F
 option, then in the standard framework directories 
 .BR /Library/Frameworks ,
@@ -695,6 +687,14 @@ The placement of the
 option is significant, as it determines when and how the framework is searched. 
 If the optional suffix is specified the framework is first searched for the
 name with the suffix and then without.
+.TP
+.BI "\-weak_framework " name[,suffix]
+The is the same as the
+.BI "\-framework " name[,suffix]
+but forces the framework and all references to it to be marked as weak imports.
+Care must be taken when using this as the use of the non-weak symbol references
+in an object file may cause the program to crash when the symbol or framework is
+not present at execution time.
 .TP
 .BI \-F dir
 Add
@@ -720,6 +720,13 @@ specifies the path where the library normally resides.
 specifies the path of the library you want to use instead.
 For example, if you link to a library that depends upon the dynamic library libsys and you have libsys installed in a nondefault location, you would use this option:
 \fB\-dylib_file /lib/libsys_s.A.dylib:/me/lib/libsys_s.A.dylib\fR.
+.TP
+.BI \-executable_path " path_name"
+Specifies that
+.I path_name
+is is is used to replace
+.I @executable_path
+for dependent libraries.
 
 .PP
 The following options specify the output file format (the file type):

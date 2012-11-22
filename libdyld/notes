@@ -1,6 +1,10 @@
 TODO:
 - Test dlopen() with Apache, perl, and tcl.
 
+Changes for the 5.13 release (the cctools-482 release):
+- Added the SPI NSFindSectionAndOffsetInObjectFileImage() to ofi.c .  Radar
+  bug #3318440.
+
 Changes for the 5.12 release (the cctools-464 release):
 - Added the SPI NSHasModInitObjectFileImage() to ofi.c .  Radar bug #3196951.
 - Made changes to build cleanly with gcc3.3

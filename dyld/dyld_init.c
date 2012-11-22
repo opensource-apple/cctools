@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -124,6 +123,7 @@ char *dyld_image_suffix = NULL;
 char *dyld_insert_libraries = NULL;
 
 enum bool dyld_print_libraries = FALSE;
+static enum bool dyld_print_libraries_post_launch = FALSE;
 enum bool dyld_trace = FALSE;
 enum bool dyld_mem_protect = FALSE;
 enum bool dyld_ebadexec_only = FALSE;
@@ -398,6 +398,9 @@ char **envp)
 		"program not started)", argv[0]);
 	    link_edit_error(DYLD_FILE_ACCESS, EBADEXEC, argv[0]);
 	}
+	
+	if(dyld_print_libraries_post_launch == TRUE)
+	    dyld_print_libraries = TRUE;
 
 	/* release lock for dyld data structures */
 	release_lock();
@@ -543,6 +546,10 @@ char *envp[])
 		else if(strncmp(*p, "DYLD_PRINT_LIBRARIES=",
 		                sizeof("DYLD_PRINT_LIBRARIES=") - 1) == 0){
 		    dyld_print_libraries = TRUE;
+		}
+		else if(strncmp(*p, "DYLD_PRINT_LIBRARIES_POST_LAUNCH=",
+			sizeof("DYLD_PRINT_LIBRARIES_POST_LAUNCH=") - 1) == 0){
+		    dyld_print_libraries_post_launch = TRUE;
 		}
 		else if(strncmp(*p, "DYLD_TRACE=",
 		                sizeof("DYLD_TRACE=") - 1) == 0){

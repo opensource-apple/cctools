@@ -43,6 +43,7 @@ struct op {
 #define IMPL64		0x2
 #define OPTIONAL	0x4
 #define VMX		0x8
+#define CPU970		0x10 /* added to OPTIONAL insts that the 970 has */
 
 struct ppc_opcode {
    unsigned long opcode;
@@ -616,20 +617,20 @@ static const struct ppc_opcode ppc_opcodes[] = {
  { 0xfc000051, "fneg.",   {{21,5,FREG}, {11,5,FREG}} },
  { 0xfc000110, "fnabs",   {{21,5,FREG}, {11,5,FREG}} },
  { 0xfc000111, "fnabs.",  {{21,5,FREG}, {11,5,FREG}} },
- { 0xec000030, "fres",    {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
- { 0xec000031, "fres.",   {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
+ { 0xec000030, "fres",    {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
+ { 0xec000031, "fres.",   {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
  { 0xfc000018, "frsp",    {{21,5,FREG}, {11,5,FREG}} },
  { 0xfc000019, "frsp.",   {{21,5,FREG}, {11,5,FREG}} },
- { 0xfc000034, "frsqrte", {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
- { 0xfc000035, "frsqrte.",{{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
+ { 0xfc000034, "frsqrte", {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
+ { 0xfc000035, "frsqrte.",{{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
  { 0xfc00002e, "fsel",
 	{{21,5,FREG}, {16,5,FREG}, {6,5,FREG}, {11,5,FREG}} },
  { 0xfc00002f, "fsel.",
 	{{21,5,FREG}, {16,5,FREG}, {6,5,FREG}, {11,5,FREG}} },
- { 0xfc00002c, "fsqrt",   {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
- { 0xfc00002d, "fsqrt.",  {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
- { 0xec00002c, "fsqrts",  {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
- { 0xec00002d, "fsqrts.", {{21,5,FREG}, {11,5,FREG}}, OPTIONAL },
+ { 0xfc00002c, "fsqrt",   {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
+ { 0xfc00002d, "fsqrt.",  {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
+ { 0xec00002c, "fsqrts",  {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
+ { 0xec00002d, "fsqrts.", {{21,5,FREG}, {11,5,FREG}}, OPTIONAL|CPU970 },
  { 0xfc00065c, "fctid",   {{21,5,FREG}, {11,5,FREG}}, IMPL64 },
  { 0xfc00065d, "fctid.",  {{21,5,FREG}, {11,5,FREG}}, IMPL64 },
  { 0xfc00065e, "fctidz",  {{21,5,FREG}, {11,5,FREG}}, IMPL64 },
@@ -873,7 +874,8 @@ static const struct ppc_opcode ppc_opcodes[] = {
 
  { 0x7c0005aa, "stswi",   {{21,5,GREG}, {16,5,G0REG},{11,5,NUM0}}  },
 
- { 0x7c0007ae, "stfiwx",  {{21,5,FREG}, {16,5,G0REG},{11,5,GREG}}, OPTIONAL },
+ { 0x7c0007ae, "stfiwx",  {{21,5,FREG}, {16,5,G0REG},{11,5,GREG}},
+	OPTIONAL|CPU970 },
 
  { 0xd0000000, "stfs",    {{21,5,FREG}, {0,16,D},    {16,5,G0REG}} },
  { 0xd4000000, "stfsu",   {{21,5,FREG}, {0,16,D},    {16,5,GREG}} },
@@ -1008,8 +1010,10 @@ static const struct ppc_opcode ppc_opcodes[] = {
  { 0x7c2007ec, "dcbz128", {{16,5,G0REG}, {11,5,GREG}}, IMPL64|OPTIONAL },
  { 0x7c00006c, "dcbst",   {{16,5,G0REG}, {11,5,GREG}} },
  { 0x7c0000ac, "dcbf",    {{16,5,G0REG}, {11,5,GREG}} },
- { 0x7c00026c, "eciwx",   {{21,5,GREG},  {16,5,G0REG},{11,5,GREG}}, OPTIONAL },
- { 0x7c00036c, "ecowx",   {{21,5,GREG},  {16,5,G0REG},{11,5,GREG}}, OPTIONAL },
+ { 0x7c00026c, "eciwx",   {{21,5,GREG},  {16,5,G0REG},{11,5,GREG}},
+	OPTIONAL|CPU970 },
+ { 0x7c00036c, "ecowx",   {{21,5,GREG},  {16,5,G0REG},{11,5,GREG}},
+	OPTIONAL|CPU970 },
  { 0x7c0006ac, "eieio",   },
 /* Instructions (from book III) */
  { 0x4c000064, "rfi",     },
@@ -1028,17 +1032,17 @@ static const struct ppc_opcode ppc_opcodes[] = {
  { 0x7c000324, "slbmte",  {{21,5,GREG}, {11,5,GREG}}, IMPL64|OPTIONAL },
  { 0x7c0006a6, "slbmfev", {{21,5,GREG}, {11,5,GREG}}, IMPL64|OPTIONAL },
  { 0x7c000726, "slbmfee", {{21,5,GREG}, {11,5,GREG}}, IMPL64|OPTIONAL },
- { 0x7c000264, "tlbie",   {{11,5,GREG}}, OPTIONAL },
- { 0x7c000264, "tlbie",   {{11,5,GREG}, {21,1,NUM}}, IMPL64|OPTIONAL },
+ { 0x7c000264, "tlbie",   {{11,5,GREG}}, OPTIONAL|CPU970 },
+ { 0x7c000264, "tlbie",   {{11,5,GREG}, {21,1,NUM}}, IMPL64|OPTIONAL|CPU970 },
  { 0x7c000224, "tlbiel",  {{11,5,GREG}}, IMPL64|OPTIONAL },
- { 0x7c0002e4, "tlbia",   {{0}},	 OPTIONAL },
- { 0x7c00046c, "tlbsync", {{0}},	 OPTIONAL },
+ { 0x7c0002e4, "tlbia",   {{0}},	 OPTIONAL|CPU970 },
+ { 0x7c00046c, "tlbsync", {{0}},	 OPTIONAL|CPU970 },
  { 0x7c1c43a6, "mttbl",   {{21,5,GREG}} },
  { 0x7c1d43a6, "mttbu",   {{21,5,GREG}} },
  { 0x7c0002e6, "mftb",    {{21,5,GREG}, {11,10,SPREG}} },
  { 0x7c0c42e6, "mftb",    {{21,5,GREG}} },
  { 0x7c0d42e6, "mftbu",   {{21,5,GREG}} },
- { 0x00000200, "attn",    {{11,15,NUM}},	 OPTIONAL },
+ { 0x00000200, "attn",    {{11,15,NUM}},	 OPTIONAL|CPU970 },
 
 /* Instructions (from book IV) */
  { 0x24000000, "dozi",    {{21,5,GREG}, {16,5,GREG}, {0,16,SI}}, CPU601 },

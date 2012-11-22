@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -4363,7 +4362,8 @@ reset_merged_sections(void)
 /*
  * zero_merged_sections_sizes() is called from rld_load() to zero the size field
  * in the merged sections so the sizes can be accumulated and free the literal
- * data for any literal sections.
+ * data for any literal sections.  Also the alignment of the existing sections
+ * is reset to zero.
  */
 __private_extern__
 void
@@ -4379,6 +4379,7 @@ zero_merged_sections_sizes(void)
 	    while(*q){
 		ms = *q;
 		ms->s.size = 0;
+		ms->s.align = 0;
 		if(ms->literal_data != NULL){
 		    if(ms->literal_free != NULL){
 			(*ms->literal_free)(ms->literal_data, ms);
@@ -4390,6 +4391,7 @@ zero_merged_sections_sizes(void)
 	    while(*q){
 		ms = *q;
 		ms->s.size = 0;
+		ms->s.align = 0;
 		q = &(ms->next);
 	    }
 	    p = &(msg->next);

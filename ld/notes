@@ -23,6 +23,45 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.13 release (the cctools-490 release):
+- Fixed a bug in check_cur_obj() in pass1.c that was incorrectly causing the
+  output cpusubtype to be set when linking against a dylib or a bundle_loader
+  with a specific cpusubtype.  Radar bug #3387962.
+
+Changes for the 5.13 release (the cctools-485 release):
+- Fixed some bugs in the use of flags that force the weak linking of dynamic
+  libraries when an umbrella is force weak linked and their are only references
+  to symbols in its sub-frameworks.  Two fixes were in setup_sub_images() in
+  pass1.c to check the force_weak_dylib of the umbrella library being set up and
+  if TRUE set force_weak_dylib in the sub-frameworks and sub-umbrellas.
+  The other fix was in output_headers() in pass2.c to test for the library
+  having force_weak_dylib set and then using LC_LOAD_WEAK_DYLIB even it no
+  symbols are referenced. Radar bug #3337262.
+
+Changes for the 5.13 release (the cctools-484 release):
+- Fixed a bug in that was causing an error message when a -bundle_loader 
+  executable had a __UNIXSTACK segment.  The fix was in check_cur_obj() in
+  pass1.c where it needed to check for a segment name of SEG_UNIXSTACK and not
+  issue an error about the segment having no sections.  Radar bug #3329902.
+
+Changes for the 5.13 release (the cctools-483 release):
+- Fixed a bug in the handling of -lx when the string x contained a dot character
+  like -ltcl8.4 .  In pass1() in pass1.c the code to parse out things like
+  -lcrt0.o used the same char * variable p as the code that follows it to then
+  parse out and search for the library.  Because the string ended in a ".4" this
+  caused the broken logic to free the variable p when it was not malloc'ed
+  leading to a warning message printed by malloc().  Radar bug #3285575.
+
+Changes for the 5.13 release (the cctools-480 release):
+- Changed zero_merged_sections_sizes() in sections.c (which is used only for
+  kld_load()) to also zero out the section alignment of existing sections.
+  Radar bug #3261751.
+
+Changes for the 5.13 release (the cctools-479 release):
+- Added the -executable_path <path_name> option where <path_name> is is used to
+  replace @executable_path for dependent libraries.  The change was in
+  open_dylib() in pass1.c as well in ld.[ch] .  Radar bug #3278995.
+
 Changes for the 5.12 release (the cctools-477 release):
 - Picked up changes to kld interfaces.  Changes in rld.c and layout.c .
   Radar bug #3270588.

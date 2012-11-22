@@ -4,6 +4,12 @@ Changes for the 5.12 release (the cctools-464 release):
   - Fixed warnings for "comparison between signed and unsigned" in arch.c,
     getsecbyname.c and getsegbyname.c.
 
+Changes for the 5.12 release (the cctools-490 release):
+- Fixed NXFindBestFatArch() in arch.c to not select a PowerPC 970 if not on a
+  PowerPC 970.  And fixed it when passed the family ALL type and there is not
+  an exact match to select the cpusubtype's from the "top" of the list going
+  all possible subtypes.  Radar bug #3387962.
+
 Changes for the 5.12 release (the cctools-449 release):
 - Added the arch flag i686 to be the same as pentpro in arch.c. Radar bug
   #3111977.

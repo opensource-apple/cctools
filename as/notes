@@ -25,6 +25,15 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.12 release (the cctools-487 release):
+- Fixed a bug that should have allow the 64-bit compare instructions and other
+  optional instructions when -arch ppc970 was used.  The fix was to add the
+  constant CPU970 in ppc-opcode.h and mark the optional instructions that the
+  970 implements.  The other part of this change was in md_assemble() in ppc.c
+  where it checks for 64-bit compare instructions and for optional instructions.
+  The error messages were also updated to include the instruction name.  Radar
+  bug #3364523.
+
 Changes for the 5.12 release (the cctools-475 release):
 - Fixed ppc-check.c to not produce illegal operands.
 

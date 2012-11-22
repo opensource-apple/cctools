@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -26,6 +25,7 @@
 #endif
 
 #include <mach/machine.h>
+#include <stuff/bool.h>
 
 /*
  * cpusubtype_findbestarch() is passed a cputype and cpusubtype and a set of
@@ -56,3 +56,17 @@ __private_extern__ cpu_subtype_t cpusubtype_combine(
     cpu_type_t cputype,
     cpu_subtype_t cpusubtype1,
     cpu_subtype_t cpusubtype2);
+
+/*
+ * cpusubtype_execute() returns TRUE if the exec_cpusubtype can be used for
+ * execution on the host_cpusubtype for the specified cputype.  If the
+ * exec_cpusubtype can't be run on the host_cpusubtype FALSE is returned
+ * indicating it is an error to combine them.  This can also return FALSE and
+ * if new cputypes or cpusubtypes are added and an old version of this routine
+ * is used.  But if the cpusubtypes are the same they can always be executed
+ * and this routine will return TRUE.
+ */
+__private_extern__ enum bool cpusubtype_execute(
+    cpu_type_t host_cputype,
+    cpu_subtype_t host_cpusubtype, /* can NOT be the ALL type */
+    cpu_subtype_t exec_cpusubtype);/* can be the ALL type */

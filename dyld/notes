@@ -30,6 +30,51 @@ TODO for MacOS X:
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
 
+Changes for the 5.13 release (the cctools-490 release):
+- Change the call to cpusubtype_combine() in map_image() in image.c to call the
+  new routine cpusubtype_execute() which correctly checks if the cpusubtype can
+  be executed on the host cpu.  Radar bug #3387962.
+
+Changes for the 5.13 release (the cctools-488 release):
+- Added an implementation of gettimeofday() to images.c so that this does not
+  cause the libc.a code to need the notify API which is not in libc.a .
+  Radar bug #3375399.
+
+Changes for the 5.13 release (the cctools-487 release):
+- Fixed a bug when trying use prebound libraries post launch and they can't be
+  used and there is an image init routine.  In this case the code in 
+  link_in_need_modules() calls out to the user code that can return into dyld
+  but without clearing the global trying_to_use_prebinding_post_launch.
+  This causes undo_prebound_images() to be called when the code gets back into
+  dyld and mess up the relocated items.  Radar bug #3364959.
+
+Changes for the 5.13 release (the cctools-486 release):
+- Added the environment variable DYLD_PRINT_LIBRARIES_POST_LAUNCH to turn on
+  printing of libraries post launch.  Radar bug #3342354.
+
+Changes for the 5.13 release (the cctools-484 release):
+- Fixed a bug in the handling of a missing weak library in an umbrella library.
+  The routine setup_sub_images() needed to check the dependent for being a 
+  missing weak library before using its mach header pointer.  Radar bug
+  #3328875.
+
+Changes for the 5.13 release (the cctools-481 release):
+- Fixed a peformance problem when trying use prebound libraries post launch for
+  bundel loading.  The test of tried_to_use_prebinding_post_launch and calls to 
+  find_twolevel_prebound_lib_subtrees() and undo_prebound_images() in
+  link_in_need_modules() in symbols.c were done after the call to
+  resolve_undefineds().  The module state for the libraries trying to have
+  their prebound state used post launch defaulted to 0 (UNKINKED) and cause
+  resolve_undefineds() to chase down all their references.  Radar bug #3303038.
+
+Changes for the 5.13 release (the cctools-479 release):
+- Changed it so multiple definition errors should print out physical name not
+  the "logical name".  This is a change to the call multiply_defined_error()
+  in link_object_module() to pass object_image->image.physical_name instead of
+  object_image->image.name for the new_module_name parameter and to change the
+  setting of prev_module_name in the case of an object file from
+  prev_image->physical_name instead of prev_image->name .  Radar bug #3295565.
+
 Changes for the 5.12 release (the cctools-478 release):
 - Fixed a problem that was causing things to be doublely relocated.  The problem
   was that a module can be in the REGISTERING state but not fully bound.  Then

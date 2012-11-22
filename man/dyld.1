@@ -1,4 +1,4 @@
-.TH DYLD 1 "October 3, 2002" "Apple Computer, Inc."
+.TH DYLD 1 "July 24, 2002" "Apple Computer, Inc."
 .SH NAME
 dyld \- the dynamic link editor
 .SH SYNOPSIS
@@ -17,6 +17,8 @@ DYLD_FORCE_FLAT_NAMESPACE
 DYLD_IMAGE_SUFFIX
 .br
 DYLD_PRINT_LIBRARIES
+.br
+DYLD_PRINT_LIBRARIES_POST_LAUNCH
 .br
 DYLD_EBADEXEC_ONLY
 .br
@@ -131,6 +133,11 @@ standard error) the filenames of the libraries the program is using.
 This is useful to make sure that the use of
 .SM DYLD_LIBRARY_PATH
 is getting what you want.
+.TP
+.B DYLD_PRINT_LIBRARIES_POST_LAUNCH
+This does the same as
+.SM DYLD_PRINT_LIBRARIES
+but the printing starts after the program gets to its entry point.
 .TP
 .B DYLD_EBADEXEC_ONLY
 When this is set, the dynamic linker does all of the work needed

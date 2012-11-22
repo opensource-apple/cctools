@@ -864,7 +864,8 @@ char *op)
 	    (insn.opcode & 0xfc400000) == 0x2c000000 ||  /* cmpi */
 	    (insn.opcode & 0xfc400000) == 0x28000000) && /* cmpli */
 	   (insn.opcode & 0x00200000) == 0x00200000 &&   /* the L bit */
-	   !force_cpusubtype_ALL){
+	   !force_cpusubtype_ALL &&
+	   archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970){
 	    as_warn("Invalid form of the instruction (64-bit compares not "
 		    "allowed without -force_cpusubtype_ALL option)");
 	}
@@ -919,27 +920,32 @@ char *op)
 		as_warning("not allowed 601 instruction \"%s\"", format->name);
 	    if((format->cpus & IMPL64) == IMPL64 &&
 	        archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970){
-		as_bad("instruction is only for 64-bit implementations (not "
-		       "allowed without -force_cpusubtype_ALL option)");
+		as_bad("%s instruction is only for 64-bit implementations (not "
+		       "allowed without -force_cpusubtype_ALL option)",
+		       format->name);
 	    }
-	    if(format->cpus == OPTIONAL){
-		as_bad("instruction is optional for the PowerPC (not "
-		       "allowed without -force_cpusubtype_ALL option)");
+	    if((format->cpus & OPTIONAL) == OPTIONAL){
+		if((format->cpus & CPU970) == CPU970 &&
+		   archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970)
+		    as_bad("%s instruction is optional for the PowerPC (not "
+			   "allowed without -force_cpusubtype_ALL option)",
+			   format->name);
 	    }
 	    if(format->cpus == VMX &&
 	       (archflag_cpusubtype != CPU_SUBTYPE_POWERPC_7400 &&
 	        archflag_cpusubtype != CPU_SUBTYPE_POWERPC_7450 &&
 	        archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970)){
-		as_bad("vector instruction is optional for the PowerPC (not "
-		       "allowed without -force_cpusubtype_ALL option)");
+		as_bad("%s vector instruction is optional for the PowerPC (not "
+		       "allowed without -force_cpusubtype_ALL option)",
+		       format->name);
 	    }
 	    else if(md_cpusubtype == CPU_SUBTYPE_POWERPC_ALL){
 		switch(format->cpus){
 		case CPU601:
 		    if(archflag_cpusubtype != -1 &&
 		       archflag_cpusubtype != CPU_SUBTYPE_POWERPC_601)
-			as_bad("601 instruction not allowed with -arch %s",
-			       specific_archflag);
+			as_bad("%s 601 instruction not allowed with -arch %s",
+			       format->name, specific_archflag);
 		    else{
 			file_spec = logical_input_file ?
 				    logical_input_file : physical_input_file;
@@ -955,8 +961,8 @@ char *op)
 		case CPU601:
 		    if(archflag_cpusubtype != -1 &&
 		       archflag_cpusubtype != CPU_SUBTYPE_POWERPC_601)
-			as_bad("601 instruction not allowed with -arch %s",
-			       specific_archflag);
+			as_bad("%s 601 instruction not allowed with -arch %s",
+			       format->name, specific_archflag);
 		    else{
 			if(md_cpusubtype != CPU_SUBTYPE_POWERPC_601)
 			    as_bad("more than one implementation specific "

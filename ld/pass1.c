@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -350,6 +349,7 @@ enum bool force_weak)
 		    fatal("can't locate file for: %s", name);
 	    }
 	    else{
+		p = NULL;
 		if(dynamic == TRUE){
 		    if(search_paths_first == TRUE){
 			search_paths_for_lname(&name[2], &file_name, &fd);
@@ -369,7 +369,8 @@ enum bool force_weak)
 		}
 		if(fd == -1)
 		    fatal("can't locate file for: %s", name);
-		free(p);
+		if(p != NULL)
+		    free(p);
 	    }
 	}
 	else if(framework_name){
@@ -3105,6 +3106,8 @@ struct dynamic_library *p)
 			if(p->umbrella_name != NULL &&
 			   strcmp(sub_framework_name, p->umbrella_name) == 0){
 			    p->sub_images[n++] = deps[i];
+			    if(p->force_weak_dylib == TRUE)
+				deps[i]->force_weak_dylib = TRUE;
 			    goto next_dep;
 			}
 		    }
@@ -3139,8 +3142,11 @@ next_dep:	;
 				break;
 			    }
 			}
-			if(found == FALSE)
+			if(found == FALSE){
 			    p->sub_images[n++] = deps[j];
+			    if(p->force_weak_dylib == TRUE)
+				deps[j]->force_weak_dylib = TRUE;
+			}
 
 			for(k = 0; k < deps[j]->nsub_images; k++){
 			    /* make sure this image is not already on the list*/
@@ -3510,8 +3516,18 @@ struct dynamic_library *p)
 	 */
 	if(p->dylib_file != NULL)
 	    file_name = p->file_name;
-	else
-	    file_name = p->dylib_name;
+	else{
+	    if(executable_path != NULL &&
+	       strncmp(p->dylib_name, "@executable_path",
+                       sizeof("@executable_path") - 1) == 0){
+		file_name = mkstr(executable_path, 
+				  p->dylib_name + sizeof("@executable_path") -1,
+				  NULL);
+	    }
+	    else{
+		file_name = p->dylib_name;
+	    }
+	}
 	if((fd = open(file_name, O_RDONLY, 0)) == -1){
 	    if(undefined_flag != UNDEFINED_SUPPRESS){
 		system_warning("can't open dynamic library: %s (checking for "
@@ -4211,7 +4227,8 @@ enum bool bundle_loader)
 				arch_flag.cpusubtype, arch_flag.name);
 			    }
 			}
-			else
+			else if(mh->filetype != MH_DYLIB &&
+				bundle_loader == FALSE)
 			    arch_flag.cpusubtype = new_cpusubtype;
 		    }
 		}
@@ -4361,7 +4378,8 @@ enum bool bundle_loader)
 		 */
 		if(sg->nsects == 0){
 		    if(strcmp(sg->segname, SEG_PAGEZERO) != 0 &&
-		       strcmp(sg->segname, SEG_LINKEDIT) != 0){
+		       strcmp(sg->segname, SEG_LINKEDIT) != 0 &&
+		       strcmp(sg->segname, SEG_UNIXSTACK) != 0){
 			error_with_cur_obj("segment %.16s contains no "
 					   "sections and can't be link-edited",
 					   sg->segname);

@@ -5,6 +5,14 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.12 release (the cctools-490 release):
+- Fixed cpusubtype_findbestarch() in best_arch.c to not select a PowerPC 970
+  if not on a PowerPC 970.  And fixed it when passed the family ALL type and
+  there is not an exact match to select the cpusubtype's from the "top" of the
+  list going all possible subtypes.  Also added the new routine
+  cpusubtype_execute() to best_arch.c for use by the dynamic linker.
+  Radar bug #3387962.
+
 Changes for the 5.12 release (the cctools-469 release):
 - Fixed a problem with the added checks of the of the dylib_module struct in
   ofile.c made in cctools-466 for Radar bug #3208399 where it did not work if

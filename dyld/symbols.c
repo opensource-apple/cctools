@@ -3,21 +3,20 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.1 (the "License").  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -2170,7 +2169,7 @@ enum bool bind_fully)
 		    }
 		    else{
 			prev_library_name = NULL;
-			prev_module_name = prev_image->name;
+			prev_module_name = prev_image->physical_name;
 		    }
 		    if((object_image->image.has_coalesced_sections == TRUE &&
 		        (are_symbols_coalesced(&(object_image->image),
@@ -2245,7 +2244,7 @@ enum bool bind_fully)
 					   symbols + i,
 					   &object_image->module,
 					   NULL,
-					   object_image->image.name,
+					   object_image->image.physical_name,
 					   prev_image,
 					   prev_symbol,
 					   prev_module,
@@ -4828,6 +4827,20 @@ struct object_image *reloc_just_this_object_image)
 	DYLD_TRACE_SYMBOLS_START(DYLD_TRACE_link_in_need_modules);
 
 	/*
+	 * If when loading libraries and its dependent libraries we tried to
+	 * use the prebinding then we need to cache this in a local variable.
+	 * Then we need to setup the libraries that can have their prebinding
+	 * used and undo those that could not.  Later we then need to cause the
+	 * module init routines to be run in those prebound libraries. 
+	 */
+	tried_to_use_prebinding_post_launch = 
+	    trying_to_use_prebinding_post_launch;
+	if(tried_to_use_prebinding_post_launch == TRUE){
+	    find_twolevel_prebound_lib_subtrees();
+	    undo_prebound_images(TRUE);
+	}
+
+	/*
 	 * Resolve all non-lazy symbol references this program currently
 	 * has so it can be continued.
 	 */
@@ -4870,20 +4883,6 @@ struct object_image *reloc_just_this_object_image)
 	}
 
 	/*
-	 * If when loading libraries and its dependent libraries we tried to
-	 * use the prebinding then we need to cache this in a local variable.
-	 * Then we need to setup the libraries that can have their prebinding
-	 * used and undo those that could not.  Later we then need to cause the
-	 * module init routines to be run in those prebound libraries. 
-	 */
-	tried_to_use_prebinding_post_launch = 
-	    trying_to_use_prebinding_post_launch;
-	if(tried_to_use_prebinding_post_launch == TRUE){
-	    find_twolevel_prebound_lib_subtrees();
-	    undo_prebound_images(TRUE);
-	}
-
-	/*
 	 * Now do all the relocation of modules being linked to that resolved
 	 * undefined symbols.
 	 */
@@ -4919,6 +4918,15 @@ struct object_image *reloc_just_this_object_image)
 	    clear_remove_on_error_libraries();
 	    return_on_error = FALSE;
 	}
+
+	/*
+	 * Before calling anything in the user's code we need to clear the
+	 * global trying_to_use_prebinding_post_launch so that if when calling
+	 * the user's code we come back we don't cause undo_prebound_images() to
+	 * be called again and mess up the relocated items.
+	 */
+	if(tried_to_use_prebinding_post_launch == TRUE)
+	    trying_to_use_prebinding_post_launch = FALSE;
 
 	/*
 	 * Now call the functions that were registered to be called when an

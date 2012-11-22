@@ -15,7 +15,7 @@ MAN3 = kld.3 dyld.3 dyld_debug.3 arch.3 get_end.3 end.3 getsectbyname.3 \
 MAN5 = Mach-O.5 a.out.5 ranlib.5 stab.5
 MANL = cmpshlib.1 indr.1 mkshlib.1 checksyms.1 seg_addr_table.1 \
        check_dylib.1
-MANL3 = libsyminfo.3
+MANL3 = libsyminfo.3 NSObjectFileImage_priv.3
 
 INSTALL_FILES = Makefile $(COMMON_MAN1) $(OTHER_MAN1) $(MAN3) $(MAN5) $(MANL) $(MANL3)
 
