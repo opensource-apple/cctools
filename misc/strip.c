@@ -1288,13 +1288,18 @@ struct object *object)
 		else if (object->dyld_info->rebase_size != 0)
 		    dyld_info_end = object->dyld_info->rebase_off
 			+ object->dyld_info->rebase_size;
-		object->output_dyld_info = object->object_addr + dyld_info_start; 
+		object->output_dyld_info = object->object_addr +dyld_info_start; 
 		object->output_dyld_info_size = dyld_info_end - dyld_info_start;
 		object->output_sym_info_size += object->output_dyld_info_size;
-		/* warn about strip -s or -R on a final linked image with dyld_info */
+		/*
+		 * Warn about strip -s or -R on a final linked image with
+		 * dyld_info.
+		 */
 		if(nsave_symbols != 0){
-		    warning_arch(arch, NULL, "removing global symbols from a final linked"
-			    " no longer supported.  Use -exported_symbols_list at link time when building: ");
+		    warning_arch(arch, NULL, "removing global symbols from a "
+			         "final linked no longer supported.  Use "
+				 "-exported_symbols_list at link time when "
+				 "building: ");
 		}
 	    }
 	    if(object->split_info_cmd != NULL){
@@ -1302,6 +1307,12 @@ struct object *object)
 		    object->split_info_cmd->dataoff;
 		object->output_split_info_data_size = 
 		    object->split_info_cmd->datasize;
+	    }
+	    if(object->func_starts_info_cmd != NULL){
+		object->output_func_start_info_data = object->object_addr +
+		    object->func_starts_info_cmd->dataoff;
+		object->output_func_start_info_data_size = 
+		    object->func_starts_info_cmd->datasize;
 	    }
 	    if(object->code_sig_cmd != NULL){
 #ifndef NMEDIT
@@ -1434,6 +1445,12 @@ struct object *object)
 		    object->output_sym_info_size +=
 			object->split_info_cmd->datasize;
 		}
+		if(object->func_starts_info_cmd != NULL){
+		    object->input_sym_info_size +=
+			object->func_starts_info_cmd->datasize;
+		    object->output_sym_info_size +=
+			object->func_starts_info_cmd->datasize;
+		}
 		if(object->code_sig_cmd != NULL){
 		    object->input_sym_info_size =
 			rnd(object->input_sym_info_size, 16);
@@ -1508,6 +1525,11 @@ struct object *object)
 		if(object->split_info_cmd != NULL){
 		    object->split_info_cmd->dataoff = offset;
 		    offset += object->split_info_cmd->datasize;
+		}
+
+		if(object->func_starts_info_cmd != NULL){
+		    object->func_starts_info_cmd->dataoff = offset;
+		    offset += object->func_starts_info_cmd->datasize;
 		}
 
 		if(object->st->nsyms != 0){
@@ -4018,6 +4040,10 @@ struct object *object)
 	    case LC_SEGMENT_SPLIT_INFO:
 		object->split_info_cmd = (struct linkedit_data_command *)lc1;
 		break;
+	    case LC_FUNCTION_STARTS:
+		object->func_starts_info_cmd =
+				         (struct linkedit_data_command *)lc1;
+		break;
 	    case LC_CODE_SIGNATURE:
 		object->code_sig_cmd = (struct linkedit_data_command *)lc1;
 		break;
@@ -4126,6 +4152,10 @@ struct object *object)
 		break;
 	    case LC_SEGMENT_SPLIT_INFO:
 		object->split_info_cmd = (struct linkedit_data_command *)lc1;
+		break;
+	    case LC_FUNCTION_STARTS:
+		object->func_starts_info_cmd =
+					 (struct linkedit_data_command *)lc1;
 		break;
 	    }
 	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);

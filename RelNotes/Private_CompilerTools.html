@@ -1,9 +1,9 @@
 <HTML>
-<!--This file created 3/29/10 1:32 PM by Claris Home Page version 3.0-->
+<!--This file created 9/8/10 1:22 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=92 BOTTOM=1141 LEFT=542 RIGHT=1284>
+   <X-CLARIS-WINDOW TOP=88 BOTTOM=1082 LEFT=263 RIGHT=843>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
@@ -12,7 +12,7 @@
 2010 by Apple, Inc. All Rights Reserved.</FONT></P>
 
 <H2>Private Mac OS X Xcode 3.2.3 Developer Release:<BR>
-Compiler Tools (cctools-782)</H2>
+Compiler Tools (cctools-795)</H2>
 
 <P>This file contains release notes for the 5.28 release of the
 Compiler Tools for the Mac OS X Xcode 3.2.3 Developer Release. This
@@ -29,6 +29,190 @@ file contains information about the following topics:</P>
 
 <H2>Notes Specific to Release 5.28 (Mac OS X Xcode 3.2.3 Developer
 Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-794 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed cft_insert(1) so it will allow an LC_FUNCTION_STARTS load command
+   in the binary it operates on.  Radar bug #8490836.</LI>
+   
+   <LI>Added more subsystem types to mtoc(1).  Radar bug #8492168.</LI>
+
+   <LI>Fixed codesign_allocate() so it can resign a the mach_kernel.
+   Radar bug #8308587.</LI>
+
+   <LI>Fixed otool(1) correctly disassemble the intel movslq instruction when
+   the source is %r13d.  Radar bug #8325388.</LI>
+
+   <LI>Added a check to the assembler so it will correctly detect an error
+   when trying to encode a scattered relocation entry that overflows the 24-bit
+   section offset field.  Radar bug #8348673.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-793 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed another bug in as(1) with -g and producing dwarf debugging
+   information for assembly source files.  Which was missing the NULL DIE
+   terminating the Compile Unit DIE's.  Radar bug #8453745.</LI>
+   
+   <LI>Added MH_NO_HEAP_EXECUTION to <mach-o/loader.h> and support for
+   printing the flag in otool(1).  Radar bug #8457105.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-792 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed bugs in as(1) with -g and producing dwarf debugging
+   information for assembly source files.  Radar bugs #8387908 and
+   #8425965.</LI>
+   
+   <LI>Fixed a bug in nm(1) with the -m option that incorrectly showed
+   some undefined symbols as [symbol resolver]. Radar bug #8429570.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-791 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed strip(1) and other tools writing Mach-O files with
+   LC_FUNCTION_STARTS load commands that produced bad Mach-O files.
+   Radar bug #8401082.</LI>
+   
+   <LI>Fixed mtoc(1) to correctly generate relocations and correctly
+   calculate SizeOfImage. Radar bug #8211617.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-790 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the cctools project to not build ld_classic(1) running
+   on arm. Radar bug #8286305.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-789 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added support for the arm Media and VFP Feature Registers 1
+   and 0. Radar bug #8246341.</LI>
+   
+   <LI>Changed the cctools project to build without the PowerPC
+   system headers installed. Radar bug #8257646.</LI>
+   
+   <LI>Fixed a bug where the tools would incorrectly report duplicate
+   LC_VERSION_MIN_* load commands. Radar bug #8274584.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-788 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed bug introduced with the change to Radar bug #8192009
+   where the cctools_ofiles project will not build the libmacho
+   dylibs for OS releases. Radar bug #8218646.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-787 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the assembler so it is not built with
+   -mdynamic-no-pic. Radar bug #8207834.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-786 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the tools ar(1), libtool(1) and ranlib(1) to set the
+   date in archives to zero if the environment variable ZERO_AR_DATE
+   is set. Radar bug #7919021.</LI>
+   
+   <LI>Added the .symbol_resolver directive assembler directive and
+   changed nm(1) to print &#91;symbol resolver&#93; for these symbols
+   when the -m option is used. Radar bug #7901954.</LI>
+   
+   <LI>Changed lipo(1) to attempt to stop a crash if the file can't
+   be paged in after it has been successfully mapped. Radar bug
+   #8087586.</LI>
+   
+   <LI>Changed the cctools_ofiles project build for developer tools
+   to not build the libmacho dylibs. Radar bug #8192009.</LI>
+   
+   <LI>Changed mtoc(1) support building XIP PEI/COFF images in all
+   cases. Radar bug #8197128.</LI>
+   
+   <LI>Changed mtoc(1) to zero pad PE/COFF sections to support XIP
+   PE/COFF images. Radar bug #8199851.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-785 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in as(1) when -g was used on an empty assembly
+   file that caused it to crash. Radar bug #8154276.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-784 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in as(1) when generating displacements for -arch
+   i386 and TLVP@ expressions in use of instructions. Radar bug
+   #8113809.</LI>
+   
+   <LI>Added generating dwarf debugging information for assembly
+   source files when the -g option is specified. Radar bug
+   #7580966.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-783 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in libtool(1) when the -arch_only flag was used
+   with armv6 or armv7 that did not create a thin files when both
+   types of objects were in the input . Radar bug #7864127.</LI>
+   
+   <LI>Added a check in the assembler so it will not try to create an
+   object file with more than the maximum number of sections. Radar
+   bug #7920267.</LI>
+   
+   <LI>Added support for the new LC_VERSION_MIN_* and
+   LC_FUNCTION_STARTS load commands. Radar bug #7902277.</LI>
+   
+   <LI>Fixed a bug in otool(1) with -ov that did not print the
+   Objective-C 2 meta data in iOS simulator binaries. Radar bug
+   #7912209.</LI>
+   
+   <LI>Fixed a bug in the arm assembler that was incorrectly using
+   the thumb 2 nop when -arch armv6 was specified and and unified
+   syntax was used. Radar bug #7876935.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-782 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added support for thread local variables. Radar bug
+   #7796734.</LI>
+   
+   <LI>Added the -llvm-mc option to the assembler driver as(1) to run
+   llvm-mc instead of the GNU-based assembler. Radar bug
+   #7837868.</LI>
+   
+   <LI>Remove Homewood for trains that use OLD_LIBKLD. Radar bug
+   #7837961</LI>
+   
+   <LI>Added the -llvm-mc option to otool(1) to use the llvm-mc
+   register names for control registers and debug registers.</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-781 for
 the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>

@@ -1692,6 +1692,10 @@ NS32:
 		printf(" NO_REEXPORTED_DYLIBS");
 		f &= ~MH_NO_REEXPORTED_DYLIBS;
 	    }
+	    if(f & MH_NO_HEAP_EXECUTION){
+		printf(" MH_NO_HEAP_EXECUTION");
+		f &= ~MH_NO_HEAP_EXECUTION;
+	    }
 	    if(f != 0 || flags == 0)
 		printf(" 0x%08x", (unsigned int)f);
 	    printf("\n");
@@ -1751,8 +1755,9 @@ enum bool very_verbose)
     struct linkedit_data_command ld;
     struct rpath_command rpath;
     struct encryption_info_command encrypt;
-     struct dyld_info_command dyld_info;
-   uint64_t big_load_end;
+    struct dyld_info_command dyld_info;
+    struct version_min_command vd;
+    uint64_t big_load_end;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != load_commands_byte_sex;
@@ -2077,6 +2082,7 @@ enum bool very_verbose)
 
 	    case LC_CODE_SIGNATURE:
 	    case LC_SEGMENT_SPLIT_INFO:
+	    case LC_FUNCTION_STARTS:
 		memset((char *)&ld, '\0', sizeof(struct linkedit_data_command));
 		size = left < sizeof(struct linkedit_data_command) ?
 		       left : sizeof(struct linkedit_data_command);
@@ -2117,6 +2123,17 @@ enum bool very_verbose)
 		if(swapped)
 		    swap_dyld_info_command(&dyld_info, host_byte_sex);
 		print_dyld_info_info_command(&dyld_info, object_size);
+		break;
+
+	    case LC_VERSION_MIN_MACOSX:
+	    case LC_VERSION_MIN_IPHONEOS:
+		memset((char *)&vd, '\0', sizeof(struct version_min_command));
+		size = left < sizeof(struct version_min_command) ?
+		       left : sizeof(struct version_min_command);
+		memcpy((char *)&vd, (char *)lc, size);
+		if(swapped)
+		    swap_version_min_command(&vd, host_byte_sex);
+		print_version_min_command(&vd, object_size);
 		break;
 
 	    default:
@@ -2506,6 +2523,16 @@ enum bool verbose)
 		printf(" S_DTRACE_DOF\n");
 	    else if(section_type == S_LAZY_DYLIB_SYMBOL_POINTERS)
 		printf(" S_LAZY_DYLIB_SYMBOL_POINTERS\n");
+	    else if(section_type == S_THREAD_LOCAL_REGULAR)
+		printf(" S_THREAD_LOCAL_REGULAR\n");
+	    else if(section_type == S_THREAD_LOCAL_ZEROFILL)
+		printf(" S_THREAD_LOCAL_ZEROFILL\n");
+	    else if(section_type == S_THREAD_LOCAL_VARIABLES)
+		printf(" S_THREAD_LOCAL_VARIABLES\n");
+	    else if(section_type == S_THREAD_LOCAL_VARIABLE_POINTERS)
+		printf(" S_THREAD_LOCAL_VARIABLE_POINTERS\n");
+	    else if(section_type == S_THREAD_LOCAL_INIT_FUNCTION_POINTERS)
+		printf(" S_THREAD_LOCAL_INIT_FUNCTION_POINTERS\n");
 	    else
 		printf(" 0x%08x\n", (unsigned int)section_type);
 
@@ -2541,7 +2568,8 @@ enum bool verbose)
 	if(section_type == S_SYMBOL_STUBS ||
 	   section_type == S_LAZY_SYMBOL_POINTERS ||
 	   section_type == S_LAZY_DYLIB_SYMBOL_POINTERS ||
-	   section_type == S_NON_LAZY_SYMBOL_POINTERS)
+	   section_type == S_NON_LAZY_SYMBOL_POINTERS ||
+	   section_type == S_THREAD_LOCAL_VARIABLE_POINTERS)
 	    printf(" (index into indirect symbol table)\n");
 	else
 	    printf("\n");
@@ -3201,7 +3229,7 @@ struct uuid_command *uuid)
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf("   uuid %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-"
+	printf("    uuid %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-"
 	       "%02X%02X%02X%02X%02X%02X\n",
 	       (unsigned int)uuid->uuid[0], (unsigned int)uuid->uuid[1],
 	       (unsigned int)uuid->uuid[2],  (unsigned int)uuid->uuid[3],
@@ -3225,28 +3253,61 @@ uint32_t object_size)
     uint64_t big_size;
 
 	if(ld->cmd == LC_CODE_SIGNATURE)
-	    printf("      cmd LC_CODE_SIGNATURE\n");
+	    printf("         cmd LC_CODE_SIGNATURE\n");
 	else if(ld->cmd == LC_SEGMENT_SPLIT_INFO)
-	    printf("      cmd LC_SEGMENT_SPLIT_INFO\n");
+	    printf("         cmd LC_SEGMENT_SPLIT_INFO\n");
+        else if(ld->cmd == LC_FUNCTION_STARTS)
+	    printf("         cmd LC_FUNCTION_STARTS\n");
 	else
-	    printf("      cmd %u (?)\n", ld->cmd);
+	    printf("         cmd %u (?)\n", ld->cmd);
 	printf("  cmdsize %u", ld->cmdsize);
 	if(ld->cmdsize != sizeof(struct linkedit_data_command))
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf(" dataoff  %u", ld->dataoff);
+	printf("     dataoff  %u", ld->dataoff);
 	if(ld->dataoff > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf(" datasize %u", ld->datasize);
+	printf("    datasize %u", ld->datasize);
 	big_size = ld->dataoff;
 	big_size += ld->datasize;
 	if(big_size > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
+}
+
+/*
+ * print a version_min_command.  The version_min_command structure
+ * specified must be aligned correctly and in the host byte sex.
+ */
+void
+print_version_min_command(
+struct version_min_command *vd,
+uint32_t object_size)
+{
+	if(vd->cmd == LC_VERSION_MIN_MACOSX)
+	    printf("      cmd LC_VERSION_MIN_MACOSX\n");
+	else if(vd->cmd == LC_VERSION_MIN_IPHONEOS)
+	    printf("      cmd LC_VERSION_MIN_IPHONEOS\n");
+	else
+	    printf("      cmd %u (?)\n", vd->cmd);
+	printf("  cmdsize %u", vd->cmdsize);
+	if(vd->cmdsize != sizeof(struct version_min_command))
+	    printf(" Incorrect size\n");
+	else
+	    printf("\n");
+	if((vd->version & 0xff) == 0)
+	    printf("  version %u.%u\n",
+	       vd->version >> 16,
+	       (vd->version >> 8) & 0xff);
+	else
+	    printf("  version %u.%u.%u\n",
+	       vd->version >> 16,
+	       (vd->version >> 8) & 0xff,
+	       vd->version & 0xff);
 }
 
 /*
@@ -3292,19 +3353,19 @@ uint32_t object_size)
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf(" cryptoff  %u", ec->cryptoff);
+	printf("    cryptoff  %u", ec->cryptoff);
 	if(ec->cryptoff > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf(" cryptsize %u", ec->cryptsize);
+	printf("    cryptsize %u", ec->cryptsize);
 	big_size = ec->cryptsize;
 	big_size += ec->cryptoff;
 	if(big_size > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf(" cryptid   %u\n", ec->cryptid);
+	printf("    cryptid   %u\n", ec->cryptid);
 }
 
 /*
@@ -6193,7 +6254,7 @@ enum bool verbose)
 
 
 static char *generic_r_types[] = {
-    "VANILLA ", "PAIR    ", "SECTDIF ", "PBLAPTR ", "LOCSDIF ", "  5 (?) ",
+    "VANILLA ", "PAIR    ", "SECTDIF ", "PBLAPTR ", "LOCSDIF ", "TLV     ",
     "  6 (?) ", "  7 (?) ", "  8 (?) ", "  9 (?) ", " 10 (?) ", " 11 (?) ",
     " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
 };
@@ -6214,7 +6275,7 @@ static char *ppc_r_types[] = {
 };
 static char *x86_64_r_types[] = {
     "UNSIGND ", "SIGNED  ", "BRANCH  ", "GOT_LD  ", "GOT     ", "SUB     ",
-    "SIGNED1 ", "SIGNED2 ", "SIGNED4 ", "  9 (?) ", " 10 (?) ", " 11 (?) ",
+    "SIGNED1 ", "SIGNED2 ", "SIGNED4 ", "TLV     ", " 10 (?) ", " 11 (?) ",
     " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
 };
 static char *hppa_r_types[] = {
@@ -6765,7 +6826,8 @@ enum bool verbose)
 	    }
 	    else if(section_type == S_LAZY_SYMBOL_POINTERS ||
 	            section_type == S_NON_LAZY_SYMBOL_POINTERS ||
-	            section_type == S_LAZY_DYLIB_SYMBOL_POINTERS){
+	            section_type == S_LAZY_DYLIB_SYMBOL_POINTERS ||
+	   	    section_type == S_THREAD_LOCAL_VARIABLE_POINTERS){
 		if(cputype & CPU_ARCH_ABI64)
 		    stride = 8;
 		else
@@ -7903,6 +7965,7 @@ const uint32_t strings_size)
 		    if((section_type == S_NON_LAZY_SYMBOL_POINTERS ||
 		        section_type == S_LAZY_SYMBOL_POINTERS ||
 		        section_type == S_LAZY_DYLIB_SYMBOL_POINTERS ||
+		        section_type == S_THREAD_LOCAL_VARIABLE_POINTERS ||
 		        section_type == S_SYMBOL_STUBS) &&
 		        value >= s.addr && value < s.addr + s.size){
 			if(section_type == S_SYMBOL_STUBS)
@@ -7937,6 +8000,7 @@ const uint32_t strings_size)
 		    if((section_type == S_NON_LAZY_SYMBOL_POINTERS ||
 		        section_type == S_LAZY_SYMBOL_POINTERS ||
 		        section_type == S_LAZY_DYLIB_SYMBOL_POINTERS ||
+	   		section_type == S_THREAD_LOCAL_VARIABLE_POINTERS ||
 		        section_type == S_SYMBOL_STUBS) &&
 		        value >= s64.addr && value < s64.addr + s64.size){
 			if(section_type == S_SYMBOL_STUBS)

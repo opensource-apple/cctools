@@ -755,6 +755,12 @@ struct object *object)
 			   object->output_split_info_data_size);
 		*size += object->output_split_info_data_size;
 	    }
+	    if(object->output_func_start_info_data_size != 0){
+		if(object->output_func_start_info_data != NULL)
+		    memcpy(p + *size, object->output_func_start_info_data,
+			   object->output_func_start_info_data_size);
+		*size += object->output_func_start_info_data_size;
+	    }
 	    if(object->mh != NULL){
 		memcpy(p + *size, object->output_symbols,
 		       object->output_nsymbols * sizeof(struct nlist));

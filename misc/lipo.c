@@ -935,7 +935,7 @@ process_input_file(
 struct input_file *input)
 {
     int fd;
-    struct stat stat_buf;
+    struct stat stat_buf, stat_buf2;
     uint32_t size, i, j;
     char *addr;
     struct thin_file *thin;
@@ -985,6 +985,17 @@ struct input_file *input)
 			fd, 0);
 	if((intptr_t)addr == -1)
 	    system_fatal("Can't map input file: %s", input->name);
+
+	/*
+	 * Because of rdar://8087586 we do a second stat to see if the file
+	 * is still there and the same file.
+	 */
+	if(fstat(fd, &stat_buf2) == -1)
+	    system_fatal("Can't stat input file: %s", input->name);
+	if(stat_buf2.st_size != size ||
+	   stat_buf2.st_mtime != stat_buf.st_mtime)
+	    system_fatal("Input file: %s changed since opened", input->name);
+
 	close(fd);
 
 	/* Try to figure out what kind of file this is */

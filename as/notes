@@ -25,6 +25,144 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.28 release (the cctools-795 release):
+- Added checks or overlowing the 24-bits of the r_address relocation entry in
+  fix_to_relocation_entries() in write_object.c  .  Radar bug #8348673.
+
+Changes for the 5.28 release (the cctools-794 release):
+- Added the NULL DIE terminating the Compile Unit DIE's when producing dwarf
+  debuging info for assembly files.  The change is at the end of
+  out_debug_info() in dwarf2dbg.c . Radar bug #8453745.
+
+Changes for the 5.28 release (the cctools-793 release):
+- Fixed more problems with support for generating dwarf debugging information
+  for assembly source, with symbols in other sections besides .text .
+  - The routine make_subprogram_for_symbol() in symbols.c was not ignoring
+    symbols not in the .text section.  Also the calls to 
+  - Generation of the .loc directive done in md_assemble() in i386.c and in
+    arm.c by calling dwarf2_loc() also needed to check that the section was
+    the .text section.
+  Radar bug #8425965.
+- Fixed problems with support for generating dwarf debugging information for
+  assembly source.  The routine make_subprogram_for_symbol() in symbols.c was
+  not updating last_dwarf2_subprogram_info when dwarf2_subprograms_info != NULL
+  and it was not ignoring symbols that stared with 'L'.  Radar bug #8387908.
+
+Changes for the 5.28 release (the cctools-790 release):
+- Added the arm Media and VFP Feature Registers 1 and 0 to arm.c as mvfr0,
+  MVFR0, mvfr1 and MVFR1.  Radar bug #8246341.
+
+Changes for the 5.28 release (the cctools-788 release):
+- Remove the use of -mdynamic-no-pic from the Makefile.  Radar bug #8207834.
+
+Changes for the 5.28 release (the cctools-787 release):
+- Added support for the .symbol_resolver directive.  Added s_symbol_resolver()
+  in read.c and an entry for it in pseudo_table[].  Also added N_SYMBOL_RESOLVER
+  in the conditional test in colon() in symbols.c to allow it to be set first
+  then the symbol defined.  Radar bug #7901954.
+
+Changes for the 5.28 release (the cctools-786 release):
+- Fixed the incorrect trigger for outputing dwarf info in dwarf2_finish() in
+  dwarf2dbg.c .  The change was to make sure that all_segs was not NULL and the
+  either all_segs->next was not NULL or debug_type == DEBUG_DWARF2.
+  Radar bug #8154276.
+
+Changes for the 5.28 release (the cctools-785 release):
+- Fixed a bug with support for thread local variables in fixup_section() in
+  layout.c that did not include the address of the fragment when calculating
+  the "pc" value.  Radar bug #8113809.
+- Added support for generating dwarf debugging information for assembly source
+  files when the --gdwarf2 or -g flag is specified.  Radar bug #7580966.
+  - main() in as.c was changed to make -g the same as --gdwarf2.
+  - The declaration of apple_version[] was moved to as.h out of as.c.
+  - The variable version_string[] in as.c was made global and the declaration 
+    was added to as.h.
+  - The macro APPLE_INC_VERSION was added to as.h for print the version string
+    in main() in as.c
+  - The global varaible apple_flags was added to as.[ch] and set in main() when
+    the environment variable RC_DEBUG_OPTIONS is set.
+  - The global variable dwarf_file_number was added to dwarf2dbg.[ch] .
+  - Generation of the .file directive is done in read_a_source_file() in read.c
+    by calling dwarf2_file() which was added in dwarf2dbg.c .  The call uses
+    global variable dwarf_file_number and increments it.
+  - Generation of the .loc directive is done in md_assemble() in i386.c and in
+    arm.c by calling dwarf2_loc() which was added in dwarf2dbg.c .
+  - The struct dwarf2_subprogram_info and global variable
+    dwarf2_subprograms_info was added to dwarf2dbg.h to collect info and use it
+    for the subprogram entires.
+  - Collecting information for the symbols to make dwarf2 subprogram entires
+    is done by calling the new routine, make_subprogram_for_symbol(), added
+    to symbols.c called from colon() in symbols.c .
+  - out_debug_abbrev() in dwarf2dbg.c was change to add the DW_TAG_subprogram
+    DIE as #2 and changed to DW_CHILDREN_yes for the DW_TAG_compile_unit DIE.
+    Also the AT_APPLE_flags is added when apple_flags is set.
+  - In out_debug_info() in dwarf2dbg.c it was change to output the subprograms
+    and the DW_AT_producer was changed to use the version information so it
+    matches what as(1) -v would print.  Also the AT_APPLE_flags added to the
+    output when apple_flags is set.
+  - The trigger for calling the out_debug_*() routines at the end of
+    dwarf2_finish() in dwarf2dbg.c was change to include a test of
+    debug_type == DEBUG_DWARF2 (when --gdwarf2 is specified).
+
+Changes for the 5.28 release (the cctools-784 release):
+- Changed the arm assembler to not used the thumb2 opcode when targetting armv6
+  and unified syntax.  The fix was in do_t_nop() in arm.c to add a check in
+  additiona to unified syntax to make sure the cpu_variant core specified also
+  supports thumb2.  Radar bug #7876935.
+- Add a check for too many sections being created in sections.c .  Radar bug
+  #7920267.
+
+Changes for the 5.28 release (the cctools-783 release):
+- Added control register names as %ecr0 and %rcr0 in i386-opcode.h that is the
+  names llvm-mc uses.  And added $(LLVM_MC) to the otool command lines in the
+  Makefile.
+- Added the -llvm-mc option to the driver to run llvm-mc.  Radar bug #7837868.
+- Added the support for thread local variables.
+  - Changed the _i386_insn in i386.c to include a reloc[] array like for ARCH64
+    so it can hold a GENERIC_RELOC_TLV.
+  - Changed md_assemble() in i386.c to zero out reloc[] without the #ifdef
+    ARCH64.
+  - Changed the call for fix_new() in output_disp() in i386.c to pass i.reloc[n]
+    as the last argument in the #if !ARCH64 case.
+  - Changed the #if expression around lex_got() and removed the !defined(ARCH64)
+    part of the condition.
+  - Inside lex_got() in i386 changed gotrel[] initialization on the #ifdef
+    NeXT_MOD side. Wrapped that in #ifdef ARCH64 and added the TLVP to the table
+    and added an #else side for 32-bit with the entry for the TLVP.
+  - In layout_addresses() in layout.c made changes to test for
+    S_THREAD_LOCAL_ZEROFILL when testing for S_ZEROFILL.
+  - In fixup_section() in layout.c added code that is
+    #if defined(I386) && !defined(ARCH64)
+    - To test GENERIC_RELOC_TLV relocation type when sub_symbolP is not NULL
+      and adjust the value to have to be the difference of the end of the
+      relocated item and the symbol. Then clear the fx_subsy field and set the
+      fx_pcrel to get the proper TVL relocation entry.  This is done in two
+      places, one where both symbols are in a section and one when the
+      add symbol is undefined.
+    - Added a check of fixP->fx_r_type != GENERIC_RELOC_TLV where it would
+      add in the symbol value so it does not do that (it will be an external
+      reloc in this case even if the symbol is defined).
+  - In read.c added the new section type names thread_local_regular,
+    thread_local_variables and thread_local_init_function_pointers to
+    type_names[].
+  - In read.c added the new built in section directives tdata, tlv and
+    thread_init_func to builtin_sections[].
+  - In read.c changed s_zerofill() and passed the section type as the value
+    parameter and added the tbss directive to use s_zerofill. And changed the
+    zerofill directive to pass S_ZEROFILL as the value.  In s_zerofill() it
+    checks for the value passes as S_THREAD_LOCAL_ZEROFILL and creates the
+    (__DATA, __thread_bss) section with that type.
+  - In fix_to_relocation_entries() in write_object.c added a test of
+      ((symbolP->sy_type & N_TYPE) == N_SECT &&
+       fixP->fx_r_type == GENERIC_RELOC_TLV)
+    that is 
+      #if defined(I386) && !defined(ARCH64)
+    to where it sets the r_extern bit and the r_symbolnum to the symbol index
+    as @TLVP that are defined get external relocation entries.
+  - In sections.c changed section_new() and in write_object.c in write_object()
+    to also test for S_THREAD_LOCAL_ZEROFILL when it is testing for S_ZEROFILL.
+  Radar bug #7796734.
+
 Changes for the 5.28 release (the cctools-782 release):
 - Added the .weak_def_can_be_hidden to read.c and changed colon() in symbols.c
   to also preserve N_WEAK_DEF bit.  Radar bug #5021217.

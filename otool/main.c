@@ -86,6 +86,7 @@ enum bool Bflag = FALSE; /* force Thumb disassembly (ARM objects only) */
 char *pflag = NULL; 	 /* procedure name to start disassembling from */
 char *segname = NULL;	 /* name of the section to print the contents of */
 char *sectname = NULL;
+enum bool llvm_mc = FALSE; /* disassemble as llvm-mc will assemble */
 
 /* this is set when any of the flags that process object files is set */
 enum bool object_processing = FALSE;
@@ -251,6 +252,7 @@ char **envp)
 	narch_flags = 0;
 	all_archs = FALSE;
 	use_member_syntax = TRUE;
+	llvm_mc = FALSE;
 
 	if(argc <= 1)
 	    usage();
@@ -291,6 +293,10 @@ char **envp)
 		    narch_flags++;
 		}
 		i++;
+		continue;
+	    }
+	    if(strcmp(argv[i], "-llvm-mc") == 0){
+		llvm_mc = TRUE;
 		continue;
 	    }
 	    if(argv[i][1] == 'p'){
@@ -1351,10 +1357,53 @@ void *cookie) /* cookie is not used */
 			    loc_relocs, nloc_relocs, vflag);
 	    }
 	    else{
-		 print_objc_segment(ofile->load_commands,mh_ncmds,mh_sizeofcmds,
-				    ofile->object_byte_sex, ofile->object_addr,
-				    ofile->object_size, sorted_symbols,
-				    nsorted_symbols, vflag);
+		 /*
+		  * This is the 32-bit non-arm cputype case.  Which is normally
+		  * the first Objective-C ABI.  But it may be the case of a
+		  * binary for the iOS simulator which is the second Objective-C
+		  * ABI.  In that case print_objc_segment() will determine that
+		  * and return FALSE.
+		  */
+		 if(print_objc_segment(mh_cputype, ofile->load_commands,
+			mh_ncmds, mh_sizeofcmds, ofile->object_byte_sex,
+			ofile->object_addr, ofile->object_size, sorted_symbols,
+			nsorted_symbols, vflag) == FALSE){
+		    get_linked_reloc_info(ofile->load_commands, mh_ncmds,
+			    mh_sizeofcmds, ofile->object_byte_sex,
+			    ofile->object_addr, ofile->object_size, &ext_relocs,
+			    &next_relocs, &loc_relocs, &nloc_relocs);
+		    /* create aligned relocations entries as needed */
+		    relocs = NULL;
+		    nrelocs = 0;
+		    if((intptr_t)ext_relocs % sizeof(int32_t) != 0 ||
+		       ofile->object_byte_sex != get_host_byte_sex()){
+			relocs = allocate(next_relocs *
+					  sizeof(struct relocation_info));
+			memcpy(relocs, ext_relocs, next_relocs *
+			       sizeof(struct relocation_info));
+			ext_relocs = relocs;
+		    }
+		    if((intptr_t)loc_relocs % sizeof(int32_t) != 0 ||
+		       ofile->object_byte_sex != get_host_byte_sex()){
+			relocs = allocate(nloc_relocs *
+					  sizeof(struct relocation_info));
+			memcpy(relocs, loc_relocs, nloc_relocs *
+			       sizeof(struct relocation_info));
+			loc_relocs = relocs;
+		    }
+		    if(ofile->object_byte_sex != get_host_byte_sex()){
+			swap_relocation_info(ext_relocs, next_relocs,
+					     get_host_byte_sex());
+			swap_relocation_info(loc_relocs, nloc_relocs,
+					     get_host_byte_sex());
+		    }
+		    print_objc2_32bit(mh_cputype, ofile->load_commands,
+			    mh_ncmds, mh_sizeofcmds, ofile->object_byte_sex,
+			    ofile->object_addr, ofile->object_size, symbols,
+			    nsymbols, strings, strings_size, sorted_symbols,
+			    nsorted_symbols, ext_relocs, next_relocs,
+			    loc_relocs, nloc_relocs, vflag);
+		}
 	    }
 	}
 
@@ -2347,7 +2396,8 @@ cpu_subtype_t cpusubtype)
 				symbols64, nsymbols, sorted_symbols,
 				nsorted_symbols, strings, strings_size,
 				indirect_symbols, nindirect_symbols, cputype,
-				load_commands, ncmds, sizeofcmds, verbose);
+				load_commands, ncmds, sizeofcmds, verbose,
+				llvm_mc);
 	 	else if(cputype == CPU_TYPE_MC680x0)
 		    j = m68k_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, symbols,
@@ -2366,7 +2416,7 @@ cpu_subtype_t cpusubtype)
 				nsymbols, sorted_symbols, nsorted_symbols,
 				strings, strings_size, indirect_symbols,
 				nindirect_symbols, cputype, load_commands, 
-				ncmds, sizeofcmds, verbose);
+				ncmds, sizeofcmds, verbose, llvm_mc);
 		else if(cputype == CPU_TYPE_MC88000)
 		    j = m88k_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, symbols,

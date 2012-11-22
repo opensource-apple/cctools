@@ -561,6 +561,16 @@ struct object *object)
 		object->output_sym_info_size +=
 		    object->split_info_cmd->datasize;
 	    }
+	    if(object->func_starts_info_cmd != NULL){
+		object->output_func_start_info_data = 
+		(object->object_addr + object->func_starts_info_cmd->dataoff);
+		object->output_func_start_info_data_size = 
+		    object->func_starts_info_cmd->datasize;
+		object->input_sym_info_size +=
+		    object->func_starts_info_cmd->datasize;
+		object->output_sym_info_size +=
+		    object->func_starts_info_cmd->datasize;
+	    }
 	    if(object->hints_cmd != NULL){
 		object->output_hints = (struct twolevel_hint *)
 		    (object->object_addr +
@@ -699,6 +709,8 @@ uint32_t *header_size)
 		    for(j = 0; j < sg->nsects; j++){
 			if(s->size != 0 &&
 			   (s->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				       S_THREAD_LOCAL_ZEROFILL &&
 			   s->offset < low_fileoff)
 			    low_fileoff = s->offset;
 			s++;
@@ -718,6 +730,8 @@ uint32_t *header_size)
 		    for(j = 0; j < sg64->nsects; j++){
 			if(s64->size != 0 &&
 			   (s64->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s64->flags & S_THREAD_LOCAL_ZEROFILL) !=
+					 S_THREAD_LOCAL_ZEROFILL &&
 			   s64->offset < low_fileoff)
 			    low_fileoff = s64->offset;
 			s64++;
@@ -1009,6 +1023,10 @@ uint32_t *header_size)
 		break;
 	    case LC_SEGMENT_SPLIT_INFO:
 		arch->object->split_info_cmd =
+		    (struct linkedit_data_command *)lc1;
+		break;
+	    case LC_FUNCTION_STARTS:
+		arch->object->func_starts_info_cmd =
 		    (struct linkedit_data_command *)lc1;
 		break;
 	    }

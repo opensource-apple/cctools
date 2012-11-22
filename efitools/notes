@@ -5,6 +5,19 @@ Add flags for:
 Add support for:
 - Remove empty __IMPORT segment
 
+Changes for the 5.28 release (the cctools-795 release):
+- Added added more subsystem types to mtoc(1).  Radar bug #8492168.
+
+Changes for the 5.28 release (the cctools-792 release):
+- Picked up changes to generate correct x86_64 relocations and to correctly
+  calculate SizeOfImage in mtoc.c. Radar bug #8211617.
+
+Changes for the 5.28 release (the cctools-787 release):
+- Changed mtoc(1) to zero pad PE/COFF sections to support XIP PE/COFF images.
+  Radar bug #8199851.
+- Changed mtoc(1) support building XIP PEI/COFF images in all cases. Radar bug
+  #8197128.
+
 Changes for the 5.28 release (the cctools-777 release):
 - Changed round() to rnd() and stuff/round.h to stuff/rnd.h in all files and
   removed -fno-builtin-round from the Makefile.  Radar bug #7475139.

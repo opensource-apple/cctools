@@ -197,15 +197,57 @@ uint32_t type1)
 }
 
 int
-main(void)
+main(
+int argc,
+char **argv)
 {
     const template *t;
 
-    uint32_t i, j, type0, type1;
+    uint32_t i, j, type0, type1, llvm_mc, bad_reg;
     char **op0, **op1;
     char *suffix;
 
+	llvm_mc = 0;
+	if(argc != 1){
+	    if(argc == 2 && strcmp(argv[1], "-llvm-mc") == 0)
+		llvm_mc = 1;
+	}
 	for(t = i386_optab; t->name != NULL ; t++){
+	    /*
+	     * If producing tests for llvm-mc don't use test registers.
+	     * 
+	     * These are "Test Registers" and these only show up in the i486
+	     * book (see page 4-80) and the Move to/from Special Register page
+	     * 26-213.  In i386-opcode.h they are not correct as they use the
+	     * opcodes 0f 24 where the book also uses 0f 26.  And they are only
+	     * TR3-TR7 not TR0-TR7.
+	     */
+	    if(llvm_mc){
+		bad_reg = 0;
+		if(t->operands >= 1)
+		    bad_reg |= t->operand_types[0] & Test;
+		if(t->operands >= 2)
+		    bad_reg |= t->operand_types[1] & Test;
+
+		/* Hack to pull out segment register operands for now */
+		if(t->operands >= 1){
+		    bad_reg |= t->operand_types[0] & SReg2;
+		    bad_reg |= t->operand_types[0] & SReg3;
+		}
+		if(t->operands >= 2){
+		    bad_reg |= t->operand_types[1] & SReg2;
+		    bad_reg |= t->operand_types[1] & SReg3;
+		}
+
+		/* Hack to pull out control register operands for now */
+		if(t->operands >= 1)
+		    bad_reg |= t->operand_types[0] & Control;
+		if(t->operands >= 2)
+		    bad_reg |= t->operand_types[1] & Control;
+
+		if(bad_reg)
+		    continue;
+	    }
 	    /*
 	     * Don't use the table entries that are prefixes and not
 	     * instructions.

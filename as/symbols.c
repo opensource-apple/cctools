@@ -33,6 +33,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "messages.h"
 #include "fixes.h"
 #include "input-scrub.h"
+#include "dwarf2dbg.h"
 
 /* symbol-name => struct symbol pointer */
 struct hash_control *sy_hash = NULL;
@@ -71,6 +72,9 @@ symbolS	abs_symbol = { {{0}} };
 typedef short unsigned int local_label_countT;
 
 static void make_stab_for_symbol(
+    symbolS *symbolP);
+
+static void make_subprogram_for_symbol(
     symbolS *symbolP);
 
 static void fb_label_init(void);
@@ -451,7 +455,7 @@ int local_colon)/* non-zero if called from local_colon() */
 	     && ((symbolP->sy_desc) & (~REFERENCE_TYPE)) == 0
 	     */
 	     && (temp & (~(REFERENCE_TYPE | N_WEAK_REF | N_WEAK_DEF |
-			   N_ARM_THUMB_DEF |
+			   N_ARM_THUMB_DEF | N_SYMBOL_RESOLVER |
 			   N_NO_DEAD_STRIP | REFERENCED_DYNAMICALLY))) == 0
 	     && symbolP -> sy_value == 0)
 	    {
@@ -467,6 +471,8 @@ int local_colon)/* non-zero if called from local_colon() */
 	      if(flagseen['g'])
 		  make_stab_for_symbol(symbolP);
 #endif
+	      if(debug_type == DEBUG_DWARF2)
+		  make_subprogram_for_symbol(symbolP);
 	    }
 	  else
 	    {
@@ -497,6 +503,8 @@ int local_colon)/* non-zero if called from local_colon() */
       if(flagseen['g'])
 	  make_stab_for_symbol(symbolP);
 #endif
+      if(debug_type == DEBUG_DWARF2)
+	  make_subprogram_for_symbol(symbolP);
     }
 #ifdef tc_frob_label
     tc_frob_label(symbolP);
@@ -623,6 +631,44 @@ symbolS *symbolP)
 	free(stabname);
 }
 #endif /* NeXT generate stabs for debugging assembly code */
+
+/*
+ * make_subprogram_for_symbol() gathers the info that is needed for each
+ * symbol that will have a dwarf2_subprogram when generating dwarf debugging
+ * info for assembly files.
+ */
+static
+void
+make_subprogram_for_symbol(
+symbolS *symbolP)
+{
+    struct dwarf2_subprogram_info *i;
+    static struct dwarf2_subprogram_info *last_dwarf2_subprogram_info = NULL;
+
+	if(symbolP->sy_name[0] == 'L')
+	    return;
+	if((symbolP->sy_type & N_TYPE) != N_SECT)
+	    return;
+	if(symbolP->sy_other != text_nsect)
+	    return;
+
+	i = xmalloc(sizeof(struct dwarf2_subprogram_info));
+	i->name = symbolP->sy_name;
+	if(i->name[0] == '_')
+	    i->name++;
+	i->file_number = dwarf2_file_number;
+	i->line_number = logical_input_line;
+	i->symbol = symbolP;
+	i->next = NULL;
+	if(dwarf2_subprograms_info == NULL){
+	    dwarf2_subprograms_info = i;
+	    last_dwarf2_subprogram_info = i;
+	}
+	else{
+	    last_dwarf2_subprogram_info->next = i;
+	    last_dwarf2_subprogram_info = i;
+	}
+}
 
 /*
  * indirect_symbol_new()

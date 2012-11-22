@@ -450,7 +450,7 @@ uint32_t size)
 	    if(ep->found == 0 &&
 	       strncmp(ep->segname, segname, 16) == 0 &&
 	       strncmp(ep->sectname, sectname, 16) == 0){
-		if(flags == S_ZEROFILL)
+		if(flags == S_ZEROFILL || flags == S_THREAD_LOCAL_ZEROFILL)
 		    fatal("meaningless to extract zero fill "
 			  "section (%s,%s) in: %s", segname,
 			  sectname, input);
@@ -1109,7 +1109,8 @@ uint32_t size)
 		       sizeof(segname)) == 0 &&
 	       strncmp(rp->sectname, sectname,
 		       sizeof(sectname)) == 0){
-		if(sect_flags == S_ZEROFILL){
+		if(sect_flags == S_ZEROFILL ||
+		   sect_flags == S_THREAD_LOCAL_ZEROFILL){
 		    error("can't replace zero fill section (%.16s,"
 			  "%.16s) in: %s", segname,
 			  sectname, input);

@@ -396,6 +396,12 @@ struct object *object)
 		object->output_split_info_data_size = 
 		    object->split_info_cmd->datasize;
 	    }
+	    if(object->func_starts_info_cmd != NULL){
+		object->output_func_start_info_data = 
+		(object->object_addr + object->func_starts_info_cmd->dataoff);
+		object->output_func_start_info_data_size = 
+		    object->func_starts_info_cmd->datasize;
+	    }
 	    object->output_ext_relocs = (struct relocation_info *)
 		(object->object_addr + object->dyst->extreloff);
 	    object->output_tocs =
@@ -439,6 +445,9 @@ struct object *object)
 		    sizeof(struct dylib_reference);
 	    if(object->split_info_cmd != NULL)
 		object->input_sym_info_size += object->split_info_cmd->datasize;
+	    if(object->func_starts_info_cmd != NULL)
+		object->input_sym_info_size +=
+		    object->func_starts_info_cmd->datasize;
 	    if(object->mh != NULL){
 		object->input_sym_info_size +=
 		    object->dyst->nmodtab *
@@ -646,6 +655,8 @@ char *arch_name)
 		    for(j = 0; j < sg->nsects; j++){
 			if(s->size != 0 &&
 			(s->flags & S_ZEROFILL) != S_ZEROFILL &&
+			(s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				    S_THREAD_LOCAL_ZEROFILL &&
 			s->offset < low_fileoff)
 			    low_fileoff = s->offset;
 			s++;
@@ -664,6 +675,8 @@ char *arch_name)
 		    for(j = 0; j < sg64->nsects; j++){
 			if(s64->size != 0 &&
 			(s64->flags & S_ZEROFILL) != S_ZEROFILL &&
+			(s64->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				      S_THREAD_LOCAL_ZEROFILL &&
 			s64->offset < low_fileoff)
 			    low_fileoff = s64->offset;
 			s64++;

@@ -8921,7 +8921,7 @@ do_t_mull (void)
 static void
 do_t_nop (void)
 {
-  if (unified_syntax)
+  if (unified_syntax && (cpu_variant.core & ARM_EXT_V6T2) == ARM_EXT_V6T2)
     {
       if (inst.size_req == 4 || inst.operands[0].imm > 15)
 	{
@@ -13516,6 +13516,12 @@ md_assemble (char *str)
 	obstack_next_free(&frags) - frag_now->fr_literal,
 	frag_now);
     }
+  /*
+   * If the --gdwarf2 flag is present generate a .loc for this.
+   */
+  if(debug_type == DEBUG_DWARF2 && frchain_now->frch_nsect == text_nsect){
+	dwarf2_loc(dwarf2_file_number, logical_input_line);
+  }
 
   /*
    * We are putting a machine instruction in this section so mark it as
@@ -13697,6 +13703,8 @@ static const struct reg_entry reg_names[] =
   /* VFP control registers.  */
   REGDEF(fpsid,0,VFC), REGDEF(fpscr,1,VFC), REGDEF(fpexc,8,VFC),
   REGDEF(FPSID,0,VFC), REGDEF(FPSCR,1,VFC), REGDEF(FPEXC,8,VFC),
+  REGDEF(mvfr1,6,VFC), REGDEF(mvfr0,7,VFC),
+  REGDEF(MVFR1,6,VFC), REGDEF(MVFR0,7,VFC),
 
   /* Maverick DSP coprocessor registers.  */
   REGSET(mvf,MVF),  REGSET(mvd,MVD),  REGSET(mvfx,MVFX),  REGSET(mvdx,MVDX),

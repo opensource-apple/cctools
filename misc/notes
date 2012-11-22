@@ -9,6 +9,56 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.28 release (the cctools-795 release):
+- Changed ctf_insert(1) to allow the LC_FUNCTION_STARTS load command.  The
+  change was in ctf_insert() in ctf_insert.c to remove the test for
+  object->func_starts_info_cmd != NULL .  Radar bug #8490836.
+
+Changes for the 5.28 release (the cctools-793 release):
+- Fixed a problem in nm(1) not checking that a symbol is not undefined before
+  checking that is a [symbol resolver] symbol.  Radar bug #8429570.
+
+Changes for the 5.28 release (the cctools-792 release):
+- Fixed more problems with incorrect support for LC_FUNCTION_STARTS.  There were
+  missing output_func_start_info_data and output_func_start_info_data_size
+  fields in the struct object that should have been used.  Updated the code in
+  codesign_allocate.c, indr.c, inout.c, install_name_tool.c, redo_prebinding.c
+  and strip.c which was incorrectly using output_split_info_data and
+  output_split_info_data_size two use the new fields.  Radar bug #8401082. 
+
+Changes for the 5.28 release (the cctools-790 release):
+- Fixed problems with the incorrect support for LC_FUNCTION_STARTS.  Radar bug
+  #8274584.
+  - Updated setup_code_signature() and setup_code_signature() in
+    codesign_allocate.c .
+  - Updated ctf_insert() in ctf_insert.c to treat objects with function starts
+    info as an error and not allowed for static binaries.
+  - Updated translate_dylib() in indr.c .
+  - Updated setup_object_symbolic_info() in inout.c .
+  - Updated setup_object_symbolic_info() and update_load_commands() in
+    install_name_tool.c .
+  - Updated build_new_symbol_table() in and update_load_commands() in
+    redo_prebinding.c .
+  - Updated strip_object(), strip_LC_UUID_commands() and
+    strip_LC_CODE_SIGNATURE_commands() in strip.c
+
+Changes for the 5.28 release (the cctools-787 release):
+- Changed libtool(1) and added testing the environment variable ZERO_AR_DATE to
+  set the ar date to zero to allow testing and comparing things for exact binary
+  equality.  Radar bug #7919021.
+- Changed lipo(1) to attempt to stop a crash if the file can't be paged in after
+  it has been successfully mapped.  Added a second fstat(2) call in 
+  process_input_file(1) just before the first bytes of the mapped file are
+  referenced, and then checked that it has the same size and mod time of the
+  first stat.  Radar bug #8087586.
+- Added support in nm(1) for symbols marked with N_SYMBOL_RESOLVER so that they
+  are printed with [symbol resolver].  This change is in print_mach_symbols()
+  in nm.c .  Radar bug #7901954.
+
+Changes for the 5.28 release (the cctools-784 release):
+- Fixed the -arch_only flag in libtool(1) for arm so that each subtype is
+  treated as separate architecture. Radar bug #7864127.
+
 Changes for the 5.28 release (the cctools-782 release):
 - Added the -U option to nm(1) to not print undefined symbols. Radar bug
   #7761111.

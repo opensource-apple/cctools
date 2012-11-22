@@ -168,6 +168,7 @@ void)
     relax_addressT slide, tmp;
     symbolS *symbolP;
     uint32_t nbytes, fill_size, repeat_expression, partial_bytes, layout_pass;
+    uint32_t section_type;
     relax_stateT old_fr_type;
     int changed;
 
@@ -244,8 +245,9 @@ void)
 		    frchainP = frchainP->frch_next){
 		    if(frchainP->layout_pass != layout_pass)
 			continue;
-		    if((frchainP->frch_section.flags & SECTION_TYPE) ==
-		       S_ZEROFILL)
+		    section_type = frchainP->frch_section.flags & SECTION_TYPE;
+		    if(section_type == S_ZEROFILL ||
+		       section_type == S_THREAD_LOCAL_ZEROFILL)
 			continue;
 		    /*
 		     * This is done so in case md_estimate_size_before_relax()
@@ -268,7 +270,9 @@ void)
 	 */ 
 	slide = 0;
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
-	    if((frchainP->frch_section.flags & SECTION_TYPE) == S_ZEROFILL)
+	    section_type = frchainP->frch_section.flags & SECTION_TYPE;
+	    if(section_type == S_ZEROFILL ||
+	       section_type == S_THREAD_LOCAL_ZEROFILL)
 		continue;
 	    slide = rnd(slide, 1 << frchainP->frch_section.align);
 	    tmp = frchainP->frch_last->fr_address;
@@ -287,7 +291,9 @@ void)
 	 * is that section numbers do not end up in address order.
 	 */
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
-	    if((frchainP->frch_section.flags & SECTION_TYPE) != S_ZEROFILL)
+	    section_type = frchainP->frch_section.flags & SECTION_TYPE;
+	    if(section_type != S_ZEROFILL &&
+	       section_type != S_THREAD_LOCAL_ZEROFILL)
 		continue;
 	    slide = rnd(slide, 1 << frchainP->frch_section.align);
 
@@ -589,6 +595,20 @@ int nsect)
 		 */
 		else if((sub_symbolP->sy_type & N_TYPE) == N_SECT &&
 		        (add_symbolP->sy_type & N_TYPE) == N_SECT){
+#if defined(I386) && !defined(ARCH64)
+		    /*
+		     * For 'symbol@TLVP - subtract_symbol' type relocations the
+		     * subtract_symbol value is stored in the contents of the
+		     * item to be relocated.
+		     */
+		    if(fixP->fx_r_type == GENERIC_RELOC_TLV){
+			value += fixP->fx_frag->fr_address + where +
+				 fixP->fx_size - sub_symbolP->sy_value;
+			fixP->fx_subsy = NULL; /* no SECTDIFF reloc entry */
+			fixP->fx_pcrel = TRUE; /* force pcrel */
+			goto down;
+		    }
+#endif
 		    /*
 		     * We are use the new features that are incompatible with
 		     * 3.2 then just calculate the value and let this create a
@@ -705,6 +725,19 @@ int nsect)
 		    value -= sub_symbolP->sy_value;
 		    fixP->fx_subsy = NULL; /* no SECTDIFF relocation entry */
 		}
+#if defined(I386) && !defined(ARCH64)
+		/*
+		 * For 'symbol@TLVP - subtract_symbol' type relocations the
+		 * subtract_symbol value is stored in the contents of the item
+		 * to be relocated.
+		 */
+		else if(fixP->fx_r_type == GENERIC_RELOC_TLV){
+		    value += fixP->fx_frag->fr_address + where + fixP->fx_size -
+			     sub_symbolP->sy_value;
+		    fixP->fx_subsy = NULL; /* no SECTDIFF relocation entry */
+		    fixP->fx_pcrel = TRUE; /* force pcrel */
+		}
+#endif
 		/*
 		 * At this point we have something we can't generate a
 		 * relocation entry for (two undefined symbols, etc.).
@@ -810,7 +843,12 @@ int nsect)
 			if(((add_symbolP->sy_type & N_EXT) != N_EXT ||
 			    add_symbol_N_TYPE != N_SECT ||
 			    !is_section_coalesced(add_symbol_nsect)) &&
-			   (add_symbolP->sy_desc & N_WEAK_DEF) != N_WEAK_DEF)
+			   (add_symbolP->sy_desc & N_WEAK_DEF) != N_WEAK_DEF
+#if defined(I386) && !defined(ARCH64)
+			   &&
+			   fixP->fx_r_type != GENERIC_RELOC_TLV
+#endif
+			  )
 #endif
 			    value += add_symbolP->sy_value;
 			break;

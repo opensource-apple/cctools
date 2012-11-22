@@ -286,6 +286,10 @@ extern void print_linkedit_data_command(
     struct linkedit_data_command *ld,
     uint32_t object_size);
 
+extern void print_version_min_command(
+    struct version_min_command *vd,
+    uint32_t object_size);
+
 extern void print_rpath_command(
     struct rpath_command *rpath,
     struct load_command *lc);
@@ -418,7 +422,8 @@ extern void print_sect(
     uint64_t size,
     uint64_t addr);
 
-extern void print_objc_segment(
+extern enum bool print_objc_segment(
+    cpu_type_t mh_cputype,
     struct load_command *load_commands,
     uint32_t ncmds,
     uint32_t sizeofcmds,

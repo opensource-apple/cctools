@@ -59,6 +59,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #if defined(I386) && defined(ARCH64)
 #include "i386.h"
 #endif
+#include "dwarf2dbg.h"
 
 /*
  * Parsing of input is done off of this pointer which points to the next char
@@ -251,6 +252,10 @@ static struct type_name type_names[] = {
     { "mod_term_funcs",		  S_MOD_TERM_FUNC_POINTERS },
     { "coalesced",		  S_COALESCED },
     { "interposing",		  S_INTERPOSING },
+    { "thread_local_regular",	  S_THREAD_LOCAL_REGULAR },
+    { "thread_local_variables",	  S_THREAD_LOCAL_VARIABLES },
+    { "thread_local_init_function_pointers",
+				  S_THREAD_LOCAL_INIT_FUNCTION_POINTERS },
     { NULL, 0 }
 };
 
@@ -357,6 +362,12 @@ static const struct builtin_section builtin_sections[] = {
     { "data",                "__DATA", "__data" },
     { "static_data",         "__DATA", "__static_data" },
     { "const_data",          "__DATA", "__const" },
+    { "tdata",		     "__DATA", "__thread_data",
+		S_THREAD_LOCAL_REGULAR },
+    { "tlv",		     "__DATA", "__thread_vars",
+		S_THREAD_LOCAL_VARIABLES },
+    { "thread_init_func",    "__DATA", "__thread_init",
+		S_THREAD_LOCAL_INIT_FUNCTION_POINTERS },
     { "objc_class",          "__OBJC", "__class", S_ATTR_NO_DEAD_STRIP },
     { "objc_meta_class",     "__OBJC", "__meta_class", S_ATTR_NO_DEAD_STRIP },
     { "objc_string_object",  "__OBJC", "__string_object", S_ATTR_NO_DEAD_STRIP},
@@ -413,6 +424,7 @@ static void s_weak_reference(uintptr_t value);
 static void s_weak_definition(uintptr_t value);
 static void s_weak_def_can_be_hidden(uintptr_t value);
 static void s_no_dead_strip(uintptr_t value);
+static void s_symbol_resolver(uintptr_t value);
 static void s_include(uintptr_t value);
 static void s_dump(uintptr_t value);
 static void s_load(uintptr_t value);
@@ -477,7 +489,8 @@ static const pseudo_typeS pseudo_table[] = {
   { "quad",	cons,		8	},
   { "lsym",	s_lsym,		0	},
   { "section",	s_section,	0	},
-  { "zerofill",	s_zerofill,	0	},
+  { "zerofill",	s_zerofill,	S_ZEROFILL	},
+  { "tbss",	s_zerofill,	S_THREAD_LOCAL_ZEROFILL	},
   { "secure_log_unique",s_secure_log_unique,	0	},
   { "secure_log_reset",s_secure_log_reset,	0	},
   { "set",	s_set,		0	},
@@ -496,6 +509,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "weak_definition",s_weak_definition,	0	},
   { "weak_def_can_be_hidden",s_weak_def_can_be_hidden,	0	},
   { "no_dead_strip",s_no_dead_strip,	0	},
+  { "symbol_resolver",s_symbol_resolver,	0	},
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
   { "endmacro",	s_endmacro,	0	},
@@ -743,6 +757,12 @@ char *buffer)	/* 1st character of each buffer of lines is here. */
 			128 /* N_LSYM */,
 			0,0,0,
 			&zero_address_frag);
+	    }
+	    /*
+	     * If the --gdwarf2 flag is present generate a .file for this.
+	     */
+	    if(debug_type == DEBUG_DWARF2){
+		dwarf2_file(physical_input_file, ++dwarf2_file_number);
 	    }
 	}
 	else{
@@ -2655,72 +2675,84 @@ void
 s_zerofill(
 uintptr_t value)
 {
-    char *segname, *sectname, c, d, *p, *q, *name;
+    char *directive, *segname, *sectname, c, d, *p, *q, *name;
     section_t s;
     frchainS *frcP;
     symbolS *symbolP;
     uint64_t size;
     int align;
 
-	segname = input_line_pointer;
-	do{
-	    c = *input_line_pointer++ ;
-	}while(c != ' ' && c != ',' && c != '\0' && c != '\n');
-	p = input_line_pointer - 1;
-	while(c == ' '){
-            c = *input_line_pointer++ ;
-        }
-	if(c != ','){
-	    as_bad("Expected comma after segment-name");
-	    ignore_rest_of_line();
-	    return;
+	if(value == S_THREAD_LOCAL_ZEROFILL){
+	    directive = "tbss";
+	    frcP = section_new("__DATA", "__thread_bss", value, 0, 0);
+	    if(frcP->frch_root == NULL){
+		frcP->frch_root = xmalloc(SIZEOF_STRUCT_FRAG);
+		frcP->frch_last = frcP->frch_root;
+		memset(frcP->frch_root, '\0', SIZEOF_STRUCT_FRAG);
+	    }
 	}
+	else{
+	    directive = "zerofill";
+	    segname = input_line_pointer;
+	    do{
+		c = *input_line_pointer++ ;
+	    }while(c != ' ' && c != ',' && c != '\0' && c != '\n');
+	    p = input_line_pointer - 1;
+	    while(c == ' '){
+		c = *input_line_pointer++ ;
+	    }
+	    if(c != ','){
+		as_bad("Expected comma after segment-name");
+		ignore_rest_of_line();
+		return;
+	    }
 
-	SKIP_WHITESPACE();
-	sectname = input_line_pointer;
-	do{
-	    d = *input_line_pointer++ ;
-	}while(d != ',' && d != '\0' && d != '\n');
-	if(p + 1 == input_line_pointer){
-	    as_bad("Expected section-name after comma");
-	    ignore_rest_of_line();
-	    return;
-	}
-	q = input_line_pointer - 1;
+	    SKIP_WHITESPACE();
+	    sectname = input_line_pointer;
+	    do{
+		d = *input_line_pointer++ ;
+	    }while(d != ',' && d != '\0' && d != '\n');
+	    if(p + 1 == input_line_pointer){
+		as_bad("Expected section-name after comma");
+		ignore_rest_of_line();
+		return;
+	    }
+	    q = input_line_pointer - 1;
 
-	*p = 0;
-	if(strlen(segname) > sizeof(s.segname)){
-	    as_bad("segment-name: %s too long (maximum %ld characters)",
-		    segname, sizeof(s.segname));
-	    ignore_rest_of_line();
-	    *p = c;
-	    return;
-	}
+	    *p = 0;
+	    if(strlen(segname) > sizeof(s.segname)){
+		as_bad("segment-name: %s too long (maximum %ld characters)",
+			segname, sizeof(s.segname));
+		ignore_rest_of_line();
+		*p = c;
+		return;
+	    }
 
-	*q = 0;
-	if(strlen(sectname) > sizeof(s.sectname)){
-	    as_bad("section-name: %s too long (maximum %ld characters)",
-		    sectname, sizeof(s.sectname));
-	    ignore_rest_of_line();
+	    *q = 0;
+	    if(strlen(sectname) > sizeof(s.sectname)){
+		as_bad("section-name: %s too long (maximum %ld characters)",
+			sectname, sizeof(s.sectname));
+		ignore_rest_of_line();
+		*p = c;
+		*q = d;
+		return;
+	    }
+
+	    frcP = section_new(segname, sectname, value, 0, 0);
+	    if(frcP->frch_root == NULL){
+		frcP->frch_root = xmalloc(SIZEOF_STRUCT_FRAG);
+		frcP->frch_last = frcP->frch_root;
+		memset(frcP->frch_root, '\0', SIZEOF_STRUCT_FRAG);
+	    }
 	    *p = c;
 	    *q = d;
-	    return;
+	    /*
+	     * If this is the end of the line all that was wanted was to create
+	     * the the section which is now done, so return.
+	     */
+	    if(d != ',')
+		return;
 	}
-
-	frcP = section_new(segname, sectname, S_ZEROFILL, 0, 0);
-	if(frcP->frch_root == NULL){
-	    frcP->frch_root = xmalloc(SIZEOF_STRUCT_FRAG);
-	    frcP->frch_last = frcP->frch_root;
-	    memset(frcP->frch_root, '\0', SIZEOF_STRUCT_FRAG);
-	}
-	*p = c;
-	*q = d;
-	/*
-	 * If this is the end of the line all that was wanted was to create the
-	 * the section which is now done, so return.
-	 */
-	if(d != ',')
-	    return;
 
 	if(*input_line_pointer == '"')
 	    name = input_line_pointer + 1;
@@ -2737,7 +2769,7 @@ uintptr_t value)
 	}
 	input_line_pointer ++;
 	if((size = get_absolute_expression()) < 0){
-	    as_bad("zerofill size (%lld.) <0! Ignored.", size);
+	    as_bad("%s size (%lld.) <0! Ignored.", directive, size);
 	    ignore_rest_of_line();
 	    return;
 	}
@@ -2954,6 +2986,34 @@ uintptr_t value)
 	*p = 0;
 	symbolP = symbol_find_or_make(name);
 	symbolP->sy_desc |= N_NO_DEAD_STRIP;
+	*p = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * s_symbol_resolver() implements the pseudo op:
+ *	.symbol_resolver name
+ */
+static
+void
+s_symbol_resolver(
+uintptr_t value)
+{
+    char *name;
+    char c;
+    char *p;
+    symbolS *symbolP;
+
+	if(* input_line_pointer == '"')
+	    name = input_line_pointer + 1;
+	else
+	    name = input_line_pointer;
+	c = get_symbol_end();
+	p = input_line_pointer;
+
+	*p = 0;
+	symbolP = symbol_find_or_make(name);
+	symbolP->sy_desc |= N_SYMBOL_RESOLVER;
 	*p = c;
 	demand_empty_rest_of_line();
 }

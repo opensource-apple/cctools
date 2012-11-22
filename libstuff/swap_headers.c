@@ -91,6 +91,7 @@ struct load_command *load_commands)
     struct rpath_command *rpath;
     struct encryption_info_command *ec;
     struct dyld_info_command *dc;
+    struct version_min_command *vc;
     uint32_t flavor, count;
     unsigned long nflavor;
     char *p, *state, *cmd_name;
@@ -1034,6 +1035,36 @@ check_dylib_command:
 		}
 		break;
 
+	    case LC_FUNCTION_STARTS:
+		ld = (struct linkedit_data_command *)lc;
+		if(ld->cmdsize != sizeof(struct linkedit_data_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_FUNCTION_STARTS command %lu has incorrect "
+			  "cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
+	    case LC_VERSION_MIN_MACOSX:
+		vc = (struct version_min_command *)lc;
+		if(vc->cmdsize != sizeof(struct version_min_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_VERSION_MIN_MACOSX command %lu has incorrect "
+			  "cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
+	    case LC_VERSION_MIN_IPHONEOS:
+		vc = (struct version_min_command *)lc;
+		if(vc->cmdsize != sizeof(struct version_min_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_VERSION_MIN_IPHONEOS command %lu has incorrect "
+			  "cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
 	    case LC_RPATH:
 		rpath = (struct rpath_command *)lc;
 		if(rpath->cmdsize < sizeof(struct rpath_command)){
@@ -1525,6 +1556,7 @@ check_dylib_command:
 
 	    case LC_CODE_SIGNATURE:
 	    case LC_SEGMENT_SPLIT_INFO:
+	    case LC_FUNCTION_STARTS:
 		ld = (struct linkedit_data_command *)lc;
 		swap_linkedit_data_command(ld, target_byte_sex);
 		break;
@@ -1543,6 +1575,12 @@ check_dylib_command:
 	    case LC_DYLD_INFO_ONLY:
 		dc = (struct dyld_info_command *)lc;
 		swap_dyld_info_command(dc, target_byte_sex);
+		break;
+		
+	    case LC_VERSION_MIN_MACOSX:
+	    case LC_VERSION_MIN_IPHONEOS:
+		vc = (struct version_min_command *)lc;
+		swap_version_min_command(vc, target_byte_sex);
 		break;
 	    }
 

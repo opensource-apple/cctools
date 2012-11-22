@@ -1357,6 +1357,11 @@ char *arch_name)
 	       (symbols[i].nl.n_desc & N_NO_DEAD_STRIP) == N_NO_DEAD_STRIP)
 		    printf("[no dead strip] ");
 
+	    if(ofile->mh_filetype == MH_OBJECT &&
+	       ((symbols[i].nl.n_type & N_TYPE) != N_UNDF) &&
+	       (symbols[i].nl.n_desc & N_SYMBOL_RESOLVER) == N_SYMBOL_RESOLVER)
+		    printf("[symbol resolver] ");
+
 	    if((symbols[i].nl.n_desc & N_ARM_THUMB_DEF) == N_ARM_THUMB_DEF)
 		    printf("[Thumb] ");
 

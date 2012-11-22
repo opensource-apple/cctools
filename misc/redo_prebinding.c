@@ -5429,6 +5429,11 @@ enum bool missing_arch)
 		arch->object->split_info_cmd->datasize;
 	}
 
+	if(arch->object->func_starts_info_cmd != NULL){
+	    sym_info_size +=
+		arch->object->func_starts_info_cmd->datasize;
+	}
+
 	if(arch->object->code_sig_cmd != NULL){
 	    sym_info_size =
 		rnd(sym_info_size, 16);
@@ -5472,6 +5477,13 @@ enum bool missing_arch)
 		arch->object->split_info_cmd->dataoff;
 	    arch->object->output_split_info_data_size = 
 		arch->object->split_info_cmd->datasize;
+	}
+	if(arch->object->func_starts_info_cmd != NULL){
+	    arch->object->output_func_start_info_data =
+		arch->object->object_addr +
+		arch->object->func_starts_info_cmd->dataoff;
+	    arch->object->output_func_start_info_data_size = 
+		arch->object->func_starts_info_cmd->datasize;
 	}
 	if(arch->object->code_sig_cmd != NULL){
 	    arch->object->output_code_sig_data = arch->object->object_addr +
@@ -9067,8 +9079,10 @@ uint32_t vmslide)
                         if(sg->nsects != 0){
                             for(j = 0; j < sg->nsects; j++){
                                 if(s->size != 0 &&
-                                (s->flags & S_ZEROFILL) != S_ZEROFILL &&
-                                s->offset < low_fileoff)
+                                   (s->flags & S_ZEROFILL) != S_ZEROFILL &&
+                                   (s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+					       S_THREAD_LOCAL_ZEROFILL &&
+                                   s->offset < low_fileoff)
                                     low_fileoff = s->offset;
                                 s++;
                             }
@@ -9243,6 +9257,10 @@ uint32_t vmslide)
 		break;
 	    case LC_SEGMENT_SPLIT_INFO:
 		arch->object->split_info_cmd =
+		    (struct linkedit_data_command *)lc1;
+		break;
+	    case LC_FUNCTION_STARTS:
+		arch->object->func_starts_info_cmd =
 		    (struct linkedit_data_command *)lc1;
 		break;
 	    }

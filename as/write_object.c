@@ -266,11 +266,16 @@ char *out_file_name)
 	 * zerofill section or the last not-zerofill section.
 	 */
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
-	    if((frchainP->frch_section.flags & SECTION_TYPE) == S_ZEROFILL)
+	    section_type = frchainP->frch_section.flags & SECTION_TYPE;
+	    if(section_type == S_ZEROFILL ||
+	       section_type == S_THREAD_LOCAL_ZEROFILL)
 		continue;
-	    for(p = frchainP->frch_next; p != NULL; p = p->frch_next)
-		if((p->frch_section.flags & SECTION_TYPE) != S_ZEROFILL)
+	    for(p = frchainP->frch_next; p != NULL; p = p->frch_next){
+		section_type = p->frch_section.flags & SECTION_TYPE;
+		if(section_type != S_ZEROFILL &&
+		   section_type != S_THREAD_LOCAL_ZEROFILL)
 		    break;
+	    }
 	    if(p != NULL)
 		i = p->frch_section.addr - frchainP->frch_section.addr;
 	    else
@@ -282,7 +287,9 @@ char *out_file_name)
 				   frchainP->frch_section.size;
 	}
 	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
-	    if((frchainP->frch_section.flags & SECTION_TYPE) != S_ZEROFILL)
+	    section_type = frchainP->frch_section.flags & SECTION_TYPE;
+	    if(section_type != S_ZEROFILL &&
+	       section_type != S_THREAD_LOCAL_ZEROFILL)
 		continue;
 	    reloc_segment.vmsize = frchainP->frch_section.addr +
 				   frchainP->frch_section.size;
@@ -1186,7 +1193,13 @@ uint32_t debug_section)
 	    (symbolP->sy_type & N_TYPE) == N_SECT &&
 	    (is_section_coalesced(symbolP->sy_other) ||
 	     (symbolP->sy_desc & N_WEAK_DEF) == N_WEAK_DEF) &&
-	    fixP->fx_subsy == NULL)){
+	    fixP->fx_subsy == NULL)
+#if defined(I386) && !defined(ARCH64)
+	   ||
+	   ((symbolP->sy_type & N_TYPE) == N_SECT &&
+	    fixP->fx_r_type == GENERIC_RELOC_TLV)
+#endif
+        ){
 #endif
 	    riP->r_extern = 1;
 	    riP->r_symbolnum = symbolP->sy_number;
@@ -1273,7 +1286,7 @@ uint32_t debug_section)
 		else
 #endif
 		{
-		    if(fixP->fx_r_type != 0){
+		    if(fixP->fx_r_type != 0 && fixP->fx_r_type != NO_RELOC){
 			layout_file = fixP->file;
 			layout_line = fixP->line;
 			as_fatal("Internal error: incorrect fx_r_type (%u) for "
@@ -1299,6 +1312,10 @@ uint32_t debug_section)
 		sri.r_length    = riP->r_length;
 		sri.r_pcrel     = riP->r_pcrel;
 		sri.r_address   = riP->r_address;
+                if(sri.r_address != riP->r_address)
+		    as_fatal("Section too large, can't encode r_address (0x%x) "
+			     "into 24-bits of scattered relocation entry",
+			     riP->r_address);
 		sri.r_type      = sectdiff;
 		sri.r_value     = symbolP->sy_value;
 		*riP = *((struct relocation_info *)&sri);
@@ -1405,6 +1422,10 @@ uint32_t debug_section)
 		sri.r_length    = riP->r_length;
 		sri.r_pcrel     = riP->r_pcrel;
 		sri.r_address   = riP->r_address;
+                if(sri.r_address != riP->r_address)
+		    as_fatal("Section too large, can't encode r_address (0x%x) "
+			     "into 24-bits of scattered relocation entry",
+			     riP->r_address);
 		sri.r_type      = riP->r_type;
 		sri.r_value     = symbolP->sy_value;
 		*riP = *((struct relocation_info *)&sri);
@@ -1616,7 +1637,8 @@ clear_section_flags(void)
     frchainS *frcP;
 
 	for(frcP = frchain_root; frcP != NULL; frcP = frcP->frch_next)
-	    if(frcP->frch_section.flags != S_ZEROFILL)
+	    if(frcP->frch_section.flags != S_ZEROFILL &&
+	       frcP->frch_section.flags != S_THREAD_LOCAL_ZEROFILL)
 		frcP->frch_section.flags = 0;
 }
 

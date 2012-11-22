@@ -5,6 +5,39 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.28 release (the cctools-795 release):
+- Fixed symbol_string_at_end() to allow for a the codesign data at the end of
+  the file before the string table.  Radar bug #8308587.
+
+Changes for the 5.28 release (the cctools-792 release):
+- Fixed problems with not coping out the function start info.  Updated
+  copy_new_symbol_info() to uses the new fields for the info and copy the info
+  into the output buffer.  Radar bug #8401082.
+
+Changes for the 5.28 release (the cctools-791 release):
+- Fixed some missing copy and paste errors swap_object_headers() in 
+  swap_headers.c where it was using ld-> not vc-> for the LC_VERSION_MIN_*
+  stuff.
+
+Changes for the 5.28 release (the cctools-790 release):
+- Fixed problems with the incorrect support for LC_VERSION_MIN_* and
+  LC_FUNCTION_STARTS.  Radar bug #8274584.
+  - In check_Mach_O() in ofile.c needed to set vers to NULL.
+  - In check_object() in checkout.c added code to set the new
+    func_starts_info_cmd field.
+  - In dyld_order() in checkout.c added code to check that if the
+    func_starts_info_cmd is set its data is after the split-seg data and before
+    the symbol table.
+
+Changes for the 5.27 release (the cctools-784 release):
+- Added swap_version_min_command() to bytesex.c .  Added checking of the
+  new load commands to check_Mach_O() in ofile.c .  Added swapping the new
+  commands to swap_object_headers() in swap_headers.c .  Radar bug #7902277.
+
+Changes for the 5.27 release (the cctools-783 release):
+- Change code that used S_ZEROFILL to also use S_THREAD_LOCAL_ZEROFILL.
+  Radar bug #7796734.
+
 Changes for the 5.28 release (the cctools-781 release):
 - The check in check_Mach_O() in ofile.c that was checking that the addr field
   of section less than the segment's vmaddr to not do that check if the Mach-O

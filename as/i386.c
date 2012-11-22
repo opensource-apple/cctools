@@ -59,6 +59,8 @@
 #include "dwarf2dbg.h"
 #ifdef ARCH64
 #include <mach-o/x86_64/reloc.h>
+#else
+#include <mach-o/reloc.h>
 #endif
 
 #ifdef NeXT_MOD
@@ -89,6 +91,8 @@
 
 #ifdef ARCH64
 typedef enum reloc_type_x86_64 bfd_reloc_code_real_type;
+#else
+typedef enum reloc_type_generic bfd_reloc_code_real_type;
 #endif
 
 #ifndef DEFAULT_ARCH
@@ -214,6 +218,8 @@ struct _i386_insn
 #ifdef ARCH64
     /* Relocation type for operand */
     enum reloc_type_x86_64 reloc[MAX_OPERANDS];
+#else
+    enum reloc_type_generic reloc[MAX_OPERANDS];
 #endif
 
     /* BASE_REG, INDEX_REG, and LOG2_SCALE_FACTOR are used to encode
@@ -1540,17 +1546,13 @@ void
 md_assemble (line)
      char *line;
 {
-#ifdef ARCH64
   int j;
-#endif
   char mnemonic[MAX_MNEM_SIZE];
 
   /* Initialize globals.  */
   memset (&i, '\0', sizeof (i));
-#ifdef ARCH64
   for (j = 0; j < MAX_OPERANDS; j++)
     i.reloc[j] = NO_RELOC;
-#endif
   memset (disp_expressions, '\0', sizeof (disp_expressions));
   memset (im_expressions, '\0', sizeof (im_expressions));
   save_stack_p = save_stack;
@@ -1789,6 +1791,12 @@ md_assemble (line)
 	  frag_now);
   }
 #endif /* NeXT_MOD */
+  /*
+   * If the --gdwarf2 flag is present generate a .loc for this.
+   */
+  if(debug_type == DEBUG_DWARF2 && frchain_now->frch_nsect == text_nsect){
+	dwarf2_loc(dwarf2_file_number, logical_input_line);
+  }
 
 #ifdef NeXT_MOD	/* mark sections containing instructions */
   /*
@@ -3884,7 +3892,7 @@ output_disp (insn_start_frag, insn_start_off)
 #if !ARCH64
 	      fix_new (frag_now, p - frag_now->fr_literal, size,
 		       i.op[n].disps->X_add_symbol, i.op[n].disps->X_subtract_symbol,
-		       i.op[n].disps->X_add_number, 0, 0, 0);
+		       i.op[n].disps->X_add_number, 0, 0, i.reloc[n]);
 #else
 #ifdef NeXT_MOD
 	      /*
@@ -4128,7 +4136,7 @@ output_imm (insn_start_frag, insn_start_off)
     }
 }
 
-#if !defined(ARCH64) && ((!defined (OBJ_ELF) && !defined (OBJ_MAYBE_ELF)) || defined (LEX_AT))
+#if (!defined(NeXT_MOD) && !defined(ARCH64)) && ((!defined (OBJ_ELF) && !defined (OBJ_MAYBE_ELF)) || defined (LEX_AT)) 
 # define lex_got(reloc, adjust) NULL
 #else
 #ifdef NeXT_MOD
@@ -4165,7 +4173,12 @@ lex_got (reloc, adjust)
 #endif
   } gotrel[] = {
 #ifdef NeXT_MOD
+#ifdef ARCH64
     { "GOTPCREL", { 0,                        0, X86_64_RELOC_GOT } },
+    { "TLVP",     { 0,                        0, X86_64_RELOC_TLV } },
+#else
+    { "TLVP",     { GENERIC_RELOC_TLV,        0, 0 } },
+#endif
 #else
     { "PLT",      { BFD_RELOC_386_PLT32,      0, BFD_RELOC_X86_64_PLT32    } },
     { "GOTOFF",   { BFD_RELOC_386_GOTOFF,     0, 0                         } },

@@ -1,4 +1,39 @@
+Changes for the 5.27 release (the cctools-794 release):
+- Added MH_NO_HEAP_EXECUTION to <mach-o/loader.h> .  Radar bug #8457105.
+
+Changes for the 5.27 release (the cctools-792 release):
+- Fixed more problems with incorrect support for LC_FUNCTION_STARTS.  Radar bug
+  #8401082.  Added the output_func_start_info_data and
+  output_func_start_info_data_size fields to the struct object in
+  stuff/breakout.h.
+
+Changes for the 5.27 release (the cctools-791 release):
+- Commented out some of the #defined's in mach/ppc/thread_status.h to stop
+  warnings.
+
+Changes for the 5.27 release (the cctools-790 release):
+- Added the func_starts_info_cmd field to the struct object in stuff/breakout.h.
+  Radar bug #8274584.
+- Added mach/ppc/thread_status.h and mach/ppc/_structs.h to GAS_MISSING_SRCS in
+  the Makefile.  Radar bug #8257646.
+
+Changes for the 5.27 release (the cctools-787 release):
+- Added N_SYMBOL_RESOLVER to <mach-o/nlist.h> . Radar bug #7901954.
+
+Changes for the 5.27 release (the cctools-785 release):
+- Added AT_APPLE_flags to "elf/dwarf2.h".  Radar bug #7580966.
+
+Changes for the 5.27 release (the cctools-784 release):
+- Added LC_VERSION_MIN_* and LC_FUNCTION_STARTS to <mach-o/loader.h> .
+  Added swap_version_min_command() to "stuff/bytesex.h" .
+  Radar bug #7902277.
+
 Changes for the 5.27 release (the cctools-783 release):
+- Added the section types to support thread local variables to <mach-o/loader.h>
+  and added X86_64_RELOC_TLV to <mach-o/x86_64/reloc.h> and GENERIC_RELOC_TLV
+  to <mach-o/reloc.h> . Radar bug #7796734.
+
+Changes for the 5.27 release (the cctools-782 release):
 - Fixed a comment typo in loader.h where rebase should have been bind.
   Radar bug #6789853.
 

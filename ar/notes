@@ -1,3 +1,8 @@
+Changes for the 5.28 release (the cctools-787 release):
+- Added testing the environment variable ZERO_AR_DATE to set the ar date to
+  zero to allow testing and comparing things for exact binary equality.
+  The change was in put_arobj() archive.c . Radar bug #7919021.
+
 Changes for the 5.28 release (the cctools-777 release):
 - Changed the Makefile to use -Os for OFLAG.  Radar bug #7475093.
 

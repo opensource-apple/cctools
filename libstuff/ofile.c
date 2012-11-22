@@ -3163,7 +3163,8 @@ struct ofile *ofile)
     struct routines_command *rc;
     struct routines_command_64 *rc64;
     struct twolevel_hints_command *hints;
-    struct linkedit_data_command *code_sig, *split_info;
+    struct linkedit_data_command *code_sig, *split_info, *func_starts;
+    struct version_min_command *vers;
     struct prebind_cksum_command *cs;
     struct encryption_info_command *encrypt_info;
     struct dyld_info_command *dyld_info;
@@ -3257,11 +3258,13 @@ struct ofile *ofile)
 	rc64 = NULL;
 	hints = NULL;
 	code_sig = NULL;
+	func_starts = NULL;
 	split_info = NULL;
 	cs = NULL;
 	uuid = NULL;
 	encrypt_info = NULL;
 	dyld_info = NULL;
+	vers = NULL;
 	big_load_end = 0;
 	for(i = 0, lc = load_commands; i < ncmds; i++){
 	    l = *lc;
@@ -3345,7 +3348,8 @@ struct ofile *ofile)
 		    swap_section(s, sg->nsects, host_byte_sex);
 		for(j = 0 ; j < sg->nsects ; j++){
 		    if(mh->filetype != MH_DYLIB_STUB &&
-		       s->flags != S_ZEROFILL && s->offset > size){
+		       s->flags != S_ZEROFILL &&
+		       s->flags != S_THREAD_LOCAL_ZEROFILL && s->offset > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(offset field of section %u in LC_SEGMENT "
 				"command %u extends past the end of the file)",
@@ -3354,6 +3358,7 @@ struct ofile *ofile)
 		    }
 		    if(mh->filetype != MH_DYLIB_STUB &&
 		       s->flags != S_ZEROFILL &&
+		       s->flags != S_THREAD_LOCAL_ZEROFILL &&
 		       sg->fileoff == 0 && s->offset < sizeofhdrs){
 			Mach_O_error(ofile, "malformed object (offset field of "
 				"section %u in LC_SEGMENT command %u not "
@@ -3363,7 +3368,8 @@ struct ofile *ofile)
 		    big_size = s->offset;
 		    big_size += s->size;
 		    if(mh->filetype != MH_DYLIB_STUB &&
-		       s->flags != S_ZEROFILL && big_size > size){
+		       s->flags != S_ZEROFILL &&
+		       s->flags != S_THREAD_LOCAL_ZEROFILL && big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(offset field plus size field of section %u "
 				"in LC_SEGMENT command %u extends "
@@ -3371,7 +3377,9 @@ struct ofile *ofile)
 			goto return_bad;
 		    }
 		    if(mh->filetype != MH_DYLIB_STUB &&
-		       s->flags != S_ZEROFILL && s->size > sg->filesize){
+		       s->flags != S_ZEROFILL &&
+		       s->flags != S_THREAD_LOCAL_ZEROFILL &&
+		       s->size > sg->filesize){
 			Mach_O_error(ofile, "malformed object (size field of "
 				"section %u in LC_SEGMENT command %u greater "
 				"than the segment)", j, i);
@@ -3397,6 +3405,7 @@ struct ofile *ofile)
 		    }
 		    if(mh->filetype != MH_DYLIB_STUB &&
 		       s->flags != S_ZEROFILL &&
+		       s->flags != S_THREAD_LOCAL_ZEROFILL &&
 		       check_overlaping_element(ofile, &elements, s->offset,
 			    s->size, "section contents") == CHECK_BAD)
 			goto return_bad;
@@ -3465,7 +3474,9 @@ struct ofile *ofile)
 		    swap_section_64(s64, sg64->nsects, host_byte_sex);
 		for(j = 0 ; j < sg64->nsects ; j++){
 		    if(mh64->filetype != MH_DYLIB_STUB &&
-		       s64->flags != S_ZEROFILL && s64->offset > size){
+		       s64->flags != S_ZEROFILL &&
+		       s64->flags != S_THREAD_LOCAL_ZEROFILL &&
+		       s64->offset > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(offset field of section %u in LC_SEGMENT_64 "
 				"command %u extends past the end of the file)",
@@ -3475,7 +3486,9 @@ struct ofile *ofile)
 		    big_size = s64->offset;
 		    big_size += s64->size;
 		    if(mh64->filetype != MH_DYLIB_STUB &&
-		       s64->flags != S_ZEROFILL && big_size > size){
+		       s64->flags != S_ZEROFILL &&
+		       s64->flags != S_THREAD_LOCAL_ZEROFILL &&
+		       big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(offset field plus size field of section %u "
 				"in LC_SEGMENT_64 command %u extends "
@@ -3484,6 +3497,7 @@ struct ofile *ofile)
 		    }
 		    if(mh64->filetype != MH_DYLIB_STUB &&
 		       s64->flags != S_ZEROFILL &&
+		       s64->flags != S_THREAD_LOCAL_ZEROFILL &&
 		       check_overlaping_element(ofile, &elements, s64->offset,
 			    s64->size, "section contents") == CHECK_BAD)
 			goto return_bad;
@@ -3877,6 +3891,91 @@ struct ofile *ofile)
 			split_info->dataoff, split_info->datasize,
 			"split info data") == CHECK_BAD)
 		    goto return_bad;
+		break;
+
+	    case LC_FUNCTION_STARTS:
+		if(l.cmdsize < sizeof(struct linkedit_data_command)){
+		    Mach_O_error(ofile, "malformed object (LC_FUNCTION_STARTS "
+				 "cmdsize too small) in command %u", i);
+		    goto return_bad;
+		}
+		if(func_starts != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"LC_FUNCTION_STARTS command)");
+		    goto return_bad;
+		}
+		func_starts = (struct linkedit_data_command *)lc;
+		if(swapped)
+		    swap_linkedit_data_command(func_starts, host_byte_sex);
+		if(func_starts->cmdsize !=
+		   sizeof(struct linkedit_data_command)){
+		    Mach_O_error(ofile, "malformed object (LC_FUNCTION_STARTS "
+			         "command %u has incorrect cmdsize)", i);
+		    goto return_bad;
+		}
+		if(func_starts->dataoff > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(dataoff field of LC_FUNCTION_STARTS command %u "
+			"extends past the end of the file)", i);
+		    goto return_bad;
+		}
+		big_size = func_starts->dataoff;
+		big_size += func_starts->datasize;
+		if(big_size > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(dataoff field plus datasize field of "
+			"LC_FUNCTION_STARTS command %u extends past the end of "
+			"the file)", i);
+		    goto return_bad;
+		}
+		if(check_overlaping_element(ofile, &elements,
+			func_starts->dataoff, func_starts->datasize,
+			"function starts data") == CHECK_BAD)
+		    goto return_bad;
+		break;
+
+	    case LC_VERSION_MIN_MACOSX:
+		if(l.cmdsize < sizeof(struct version_min_command)){
+		    Mach_O_error(ofile, "malformed object (LC_VERSION_MIN_"
+				 "MACOSX cmdsize too small) in command %u", i);
+		    goto return_bad;
+		}
+		if(vers != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"LC_VERSION_MIN_IPHONEOS or LC_VERSION_MIN_MACOSX "
+			"command)");
+		    goto return_bad;
+		}
+		vers = (struct version_min_command *)lc;
+		if(swapped)
+		    swap_version_min_command(vers, host_byte_sex);
+		if(vers->cmdsize < sizeof(struct version_min_command)){
+		    Mach_O_error(ofile, "malformed object (LC_VERSION_MIN_"
+			"MACOSX command %u has too small cmdsize field)", i);
+		    goto return_bad;
+		}
+		break;
+
+	    case LC_VERSION_MIN_IPHONEOS:
+		if(l.cmdsize < sizeof(struct version_min_command)){
+		    Mach_O_error(ofile, "malformed object (LC_VERSION_MIN_"
+				 "IPHONEOS cmdsize too small) in command %u",i);
+		    goto return_bad;
+		}
+		if(vers != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"LC_VERSION_MIN_IPHONEOS or LC_VERSION_MIN_MACOSX "
+			"command)");
+		    goto return_bad;
+		}
+		vers = (struct version_min_command *)lc;
+		if(swapped)
+		    swap_version_min_command(vers, host_byte_sex);
+		if(vers->cmdsize < sizeof(struct version_min_command)){
+		    Mach_O_error(ofile, "malformed object (LC_VERSION_MIN_"
+			"IPHONEOS command %u has too small cmdsize field)", i);
+		    goto return_bad;
+		}
 		break;
 
 	    case LC_ENCRYPTION_INFO:

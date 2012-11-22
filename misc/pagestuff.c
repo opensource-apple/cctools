@@ -77,6 +77,7 @@ enum mach_o_part_type {
     MP_EXT_STRING_TABLE,
     MP_LOC_STRING_TABLE,
     MP_CODE_SIG,
+    MP_FUNCTION_STARTS,
     MP_EMPTY_SPACE
 };
 static char *mach_o_part_type_names[] = {
@@ -101,6 +102,7 @@ static char *mach_o_part_type_names[] = {
     "MP_EXT_STRING_TABLE",
     "MP_LOC_STRING_TABLE",
     "MP_CODE_SIG",
+    "MP_FUNCTION_STARTS",
     "MP_EMPTY_SPACE"
 };
 
@@ -417,7 +419,7 @@ struct file_part *fp)
     char *strings;
     struct dylib_module *modtab;
     struct dylib_module_64 *modtab64;
-    struct linkedit_data_command *split_info, *code_sig;
+    struct linkedit_data_command *split_info, *code_sig, *func_starts;
 
 	mp = new_mach_o_part();
 	mp->offset = fp->offset;
@@ -451,6 +453,7 @@ struct file_part *fp)
 	strings = NULL;
 	split_info = NULL;
 	code_sig = NULL;
+	func_starts = NULL;
 	lc = ofile.load_commands;
 	for(i = 0; i < ncmds; i++){
 	    if(st == NULL && lc->cmd == LC_SYMTAB){
@@ -468,6 +471,9 @@ struct file_part *fp)
 	    else if(code_sig == NULL && lc->cmd == LC_CODE_SIGNATURE){
 		code_sig = (struct linkedit_data_command *)lc;
 	    }
+	    else if(func_starts == NULL && lc->cmd == LC_FUNCTION_STARTS){
+		func_starts = (struct linkedit_data_command *)lc;
+	    }
 	    else if(lc->cmd == LC_SEGMENT){
 		sg = (struct segment_command *)lc;
 		s = (struct section *)
@@ -482,7 +488,9 @@ struct file_part *fp)
 			mp->s64 = NULL;
 			insert_mach_o_part(fp, mp);
 		    }
-		    if((s->flags & SECTION_TYPE) != S_ZEROFILL && s->size != 0){
+		    if((s->flags & SECTION_TYPE) != S_ZEROFILL &&
+		       (s->flags & SECTION_TYPE) != S_THREAD_LOCAL_ZEROFILL &&
+		       s->size != 0){
 			mp = new_mach_o_part();
 			mp->offset = fp->offset + s->offset;
 			mp->size = s->size;
@@ -491,7 +499,9 @@ struct file_part *fp)
 			mp->s64 = NULL;
 			insert_mach_o_part(fp, mp);
 		    }
-		    if((s->flags & SECTION_TYPE) == S_ZEROFILL && s->size != 0){
+		    if(((s->flags & SECTION_TYPE) == S_ZEROFILL ||
+			(s->flags & SECTION_TYPE) == S_THREAD_LOCAL_ZEROFILL) &&
+		       s->size != 0){
 			if(s->addr - sg->vmaddr < sg->filesize){
 			    mp = new_mach_o_part();
 			    mp->offset = fp->offset + sg->fileoff +
@@ -524,6 +534,7 @@ struct file_part *fp)
 			insert_mach_o_part(fp, mp);
 		    }
 		    if((s64->flags & SECTION_TYPE) != S_ZEROFILL &&
+		       (s64->flags & SECTION_TYPE) != S_THREAD_LOCAL_ZEROFILL &&
 		       s64->size != 0){
 			mp = new_mach_o_part();
 			mp->offset = fp->offset + s64->offset;
@@ -533,7 +544,9 @@ struct file_part *fp)
 			mp->s = NULL;
 			insert_mach_o_part(fp, mp);
 		    }
-		    if((s64->flags & SECTION_TYPE) == S_ZEROFILL && 
+		    if(((s64->flags & SECTION_TYPE) == S_ZEROFILL ||
+			(s64->flags & SECTION_TYPE) ==
+						    S_THREAD_LOCAL_ZEROFILL) && 
 		       s64->size != 0){
 			if(s64->addr - sg64->vmaddr < sg64->filesize){
 			    mp = new_mach_o_part();
@@ -830,6 +843,13 @@ struct file_part *fp)
 	    mp->offset = fp->offset + code_sig->dataoff;
 	    mp->size = code_sig->datasize;
 	    mp->type = MP_CODE_SIG;
+	    insert_mach_o_part(fp, mp);
+	}
+	if(func_starts != NULL && func_starts->datasize != 0){
+	    mp = new_mach_o_part();
+	    mp->offset = fp->offset + func_starts->dataoff;
+	    mp->size = func_starts->datasize;
+	    mp->type = MP_FUNCTION_STARTS;
 	    insert_mach_o_part(fp, mp);
 	}
 }
@@ -1164,7 +1184,13 @@ uint32_t page_number)
 			printed = TRUE;
 			break;
 		    case MP_CODE_SIG:
-			printf("File Page %u contains local of code signature",
+			printf("File Page %u contains data of code signature",
+			       page_number);
+			print_arch(fp);
+			printed = TRUE;
+			break;
+		    case MP_FUNCTION_STARTS:
+			printf("File Page %u contains data of function starts",
 			       page_number);
 			print_arch(fp);
 			printed = TRUE;
@@ -1367,7 +1393,10 @@ struct mach_o_part *mp)
 	    printf("string table for local symbols");
 	    break;
 	case MP_CODE_SIG:
-	    printf("local of code signature");
+	    printf("data of code signature");
+	    break;
+	case MP_FUNCTION_STARTS:
+	    printf("data of function starts");
 	    break;
 	case MP_EMPTY_SPACE:
 	    printf("empty space");

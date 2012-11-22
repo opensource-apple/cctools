@@ -548,9 +548,26 @@ static const char * const DEBUGREG[] = {
 	"%db8", "%db9", "%db10", "%db11", "%db12", "%db13", "%db14", "%db15"
 };
 
+static const char * const LLVM_MC_DEBUGREG[] = {
+	"%dr0", "%dr1", "%dr2", "%dr3", "%dr4", "%dr5", "%dr6", "%dr7",
+	"%db8", "%db9", "%db10", "%db11", "%db12", "%db13", "%db14", "%db15"
+};
+
 static const char * const CONTROLREG[] = {
 	"%cr0", "%cr1", "%cr2", "%cr3", "%cr4", "%cr5", "%cr6", "%cr7",
 	"%cr8", "%cr9", "%cr10", "%cr11", "%cr12", "%cr13", "%cr14", "%cr15"
+};
+
+static const char * const LLVM_MC_32_CONTROLREG[] = {
+	"%ecr0", "%ecr1", "%ecr2", "%ecr3", "%ecr4", "%ecr5", "%ecr6", "%ecr7",
+	"%ecr8", "%ecr9", "%ecr10", "%ecr11", "%ecr12", "%ecr13", "%ecr14",
+	"%ecr15"
+};
+
+static const char * const LLVM_MC_64_CONTROLREG[] = {
+	"%rcr0", "%rcr1", "%rcr2", "%rcr3", "%rcr4", "%rcr5", "%rcr6", "%rcr7",
+	"%rcr8", "%rcr9", "%rcr10", "%rcr11", "%rcr12", "%rcr13", "%rcr14",
+	"%rcr15"
 };
 
 static const char * const TESTREG[8] = {
@@ -1603,7 +1620,8 @@ cpu_type_t cputype,
 struct load_command *load_commands,
 uint32_t ncmds,
 uint32_t sizeofcmds,
-enum bool verbose)
+enum bool verbose,
+enum bool llvm_mc)
 {
     char mnemonic[MAX_MNEMONIC+2]; /* one extra for suffix */
     const char *seg;
@@ -1683,6 +1701,10 @@ enum bool verbose)
 	    if(dp->adr_mode == PREFIX){
 		if(prefix_dp != NULL)
 		    printf("%s", dp->name);
+		else if(llvm_mc == TRUE && byte == 0x9b){
+		    printf("wait\n");
+		    return(length);
+		}
 		prefix_dp = dp;
 		prefix_byte = byte;
 	    }
@@ -1978,6 +2000,9 @@ enum bool verbose)
 	    reg_name = get_reg_name(reg, LONGOPERAND, data16, rex);
 	    wbit = WBIT(opcode5);
 	    data16 = 1;
+	    /* movslq (0x63) Move doubleword to quadword with sign-extension */
+	    if(opcode1 != 0x6 && opcode2 != 0x3)
+	        rex = 0;
 	    GET_OPERAND(&symadd0, &symsub0, &value0, &value0_size, result0);
 	    printf("%s\t", mnemonic);
 	    print_operand(seg, symadd0, symsub0, value0, value0_size, result0,
@@ -3220,6 +3245,12 @@ enum bool verbose)
 	    if(opcode1 == 0 && opcode2 == 0xf && opcode4 == 0 && opcode5 == 0 &&
 	       (opcode3 == 2 || opcode3 == 3 || opcode3 == 4 || opcode3 == 5))
 		data16 = TRUE;
+	    /*
+	     * Hacks for fnstsw which take only a r/m16 operand.
+	     */
+	    if((opcode1 == 0xd && opcode2 == 0xf && byte == 0xe0) ||
+	       (opcode1 == 0xd && opcode2 == 0xd && opcode3 == 0x7))
+		data16 = TRUE;
 	    if(got_modrm_byte == FALSE){
 		got_modrm_byte = TRUE;
 		byte = get_value(sizeof(char), sect, &length, &left);
@@ -3255,13 +3286,24 @@ enum bool verbose)
 		vbit = 1;
 		/* fall thru */
 	    case 0: 
-		reg_name = CONTROLREG[reg + (REX_R(rex) << 3)];
+		if(llvm_mc == TRUE){
+		    if((cputype & CPU_ARCH_ABI64) == CPU_ARCH_ABI64)
+		        reg_name = LLVM_MC_64_CONTROLREG[reg+(REX_R(rex) << 3)];
+		    else
+		        reg_name = LLVM_MC_32_CONTROLREG[reg+(REX_R(rex) << 3)];
+		}
+		else{
+		    reg_name = CONTROLREG[reg + (REX_R(rex) << 3)];
+		}
 		break;
 	    case 3:
 		vbit = 1;
 		/* fall thru */
 	    case 1:
-		reg_name = DEBUGREG[reg + (REX_R(rex) << 3)];
+		if(llvm_mc == TRUE)
+		    reg_name = LLVM_MC_DEBUGREG[reg + (REX_R(rex) << 3)];
+		else
+		    reg_name = DEBUGREG[reg + (REX_R(rex) << 3)];
 		break;
 	    case 6:
 		vbit = 1;
@@ -3461,6 +3503,25 @@ enum bool verbose)
 
 	/* jmp/call. single operand, 8 bit displacement */
 	case BD:
+	    /*
+	     * The "Jump if rCX Zero" instruction is 0xe3 but is "jcxz" as in
+	     * the table only in 32-bit mode with a Address-size override
+	     * prefix.  Without a prefix it is "jecxz" in 32-bit mode.  In
+	     * 64-bit mode with a prefix it is "jecxz" and without it is
+	     * "jrcxz".
+	     */
+	    if(opcode1 == 0xe && opcode2 == 0x3){
+		if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64){
+		   if(addr16 == FALSE)
+			sprintf(mnemonic, "jecxz");
+		}
+		else if ((cputype & CPU_ARCH_ABI64) == CPU_ARCH_ABI64){
+		   if(addr16 == TRUE)
+			sprintf(mnemonic, "jecxz");
+		   else
+			sprintf(mnemonic, "jrcxz");
+		}
+	    }
 	    value0_size = sizeof(char);
 	    DISPLACEMENT(&symadd0, &symsub0, &imm0, value0_size);
 	    printf("%s\t", mnemonic);
@@ -3917,11 +3978,11 @@ const enum bool verbose)
 	switch(value_size){
 	case 1:
 	    if((*value) & 0x80)
-		*value = *value | 0xffffff00;
+		*value = *value | 0xffffffffffffff00ULL;
 	    break;
 	case 2:
 	    if((*value) & 0x8000)
-		*value = *value | 0xffff0000;
+		*value = *value | 0xffffffffffff0000ULL;
 	    break;
 	}
 	if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64)

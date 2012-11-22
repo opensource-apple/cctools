@@ -134,6 +134,13 @@ struct object *object)
 			"LC_SEGMENT_SPLIT_INFO load command): ");
 		object->split_info_cmd = (struct linkedit_data_command *)lc;
 	    }
+	    else if(lc->cmd == LC_FUNCTION_STARTS){
+		if(object->func_starts_info_cmd != NULL)
+		    fatal_arch(arch, member, "malformed file (more than one "
+			"LC_FUNCTION_STARTS load command): ");
+		object->func_starts_info_cmd =
+			(struct linkedit_data_command *)lc;
+	    }
 	    else if((lc->cmd == LC_DYLD_INFO) ||(lc->cmd == LC_DYLD_INFO_ONLY)){
 		if(object->dyld_info != NULL)
 		    fatal_arch(arch, member, "malformed file (more than one "
@@ -275,6 +282,7 @@ struct object *object)
 		 *	string table
 		 *		strings for external symbols
 		 *		strings for local symbols
+		 *		code signature
 		 */
 		symbol_string_at_end(arch, member, object);
 	    }
@@ -356,6 +364,11 @@ struct object *object)
 	    if(object->split_info_cmd->dataoff != offset)
 		order_error(arch, member, "split info data out of place");
 	    offset += object->split_info_cmd->datasize;
+	}
+	if(object->func_starts_info_cmd != NULL){
+	    if(object->func_starts_info_cmd->dataoff != offset)
+		order_error(arch, member, "function starts data out of place");
+	    offset += object->func_starts_info_cmd->datasize;
 	}
 	if(object->st->nsyms != 0){
 	    if(object->st->symoff != offset)
@@ -517,11 +530,31 @@ struct arch *arch,
 struct member *member,
 struct object *object)
 {
-    uint32_t end, strend, rounded_strend;
+    uint32_t end, sigend, strend, rounded_strend;
     uint32_t indirectend, rounded_indirectend;
 
 	if(object->st != NULL && object->st->nsyms != 0){
 	    end = object->object_size;
+	    if(object->code_sig_cmd != NULL){
+		sigend = object->code_sig_cmd->dataoff +
+			 object->code_sig_cmd->datasize;
+		if(sigend != end)
+		    fatal_arch(arch, member, "code signature not at the end "
+			"of the file (can't be processed) in file: ");
+		/*
+		 * The code signature starts at a 16 byte offset.  So if the
+		 * string table end rouned to 16 bytes is the offset where the 
+		 * code signature starts then just back up the current "end" to
+		 * the end of the string table.
+		 */
+		end = object->code_sig_cmd->dataoff;
+		if(object->st->strsize != 0){
+		    strend = object->st->stroff + object->st->strsize;
+		    rounded_strend = rnd(strend, 16);
+		    if(object->code_sig_cmd->dataoff == rounded_strend)
+		       end = strend;
+		}
+	    }
 	    if(object->st->strsize != 0){
 		strend = object->st->stroff + object->st->strsize;
 		/*

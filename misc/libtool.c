@@ -80,6 +80,13 @@ static enum byte_sex host_byte_sex = UNKNOWN_BYTE_SEX;
 static time_t toc_time = 0;
 
 /*
+ * The environment variable ZERO_AR_DATE is used here and other places that
+ * write archives to allow testing and comparing things for exact binary
+ * equality.
+ */
+static enum bool zero_ar_date = FALSE;
+
+/*
  * The mode of the table of contents member (S_IFREG | (0666 & ~umask))
  */
 static u_short toc_mode = 0;
@@ -332,7 +339,19 @@ char **envp)
 
 	host_byte_sex = get_host_byte_sex();
 
-	toc_time = time(0);
+	/*
+	 * The environment variable ZERO_AR_DATE is used here and other
+	 * places that write archives to allow testing and comparing
+	 * things for exact binary equality.
+	 */
+	if(getenv("ZERO_AR_DATE") == NULL)
+	    zero_ar_date = FALSE;
+	else
+	    zero_ar_date = TRUE;
+	if(zero_ar_date == FALSE)
+	    toc_time = time(0);
+	else
+	    toc_time = 0;
 
 	numask = 0;
 	oumask = umask(numask);
@@ -1743,9 +1762,15 @@ struct ofile *ofile)
 	     * If -arch_only is specified then only add this file if it matches
 	     * the architecture specified.
 	     */
-	    if(cmd_flags.arch_only_flag.name != NULL &&
-	       cmd_flags.arch_only_flag.cputype != ofile->mh_cputype)
-		return;
+	    if(cmd_flags.arch_only_flag.name != NULL){
+		if(cmd_flags.arch_only_flag.cputype != ofile->mh_cputype)
+		    return;
+		if(cmd_flags.arch_only_flag.cputype == CPU_TYPE_ARM){
+		    if(cmd_flags.arch_only_flag.cpusubtype !=
+							ofile->mh_cpusubtype)
+			return;
+		}
+	    }
 
 	    for( ; i < narchs; i++){
 		if(archs[i].arch_flag.cputype == ofile->mh_cputype){
@@ -1927,6 +1952,8 @@ struct ofile *ofile)
 		    p[sizeof(member->ar_hdr.ar_name)] = c;
 		member->member_name_size = size_ar_name(&member->ar_hdr);
 	    }
+	    if(zero_ar_date == TRUE)
+		stat_buf.st_mtime = 0;
 	    /*
 	     * Create the rest of the archive header after the name.
 	     */
@@ -2142,8 +2169,13 @@ char *output)
 	    else{
 		if(cmd_flags.dynamic == FALSE ||
 		   cmd_flags.no_files_ok == FALSE){
-		    error("no library created (no object files in input "
-			  "files)");
+		    if(cmd_flags.arch_only_flag.name != NULL)
+			error("no library created (no object files in input "
+			      "files matching -arch_only %s)",
+			      cmd_flags.arch_only_flag.name);
+		    else
+			error("no library created (no object files in input "
+			      "files)");
 		    return;
 		}
 	    }
@@ -2459,6 +2491,8 @@ char *output)
 	    system_error("can't open output file: %s", output);
 	    return;
 	}
+	if(zero_ar_date == TRUE)
+	    stat_buf.st_mtime = 0;
 	/*
          * With the time from the file system the library is on set the ar_date
 	 * using the modification time returned by stat.  Then write this into

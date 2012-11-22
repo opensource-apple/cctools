@@ -1281,6 +1281,13 @@ struct object *object)
 	    object->output_sym_info_size += object->split_info_cmd->datasize;
 	}
 
+	if(object->func_starts_info_cmd != NULL){
+	    object->input_sym_info_size +=
+		object->func_starts_info_cmd->datasize;
+	    object->output_sym_info_size +=
+		object->func_starts_info_cmd->datasize;
+	}
+
 	if(object->hints_cmd != NULL){ 
 	    object->input_sym_info_size +=
 		object->hints_cmd->nhints * sizeof(struct twolevel_hint);
@@ -1322,6 +1329,12 @@ struct object *object)
 	    (object->object_addr + object->split_info_cmd->dataoff);
 	    object->output_split_info_data_size = 
 		object->split_info_cmd->datasize;
+	}
+	if(object->func_starts_info_cmd != NULL){
+	    object->output_func_start_info_data = 
+	    (object->object_addr + object->func_starts_info_cmd->dataoff);
+	    object->output_func_start_info_data_size = 
+		object->func_starts_info_cmd->datasize;
 	}
 	object->output_ext_relocs = ext_relocs;
 	object->output_indirect_symtab = indirect_symtab;
@@ -1371,6 +1384,10 @@ struct object *object)
 	if(object->split_info_cmd != NULL){
 	    object->split_info_cmd->dataoff = offset;
 	    offset += object->split_info_cmd->datasize;
+	}
+	if(object->func_starts_info_cmd != NULL){
+	    object->func_starts_info_cmd->dataoff = offset;
+	    offset += object->func_starts_info_cmd->datasize;
 	}
 	if(object->st->nsyms != 0){
 	    object->st->symoff = offset;

@@ -84,6 +84,7 @@ struct subsystem_argument subsystem_arguments[] = {
     { "application",		IMAGE_SUBSYSTEM_EFI_APPLICATION },
     { "app",			IMAGE_SUBSYSTEM_EFI_APPLICATION },
     { "UEFI_APPLICATION",	IMAGE_SUBSYSTEM_EFI_APPLICATION },
+    { "APPLICATION",	        IMAGE_SUBSYSTEM_EFI_APPLICATION },
 
     { "boot",			IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
     { "bsdrv",			IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
@@ -98,6 +99,12 @@ struct subsystem_argument subsystem_arguments[] = {
     { "USER_DEFINED",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
     { "UEFI_DRIVER",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
     { "DXE_CORE",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "SECURITY_CORE",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "COMBINED_PEIM_DRIVER",	IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "PIC_PEIM",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "RELOCATABLE_PEIM",	IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "BS_DRIVER",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
+    { "SMM_CORE",		IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER },
 
     { "runtime",		IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER },
     { "rtdrv",			IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER },
@@ -1178,7 +1185,7 @@ void
 layout_output(
 struct ofile *ofile)
 {
-    uint32_t i, header_size, offset;
+    uint32_t i, header_size, offset, least_vaddr;
 
 	/*
 	 * Determine the size of the output file and where each element will be
@@ -1198,6 +1205,20 @@ struct ofile *ofile)
 	if(ofile->mh64 != NULL)
 	    header_size += 0x88;
 #endif
+	/* 
+	 * If the lowest section virtual address is greater than the header
+	 * size, pad the header up to the virtual address.  This modification
+	 * will make the file offset and virtual address equal, and fixes
+	 * problems with XIP rebasing in the EFI tools.
+	 */
+	least_vaddr = 0xffffffff;
+	for(i = 0; i < nscns; i++){
+	    if(scnhdrs[i].s_vaddr < least_vaddr)
+		least_vaddr = scnhdrs[i].s_vaddr;      
+	}
+	if(least_vaddr > header_size)
+	    header_size = least_vaddr;
+
 	offset = header_size;
 	for(i = 0; i < nscns; i++){
 	    if((scnhdrs[i].s_flags & IMAGE_SCN_CNT_UNINITIALIZED_DATA) == 0){
@@ -1213,11 +1234,11 @@ struct ofile *ofile)
 			  "0x%x or greater)", ofile->file_name, header_size);
 		/*
 		 * The s_scnptr is set to the offset and then the offset is
-		 * incremented by the SizeOfRawData field (s_size).
+		 * incremented by the SizeOfRawData field (s_vsize).
 		 */
 		scnhdrs[i].s_scnptr = offset;
 #ifndef HACK_TO_MATCH_TEST_CASE
-		offset += scnhdrs[i].s_size;
+		offset += scnhdrs[i].s_vsize;
 #else
 		/* for some unknown reason the offset after the __dyld section
 		   is changed from 0x10 bytes to 0x20 bytes */
@@ -1318,24 +1339,17 @@ struct ofile *ofile)
 	    aouthdr.magic = PE32MAGIC;
 	    aouthdr.vstamp = VSTAMP;
 
+      /* 
+       * EFI does not use t, d, or b size. 
+       * EFI uses SizeOfImage to errorcheck vaddrs in the image
+       */
 	    aouthdr.tsize = 0;
 	    aouthdr.dsize = 0;
 	    aouthdr.bsize = 0;
+	    aouthdr.SizeOfImage = rnd(header_size, section_alignment);
 	    for(i = 0; i < nscns; i++){
-		if((scnhdrs[i].s_flags & IMAGE_SCN_CNT_UNINITIALIZED_DATA) ==0){
-		    if(scnhdrs[i].s_flags & IMAGE_SCN_CNT_CODE){
-			aouthdr.tsize += scnhdrs[i].s_size;
-		    }
-		    else {
-			aouthdr.dsize += scnhdrs[i].s_size;
-		    }
+	        aouthdr.SizeOfImage += rnd(scnhdrs[i].s_vsize, section_alignment); 
 		}
-		if(scnhdrs[i].s_vsize > scnhdrs[i].s_size){
-		    aouthdr.bsize += scnhdrs[i].s_vsize -
-				     scnhdrs[i].s_size;
-		}
-	    }
-	    aouthdr.bsize = rnd(aouthdr.bsize, file_alignment);
 
 	    aouthdr.entry = entry;
 
@@ -1364,14 +1378,8 @@ struct ofile *ofile)
 	    aouthdr.MajorSubsystemVersion = 0;
 	    aouthdr.MinorSubsystemVersion = 0;
 	    aouthdr.Win32VersionValue = 0;
-	    aouthdr.SizeOfImage = rnd(header_size, section_alignment) +
-				  rnd(aouthdr.tsize, section_alignment) +
-				  rnd(aouthdr.dsize, section_alignment) +
-				  rnd(aouthdr.bsize, section_alignment) +
-				  rnd(nsyments * sizeof(struct syment),
-					section_alignment) +
-				  rnd(strsize, section_alignment) +
-				  rnd(header_size, section_alignment);
+				  
+				  
 	    aouthdr.SizeOfHeaders = header_size;
 	    aouthdr.CheckSum = 0;
 	    aouthdr.Subsystem = Subsystem;
@@ -1397,21 +1405,18 @@ struct ofile *ofile)
 	    aouthdr64.magic = PE32PMAGIC;
 	    aouthdr64.vstamp = VSTAMP;
 
+      /* 
+       * EFI does not use t, d, or b size. 
+       * EFI uses SizeOfImage to errorcheck vaddrs in the image
+       */
 	    aouthdr64.tsize = 0;
 	    aouthdr64.dsize = 0;
 	    aouthdr64.bsize = 0;
+	    
+	    aouthdr64.SizeOfImage = rnd(header_size, section_alignment);
 	    for(i = 0; i < nscns; i++){
-		if((scnhdrs[i].s_flags & IMAGE_SCN_CNT_UNINITIALIZED_DATA) ==0){
-		    if(scnhdrs[i].s_flags & IMAGE_SCN_CNT_CODE)
-			aouthdr64.tsize += scnhdrs[i].s_size;
-		    else
-			aouthdr64.dsize += scnhdrs[i].s_size;
-		}
-		else{
-		    aouthdr64.bsize += scnhdrs[i].s_vsize;
-		}
+	        aouthdr64.SizeOfImage += rnd(scnhdrs[i].s_vsize, section_alignment); 
 	    }
-	    aouthdr64.bsize = rnd(aouthdr64.bsize, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* with the IMAGE_SCN_CNT_CODE flag set on all sections this is
 	       just a quick hack to match the PECOFF file */
@@ -1447,14 +1452,8 @@ struct ofile *ofile)
 	    aouthdr64.MajorSubsystemVersion = 0;
 	    aouthdr64.MinorSubsystemVersion = 0;
 	    aouthdr64.Win32VersionValue = 0;
-	    aouthdr64.SizeOfImage = rnd(header_size, section_alignment) +
-				    rnd(aouthdr64.tsize, section_alignment) +
-				    rnd(aouthdr64.dsize, section_alignment) +
-				    rnd(aouthdr64.bsize, section_alignment) +
-				    rnd(nsyments * sizeof(struct syment),
-					  section_alignment) +
-				    rnd(strsize, section_alignment) +
-				    rnd(header_size, section_alignment);
+				    
+				    
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* this is a hack as it seams that the minimum size is 0x10000 */
 	    if(aouthdr64.SizeOfImage < 0x10000)
@@ -1509,7 +1508,7 @@ char *out)
 	/*
 	 * Allocate the buffer to place the pecoff file in.
 	 */
-	buf = malloc(output_size);
+	buf = calloc(1, output_size);
 	if(buf == NULL)
 	    fatal("Can't allocate buffer for output file (size = %u)",
 		  output_size);
@@ -2089,8 +2088,17 @@ struct arch *arch)
 	    }
 	    else if(lc->cmd == LC_SEGMENT_64){
 		sg64 = (struct segment_command_64 *)lc;
+		if(arch->object->mh_cputype == CPU_TYPE_X86_64) {
+		    /*
+		     * X86_64 relocations are relative to the first writable segment
+		     */
+		    if((first_addr == 0) && ((sg64->initprot & VM_PROT_WRITE) != 0)) {
+		      first_addr = sg64->vmaddr;
+		    }
+		} else { 
 		if(first_addr == 0)
 		    first_addr = sg64->vmaddr;
+		}
 		s64 = (struct section_64 *)
 		      ((char *)sg64 + sizeof(struct segment_command_64));
 		for(j = 0; j < sg64->nsects; j++){

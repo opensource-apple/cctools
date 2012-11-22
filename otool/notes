@@ -3,6 +3,45 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.28 release (the cctools-795 release):
+- Fixed the disassemble of the first operand in the specific case for i386 of
+  the "move doubleword to quadword with sign-extension" that was broken with
+  the fix to Radar bug #8017633.  Where it needed to only clear the rex byte
+  when the opcode was not 0x63.  Radar bug #8325388.
+
+Changes for the 5.28 release (the cctools-794 release):
+- Updated ofile_print.c to print the MH_NO_HEAP_EXECUTION flag. Radar bug
+  #8457105.
+
+Changes for the 5.28 release (the cctools-790 release):
+- Added moves for the arm Media and VFP Feature Registers 1 and 0 to
+  arm_disasm.c .  Radar bug #8246341.
+
+Changes for the 5.27 release (the cctools-784 release):
+- Changed the handling of printing the Objective-C section to deal with iOS
+  simulator binaries being 32-bit intel and in the Objective-C 2 ABI.  The
+  change was to have print_objc_segment() now return a bool if the binary does
+  not have the __OBJC segment and is an I386 binrary.  Then the code in main()
+  sets up and calls print_objc2_32bit().  Radar bug #7912209.
+- Added print_version_min_command() to ofile_print.[ch] and support for
+  printing the LC_FUNCTION_STARTS load command.  Radar bug #7902277.
+- Fixed the disassembly of first operand of a movzw{l,q} in i386_disassemble()
+  in i386_disasm.c for the case MOVZ by setting rex to 0 after calling
+  get_reg_name() to get the second argument.  Radar bug #8017633.
+- Fixed the disassembly of j*cxz instructions in i386_disassemble() in
+  i386_disasm.c for the case BD to look at if the target is 64-bit and look for
+  the Address-size override prefix byte to print the correct form of the
+  mnemonic.  Also fixed the constants in displacement() in i386_disasm.c
+  when sign extending a byte and a word to be unsigned long long values.
+  Radar bug #8061602.
+
+Changes for the 5.27 release (the cctools-783 release):
+- Added the -llvm_mc option to disassemble so llvm-mc will assemble.
+- Added printing the section types to support thread local variables,
+  added printing the X86_64_RELOC_TLV and GENERIC_RELOC_TLV relocation types,
+  and added printing the indirect table entries for sections of type
+  S_THREAD_LOCAL_VARIABLE_POINTERS to ofile_print.c . Radar bug #7796734.
+
 Changes for the 5.28 release (the cctools-782 release):
 - Fixed a bug with disassembling crc32b in 64-bit when a register greater than
   8 is used.  In i386_disasm.c the array REG64_BYTE[] was extended to include

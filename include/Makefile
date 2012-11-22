@@ -53,7 +53,9 @@ GAS_MISSING_SRCS = mach/m68k/thread_status.h \
 		   mach/hppa/thread_status.h \
 		   mach/sparc/thread_status.h \
 		   architecture/sparc/reg.h \
-		   mach/arm/thread_status.h
+		   mach/arm/thread_status.h \
+		   mach/ppc/thread_status.h \
+		   mach/ppc/_structs.h
 
 MISSING_SRCS = mach/machine.h \
 	       architecture/i386/fpu.h architecture/i386/frame.h \

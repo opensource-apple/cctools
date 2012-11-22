@@ -502,8 +502,9 @@ static enum bool get_hashEntry(
 /*
  * Print the objc segment.
  */
-void
+enum bool
 print_objc_segment(
+cpu_type_t mh_cputype,
 struct load_command *load_commands,
 uint32_t ncmds,
 uint32_t sizeofcmds,
@@ -541,9 +542,11 @@ enum bool verbose)
 			  &modules_addr, &modules_size);
 
 	if(modules == NULL){
+	    if(mh_cputype == CPU_TYPE_I386)
+		return(FALSE);
 	    printf("can't print objective-C information no (" SEG_OBJC ","
 		   SECT_OBJC_MODULES ") section\n");
-	    return;
+	    return(TRUE);
 	}
 
     if (verbose)
@@ -879,6 +882,7 @@ print_objc_class:
 	else
 	    printf(" RR");
 	printf("\n");
+	return(TRUE);
 }
 
 void

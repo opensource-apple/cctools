@@ -366,13 +366,17 @@ void *cookie)
 			sizeof(struct segment_command));
 		for(j = 0; j < sg->nsects; j++){
 		    if(flags->all_sections){
-			if((s->flags & S_ZEROFILL) != S_ZEROFILL){
+			if((s->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				       S_THREAD_LOCAL_ZEROFILL){
 			    ofile_find(ofile->object_addr + s->offset,
 				       s->size, s->offset, flags);
 			}
 		    }
 		    else{
 			if((s->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				       S_THREAD_LOCAL_ZEROFILL &&
 			   (strcmp(s->sectname, SECT_TEXT) != 0 ||
 			    strcmp(s->segname, SEG_TEXT) != 0)){
 			    ofile_find(ofile->object_addr + s->offset,
@@ -388,13 +392,17 @@ void *cookie)
 			sizeof(struct segment_command_64));
 		for(j = 0; j < sg64->nsects; j++){
 		    if(flags->all_sections){
-			if((s64->flags & S_ZEROFILL) != S_ZEROFILL){
+			if((s64->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s64->flags & S_THREAD_LOCAL_ZEROFILL) != 
+				         S_THREAD_LOCAL_ZEROFILL){
 			    ofile_find(ofile->object_addr + s64->offset,
 				       s64->size, s64->offset, flags);
 			}
 		    }
 		    else{
 			if((s64->flags & S_ZEROFILL) != S_ZEROFILL &&
+			   (s64->flags & S_THREAD_LOCAL_ZEROFILL) !=
+					 S_THREAD_LOCAL_ZEROFILL &&
 			   (strcmp(s64->sectname, SECT_TEXT) != 0 ||
 			    strcmp(s64->segname, SEG_TEXT) != 0)){
 			    ofile_find(ofile->object_addr + s64->offset,

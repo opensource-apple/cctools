@@ -1,7 +1,7 @@
 RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -Os
-X_CFLAGS = -mdynamic-no-pic
+X_CFLAGS =
 
 ifneq "clang" "$(notdir $(CC))"
   GCC_FLAGS = -Wall $(X_CFLAGS)
@@ -382,11 +382,11 @@ sparc-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../sparc-check.c
 
 test:
-	./check > check.s
+	./check $(LLVM_MC) > check.s
 	./as -W -force_cpusubtype_ALL $(ASFLAGS) -o check.o check.s
-	otool -X -tV check.o > check1.s
+	otool -X -tV $(LLVM_MC) check.o > check1.s
 	./as -force_cpusubtype_ALL $(ASFLAGS) -o check1.o check1.s
-	otool -X -tV check1.o > check2.s
+	otool -X -tV $(LLVM_MC) check1.o > check2.s
 	diff check1.s check2.s > check.out
 	cmp check.o check1.o
 

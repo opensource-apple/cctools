@@ -460,6 +460,8 @@ uint32_t size)
 		    for(j = 0; j < sg->nsects; j++){
 			if(s->size != 0 &&
 			(s->flags & S_ZEROFILL) != S_ZEROFILL &&
+			(s->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				    S_THREAD_LOCAL_ZEROFILL &&
 			s->offset < low_fileoff)
 			    low_fileoff = s->offset;
 			s++;
@@ -482,6 +484,8 @@ uint32_t size)
 		    for(j = 0; j < sg64->nsects; j++){
 			if(s64->size != 0 &&
 			(s64->flags & S_ZEROFILL) != S_ZEROFILL &&
+			(s64->flags & S_THREAD_LOCAL_ZEROFILL) !=
+				      S_THREAD_LOCAL_ZEROFILL &&
 			s64->offset < low_fileoff)
 			    low_fileoff = s64->offset;
 			s64++;
