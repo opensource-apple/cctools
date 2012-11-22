@@ -5930,7 +5930,10 @@ i386_validate_fix (fixp)
 #ifdef NeXT_MOD
 #if ARCH64
       /* GOTOFF relocation are nonsense in 64bit mode.  */
-      if (fixp->fx_r_type == X86_64_RELOC_SIGNED)
+      if (fixp->fx_r_type == X86_64_RELOC_SIGNED ||
+          fixp->fx_r_type == X86_64_RELOC_SIGNED_1 || 
+          fixp->fx_r_type == X86_64_RELOC_SIGNED_2 || 
+          fixp->fx_r_type == X86_64_RELOC_SIGNED_4)
 	{
 	  if (flag_code != CODE_64BIT)
 	    abort ();

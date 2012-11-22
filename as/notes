@@ -25,6 +25,10 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.24 release (the cctools-622.5 release):
+- Support the new x86-64 relocation entry types for signed relocations
+  with offsets.  Radar bug #4664658.
+
 Changes for the 5.23 release (the cctools-622.2 release):
 - Track symbols by definition order, not value.  Radar bug #4501115.
 - Add in a few lines which were approved but not checked in for 4577120.

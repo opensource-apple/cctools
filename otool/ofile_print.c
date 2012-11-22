@@ -5484,7 +5484,7 @@ static char *ppc_r_types[] = {
 #if defined(ARCH64)
 static char *x86_64_r_types[] = {
     "UNSIGND ", "SIGNED  ", "BRANCH  ", "GOT_LD  ", "GOT     ", "SUB     ",
-    "  6 (?) ", "  7 (?) ", "  8 (?) ", "  9 (?) ", " 10 (?) ", " 11 (?) ",
+    "SIGNED1 ", "SIGNED2 ", "SIGNED4 ", "  9 (?) ", " 10 (?) ", " 11 (?) ",
     " 12 (?) ", " 13 (?) ", " 14 (?) ", " 15 (?) "
 };
 #endif

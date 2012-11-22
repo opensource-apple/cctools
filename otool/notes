@@ -3,6 +3,10 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.23 release (the cctools-622.5 release):
+- Support the new x86-64 relocation entry types for signed relocations
+  with offsets.  Radar bug #4664658.
+
 Changes for the 5.23 release (the cctools-622.3 release):
 - Changed the Makefile to not build otool(1) -static.  Radar bug #4624240.
 

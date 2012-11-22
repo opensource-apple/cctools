@@ -55,6 +55,21 @@ int	r_type)		/* relocation type */
 	fixP->fx_pcrel_reloc = pcrel_reloc;
 	fixP->fx_r_type      = r_type;
 #if defined(I386) && defined(ARCH64)
+	if(fixP->fx_r_type == X86_64_RELOC_SIGNED){
+		switch(offset){
+			case -1:
+				fixP->fx_r_type = X86_64_RELOC_SIGNED_1;
+				break;
+			case -2:
+				fixP->fx_r_type = X86_64_RELOC_SIGNED_2;
+				break;
+			case -4:
+				fixP->fx_r_type = X86_64_RELOC_SIGNED_4;
+				break;
+			default:
+				break;
+		}
+	}
 	if(fixP->fx_r_type == X86_64_RELOC_GOT ||
 	   fixP->fx_r_type == X86_64_RELOC_GOT_LOAD){
 		/*
