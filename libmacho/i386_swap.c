@@ -51,6 +51,29 @@ enum NXByteOrder target_byte_sex)
 	cpu->gs = NXSwapLong(cpu->gs);
 }
 
+/* current i386 thread states */
+#if i386_THREAD_STATE == 1
+void
+swap_i386_float_state(
+struct i386_float_state *fpu,
+enum NXByteOrder target_byte_order)
+{
+    /* this routine does nothing as their are currently no non-byte fields */
+}
+
+void
+swap_i386_exception_state(
+i386_exception_state_t *exc,
+enum NXByteOrder target_byte_order)
+{
+	exc->trapno = NXSwapLong(exc->trapno);
+	exc->err = NXSwapLong(exc->err);
+    	exc->faultvaddr = NXSwapLong(exc->faultvaddr);
+}
+#endif /* i386_THREAD_STATE == 1 */
+
+/* i386 thread states on older releases */
+#if i386_THREAD_STATE == -1
 void
 swap_i386_thread_fpstate(
 i386_thread_fpstate_t *fpu,
@@ -362,4 +385,5 @@ enum NXByteOrder target_byte_sex)
 {
 	user->self = NXSwapLong(user->self);
 }
+#endif /* i386_THREAD_STATE == -1 */
 #endif /* !defined(RLD) */

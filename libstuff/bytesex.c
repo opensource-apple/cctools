@@ -1216,6 +1216,29 @@ enum byte_sex target_byte_sex)
 	cpu->gs = SWAP_LONG(cpu->gs);
 }
 
+/* current i386 thread states */
+#if i386_THREAD_STATE == 1
+void
+swap_i386_float_state(
+struct i386_float_state *fpu,
+enum byte_sex target_byte_sex)
+{
+    /* this routine does nothing as their are currently no non-byte fields */
+}
+
+void
+swap_i386_exception_state(
+i386_exception_state_t *exc,
+enum byte_sex target_byte_sex)
+{
+	exc->trapno = SWAP_LONG(exc->trapno);
+	exc->err = SWAP_LONG(exc->err);
+    	exc->faultvaddr = SWAP_LONG(exc->faultvaddr);
+}
+#endif /* i386_THREAD_STATE == 1 */
+
+/* i386 thread states on older releases */
+#if i386_THREAD_STATE == -1
 __private_extern__
 void
 swap_i386_thread_fpstate(
@@ -1534,6 +1557,7 @@ enum byte_sex target_byte_sex)
 #endif
 	user->self = SWAP_LONG(user->self);
 }
+#endif /* i386_THREAD_STATE == -1 */
 
 __private_extern__
 void

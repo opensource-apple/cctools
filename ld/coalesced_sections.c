@@ -736,9 +736,15 @@ deal_with_contents:
 	 * symbols in this section in this object file.  Now that it has been
 	 * determined for which items the contents will be used from this
 	 * object file.  
+	 *
+	 * When -dead_strip this can't be called when redo_live is FALSE as the
+	 * live marking has not been done yet. And when TRUE will get called for
+	 * all sections including coalesced sections as part of
+	 * count_live_symbols() calling removed_dead_local_symbols_in_section().
 	 */
-	discard_local_symbols_for_section(nsect, object_symbols, object_strings,
-    					  s, section_map);
+	if(dead_strip == FALSE)
+	    discard_local_symbols_for_section(nsect, object_symbols,
+					      object_strings, s, section_map);
 
 	/*
 	 * The load_orders are free()'ed if -dead_strip is not specified.  Or

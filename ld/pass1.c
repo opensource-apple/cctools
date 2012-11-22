@@ -1791,6 +1791,10 @@ unsigned long file_size)
 	mixed_types = FALSE;
 
 	offset = SARMAG;
+	if(offset == file_size){
+	    warning("empty archive: %s (can't load from it)", file_name);
+	    return(FALSE);
+	}
 	if(offset + sizeof(struct ar_hdr) > file_size){
 	    error("truncated or malformed archive: %s (archive header of "
 		  "first member extends past the end of the file, can't "
@@ -3622,8 +3626,9 @@ struct dynamic_library *p)
 	}
 	if((fd = open(file_name, O_RDONLY, 0)) == -1){
 	    if(undefined_flag != UNDEFINED_SUPPRESS){
-		system_warning("can't open dynamic library: %s (checking for "
-		    "undefined symbols may be affected)", file_name);
+		system_warning("can't open dynamic library: %s referenced "
+		    "from: %s (checking for undefined symbols may be affected)",
+		    file_name, p->definition_obj->file_name);
 	    }
 	    return(FALSE);
 	}

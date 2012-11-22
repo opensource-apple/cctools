@@ -1295,6 +1295,10 @@ NS32:
 		printf(" BINDS_TO_WEAK");
 		flags &= ~MH_BINDS_TO_WEAK;
 	    }
+	    if(flags & MH_ALLOW_STACK_EXECUTION){
+		printf(" ALLOW_STACK_EXECUTION");
+		flags &= ~MH_ALLOW_STACK_EXECUTION;
+	    }
 	    if(flags != 0 || mh->flags == 0)
 		printf(" 0x%08x", (unsigned int)flags);
 	    printf("\n");
@@ -1835,6 +1839,10 @@ enum bool verbose)
 		    printf(" NORELOC");
 		    sg->flags &= ~SG_NORELOC;
 		}
+		if(sg->flags & SG_PROTECTED_VERSION_1){
+		    printf(" PROTECTED_VERSION_1");
+		    sg->flags &= ~SG_PROTECTED_VERSION_1;
+		}
 		if(sg->flags)
 		    printf(" 0x%x (unknown flags)\n", (unsigned int)sg->flags);
 		else
@@ -1934,6 +1942,8 @@ enum bool verbose)
 		printf(" NO_DEAD_STRIP");
 	    if(section_attributes & S_ATTR_LIVE_SUPPORT)
 		printf(" LIVE_SUPPORT");
+	    if(section_attributes & S_ATTR_SELF_MODIFYING_CODE)
+		printf(" SELF_MODIFYING_CODE");
 	    if(section_attributes & S_ATTR_SOME_INSTRUCTIONS)
 		printf(" SOME_INSTRUCTIONS");
 	    if(section_attributes & S_ATTR_EXT_RELOC)
@@ -3522,10 +3532,20 @@ enum byte_sex thread_states_byte_sex)
 	}
 	if(mh->cputype == CPU_TYPE_I386){
 	    i386_thread_state_t cpu;
+/* current i386 thread states */
+#if i386_THREAD_STATE == 1
+	    char *fpu;
+	    i386_exception_state_t exc;
+	    unsigned long fpu_size, f, g;
+#endif /* i386_THREAD_STATE == 1 */
+
+/* i386 thread states on older releases */
+#if i386_THREAD_STATE == -1
 	    i386_thread_fpstate_t fpu;
 	    i386_thread_exceptstate_t exc;
 	    i386_thread_cthreadstate_t user;
 	    const char *tags[] = { "VALID", "ZERO", "SPEC", "EMPTY" };
+#endif /* i386_THREAD_STATE == -1 */
 
 	    while(begin < end){
 		if(end - begin > (ptrdiff_t)sizeof(unsigned long)){
@@ -3581,6 +3601,63 @@ enum byte_sex thread_states_byte_sex)
 			cpu.ds, cpu.es, cpu.fs, cpu.gs);
 		    break;
 
+/* current i386 thread states */
+#if i386_THREAD_STATE == 1
+		case i386_FLOAT_STATE:
+		    printf("     flavor i386_FLOAT_STATE\n");
+		    if(count == i386_FLOAT_STATE_COUNT)
+			printf("      count i386_FLOAT_STATE_COUNT\n");
+		    else
+			printf("      count %lu (not i386_FLOAT_STATE_COUNT)\n",
+			       count);
+		    left = end - begin;
+		    fpu = begin;
+		    if(left >= sizeof(struct i386_float_state)){
+			fpu_size = sizeof(struct i386_float_state);
+		        begin += sizeof(struct i386_float_state);
+		    }
+		    else{
+			fpu_size = left;
+		        begin += left;
+		    }
+		    printf("\t    i386_float_state:\n");
+		    for(f = 0; f < fpu_size; /* no increment expr */){
+			printf("\t    ");
+			for(g = 0; g < 16 && f < fpu_size; g++){
+			    printf("%02x ", (unsigned int)(fpu[f] & 0xff));
+			    f++;
+			}
+			printf("\n");
+		    }
+		    break;
+		case i386_EXCEPTION_STATE:
+		    printf("     flavor i386_EXCEPTION_STATE\n");
+		    if(count == I386_EXCEPTION_STATE_COUNT)
+			printf("      count I386_EXCEPTION_STATE_COUNT\n");
+		    else
+			printf("      count %lu (not I386_EXCEPTION_STATE_COUNT"
+			       ")\n", count);
+		    left = end - begin;
+		    if(left >= sizeof(i386_exception_state_t)){
+		        memcpy((char *)&exc, begin,
+			       sizeof(i386_exception_state_t));
+		        begin += sizeof(i386_exception_state_t);
+		    }
+		    else{
+		        memset((char *)&exc, '\0',
+			       sizeof(i386_exception_state_t));
+		        memcpy((char *)&exc, begin, left);
+		        begin += left;
+		    }
+		    if(swapped)
+			swap_i386_exception_state(&exc, host_byte_sex);
+		    printf("\t    trapno 0x%08x err 0x%08x faultvaddr 0x%08x\n",
+			   exc.trapno, exc.err, exc.faultvaddr);
+		    break;
+#endif /* i386_THREAD_STATE == 1 */
+
+/* i386 thread states on older releases */
+#if i386_THREAD_STATE == -1
 		case i386_THREAD_FPSTATE:
 		    printf("     flavor i386_THREAD_FPSTATE\n");
 		    if(count == i386_THREAD_FPSTATE_COUNT)
@@ -3797,6 +3874,7 @@ enum byte_sex thread_states_byte_sex)
 			swap_i386_thread_cthreadstate(&user, host_byte_sex);
 		    printf("\t    self 0x%08x\n", user.self);
 		    break;
+#endif /* i386_THREAD_STATE == -1 */
 		default:
 		    printf("     flavor %lu (unknown)\n", flavor);
 		    printf("      count %lu\n", count);

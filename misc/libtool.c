@@ -645,6 +645,7 @@ char **envp)
 		}
 		else if(strcmp(argv[i], "-segalign") == 0 ||
 		        strcmp(argv[i], "-undefined") == 0 ||
+		        strcmp(argv[i], "-macosx_version_min") == 0 ||
 		        strcmp(argv[i], "-multiply_defined") == 0 ||
 		        strcmp(argv[i], "-multiply_defined_unused") == 0 ||
 		        strcmp(argv[i], "-umbrella") == 0 ||
@@ -682,6 +683,7 @@ char **envp)
 		else if(strcmp(argv[i], "-sectorder_detail") == 0 ||
 		        strcmp(argv[i], "-Sn") == 0 ||
 		        strcmp(argv[i], "-Si") == 0 ||
+		        strcmp(argv[i], "-Sp") == 0 ||
 		        strcmp(argv[i], "-S") == 0 ||
 		        strcmp(argv[i], "-X") == 0 ||
 		        strcmp(argv[i], "-x") == 0 ||

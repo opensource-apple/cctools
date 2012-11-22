@@ -103,6 +103,12 @@ struct merged_symbol {
      * to cause the correct module to be loaded.
      */
     struct dynamic_library *referencing_library;
+
+    /*
+     * When doing dead code stripping this is set to the fine_reloc this symbol
+     * is in if any.
+     */
+    struct fine_reloc *fine_reloc;
 };
 
 /*
@@ -346,6 +352,8 @@ __private_extern__ void mark_globals_live(
     void);
 __private_extern__ void mark_N_NO_DEAD_STRIP_local_symbols_live(
     void);
+__private_extern__ void set_fine_relocs_for_merged_symbols(
+    void);
 __private_extern__ void count_live_symbols(
     void);
 __private_extern__ void define_link_editor_execute_symbols(
@@ -396,7 +404,8 @@ __private_extern__ enum bool is_output_local_symbol(
     unsigned char n_type,
     unsigned char n_sect,
     struct object_file *obj,
-    char *symbol_name);
+    char *symbol_name,
+    unsigned long *output_strlen);
 __private_extern__ unsigned long merged_symbol_output_index(
     struct merged_symbol *merged_symbol);
 __private_extern__ void clear_read_only_reloc_flags(
