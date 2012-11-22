@@ -177,7 +177,19 @@ static enum bool strip_symtab(
     struct dylib_module *mods,
     unsigned long nmodtab,
     struct dylib_reference *refs,
+    unsigned long nextrefsyms,
+    unsigned long *indirectsyms,
+    unsigned long nindirectsyms);
+
+static enum bool private_extern_reference_by_module(
+    unsigned long symbol_index,
+    struct dylib_reference *refs,
     unsigned long nextrefsyms);
+
+static enum bool symbol_pointer_used(
+    unsigned long symbol_index,
+    unsigned long *indirectsyms,
+    unsigned long nindirectsyms);
 
 static int cmp_qsort_undef_map(
     const struct undef_map *sym1,
@@ -500,7 +512,7 @@ enum bool all_archs)
 	errors = 0;
 
 	/* breakout the file for processing */
-	breakout(input_file, &archs, &narchs);
+	breakout(input_file, &archs, &narchs, FALSE);
 	if(errors)
 	    return;
 
@@ -517,7 +529,7 @@ enum bool all_archs)
 	    system_error("can't stat input file: %s", input_file);
 	if(output_file != NULL){
 	    writeout(archs, narchs, output_file, stat_buf.st_mode & 0777,
-		     TRUE, FALSE, FALSE);
+		     TRUE, FALSE, FALSE, NULL);
 	}
 	else{
 #ifdef NMEDIT
@@ -526,7 +538,7 @@ enum bool all_archs)
 	    output_file = makestr(input_file, ".strip", NULL);
 #endif /* NMEDIT */
 	    writeout(archs, narchs, output_file, stat_buf.st_mode & 0777,
-		     TRUE, FALSE, FALSE);
+		     TRUE, FALSE, FALSE, NULL);
 	    if(rename(output_file, input_file) == 1)
 		system_error("can't move temporary file: %s to input "
 			     "file: %s\n", output_file, input_file);
@@ -732,8 +744,6 @@ struct object *object)
     unsigned long nsyms;
     char *strings;
     unsigned long strsize;
-#ifndef NMEDIT
-#endif /* NMEDIT */
     unsigned long offset;
     struct dylib_table_of_contents *tocs;
     unsigned long ntoc;
@@ -741,6 +751,8 @@ struct object *object)
     unsigned long nmodtab;
     struct dylib_reference *refs;
     unsigned long nextrefsyms;
+    unsigned long *indirectsyms;
+    unsigned long nindirectsyms;
     long i, j, k;
     struct load_command *lc;
     struct segment_command *sg;
@@ -789,22 +801,23 @@ struct object *object)
 	    nextrefsyms = 0;
 	}
 
-#ifdef old_NMEDIT
 	/*
-	 * For nmedit, edit_symtab() will change some indirect symbol table
-	 * entries to INDIRECT_SYMBOL_LOCAL or INDIRECT_SYMBOL_ABS for symbols
-	 * that it turns into statics.
+	 * coalesced symbols can be stripped only if they are not used via an
+	 * symbol pointer.  So to know that strip_symtab() needs to be passed
+	 * the indirect symbol table.
 	 */
 	if(object->dyst != NULL && object->dyst->nindirectsyms != 0){
-	    object->output_indirect_symtab = (unsigned long *)
+	    nindirectsyms = object->dyst->nindirectsyms;
+	    indirectsyms = (unsigned long *)
 		(object->object_addr + object->dyst->indirectsymoff);
+	    if(object->object_byte_sex != host_byte_sex)
+		swap_indirect_symbols(indirectsyms, nindirectsyms,
+				      host_byte_sex);
 	}
-	if(edit_symtab(arch, member, object, symbols, nsyms, strings,
-		       strsize) == FALSE)
-	    return;
-	if(object->object_byte_sex != host_byte_sex)
-	    swap_nlist(symbols, nsyms, object->object_byte_sex);
-#endif old_NMEDIT
+	else{
+	    indirectsyms = NULL;
+	    nindirectsyms = 0;
+	}
 
 	object->input_sym_info_size =
 	    nsyms * sizeof(struct nlist) +
@@ -820,7 +833,7 @@ struct object *object)
 
 #ifndef NMEDIT
 	if(sfile != NULL || Rfile != NULL || dfile != NULL || Aflag || uflag ||
-	   Sflag || xflag || Xflag || nflag || rflag ||default_dyld_executable)
+	   Sflag || xflag || Xflag || nflag || rflag || default_dyld_executable)
 #endif /* !defined(NMEDIT) */
 	    {
 #ifdef NMEDIT
@@ -829,7 +842,8 @@ struct object *object)
 		return;
 #else /* !defined(NMEDIT) */
 	    if(strip_symtab(arch, member, object, symbols, nsyms, strings,
-	        strsize, tocs, ntoc, mods, nmodtab, refs, nextrefsyms) == FALSE)
+	        strsize, tocs, ntoc, mods, nmodtab, refs, nextrefsyms,
+	        indirectsyms, nindirectsyms) == FALSE)
 		return;
 #endif /* !defined(NMEDIT) */
 	    object->output_sym_info_size =
@@ -851,6 +865,13 @@ struct object *object)
 		object->dyst->nextdefsym = new_nextdefsym;
 		object->dyst->iundefsym = new_nlocalsym + new_nextdefsym;
 		object->dyst->nundefsym = new_nundefsym;
+		if(object->dyst->nindirectsyms != 0){
+		    object->output_indirect_symtab = indirectsyms;
+		    if(object->object_byte_sex != host_byte_sex)
+			swap_indirect_symbols(indirectsyms, nindirectsyms,
+					      object->object_byte_sex);
+	    
+		}
 
 		if(object->mh->filetype == MH_DYLIB){
 		    object->output_tocs = new_tocs;
@@ -973,8 +994,6 @@ struct object *object)
 		    object->dyst->extreloff = 0;
 
 		if(object->dyst->nindirectsyms != 0){
-		    object->output_indirect_symtab = (unsigned long *)
-			(object->object_addr + object->dyst->indirectsymoff);
 		    object->dyst->indirectsymoff = offset;
 		    offset += object->dyst->nindirectsyms *
 			      sizeof(unsigned long);
@@ -1012,6 +1031,7 @@ struct object *object)
 		}
 		else
 		    object->st->stroff = 0;
+
 	    }
 	    else{
 		if(new_strsize != 0)
@@ -1058,6 +1078,10 @@ struct object *object)
 		if(object->dyst->nindirectsyms != 0){
 		    object->output_indirect_symtab = (unsigned long *)
 			(object->object_addr + object->dyst->indirectsymoff);
+		    if(object->object_byte_sex != host_byte_sex)
+			swap_indirect_symbols(object->output_indirect_symtab,
+					      object->dyst->nindirectsyms,
+					      object->object_byte_sex);
 		}
 		/*
 		 * Since this file has a dynamic symbol table and if this file
@@ -1075,6 +1099,12 @@ struct object *object)
 	    }
 	}
 #endif /* !defined(NMEDIT) */
+
+	/*
+	 * Always clear the prebind checksum if any when creating a new file.
+	 */
+	if(object->cs != NULL)
+	    object->cs->cksum = 0;
 
 	if(object->seg_linkedit != NULL){
 	    object->seg_linkedit->filesize += object->output_sym_info_size -
@@ -1510,7 +1540,9 @@ unsigned long ntoc,
 struct dylib_module *mods,
 unsigned long nmodtab,
 struct dylib_reference *refs,
-unsigned long nextrefsyms)
+unsigned long nextrefsyms,
+unsigned long *indirectsyms,
+unsigned long nindirectsyms)
 {
     long i, j, k, n, inew_syms, save_debug, missing_syms, missing_symbols;
     char *p, *q, **pp, *basename;
@@ -1673,13 +1705,31 @@ unsigned long nextrefsyms)
 			}
 			/*
 			 * Treat a local symbol that was a private extern as if
-			 * were global.
+			 * were global if it is not referenced by a module.
 			 */
 			if((symbols[i].n_type & N_PEXT) == N_PEXT){
-			    if(saves[i] == 0 && xflag){
+			    if(saves[i] == 0 &&
+			       private_extern_reference_by_module(
+				i, refs ,nextrefsyms) == TRUE){
 				if(symbols[i].n_un.n_strx != 0)
 				    new_strsize += strlen(strings +
 						  symbols[i].n_un.n_strx) + 1;
+				new_nlocalsym++;
+				new_nsyms++;
+				saves[i] = new_nsyms;
+			    }
+			    /*
+			     * We need to save symbols that were private externs
+			     * that are used with indirect symbols.
+			     */
+			    if(saves[i] == 0 &&
+			       symbol_pointer_used(i, indirectsyms,
+						   nindirectsyms) == TRUE){
+				if(symbols[i].n_un.n_strx != 0){
+				    len = strlen(strings +
+						 symbols[i].n_un.n_strx) + 1;
+				    new_strsize += len;
+				}
 				new_nlocalsym++;
 				new_nsyms++;
 				saves[i] = new_nsyms;
@@ -1689,17 +1739,9 @@ unsigned long nextrefsyms)
 		}
 		/*
 		 * Treat a local symbol that was a private extern as if were
-		 * global.
+		 * global if it is not referenced by a module.
 		 */
 		else if((symbols[i].n_type & N_PEXT) == N_PEXT){
-		    if(saves[i] == 0 && xflag){
-			if(symbols[i].n_un.n_strx != 0)
-			    new_strsize += strlen(strings +
-					      symbols[i].n_un.n_strx) + 1;
-			new_nlocalsym++;
-			new_nsyms++;
-			saves[i] = new_nsyms;
-		    }
 		    if(saves[i] == 0 && sfile){
 			sp = bsearch(strings + symbols[i].n_un.n_strx,
 				     save_symbols, nsave_symbols,
@@ -1719,16 +1761,23 @@ unsigned long nextrefsyms)
 			    saves[i] = new_nsyms;
 			}
 		    }
+		    if(saves[i] == 0 &&
+		       private_extern_reference_by_module(
+			i, refs ,nextrefsyms) == TRUE){
+			if(symbols[i].n_un.n_strx != 0)
+			    new_strsize += strlen(strings +
+					      symbols[i].n_un.n_strx) + 1;
+			new_nlocalsym++;
+			new_nsyms++;
+			saves[i] = new_nsyms;
+		    }
 		    /*
-		     * TODO: I think we really only need to save local coalesed
-		     * symbols that are used as indirect symbols.  This should
-		     * be validated and the code changed.  For now all local
-		     * coalesed symbols are saved.
+		     * We need to save symbols that were private externs that
+		     * are used with indirect symbols.
 		     */
 		    if(saves[i] == 0 &&
-		       (symbols[i].n_type & N_TYPE) == N_SECT &&
-		       (sections[symbols[i].n_sect - 1]->flags &
-			SECTION_TYPE) == S_COALESCED){
+		       symbol_pointer_used(i, indirectsyms, nindirectsyms) ==
+									TRUE){
 			if(symbols[i].n_un.n_strx != 0){
 			    len = strlen(strings + symbols[i].n_un.n_strx) + 1;
 			    new_strsize += len;
@@ -1843,10 +1892,15 @@ unsigned long nextrefsyms)
 			}
 		    }
 		}
+		/*
+		 * We only need to save coalesced symbols that are used as
+		 * indirect symbols.
+		 */
 		if(saves[i] == 0 &&
 		   (symbols[i].n_type & N_TYPE) == N_SECT &&
 		   (sections[symbols[i].n_sect - 1]->flags &
-		    SECTION_TYPE) == S_COALESCED){
+		    SECTION_TYPE) == S_COALESCED &&
+		   symbol_pointer_used(i, indirectsyms, nindirectsyms) == TRUE){
 		    if(symbols[i].n_un.n_strx != 0){
 			len = strlen(strings + symbols[i].n_un.n_strx) + 1;
 			new_strsize += len;
@@ -2260,6 +2314,52 @@ unsigned long nextrefsyms)
 	    return(TRUE);
 	else
 	    return(FALSE);
+}
+
+/*
+ * private_extern_reference_by_module() is passed a symbol_index of a private
+ * extern symbol and the module table.  If the symbol_index appears in the
+ * module symbol table this returns TRUE else it returns FALSE.
+ */
+static
+enum bool
+private_extern_reference_by_module(
+unsigned long symbol_index,
+struct dylib_reference *refs,
+unsigned long nextrefsyms)
+{
+    unsigned long i;
+
+	for(i = 0; i < nextrefsyms; i++){
+	    if(refs[i].isym == symbol_index){
+		if(refs[i].flags == REFERENCE_FLAG_PRIVATE_UNDEFINED_NON_LAZY ||
+		   refs[i].flags == REFERENCE_FLAG_PRIVATE_UNDEFINED_LAZY){
+		    return(TRUE);
+		}
+	    }
+	}
+	return(FALSE);
+}
+
+/*
+ * symbol_pointer_used() is passed a symbol_index and the indirect table.  If
+ * the symbol_index appears in the indirect symbol table this returns TRUE else
+ * it returns FALSE.
+ */
+static
+enum bool
+symbol_pointer_used(
+unsigned long symbol_index,
+unsigned long *indirectsyms,
+unsigned long nindirectsyms)
+{
+    unsigned long i;
+
+	for(i = 0; i < nindirectsyms; i++){
+	    if(indirectsyms[i] == symbol_index)
+		return(TRUE);
+	}
+	return(FALSE);
 }
 
 /*

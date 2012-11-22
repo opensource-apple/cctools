@@ -1,4 +1,4 @@
-.TH DYLD 1 "March 12, 2001" "Apple Computer, Inc."
+.TH DYLD 1 "February 27, 2001" "Apple Computer, Inc."
 .SH NAME
 dyld \- the dynamic link editor
 .SH SYNOPSIS
@@ -31,6 +31,10 @@ DYLD_PREBIND_DEBUG
 DYLD_ABORT_MULTIPLE_INITS
 .br
 DYLD_NEW_LOCAL_SHARED_REGIONS
+.br
+DYLD_NO_FIX_PREBINDING
+.br
+DYLD_TRACE
 .SH DESCRIPTION
 The dynamic linker uses the following environment variables.
 They affect any program that uses the dynamic linker.
@@ -221,6 +225,14 @@ point to them.  i.e. by using the DYLD_LIBRARY_PATH environment variable
 instead of changing the root by executing a
 .IR chroot (2)
 call.
+.TP
+.B DYLD_TRACE
+Cause dyld to put tracing information in the kernel trace buffer for its
+operations.
+.TP
+.B DYLD_NO_FIX_PREBINDING
+Causes dyld not to run /usr/bin/fix_prebinding on executables that are launched
+which had prebinding information that could not be used for the launch.
 
 .SH "SEE ALSO"
 libtool(1), ld(1), otool(1), redo_prebinding(1)

@@ -190,7 +190,7 @@ static unsigned long next_flat_seg1addr(
 static char * get_image_file_name(
     struct info *info,
     char *install_name,
-    enum bool split);
+    enum bool try_symroot);
 
 static void new_table_processor(
     struct seg_addr_table *entry,
@@ -389,7 +389,7 @@ char **envp)
 		}
 		/* specify the address (in hex) of the read-only segments
 		   -segs_read_only_addr <address> */
-		else if(strcmp(argv[i], "segs_read_only_addr") == 0){
+		else if(strcmp(argv[i], "-segs_read_only_addr") == 0){
 		    if(i + 1 >= argc){
 			error("%s: argument missing", argv[i]);
 			usage();
@@ -409,7 +409,7 @@ char **envp)
 		}
 		/* specify the address (in hex) of the read-write segments
 		   -segs_read_write_addr <address> */
-		else if(strcmp(argv[i], "segs_read_write_addr") == 0){
+		else if(strcmp(argv[i], "-segs_read_write_addr") == 0){
 		    if(i + 1 >= argc){
 			error("%s: argument missing", argv[i]);
 			usage();
@@ -792,9 +792,10 @@ char **envp)
 		 */
 		image_file_name = get_image_file_name(&info,
 						      entry->install_name,
-						      entry->split);
+			    entry->split == FALSE && update_overlaps == FALSE);
 		if(image_file_name == NULL){
-		    if(info.disablewarnings == FALSE)
+		    if(info.disablewarnings == FALSE &&
+		       update == FALSE && update_overlaps == FALSE)
 			error("from seg_addr_table: %s line: %lu can't find "
 			      "file for install name: %s in -release %s",
 			      info.seg_addr_table_name, entry->line,
@@ -802,7 +803,8 @@ char **envp)
 		    continue;
 		}
 		if(stat(image_file_name, &stat_buf) == -1){
-		    if(info.disablewarnings == FALSE)
+		    if(info.disablewarnings == FALSE &&
+		       update == FALSE && update_overlaps == FALSE)
 			error("from seg_addr_table: %s line: %lu can't open "
 			      "file: %s", info.seg_addr_table_name, entry->line,
 			      image_file_name);
@@ -863,7 +865,7 @@ char **envp)
 		info.layout_info[i]->current_entry = entry;
 		ofile_process(image_file_name, info.arch_flags,
 			      info.narch_flags, info.all_archs, FALSE,
-			      TRUE, sizes_and_addresses,
+			      TRUE, FALSE, sizes_and_addresses,
 			      info.layout_info[i]);
 
 	    }
@@ -1163,66 +1165,6 @@ char **envp)
 	 * NEXT_SPLIT_ADDRESS_TO_ASSIGN and were picked up above.
 	 */
 	if(update == TRUE || update_overlaps == TRUE){
-	    for(i = 0 ; i < info.table_size; i++){
-		entry = info.seg_addr_table + i;
-		if(info.layout_info[i] != NULL &&
-		   info.disablewarnings == FALSE){
-		    if(entry->split == FALSE && entry->seg1addr != 0){
-			if(info.layout_info[i]->split == TRUE)
-			    error("file: %s is split layout which does not "
-				  "match the table entry in seg_addr_table: %s "
-				  "line: %lu", info.layout_info[i]->
-				  image_file_name, info.seg_addr_table_name,
-				  entry->line);
-			else if(info.layout_info[i]->seg1addr !=
-				entry->seg1addr)
-			    error("seg1addr (0x%x) of file: %s does not "
-				  "match the table entry (0x%x) in "
-				  "seg_addr_table: %s line: %lu",
-				  (unsigned int)info.layout_info[i]->seg1addr,
-				  info.layout_info[i]->image_file_name,
-				  (unsigned int)entry->seg1addr,
-				  info.seg_addr_table_name,
-				  entry->line);
-		    }
-		    else if(entry->split == TRUE &&
-			    entry->segs_read_only_addr != 0){
-			if(info.layout_info[i]->split == FALSE)
-			    error("file: %s is flat layout which does not "
-				  "match the table entry in seg_addr_table: %s "
-				  "line: %lu", info.layout_info[i]->
-				  image_file_name, info.seg_addr_table_name,
-				  entry->line);
-			else{
-			    if(info.layout_info[i]->segs_read_only_addr !=
-			       entry->segs_read_only_addr)
-				error("segs_read_only_addr (0x%x) of file: %s "
-				      "does not match the table entry (0x%x) "
-				      "in seg_addr_table: %s line: %lu",
-				      (unsigned int)info.layout_info[i]->
-					    segs_read_only_addr,
-				      info.layout_info[i]->image_file_name,
-				      (unsigned int)entry->segs_read_only_addr,
-				      info.seg_addr_table_name,
-				      entry->line);
-			    if(entry->segs_read_write_addr != 0 &&
-			       info.layout_info[i]->segs_read_write_addr !=
-			       entry->segs_read_write_addr)
-				error("segs_read_write_addr (0x%x) of file: %s "
-				      "does not match the table entry (0x%x) "
-				      "in seg_addr_table: %s line: %lu",
-				      (unsigned int)info.layout_info[i]->
-					    segs_read_write_addr,
-				      info.layout_info[i]->image_file_name,
-				      (unsigned int)entry->segs_read_write_addr,
-				      info.seg_addr_table_name,
-				      entry->line);
-			}
-		    }
-		}
-	    }
-	    if(errors != 0)
-		exit(EXIT_FAILURE);
 	    /*
 	     * Now with all the maximum sizes known for the libraries assign
 	     * them addresses.
@@ -1626,7 +1568,7 @@ char *
 get_image_file_name(
 struct info *info,
 char *install_name,
-enum bool split)
+enum bool try_symroot)
 {
     char *image_file_name;
     enum bool found_project;
@@ -1639,10 +1581,10 @@ enum bool split)
 	if(info->release_name != NULL){
 	    /*
 	     * There is not enough room in the shared regions to use the full
-	     * debugging SYMROOT files.  So only look for there if the library
-	     * is not split.
+	     * debugging SYMROOT files.  And we only want to us the DSTROOT when
+	     * update_overlaps. So only look there if the caller wants to.
 	     */
-	    if(split == FALSE)
+	    if(try_symroot == TRUE)
 		image_file_name = get_symfile_for_dylib(
 					 install_name,
 					 info->release_name,
@@ -1708,7 +1650,7 @@ void *cookie)
 	 * If the file exist then print out its previously assigned address.
 	 */
 	image_file_name = get_image_file_name(info, entry->install_name,
-					      entry->split);
+					      entry->split == FALSE);
 	if(image_file_name == NULL)
 	    return;
 	if(stat(image_file_name, &stat_buf) != -1){
@@ -1877,7 +1819,8 @@ void *cookie)
 	if(stat(image_file_name, &stat_buf) != -1){
 	    seg1addr = 0;
 	    ofile_process(image_file_name, info->arch_flags, info->narch_flags,
-			  info->all_archs, FALSE, TRUE, get_seg1addr,&seg1addr);
+			  info->all_archs, FALSE, TRUE, FALSE,
+			  get_seg1addr,&seg1addr);
 	    short_name = guess_short_name(entry->install_name, &is_framework,
 					  &has_suffix);
 	    if(short_name == NULL){

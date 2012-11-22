@@ -210,13 +210,17 @@ struct nlist {
 #define EXECUTABLE_ORDINAL 0xff
 
 /*
- * The non-reference type bits and the non-library ordinal bits of the n_desc
- * field for global symbols are reserved for the dynamic link editor.  All of
- * these bits must start out zero in the object file.  The N_DESC_DISCARDED
- * bit never appears in an object file but is used in very rare cases by the
- * dynamic link editor.
+ * The N_DESC_DISCARDED bit of the n_desc field never appears in an object file
+ * but is used in very rare cases by the dynamic link editor.
  */
 #define N_DESC_DISCARDED 0x0020	/* symbol is discarded */
+
+/*
+ * The N_WEAK_REF bit of the n_desc field indicates to the dynamic link that
+ * the undefined symbol is allowed to be missing and is to have the address of
+ * zero when missing.
+ */
+#define N_WEAK_REF	0x0040 /* symbol is weak referenced */
 
 #ifndef __STRICT_BSD__
 /*

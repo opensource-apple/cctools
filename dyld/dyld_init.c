@@ -48,6 +48,7 @@ extern const struct section *getsectbynamefromheader(
 #import "reloc.h"
 #import "lock.h"
 #import "debug.h"
+#import "trace.h"
 
 /*
  * This is set in _dyld_init() and used for the cputype and cpusubtype.
@@ -123,6 +124,7 @@ char *dyld_image_suffix = NULL;
 char *dyld_insert_libraries = NULL;
 
 enum bool dyld_print_libraries = FALSE;
+enum bool dyld_trace = TRUE; /* to be turned off for Jaguar GM */
 enum bool dyld_mem_protect = FALSE;
 enum bool dyld_ebadexec_only = FALSE;
 enum bool dyld_dead_lock_hang = FALSE;
@@ -133,6 +135,7 @@ enum bool dyld_executable_path_debug = FALSE;
 enum bool dyld_two_level_debug = FALSE;
 enum bool dyld_abort_multiple_inits = FALSE;
 enum bool dyld_new_local_shared_regions = FALSE;
+enum bool dyld_no_fix_prebinding = FALSE;
 
 /*
  * This indicates if the profile server for shared pcsample buffers exists.
@@ -171,6 +174,7 @@ static void get_data_segment(
  * create_executables_path().
  */
 char *executables_path = NULL;
+unsigned long executables_pathlen = 0;
 char *exec_path = NULL;
 
 static void pickup_environment_variables(
@@ -206,6 +210,7 @@ char **envp)
 
 	cthread_init();
 #endif
+	
 	/* set lock for dyld data structures */
 	set_lock();
 
@@ -219,7 +224,8 @@ char **envp)
 	}
 #if defined(__GONZO_BUNSEN_BEAKER__) && defined(__ppc__)
 	if(host_basic_info.cpu_type == CPU_TYPE_POWERPC &&
-	   host_basic_info.cpu_subtype == CPU_SUBTYPE_POWERPC_7400)
+	   (host_basic_info.cpu_subtype == CPU_SUBTYPE_POWERPC_7400 ||
+	    host_basic_info.cpu_subtype == CPU_SUBTYPE_POWERPC_7450))
 	    processor_has_vec = TRUE;
 #endif
 
@@ -227,6 +233,11 @@ char **envp)
 	 * Pickup the environment variables for the dynamic link editor.
 	 */
 	pickup_environment_variables(envp);
+	
+	/*
+	 * Make initial trace entry if requested.
+	 */
+	DYLD_TRACE_INIT_START(0);
 
 	/*
 	 * Create the executable's path from the exec_path and the current
@@ -357,6 +368,8 @@ char **envp)
 
 	/* release lock for dyld data structures */
 	release_lock();
+	
+	DYLD_TRACE_INIT_END(0);
 
 	/*
 	 * Return the address of the executable's entry point which is used if
@@ -484,6 +497,10 @@ char *envp[])
 		                sizeof("DYLD_PRINT_LIBRARIES=") - 1) == 0){
 		    dyld_print_libraries = TRUE;
 		}
+		else if(strncmp(*p, "DYLD_TRACE=",
+		                sizeof("DYLD_TRACE=") - 1) == 0){
+		    dyld_trace = TRUE;
+		}
 		else if(strncmp(*p, "DYLD_MEM_PROTECT=",
 		                sizeof("DYLD_MEM_PROTECT=") - 1) == 0){
 		    dyld_mem_protect = TRUE;
@@ -516,6 +533,10 @@ char *envp[])
 		else if(strncmp(*p, "DYLD_NEW_LOCAL_SHARED_REGIONS=",
 			    sizeof("DYLD_NEW_LOCAL_SHARED_REGIONS=") - 1) == 0){
 		    dyld_new_local_shared_regions = TRUE;
+		}
+		else if(strncmp(*p, "DYLD_NO_FIX_PREBINDING=",
+			    sizeof("DYLD_NO_FIX_PREBINDING=") - 1) == 0){
+		    dyld_no_fix_prebinding = TRUE;
 		}
 		else if(strncmp(*p, "DYLD_PREBIND_DEBUG=",
 		                sizeof("DYLD_PREBIND_DEBUG") - 1) == 0){
@@ -603,6 +624,27 @@ void)
     static char *p = NULL;
     static char **pp = &p;
 	return(&pp);
+}
+
+/*
+ * These are dummy versions to avoid having to link with libmathCommon.a in
+ * Mac OS X 10.2 (Jaguar) and beond.  They are only used with printf and dyld
+ * does not print floating point.
+ */
+double
+__inf(void)
+{
+	return(0.0);
+}
+long
+__isnand(double x)
+{
+	return(0);
+}
+long
+__isinfd(double x)
+{
+	return(0);
 }
 
 #ifdef DYLD_PROFILING

@@ -42,6 +42,7 @@
 #import <mach/cthreads.h>
 #endif
 #import <mach-o/loader.h>
+#import "stuff/bool.h"
 #import <mach-o/dyld_debug.h>
 #import <mach/machine/thread_status.h>
 #ifdef hppa
@@ -54,7 +55,6 @@
 /* this header file is created by mig */
 #import "_dyld_debug.h"
 #import "debug.h"
-#import "stuff/bool.h"
 
 /*
  * A struct used to pass the two parameters to the server_loop() thread.

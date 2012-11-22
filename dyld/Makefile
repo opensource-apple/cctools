@@ -6,10 +6,16 @@ export USE_APPLE_PB_SUPPORT = all
 #PGFLAGS = -pg -DDYLD_PROFILING
 #GMON = gmon.o
 
+RC_OS = macos
+
 MIG = $(NEXT_ROOT)/usr/bin/mig
-ifneq "mwcc" "$(notdir $(CC))"
+ifneq "mwccppc" "$(notdir $(CC))"
   MIG_FLAGS = $(PGFLAGS)
 endif
+
+USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
+	     echo YES ; else echo NO ; \
+	     fi; )
 
 OFLAG = -O
 
@@ -33,7 +39,7 @@ ifeq "macos" "$(RC_OS)"
 	     echo -Wno-long-double ; \
 	     fi; )
 endif
-ifeq "mwcc" "$(notdir $(CC))"
+ifeq "mwccppc" "$(notdir $(CC))"
   CFLAGS = $(DEBUG) $(OFLAG) -dynamic -g -DDYLD_BUILD \
 	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT) \
 	 -I$(NEXT_ROOT)$(PRIVATEHEADERS)
@@ -53,10 +59,15 @@ ifeq "macos" "$(RC_OS)"
 else
   SYSTEMDIR = /Local/Developer/System
 endif
-ifeq "macos" "$(RC_OS)"
-  LIBC = $(NEXT_ROOT)$(SYSTEMDIR)/libc.a -lcc_dynamic
+ifeq "gcc3" "$(notdir $(CC))"
+  LIBGCC = -lgcc
 else
-  LIBC = -lc_dynamic -lcc_dynamic
+  LIBGCC = -lcc_dynamic
+endif
+ifeq "macos" "$(RC_OS)"
+  LIBC = $(NEXT_ROOT)$(SYSTEMDIR)/libc.a $(LIBGCC)
+else
+  LIBC = -lc_dynamic $(LIBGCC)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"
@@ -77,7 +88,7 @@ DSTDIRS = $(DSTROOT)$(USRLIBDIR)
 CFILES1 = dyld_init.c images.c errors.c allocate.c symbols.c reloc.c \
 	  generic_reloc.c hppa_reloc.c entry_point.c dyld_libfuncs.c \
 	  lock.c debug.c sparc_reloc.c mod_init_funcs.c register_funcs.c \
-	  malloc.c getsecbyname.c mig_support.c ppc_reloc.c
+	  malloc.c getsecbyname.c mig_support.c ppc_reloc.c trace.c
 CFILES2 = dyld_reloc.c
 SFILES1 = section_order.s stub_binding_helper.s machdep_lock.s cache_flush.s \
 	  fp_save_restore.s
@@ -85,7 +96,7 @@ SFILES2 = dyld_start.s
 HFILES = dyld_init.h images.h errors.h allocate.h symbols.h reloc.h \
 	 entry_point.h lock.h debug.h mod_init_funcs.h register_funcs.h \
 	 zoneprotect.h cthread_internals.h fp_save_restore.h inline_bsearch.h \
-	 inline_strcmp.h
+	 inline_strcmp.h trace.h
 MIGFILES = dyld_debug.defs dyld_debug_defs.h dyld_event.defs dyld_event_defs.h \
 	   dyld_event_MsgError.h
 OBJS1 = $(SFILES1:.s=.o) $(CFILES1:.c=.o) profile_client.o vers.o
@@ -153,31 +164,50 @@ _dyld_eventUser.o: _dyld_eventUser.c
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@
 
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+.c.o:
+	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $<
+	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+else
 .c.o:
 	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file \
 		$(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
 
 profile_client.o: $(SRCROOT)/../profileServer/profile_client.c
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o \
+		$(SRCROOT)/../profileServer/profile_client.c
+else
 	$(CC) $(PGFLAGS) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file \
 		$(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o \
 		$(SRCROOT)/../profileServer/profile_client.c
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
 
 # dyld_reloc.o must be compiled with no $(PGFLAGS)
 dyld_reloc.o: dyld_reloc.c
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $<
+else
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file \
 		$(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
 
 # gmon.o must be compiled with no $(PGFLAGS)
 gmon.o: gmon.c
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+	$(CC) -DDYLD_PROFILING $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $<
+else
 	$(CC) -DDYLD_PROFILING $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file \
 		$(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
 
 .s.o:
-ifeq "mwcc" "$(notdir $(CC))"
+ifeq "mwccppc" "$(notdir $(CC))"
 	cc -c -o $(OFILE_DIR)/$*.o $<
 else
 	$(CC) $(RC_CFLAGS) $(ASFLAGS) -c -o $(OFILE_DIR)/$*.o $<

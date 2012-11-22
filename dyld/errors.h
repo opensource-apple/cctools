@@ -98,7 +98,7 @@ enum dyld_other_error_numbers {
     DYLD_RELOCATION,  /* 0 */
     DYLD_LAZY_BIND,   /* 1 */
     DYLD_INDR_LOOP,   /* 2 */
-    DYLD_LAZY_INIT,   /* 3 */
+    DYLD_LAZY_INIT,   /* 3 obsolete */
     DYLD_INVALID_ARGS /* 4 */
 };
 

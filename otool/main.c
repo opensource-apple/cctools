@@ -53,6 +53,7 @@ enum bool aflag = FALSE; /* print the archive header */
 enum bool hflag = FALSE; /* print the exec or mach header */
 enum bool lflag = FALSE; /* print the load commands */
 enum bool Lflag = FALSE; /* print the shared library names */
+enum bool Dflag = FALSE; /* print the shared library id name */
 enum bool tflag = FALSE; /* print the text */
 enum bool dflag = FALSE; /* print the data */
 enum bool oflag = FALSE; /* print the objctive-C info */
@@ -315,6 +316,10 @@ char **envp)
 		    Lflag = TRUE;
 		    object_processing = TRUE;
 		    break;
+		case 'D':
+		    Dflag = TRUE;
+		    object_processing = TRUE;
+		    break;
 		case 't':
 		    tflag = TRUE;
 		    object_processing = TRUE;
@@ -387,7 +392,7 @@ char **envp)
 	 */
 	if(!fflag && !aflag && !hflag && !lflag && !Lflag && !tflag && !dflag &&
 	   !oflag && !Oflag && !rflag && !Tflag && !Mflag && !Rflag && !Iflag &&
-	   !Hflag && !Sflag && !cflag && !iflag && !segname){
+	   !Hflag && !Sflag && !cflag && !iflag && !Dflag && !segname){
 	    error("one of -fahlLtdoOrTMRIHScis must be specified");
 	    usage();
 	}
@@ -414,7 +419,7 @@ char **envp)
 
 	for(i = 0; i < nfiles; i++){
 	    ofile_process(files[i], arch_flags, narch_flags, all_archs, TRUE,
-			  TRUE, processor, NULL);
+			  TRUE, TRUE, processor, NULL);
 	}
 
 	if(errors)
@@ -440,6 +445,7 @@ void)
 	fprintf(stderr, "\t-h print the mach header\n");
 	fprintf(stderr, "\t-l print the load commands\n");
 	fprintf(stderr, "\t-L print shared libraries used\n");
+	fprintf(stderr, "\t-D print shared library id name\n");
 	fprintf(stderr, "\t-t print the text section (disassemble with -v)\n");
 	fprintf(stderr, "\t-p <routine name>  start dissassemble from routine "
 		"name\n");
@@ -678,9 +684,9 @@ void *cookie) /* cookie is not used */
 	    print_loadcmds(ofile->mh, ofile->load_commands,
 			   ofile->object_byte_sex, size, vflag, Vflag);
 
-	if(Lflag)
+	if(Lflag || Dflag)
 	    print_libraries(ofile->mh, ofile->load_commands,
-			    ofile->object_byte_sex, vflag);
+			    ofile->object_byte_sex, (Dflag && !Lflag), vflag);
 
 	/*
 	 * If the indicated operation needs the symbol table get it.
@@ -1145,7 +1151,7 @@ unsigned long *strings_size)
 		break;
 	}
 	if((char *)load_commands + mh->sizeofcmds != (char *)lc)
-	    printf("Inconsistant mh_sizeofcmds\n");
+	    printf("Inconsistent mh_sizeofcmds\n");
 
 	if(st_cmd == ULONG_MAX){
 	    return;
@@ -1413,7 +1419,7 @@ struct dysymtab_command *dyst)
 		break;
 	}
 	if((char *)load_commands + mh->sizeofcmds != (char *)lc)
-	    printf("Inconsistant mh_sizeofcmds\n");
+	    printf("Inconsistent mh_sizeofcmds\n");
 
 	if(dyst_cmd == ULONG_MAX){
 	    return(FALSE);
@@ -1527,7 +1533,7 @@ struct twolevel_hints_command *hints_cmd)
 		break;
 	}
 	if((char *)load_commands + mh->sizeofcmds != (char *)lc)
-	    printf("Inconsistant mh_sizeofcmds\n");
+	    printf("Inconsistent mh_sizeofcmds\n");
 
 	if(cmd == ULONG_MAX){
 	    return(FALSE);

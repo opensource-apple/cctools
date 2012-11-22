@@ -23,7 +23,34 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
-Changes for the 5.10 release (the cctools-384.1 release):
+Changes for the 5.10 release (the cctools-400 release):
+- Added the i386 instruction fistp to be the same as fistps.  Radar bug
+  #2851846.
+
+Changes for the 5.10 release (the cctools-400 release):
+- Changed the Makefile back to again use the -dependency-file with gcc.
+
+Changes for the 5.10 release (the cctools-399 release):
+- Changed BUFFER_SIZE in input-file.c from 32k to 64k as gcc3 is puting out
+  single stab lengths that are longer than 32k.  Radar bug #2840883.
+
+Changes for the 5.10 release (the cctools-396 release):
+- Added the .weak_reference directive to read.c.  A change was also needed in
+  colon() of symbols.c.
+- Fixed a bad line of code in md_number_to_imm() in sparc.c that was:
+    val = (val >>= 2) + 1;
+  where it should have been:
+    val = (val >> 2) + 1;
+- Changed the Makefile to not use the -dependency-file with gcc as well as
+  mwccppc.
+- Added an include for <stdlib.h> in obstack.c, m88k.c, i860.c, ppc.c and
+  hppa.c to pick up the prototype for abort().
+- Added an include for <stdlib.h> in as.c and i860.c to pick up the prototype
+  for exit().
+- Added guards for the header files read.h, expr.h, struc-symbol.h, flonum.h,
+  frags.h, fixes.h, hash.h
+
+Changes for the 5.10 release (the cctools-389 release):
 - Changed the PowerPC fsel instruction to not be marked as optional.
 
 Changes for the 5.9 release (the cctools-375 release):

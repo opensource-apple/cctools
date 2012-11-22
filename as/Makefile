@@ -1,3 +1,4 @@
+RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -O
 ifeq "macos" "$(RC_OS)"
@@ -8,9 +9,14 @@ ifeq "macos" "$(RC_OS)"
 	     echo -Wno-long-double ; \
 	     fi; )
 endif
-ifneq "mwcc" "$(notdir $(CC))"
+
+ifneq "mwccppc" "$(notdir $(CC))"
   GCC_FLAGS = -Wall -Wno-precomp $(X_CFLAGS)
 endif
+
+USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ]; then \
+	     echo YES ; else echo NO ; \
+	     fi; )
 
 # This won't happen for a while 
 #ifeq "macos" "$(RC_OS)"
@@ -335,10 +341,15 @@ apple_version.c:
 	echo "const char apple_version[]= " \"`vers_string $(VERS_STRING_FLAGS) -f cctools`\" ";" > \
 		$(OFILE_DIR)/$@
 
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+.c.o:
+	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $<
+else
 .c.o:
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -c -MD \
 		-dependency-file $(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
 
 clean shlib_clean:
 	-rm -r -f $(OFILE_DIRS) make.out

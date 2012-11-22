@@ -1,4 +1,4 @@
-.TH NMEDIT 1 "October 29, 2001" "Apple Computer, Inc."
+.TH NMEDIT 1 "February 5, 2002" "Apple Computer, Inc."
 .SH NAME
 nmedit \- change global symbols to local symbols
 .SH SYNOPSIS
@@ -34,9 +34,9 @@ like
 is useful to limit the symbols for use with later linking.
 This allows control of the interface that the executable wants to provide to the
 objects that it will dynamiclly load, and it will not have to publish symbols
-that are not part of it's interface.  For example an executable that wishes to
-allow only a subset of it's global symbols but all of the shared libraries
-globals to be used would have it's symbol table edited with:
+that are not part of its interface.  For example an executable that wishes to
+allow only a subset of its global symbols but all of the shared libraries
+globals to be used would have its symbol table edited with:
 .RS
 % nmedit \-s interface_symbols \-A executable
 .RE
@@ -45,7 +45,7 @@ where the file
 would contain only those symbols from the executable
 that it wishes the objects loaded at runtime to have access to.
 Another example is an object that is maded up of a number of other objects that
-will be loaded into an executable would built and then have it's symbol table
+will be loaded into an executable would built and then have its symbol table
 edited with:
 .RS
 .nf

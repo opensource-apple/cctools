@@ -71,7 +71,8 @@ struct merged_symbol {
 				   /*  are not in the merged symbol table but */
 				   /*  only in the undefined list as a two- */
 				   /*  level namespace reference from a dylib.*/
-	reserved:2,
+	weak_reference_mismatch:1, /* seen both a weak and non-weak reference */
+	reserved:1,
 	output_index:24;	/* the symbol table index this symbol will */
 				/*  have in the output file. */
     int undef_order;		/* if the symbol was undefined the order it */

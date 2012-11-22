@@ -1006,6 +1006,35 @@ merge_symbols(void)
 			 */
 			merged_symbol->nlist.n_desc |=
 			   (object_symbols[i].n_desc & REFERENCED_DYNAMICALLY);
+
+			/*
+			 * If the merged symbol is also an undefined deal with
+			 * weak reference mismatches if any.
+			 */
+			if((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+			    merged_symbol->nlist.n_value == 0) ||
+			    merged_symbol->nlist.n_type == (N_EXT | N_PBUD)){
+			    if(((merged_symbol->nlist.n_desc & N_WEAK_REF) ==
+				 N_WEAK_REF &&
+				(object_symbols[i].n_desc & N_WEAK_REF) !=
+				 N_WEAK_REF) ||
+			       ((merged_symbol->nlist.n_desc & N_WEAK_REF) !=
+				 N_WEAK_REF &&
+				(object_symbols[i].n_desc & N_WEAK_REF) ==
+				 N_WEAK_REF)){
+				if(weak_reference_mismatches ==
+				   WEAK_REFS_MISMATCH_ERROR)
+				    merged_symbol->weak_reference_mismatch =
+					TRUE;
+				else if(weak_reference_mismatches ==
+					WEAK_REFS_MISMATCH_WEAK)
+				    merged_symbol->nlist.n_desc |= N_WEAK_REF;
+				else if(weak_reference_mismatches ==
+					WEAK_REFS_MISMATCH_NON_WEAK)
+				    merged_symbol->nlist.n_desc &=
+					~(N_WEAK_REF);
+			    }
+			}
 		    }
 		    /*
 		     * See if the object's symbol is a common.
@@ -1925,6 +1954,13 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 	    merged_symbol->nlist.n_value = symbols[j].n_value;
 	    merged_symbol->definition_object = cur_obj;
 	    merged_symbol->defined_in_dylib = TRUE;
+	    /*
+	     * If the merged symbol we are resolving is not a weak symbol then
+	     * set some_non_weak_refs to TRUE.
+	     */
+	    if((merged_symbol->nlist.n_desc & N_WEAK_REF) == 0)
+		dynamic_library->some_non_weak_refs = TRUE;
+	    dynamic_library->some_symbols_referenced = TRUE;
 	    if((symbols[j].n_type & N_TYPE) == N_INDR){
 		merged_symbol->nlist.n_type = N_INDR | N_EXT;
 		enter_indr_symbol(merged_symbol, symbols + j, strings, cur_obj);
@@ -4584,10 +4620,11 @@ process_undefineds(
 void)
 {
 
-    unsigned long i, j, Ycount, errors_save;
+    unsigned long i, j, k, Ycount, errors_save;
     struct merged_symbol_list **p, *merged_symbol_list;
     struct merged_symbol *merged_symbol;
-    enum bool printed_undef, allowed_undef, prebound_undef;
+    struct nlist *object_symbols;
+    enum bool printed_undef, allowed_undef, prebound_undef, weak_ref_warning;
     struct object_list *object_list, **q;
 #ifndef RLD
     struct undefined_list *undefined, *prevs;
@@ -4661,6 +4698,92 @@ void)
 				errors = 1;
 			    }
 			    print("%s\n", merged_symbol->nlist.n_un.n_name);
+			}
+		    }
+		}
+	    }
+	}
+
+	/*
+	 * Deal with weak references.  If we have them and the target deployment
+	 * does not support them generate a warning can clear the weak reference
+	 * bit.
+	 */
+	if(macosx_deployment_target <= MACOSX_DEPLOYMENT_TARGET_10_1){
+	    weak_ref_warning = FALSE;
+	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+		merged_symbol_list = *p;
+		for(i = 0; i < merged_symbol_list->used; i++){
+		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    if(((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+			 merged_symbol->nlist.n_value == 0) ||
+		       (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD) &&
+			(merged_symbol->nlist.n_desc & N_WEAK_REF) ==
+			 N_WEAK_REF){
+			if(weak_ref_warning == FALSE){
+			    warning("weak symbol references not set in output "
+				    "with MACOSX_DEPLOYMENT_TARGET environment "
+				    "variable set to: %s",
+				    macosx_deployment_target_name);
+			    warning("weak referenced symbols:");
+			    weak_ref_warning = TRUE;
+			}
+			merged_symbol->nlist.n_desc &= ~(N_WEAK_REF);
+			print("%s\n", merged_symbol->nlist.n_un.n_name);
+		    }
+		}
+	    }
+	}
+	/*
+	 * The target deployment does support weak references.
+	 */
+	else{
+	    /*
+	     * If there have been some weak reference mismatches when symbols
+	     * were merged make a pass through merged symbols and for any
+	     * symbols that had a weak reference mismatch that is still
+	     * undefined print the error for it.
+	     */
+	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
+		merged_symbol_list = *p;
+		for(i = 0; i < merged_symbol_list->used; i++){
+		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    if(merged_symbol->weak_reference_mismatch == TRUE &&
+		       ((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
+			 merged_symbol->nlist.n_value == 0) ||
+		       (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD)){
+			error("mismatching weak references for symbol: %s",
+			      merged_symbol->nlist.n_un.n_name);
+			for(q = &objects; *q; q = &(object_list->next)){
+			    object_list = *q;
+			    for(j = 0; j < object_list->used; j++){
+				cur_obj = &(object_list->object_files[j]);
+				if(cur_obj->dylib && cur_obj->dylib_module ==
+						     NULL)
+				    continue;
+				if(cur_obj->bundle_loader)
+				    continue;
+				if(cur_obj->dylinker)
+				    continue;
+				for(k = 0; k < cur_obj->nundefineds; k++){
+				    if(merged_symbol == cur_obj->
+				       undefined_maps[k].merged_symbol){
+					print_obj_name(cur_obj);
+					object_symbols = (struct nlist *)
+					    (cur_obj->obj_addr +
+					     cur_obj->symtab->symoff);
+					if((object_symbols[
+					    cur_obj->undefined_maps[
+					    k].index].n_desc & N_WEAK_REF) ==
+					    N_WEAK_REF)
+					    print("reference to weak %s\n",
+					      merged_symbol->nlist.n_un.n_name);
+					else
+					    print("reference to non-weak %s\n",
+					      merged_symbol->nlist.n_un.n_name);
+				    }
+				}
+			    }
 			}
 		    }
 		}

@@ -201,7 +201,7 @@ char **envp)
 		    }
 		    else
 			ofile_process(argv[i], arch_flags, narch_flags,
-				      all_archs, FALSE, TRUE,
+				      all_archs, FALSE, TRUE, TRUE,
 				      ofile_processor,&flags);
 		}
 		else if(strcmp(argv[i], "-arch") == 0)

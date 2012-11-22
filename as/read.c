@@ -374,6 +374,7 @@ static void s_lsym(int value);
 static void s_set(int value);
 static void s_reference(int value);
 static void s_lazy_reference(int value);
+static void s_weak_reference(int value);
 static void s_include(int value);
 static void s_dump(int value);
 static void s_load(int value);
@@ -432,6 +433,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "stabs",	stab,		's'	},
   { "reference",s_reference,	0	},
   { "lazy_reference",s_lazy_reference,	0	},
+  { "weak_reference",s_weak_reference,	0	},
   { "include",	s_include,	0	},
   { "macro",	s_macro,	0	},
   { "endmacro",	s_endmacro,	0	},
@@ -2609,6 +2611,39 @@ int value)
 	symbolP = symbol_find_or_make(name);
 	if((symbolP->sy_type & N_TYPE) == N_UNDF && symbolP->sy_value == 0)
 	    symbolP->sy_desc |= REFERENCE_FLAG_UNDEFINED_LAZY;
+	*p = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * s_weak_reference() implements the pseudo op:
+ *	.weak_reference name
+ */
+static
+void
+s_weak_reference(
+int value)
+{
+    char *name;
+    char c;
+    char *p;
+    symbolS *symbolP;
+
+	if(!flagseen['k'])
+	    as_fatal("incompatible feature used: .weak_reference (must specify "
+		     "\"-dynamic\" to be used)");
+
+	if(* input_line_pointer == '"')
+	    name = input_line_pointer + 1;
+	else
+	    name = input_line_pointer;
+	c = get_symbol_end();
+	p = input_line_pointer;
+
+	*p = 0;
+	symbolP = symbol_find_or_make(name);
+	if((symbolP->sy_type & N_TYPE) == N_UNDF && symbolP->sy_value == 0)
+	    symbolP->sy_desc |= N_WEAK_REF;
 	*p = c;
 	demand_empty_rest_of_line();
 }

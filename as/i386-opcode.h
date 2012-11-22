@@ -524,6 +524,7 @@ static const template i386_optab[] = {
 {"fstpl", 1, 0xdd, 3, Modrm, {Mem, 0, 0} },           /* %st0 --> mem double */
 {"fstpl", 1, 0xddd8, _, ShortForm, {FloatReg, 0, 0} }, /* register */
 {"fistps", 1, 0xdf, 3, Modrm, {Mem, 0, 0} },           /* %st0 --> mem dword */
+{"fistp", 1, 0xdf, 3, Modrm, {Mem, 0, 0} },           /* %st0 --> mem dword */
 {"fistpq", 1, 0xdf, 7, Modrm, {Mem, 0, 0} },           /* %st0 --> mem qword */
 {"fstpt", 1, 0xdb, 7, Modrm, {Mem, 0, 0} },           /* %st0 --> mem efloat */
 {"fbstp", 1, 0xdf, 6, Modrm, {Mem, 0, 0} },           /* %st0 --> mem bcd */

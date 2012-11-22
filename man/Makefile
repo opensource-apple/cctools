@@ -6,7 +6,7 @@ endif
 
 COMMON_MAN1 = as.1 gprof.1 dyld.1 ld.1 nm.1 otool.1 ranlib.1 segedit.1 size.1 \
 	      strings.1 strip.1 lipo.1 libtool.1 cmpdylib.1 pagestuff.1 \
-	      dylibprof.1 redo_prebinding.1 nmedit.1
+	      dylibprof.1 redo_prebinding.1 nmedit.1 install_name_tool.1
 OTHER_MAN1 = ar.1 file.1 atom.1
 
 MAN3 = kld.3 dyld.3 dyld_debug.3 arch.3 get_end.3 end.3 getsectbyname.3 \

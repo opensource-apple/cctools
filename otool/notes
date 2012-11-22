@@ -3,6 +3,41 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.10 release (the cctools-403 release):
+- Removed the hack in the Makefile to use cc when $(CC) is gcc3 when linking
+  to work that was working around Radar bug #2814731 now that gcc-1009 fixes it.
+
+Changes for the 5.10 release (the cctools-400 release):
+- Changed the Makefile back to again use the -dependency-file with gcc.
+- Changed the hack in the Makefile to use cc when $(CC) is gcc3 when linking
+  to work around Radar bug #2814731.
+
+Changes for the 5.10 release (the cctools-396 release):
+- Added a hack in the Makefile to use cc when $(CC) is gcc when linking
+  to work around Radar bug #2814731.
+- Changed the Makefile to not use the -dependency-file with gcc as well as
+  mwccppc.
+- Added an include <string.h> to m68k_disasm.c, i860_disasm.c, m88k_disasm.c,
+  and ppc_disasm.c to pick up the prototype for memcpy().
+
+Changes for the 5.10 release (the cctools-393 release):
+- Added code to ofile_print.c to deal with the new LC_LOAD_WEAK_DYLIB command.
+
+Changes for the 5.10 release (the cctools-392 release):
+- Changed the call to ofile_process() in main.c to pass TRUE for the new
+  use_member_syntax parameter.  Radar bug #2730127.
+
+Changes for the 5.10 release (the cctools-389 release):
+- Added the -D option to print just the LC_ID_DYLIB name.
+
+Changes for the 5.10 release (the cctools-388 release):
+- Fixed the spelling of Inconsistant to be Inconsistent in main.c and
+  ofile_print.c.  Radar bug #2783706.
+
+Changes for the 5.10 release (the cctools-386 release):
+- Added code in print_loadcmds() in ofile_print.c to parse and print
+  LC_PREBIND_CKSUM load commands.
+
 Changes for the 5.9 release (the cctools-370 release):
 - Added printing MH_NOMULTIDEFS in print_mach_header() in ofile_print.c .
 - Added code in main() in main.c and the routine print_hints() to ofile_print.c

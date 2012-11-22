@@ -812,6 +812,7 @@ struct section_map *section_map)
 					      (value & 0xfffc);
 				break;
 			    case PPC_RELOC_BR14:
+				br14_disp_sign = (instruction & 0x8000);
 				if((value & 0x3) != 0)
 				    error_with_cur_obj("relocation error "
 					"for relocation entry %lu in section "
@@ -828,17 +829,6 @@ struct section_map *section_map)
 					section_map->s->sectname);
 				instruction = (instruction & 0xffff0003) |
 					      (value & 0xfffc);
-				/*
-				 * If this is a branch conditional B-form where
-				 * the branch condition is not branch always and
-				 * the sign of the displacement is different
-				 * after relocation then flip the Y-bit to
-				 * preserve the sense of the branch prediction. 
-				 */
-				if((instruction & 0xfc000000) == 0x40000000 &&
-				   (instruction & 0x03e00000) != 0x02800000 &&
-				   (instruction & 0x00008000) != br14_disp_sign)
-				    instruction ^= (1 << 21);
 				break;
 			    case PPC_RELOC_BR24:
 				if((value & 0x3) != 0)
@@ -1001,6 +991,7 @@ struct section_map *section_map)
 		    other_half = (immediate >> 16) & 0xffff;
 		    break;
 		case PPC_RELOC_BR14:
+		    br14_disp_sign = (instruction & 0x8000);
 		    immediate = instruction & 0xfffc;
 		    if((immediate & 0x8000) != 0)
 			    immediate |= 0xffff0000;
@@ -1018,17 +1009,6 @@ struct section_map *section_map)
 			    section_map->s->sectname);
 		    instruction = (instruction & 0xffff0003) |
 				  (immediate & 0xfffc);
-		    /*
-		     * If this is a branch conditional B-form where
-		     * the branch condition is not branch always and
-		     * the sign of the displacement is different
-		     * after relocation then flip the Y-bit to
-		     * preserve the sense of the branch prediction. 
-		     */
-		    if((instruction & 0xfc000000) == 0x40000000 &&
-		       (instruction & 0x03e00000) != 0x02800000 &&
-		       (instruction & 0x00008000) != br14_disp_sign)
-			instruction ^= (1 << 21);
 		    break;
 		case PPC_RELOC_BR24:
 		    immediate = instruction & 0x03fffffc;

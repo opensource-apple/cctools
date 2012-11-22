@@ -1,4 +1,5 @@
 TODO for MacOS X:
+- Turned off DYLD_TRACE at then end of Jaguar development.  Radar bug #2859113.
 - Figure out why setting the FULLYBOUND_STATE does not seem to work.  Doing the
   first two seem to break the work space putting disks on the desktop on the
   Cheetah4K78 twolevel partion on rino.apple.com
@@ -29,6 +30,146 @@ TODO for MacOS X:
 
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
+
+Changes for the 5.10 release (the cctools-410 release):
+- Added dummy versions of __isinfd(), __isnand() and __inf() to dyld_init.c to
+  deal with these symbols being moved out of libc.a .
+
+Changes for the 5.10 release (the cctools-409 release):
+- Picked up the second prototype code for notify_prebinding_agent() in images.c.
+  This also effected dyld_init.c and dyld_init.h in picking up the environment
+  variable DYLD_NO_FIX_PREBINDING (Radar bug #2870411).
+- Fixed a bug in the code that implements __initialize_Cplusplus() in
+  _dyld_call_module_initializers_for_dylib() in mod_init_funcs.c where it was
+  not calling the module init routines for modules in the LINKED state after
+  delay_mod_init is FALSE (Radar bug #2869388).
+
+Changes for the 5.10 release (the cctools-408 release):
+- Picked up the first prototype code for notify_prebinding_agent() in images.c.
+  As part of this the definition of executables_pathlen from
+  create_executables_path() in images.c as a local to global in dyld_init.c .
+  (Radar bug #2866348).
+
+Changes for the 5.10 release (the cctools-407 release):
+- Removed support for lazy_inits using a second thread via the Mach 3.0
+  exception API's.  Most of these changes are in images.c and other changes were
+  in mod_init_funcs.c, symbols.c, images.h, trace.h and errors.h.
+  The original Radar bug that this was added under was #2490396.  The radar
+  for the removal of this code is #2864021.
+
+Changes for the 5.10 release (the cctools-404 release):
+- Fixed a bug in _dyld_NSLookupSymbolInImage() when setting the image name in
+  error message when the image is an object image (Radar bug #2857197).
+
+Changes for the 5.10 release (the cctools-402 release):
+- Changed the Makefile to use -lgcc for -lcc_dynamic when CC is gcc3.
+
+Changes for the 5.10 release (the cctools-400 release):
+- Changed the Makefile back to again use the -dependency-file with gcc.
+- Added the new constant DYLD_TRACE_notify_prebinding_agent to trace.h and used
+  it in notify_prebinding_agent().
+- Added the new function notify_prebinding_agent() for support of prebinding on
+  demand in images.c .
+- Added two calls to the new function notify_prebinding_agent() in
+  map_library_image(), one call in validate_library(), one in
+  set_images_to_prebound(), two in set_prebound_state(). These changes are in
+  images.c .
+
+Changes for the 5.10 release (the cctools-397 release):
+- Turned on DYLD_TRACE for Jaguar development.  Radar bug #2836321.
+- Fixed a bug in trace_with_string() that was doing
+	if(name != NULL){
+  where it should have been doing
+	if(name == NULL){
+  which caused it to crash doing a strlen() when DYLD_TRACE was turned on.
+- Added _dyld_NSGetExecutablePath() to dyld_libfuncs.c as the dyld side of
+  _NSGetExecutablePath.  Radar bug #2432816.
+
+Changes for the 5.10 release (the cctools-396 release):
+- Changed the use of N_WEAK_SYM to N_WEAK_REF in symbols.c .
+- Changed the Makefile to not use the -dependency-file with gcc as well as
+  mwccppc.
+- Fixed trace_with_string() in trace.c for a compiler warning that was using
+  i++ logic incorrectly on passing prameters to syscall().
+
+Changes for the 5.10 release (the cctools-393 release):
+- Added the support for weak libraries (LC_LOAD_WEAK_DYLIB) and weak symbols
+  (N_WEAK_SYM).
+
+  Added the following three structs for supporting weak symbols declared in
+  images.h and defined in images.c
+    extern const struct library_image some_weak_library_image;
+    extern const struct nlist some_weak_symbol;
+    extern const module_state some_weak_module;
+  The struct some_weak_symbol is an absolute symbol with the value of zero that
+  is used as the definition for all missing weak symbols.
+
+  In load_executable_image() in images.c added the case for LC_LOAD_WEAK_DYLIB
+  that does nothing since it has the LC_REQ_DYLD bit set.
+
+  Changed the code in load_library_image() in images.c that deals with a library
+  that can't be opened and have it check the dylib_command struct passed to it
+  for LC_LOAD_WEAK_DYLIB.  And if it is LC_LOAD_WEAK_DYLIB then fill in the
+  image_pointer with &(some_weak_library_image.image) and not call
+  system_error() and link_edit_error() but still return FALSE.
+
+  Changed and load_images_libraries() in images.c to treat LC_LOAD_WEAK_DYLIB
+  the same as LC_LOAD_DYLIB in the first loop to count dependents.  And in the
+  second look to allow the call to load_library_image() to return FALSE and do
+  nothing for LC_LOAD_WEAK_DYLIB commands.
+
+  Changed all_dependents_twolevel_prebound() and check_time_stamp() in images.c
+  to treat LC_LOAD_WEAK_DYLIB the same as LC_LOAD_DYLIB.
+
+  Added the new routine get_weak() who's return value is to be used as the
+  new boolean parameter weak_symbol to lookup_symbol() in symbols.c. weak_symbol
+  when TRUE indicates the symbol is weak and can be missing.  If missing the
+  weak symbol with the absolute address of zero is to be used.
+  Changed lookup_symbol() to check for primary_image being a missing weak
+  library and also return the absolute address zero weak symbol.
+  Changed lookup_symbol() to check the weak_symbol parameter if the symbol can't
+  be found (both two-level and flat lookups) and if TRUE return the values for
+  the absolute address zero weak symbol.
+
+  Changed all the callers of lookup_symbol() to pass the new weak_symbol
+  parameter using get_weak() or FALSE.
+
+  Changed resolve_undefineds() in symbols.c to not change the name feild of the
+  defined symbol_list struct for a weak symbol that was returned as
+  some_weak_symbol.
+
+Changes for the 5.10 release (the cctools-387 release):
+- Added support for NSADDIMAGE_OPTION_MATCH_FILENAME_BY_INSTALLNAME to
+  NSAddImage.
+  - Broke out the NSADDIMAGE_OPTION_MATCH_FILENAME_BY_INSTALLNAME option in
+    _dyld_NSAddImage() in dyld_libfuncs.c .
+  - The new routine is_library_loaded_by_matching_installname() was added to
+    images.c to compare filenames with install names for libraries that were
+    marked with match_filename_by_installname.
+  - Added the parameter match_filename_by_installname to load_library_image()
+    in images.c and changed the calls in dyld_libfuncs.c and images.c to pass
+    the new parameter.
+  - Added the parameter match_filename_by_installname to map_library_image()
+    in images.c and changed the calls in images.c to pass the new parameter.
+  - The match_filename_by_installname field was added to the image struct in
+    images.h .
+
+Changes for the 5.10 release (the cctools-385 release):
+- Picked up changes for the dyld tracing.  These were the files effected:
+  trace.h, trace.c, symbols.c, register_funcs.c, mod_init_funcs.c, images.c,
+  dyld_libfuncs.c, dyld_init.c, and Makefile.  This is for MacOS X feature data
+  base entry 6055 "dyld performance tools/metrics to measure progress".
+
+  Changed the name of kdebug_lookup() to trace_with_string() in trace.c and
+  trace.h.
+
+  Added #ifdef's for NO_DYLD_TRACING in trace.h and trace.c to turn off tracing
+  for older platforms that don't support this.
+
+  Added #import <unistd.h> to trace.h so to pickup the prototype for syscall()
+  to remove compiler warnings about implicit definitions.
+
+  The new files trace.c and trace.h were added to the Makefile.
 
 Changes for the 5.9 release (the cctools-383 release):
 - Changed _dyld_NSLookupSymbolInImage() and _dyld_NSIsSymbolNameDefinedInImage()

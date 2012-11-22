@@ -75,7 +75,7 @@ enum bool disablewarnings)
 		}
 	    }
 	    ofile_process(image_file_name, NULL, 0, TRUE,
-			  TRUE, TRUE, check_for_install_name, &block);
+			  TRUE, TRUE, FALSE, check_for_install_name, &block);
 	    if(block.check_result == TRUE)
 		return(image_file_name);
 	    free(image_file_name);
@@ -123,7 +123,7 @@ const char *root)
 
 	paths[0] = start;
 	paths[1] = NULL;
-	fts = fts_open(paths, FTS_PHYSICAL, NULL);
+	fts = fts_open((char * const *)paths, FTS_PHYSICAL, NULL);
 	if(fts == NULL){
 #ifdef DEBUG
 	    printf("fts_open() failed for: %s (%s, errno = %d)\n", start,
@@ -153,7 +153,7 @@ const char *root)
 		 */
 		block.check_result = TRUE;
 		ofile_process(ftsent->fts_path, NULL, 0, TRUE,
-			      TRUE, TRUE, check_for_install_name, &block);
+			      TRUE, TRUE, FALSE, check_for_install_name,&block);
 		if(block.check_result == TRUE){
 		    image_file_name = allocate(ftsent->fts_pathlen + 1);
 		    strcpy(image_file_name, ftsent->fts_path);
@@ -218,6 +218,9 @@ void *cookie)
 	    if(lc->cmd == LC_ID_DYLIB){
 		dl = (struct dylib_command *)lc;
 		name = (char *)lc + dl->dylib.name.offset;
+		if(strncmp(name, "@executable_path/",
+			   sizeof("@executable_path") - 1) == 0)
+		    return;
 		if(strcmp(name, block->install_name) != 0)
 		    block->check_result = FALSE;
 		return;
