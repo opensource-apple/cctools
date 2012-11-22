@@ -141,6 +141,16 @@ char **envp)
 	    if(*arg != '-')
 		continue;
 
+	    if(strcmp(arg, "--gstabs") == 0){
+		/* generate stabs for debugging assembly code */
+		flagseen[(int)'g'] = TRUE;
+		*work_argv = NULL; /* NULL means 'not a file-name' */
+		continue;
+	    }
+	    if(strcmp(arg, "--gdwarf2") == 0){
+		as_fatal("%s: I don't understand %s flag!", progname, arg);
+	    }
+
 	    /* Keep scanning args looking for flags. */
 	    if (arg[1] == '-' && arg[2] == 0) {
 		/* "--" as an argument means read STDIN */

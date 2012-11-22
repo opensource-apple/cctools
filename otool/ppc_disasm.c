@@ -287,6 +287,11 @@ enum bool verbose)
 		printf("jbsr\t");
 		jbsr = TRUE;
 	    }
+	    else if((opcode & 0xfc000003) == 0x48000000 && 
+	       get_reloc_r_type(sect_offset,relocs, nrelocs) == PPC_RELOC_JBSR){
+		printf("jmp\t");
+		jbsr = TRUE;
+	    }
 	    else{
 		printf("b%s%s\t", LK(opcode), AA(opcode));
 		jbsr = FALSE;

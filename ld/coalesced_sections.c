@@ -41,6 +41,8 @@
 #include <mach-o/nlist.h>
 #include <mach-o/stab.h>
 #include <mach-o/reloc.h>
+#include <mach-o/ppc/reloc.h>
+#include <mach-o/hppa/reloc.h>
 #include "stuff/arch.h"
 #include "stuff/reloc.h"
 
@@ -555,6 +557,19 @@ struct section_map *section_map)
 		pair = 1;
 	    else
 		pair = 0;
+
+	    /*
+	     * For output_for_dyld PPC_RELOC_JBSR and HPPA_RELOC_JBSR's are
+	     * never put out.
+	     */
+	    if(output_for_dyld &&
+	       (arch_flag.cputype == CPU_TYPE_POWERPC &&
+		r_type == PPC_RELOC_JBSR) ||
+	       (arch_flag.cputype == CPU_TYPE_HPPA &&
+		r_type == HPPA_RELOC_JBSR)){
+		i += pair;
+		continue;
+	    }
 #ifndef RLD
 	    /*
 	     * If saving relocation entries see if this relocation entry is for 

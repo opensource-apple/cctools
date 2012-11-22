@@ -1232,20 +1232,15 @@ char **envp)
 				     info.factor, info.round);
 			if(info.layout_info[i]->use_debug_region == FALSE){
                             info.seg1addr = next_flat_seg1addr(&info, size);
+                            info.layout_info[i]->seg1addr = info.seg1addr;
                             if(info.allocate_flat_increasing == TRUE){
-                                info.layout_info[i]->seg1addr = info.seg1addr;
                                 info.seg1addr += size;
-                            }
-                            else{
-                                info.layout_info[i]->seg1addr = info.seg1addr;
-                                info.seg1addr -= size;
                             }
                         }
                         else{
                             info.debug_seg1addr = 
                                         next_debug_seg1addr(&info, size);
                             info.layout_info[i]->seg1addr = info.debug_seg1addr;
-                            info.debug_seg1addr -= size;
                         }
 			info.layout_info[i]->assigned = TRUE;
 			if(info.seg1addr > MAX_ADDR)
@@ -1396,20 +1391,15 @@ char **envp)
 				     info.factor, info.round);
 			if(info.layout_info[i]->use_debug_region == FALSE){
                             info.seg1addr = next_flat_seg1addr(&info, size);
+                            info.layout_info[i]->seg1addr = info.seg1addr;
                             if(info.allocate_flat_increasing == TRUE){
-                                info.layout_info[i]->seg1addr = info.seg1addr;
                                 info.seg1addr += size;
-                            }
-                            else{
-                                info.layout_info[i]->seg1addr = info.seg1addr;
-                                info.seg1addr -= size;
                             }
                         }
                         else{
                             info.debug_seg1addr = 
                                         next_debug_seg1addr(&info, size);
                             info.layout_info[i]->seg1addr = info.debug_seg1addr;
-                            info.debug_seg1addr -= size;
                         }
 			info.layout_info[i]->assigned = TRUE;
 			if(info.seg1addr > MAX_ADDR)

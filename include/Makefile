@@ -41,11 +41,12 @@ ENCUMBERED_SRCS = gnu/a.out.h gnu/exec.h
 # Note that MISSING_SRCS are those may not be on all build machines
 GAS_MISSING_SRCS = mach/i860/thread_status.h \
 	       mach/ppc/thread_status.h \
-	       architecture/nrw/reg_help.h \
-	       architecture/nrw/macro_help.h \
+	       mach/i860/thread_status.h \
 	       mach/m88k/thread_status.h \
 	       architecture/m88k/fp_regs.h \
 	       architecture/m88k/reg_help.h \
+	       architecture/nrw/reg_help.h \
+	       architecture/nrw/macro_help.h \
 	       mach/hppa/thread_status.h \
 	       mach/sparc/thread_status.h \
 	       architecture/sparc/reg.h \

@@ -104,6 +104,7 @@ static const struct ppc_opcode ppc_opcodes[] = {
  { 0x48000003, "bla",     {{2,24,BADDR}} },
 
  { 0x48000001, "jbsr",    {{0,0,JBSR}, {2,24,PCREL}} },
+ { 0x48000000, "jmp",     {{0,0,JBSR}, {2,24,PCREL}} },
 
  { 0x40000000, "bc",      {{21,5,NUM},  {16,5,NUM}, {2,14,PCREL}} },
  { 0x40000002, "bca",     {{21,5,NUM},  {16,5,NUM}, {2,14,BADDR}} },

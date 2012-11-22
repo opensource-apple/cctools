@@ -1,22 +1,22 @@
 <HTML>
-<!--This file created 5/11/04 4:55 PM by Claris Home Page version 3.0-->
+<!--This file created 12/23/03 3:42 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=68 BOTTOM=835 LEFT=113 RIGHT=743>
+   <X-CLARIS-WINDOW TOP=72 BOTTOM=839 LEFT=95 RIGHT=725>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X 10.3.4 Release Copyright 2004 by Apple
-Computer, Inc. All Rights Reserved.</FONT></P>
+<P><FONT SIZE="-1">Mac OS X December 2003 Developer Release Copyright
+2003 by Apple Computer, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X 10.3.4 Release Notes:<BR>
-Compiler Tools (cctools-495.8)</H2>
+<H2>Private Mac OS X long branch Release Notes:<BR>
+Compiler Tools (cctools-499)</H2>
 
-<P>This file contains release notes for the 5.13.2 release of the
-Compiler Tools for the Mac OS X 10.3.4 Release. This file contains
-information about the following topics:</P>
+<P>This file contains release notes for the 5.14 release of the
+Compiler Tools for the Mac OS X December 2003 Developer Release. This
+file contains information about the following topics:</P>
 
 <UL>
    <LI>The Mac OS X Mach-O GNU-based assemblers</LI>
@@ -29,85 +29,72 @@ information about the following topics:</P>
    on)&nbsp;</LI>
 </UL>
 
-<H2>Notes Specific to Release 5.13.2 (Mac OS X 10.3.4 Release)</H2>
+<H2>Notes Specific to Release 5.15 (Mac OS X long branch
+Release)</H2>
 
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.7 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
+<H5><FONT SIZE="+1">Changes since the last release (cctools-498 for
+the 5.14 Mac OS X December 2003 Developer release) </FONT></H5>
 
 <UL>
-   <LI>Fixed a bug that was caused by the changes to dyld in
-   cctools-495.3 for Radar bug #3622330 that would cause undefined
-   symbols errors. (Radar bug #3650224).</LI>
+   <LI>Fixed a bug in the static linker, ld(1), that caused it to
+   generate an internal error message about the count of local
+   relocation entries does not matching when jbsr pseudo instructions
+   were used when creating a dynamic library. (Radar bug
+   #3518096).</LI>
 </UL>
 
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.6 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
+<H2>Notes Specific to Release 5.14 (Mac OS X December 2003 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-497 for
+the 5.14 Mac OS X December 2003 Developer release) </FONT></H5>
 
 <UL>
-   <LI>Fixed a bug that was caused by the changes to dyld in
-   cctools-495.3 for Radar bug #3622330 that would not correctly
-   fully bind symbols and modules. (Radar bug #3629498).</LI>
+   <LI>Added the PowerPC pseudo-instruction <B>jmp</B> as the
+   non-linking form of <B>jbsr</B>. (Radar bug #3458928).</LI>
 </UL>
 
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.5 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
+<H5><FONT SIZE="+1">Changes since the last release (cctools-496 for
+the 5.14 Mac OS X December 2003 Developer release) </FONT></H5>
 
 <UL>
-   <LI>Fixed a bug that was caused by the changes to dyld in
-   cctools-495.3 for Radar bug #3622330 that would cause private
-   bundles to fail to load if they had mutiply defined symbols (Radar
-   bug #3626905).</LI>
-</UL>
-
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.4 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
-
-<UL>
-   <LI>Fixed a bug that was caused by the changes to dyld in
-   cctools-495.3 for Radar bug #3622330 that would cause a crash in
-   apps that were built ld(1) -s and the un fixed bug 3534709. The
-   work around for this bug had a logic error (Radar bug
-   #3627380).</LI>
+   <LI>Changed the assembler to accept the --gstabs option to be the
+   same as the -g option and treat the --gdwarf2 option as an unknown
+   option. (Radar bug #3411071).</LI>
    
-   <LI>Fixed a bug that was caused by the changes to dyld in
-   cctools-495.3 for Radar bug #3622330 that would cause a crash in
-   dyld when there were unused non-lazy symbols in a multi-module
-   dynamic library (Radar bug #3625797).</LI>
-</UL>
-
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.3 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
-
-<UL>
-   <LI>Changes were made to dyld that improve launch times. (Radar
-   bug #3622330).</LI>
-</UL>
-
-<H5><FONT SIZE="+1">Changes since the last release (cctools-495.2 for
-the 5.13.1 Mac OS X 10.3.3 release) </FONT></H5>
-
-<UL>
-   <LI>Added the <I>unprebind</I>(3) API to libredo_prebinding and
-   the <B>-u</B> option to the <I>redo_prebinding</I>(1) command.
-   (Radar bug #3176679).</LI>
+   <LI>Change the libtool(1) command to pass the
+   -prebind_allow_overlap on to ld(1). (Radar bug #3452484).</LI>
    
-   <LI>Added the <B>-seg1addr</B> <I>hex_addeess</I> option to to the
-   <I>redo_prebinding</I>(1) command to specify the address of a
-   dynamic shared library. (Radar bug #3176679).</LI>
-   
-   <LI>Added the <B>-s</B> option to to the <I>redo_prebinding</I>(1)
-   command to cause it to write its output to standard output, rather
-   than to an output file. (Radar bug #3176679).</LI>
+   <LI>Fixed a bug in the static linker, ld(1), that caused it to
+   generate an error message about relocation entries in read-only
+   sections when jbsr pseudo instructions were used when creating a
+   dynamic library. (Radar bug #3452964).</LI>
 </UL>
-
-<H2>Notes Specific to Release 5.13.1 (Mac OS X 10.3.3 Release)</H2>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-495 for
 the 5.13 Mac OS X 10.3 release) </FONT></H5>
 
 <UL>
-   <LI>Fixed a bug in dyld that was causing it not to trigger
-   fix_prebinding. (Radar bug #3489918).</LI>
+   <LI>Added the value 10.4 to be one of the known values allowed for
+   environment variable MACOSX_DEPLOYMENT_TARGET (Radar bug
+   #3445632).</LI>
+   
+   <LI>Changed the cctools project to include the FSF COPYING file at
+   the top level of the assembler. (Radar bug #3443583).</LI>
+   
+   <LI>Changed seg_addr_table(3) so it does not reserves more space
+   than necessary for flat dylibs. (Radar bug #3440884).</LI>
+   
+   <LI>Changed NSModule(3) man page so NSLinkModule states you need
+   to pass the image path as the module name if you want to use
+   gdb(1) on it (Radar bug #3408768).</LI>
+   
+   <LI>Changed the header file &lt;mach-o/dyld.h&gt; so the API's
+   introduced in 10.3 are marked with the AvailabilityMacros (Radar
+   bug #3401910).</LI>
+   
+   <LI>Changed ld(1) to call realpath(3) on the filenames printed
+   with RC_TRACE_ARCHIVES. (Radar bug #3443289).</LI>
 </UL>
 
 <H2>Notes Specific to Release 5.13 (Mac OS X 10.3)</H2>

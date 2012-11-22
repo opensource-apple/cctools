@@ -42,6 +42,7 @@
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
 #include <mach-o/reloc.h>
+#include <mach-o/ppc/reloc.h>
 #include <mach-o/hppa/reloc.h>
 #include <ar.h>
 #include "stuff/arch.h"
@@ -3033,9 +3034,13 @@ unsigned long *nextrel)
 		       (r_pcrel == 1 &&
 		        (merged_symbol->nlist.n_type & N_TYPE) == N_SECT);
 	    /*
-	     * For output_for_dyld HPPA_RELOC_JBSR's are never put out.
+	     * For output_for_dyld PPC_RELOC_JBSR and HPPA_RELOC_JBSR's are
+	     * never put out.
 	     */
-	    if(arch_flag.cputype == CPU_TYPE_HPPA && r_type == HPPA_RELOC_JBSR){
+	    if((arch_flag.cputype == CPU_TYPE_POWERPC &&
+		r_type == PPC_RELOC_JBSR) ||
+	       (arch_flag.cputype == CPU_TYPE_HPPA &&
+		r_type == HPPA_RELOC_JBSR)){
 		i += pair;
 		continue;
 	    }
@@ -3951,9 +3956,13 @@ unsigned long *nextrel)
 	    else
 		pic = FALSE;
 	    /*
-	     * For output_for_dyld HPPA_RELOC_JBSR's are never put out.
+	     * For output_for_dyld PPC_RELOC_JBSR and HPPA_RELOC_JBSR's are
+	     * never put out.
 	     */
-	    if(arch_flag.cputype == CPU_TYPE_HPPA && r_type == HPPA_RELOC_JBSR){
+	    if((arch_flag.cputype == CPU_TYPE_POWERPC &&
+		r_type == PPC_RELOC_JBSR) ||
+	       (arch_flag.cputype == CPU_TYPE_HPPA &&
+		r_type == HPPA_RELOC_JBSR)){
 		i += pair;
 		continue;
 	    }

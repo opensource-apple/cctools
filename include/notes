@@ -1,17 +1,12 @@
-Changes for the 5.13.2 release (the cctools-495.3 release):
-- Added the prototype for unprebind(3) to <mach-o/redo_prebinding.h>.  
-  Radar bug #3176679.
-- Added prototypes for the new routine breakout_mem() and writeout_to_mem()
-  to <stuff/breakout.h>.  Radar bug #3176679.
-- Added MH_PREBINDABLE, MH_ALLMODSBOUND, and MH_CANONICAL Mach-O header 
-  flags to <mach-o/loader.h>.  MH_PREBINDABLE indicates that the binary is not
-  prebound but has enough information in it to be prebound by 
-  redo_prebinding(3) or redo_prebinding(1).  MH_ALLMODSBOUND exists 
-  only in binaries with MH_PREBINDABLE also set and indicates that 
-  when this binary is reprebound, all the two-level namespace modules
-  should be bound.  MH_CANONICAL identifies a canonical form of a 
-  binary, in other words, one that has been processed by unprebind(3) or 
-  redo_prebinding(1) -u.  Radar bug #3176679.
+Changes for the 5.14 release (the cctools-496 release):
+- Added the constant MACOSX_DEPLOYMENT_TARGET_10_4 to the header file
+  <stuff/macosx_deployment_target.h>.  Radar bug #3445632.
+- Changed <mach-o/dyld.h> to include <AvailabilityMacros.h> and mark the
+  following API's added in 10.3::
+    extern enum DYLD_BOOL NSHasModInitObjectFileImage
+    extern struct mach_header * _dyld_get_image_header_containing_address
+    extern enum DYLD_BOOL _dyld_all_twolevel_modules_prebound
+  with AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER.  Radar bug #3401910.
 
 Changes for the 5.13 release (the cctools-492 release):
 - Added the #define NEXT_DEBUG_ADDRESS_TO_ASSIGN to <stuff/seg_addr_table.h>

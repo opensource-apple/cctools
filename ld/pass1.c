@@ -1039,8 +1039,14 @@ enum bool force_weak)
 		offset += round(symdef_length, sizeof(short));
 	    }
 	    if(rc_trace_archives == TRUE && rc_trace_archive_printed == FALSE){
-		print("[Logging for Build & Integration] Used static archive: "
-		      "%s\n", file_name);
+		char resolvedname[MAXPATHLEN];
+		if(realpath(file_name, resolvedname) !=
+		   NULL)
+		    print("[Logging for Build & Integration] Used static "
+			  "archive: %s\n", resolvedname);
+		else
+		    print("[Logging for Build & Integration] Used static "
+			  "archive: %s\n", file_name);
 		rc_trace_archive_printed = TRUE;
 	    }
 	    while(offset < file_size){
@@ -1427,8 +1433,14 @@ down:
 
 		if(rc_trace_archives == TRUE &&
 		   rc_trace_archive_printed == FALSE){
-		    print("[Logging for Build & Integration] Used static "
-			  "archive: %s\n", file_name);
+		    char resolvedname[MAXPATHLEN];
+		    if(realpath(file_name, resolvedname) !=
+		       NULL)
+			print("[Logging for Build & Integration] Used static "
+			      "archive: %s\n", resolvedname);
+		    else
+			print("[Logging for Build & Integration] Used static "
+			      "archive: %s\n", file_name);
 		    rc_trace_archive_printed = TRUE;
 		}
 		/*
@@ -1554,8 +1566,13 @@ down:
 
 		    if(rc_trace_archives == TRUE &&
 		       rc_trace_archive_printed == FALSE){
-			print("[Logging for Build & Integration] Used static "
-			      "archive: %s\n", file_name);
+			char resolvedname[MAXPATHLEN];
+			if(realpath(file_name, resolvedname) != NULL)
+			    print("[Logging for Build & Integration] Used "
+				  "static archive: %s\n", resolvedname);
+			else
+			    print("[Logging for Build & Integration] Used "
+				  "static archive: %s\n", file_name);
 			rc_trace_archive_printed = TRUE;
 		    }
 
@@ -1648,8 +1665,15 @@ down:
 
 			    if(rc_trace_archives == TRUE &&
 			       rc_trace_archive_printed == FALSE){
-				print("[Logging for Build & Integration] Used "
-				      "static archive: %s\n", file_name);
+				char resolvedname[MAXPATHLEN];
+				if(realpath(file_name, resolvedname) != NULL)
+				    print("[Logging for Build & Integration] "
+					  "Used static archive: %s\n",
+					  resolvedname);
+				else
+				    print("[Logging for Build & Integration] "
+					  "Used static archive: %s\n",
+					  file_name);
 				rc_trace_archive_printed = TRUE;
 			    }
 
@@ -2668,8 +2692,13 @@ undefined_twolevel_reference:
 		    if(ranlib != NULL){
 			if(rc_trace_archives == TRUE &&
 			   p->rc_trace_archive_printed == FALSE){
-			    print("[Logging for Build & Integration] Used "
-				  "static archive: %s\n", p->file_name);
+			    char resolvedname[MAXPATHLEN];
+			    if(realpath(p->file_name, resolvedname) != NULL)
+				print("[Logging for Build & Integration] Used "
+				      "static archive: %s\n", resolvedname);
+			    else
+				print("[Logging for Build & Integration] Used "
+				      "static archive: %s\n", p->file_name);
 			    p->rc_trace_archive_printed = TRUE;
 			}
 			/*
@@ -2740,8 +2769,15 @@ undefined_twolevel_reference:
 				  p->ranlibs[i].ran_un.ran_strx) == 0){
 			    if(rc_trace_archives == TRUE &&
 			       p->rc_trace_archive_printed == FALSE){
-				print("[Logging for Build & Integration] Used "
-				      "static archive: %s\n", p->file_name);
+				char resolvedname[MAXPATHLEN];
+				if(realpath(p->file_name, resolvedname) != NULL)
+				    print("[Logging for Build & Integration] "
+					  "Used static archive: %s\n",
+					  resolvedname);
+				else
+				    print("[Logging for Build & Integration] "
+					  "Used static archive: %s\n",
+					  p->file_name);
 				p->rc_trace_archive_printed = TRUE;
 			    }
 			    /*

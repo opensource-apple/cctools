@@ -658,6 +658,7 @@ char **envp)
 			strcmp(argv[i], "-nomultidefs") == 0 ||
 			strcmp(argv[i], "-headerpad_max_install_names") == 0 ||
 			strcmp(argv[i], "-prebind_all_twolevel_modules") == 0 ||
+			strcmp(argv[i], "-prebind_allow_overlap") == 0 ||
 			strcmp(argv[i], "-ObjC") == 0 ||
 			strcmp(argv[i], "-M") == 0 ||
 			strcmp(argv[i], "-single_module") == 0 ||

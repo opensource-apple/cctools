@@ -25,6 +25,19 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.14 release (the cctools-498 release):
+- Added the PowerPC pseudo-instruction 'jmp' as the non-linking form of 'jbsr'.
+  The following entry was added to ppc-opcode.h :
+    { 0x48000000, "jmp",     {{0,0,JBSR}, {2,24,PCREL}} },
+  Radar bug #3458928.
+
+Changes for the 5.14 release (the cctools-497 release):
+- Added the --gstabs option to be like -g and to treat the --gdwarf2 option as
+  an unknown option.  Radar bug #3411071.
+
+Changes for the 5.14 release (the cctools-496 release):
+- Added the file COPYING from FSF.  Radar bug #3443583.
+
 Changes for the 5.12 release (the cctools-487 release):
 - Fixed a bug that should have allow the 64-bit compare instructions and other
   optional instructions when -arch ppc970 was used.  The fix was to add the

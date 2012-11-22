@@ -23,6 +23,24 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.14 release (the cctools-499 release):
+- Fixed a bug with linking .o files containing PPC_RELOC_JBSR relocation entries
+  in a coalesced section into a dynamic library. The code in
+  coalesced_section_merge() in coalesed_sections.c did not exclude these in the 
+  output.  Which resulted in a internal error in output_section() where the 
+  count of local relocation did not match.  Radar bug #3518096.
+
+Changes for the 5.14 release (the cctools-497 release):
+- Fixed a bug with linking .o files containing PPC_RELOC_JBSR relocation entries
+  into a dynamic library. The code in count_relocs() and reloc_output_for_dyld()
+  in sections.c did not exclude these in the output.  Which resulted in a read
+  only reloc error.  Radar bug #3452964.
+
+Changes for the 5.14 release (the cctools-496 release):
+- Change in a number of places in pass1.c that printed "Logging for Build &
+  Integration] Used static library" to print the realpath() name of the file
+  name.  Radar bug #3443289.
+ 
 Changes for the 5.13 release (the cctools-495 release):
 - Changed the header pad for prebound executables to be 3 times instead of 6
   times the size of the initial LC_PREBOUND_DYLIB commands.  This change is in

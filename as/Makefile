@@ -112,7 +112,7 @@ CHECK_FILES = m68k-check.c m88k-check.c i860-check.c i386-check.c ppc-check.c \
 INSTALL_FILES = Makefile notes $(CFILES) $(CFILES_m68k) $(CFILES_m88k) \
 		$(CFILES_i860) $(CFILES_i386) $(CFILES_ppc) $(CFILES_hppa) \
 		$(CFILES_sparc) $(HFILES) $(CHECK_FILES) driver.c \
-		make.defs make_defs.h
+		make.defs make_defs.h COPYING
 
 OBJS = $(CFILES:.c=.o) apple_version.o
 OBJS_m68k = $(CFILES_m68k:.c=.o)

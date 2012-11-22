@@ -35,6 +35,7 @@ static const struct macosx_deployment_target_pair
     { "10.1", MACOSX_DEPLOYMENT_TARGET_10_1 },
     { "10.2", MACOSX_DEPLOYMENT_TARGET_10_2 },
     { "10.3", MACOSX_DEPLOYMENT_TARGET_10_3 },
+    { "10.4", MACOSX_DEPLOYMENT_TARGET_10_4 },
     { NULL, 0 }
 };
 
