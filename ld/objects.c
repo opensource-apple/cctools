@@ -3,28 +3,27 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifdef SHLIB
 #include "shlib.h"
-#endif SHLIB
+#endif /* SHLIB */
 /*
  * This file contains the routines to manage the table of object files to be
  * loaded.
@@ -92,7 +91,7 @@ new_object_file(void)
 	    nobjects++;
 #ifdef RLD
 	    object_file->set_num = cur_set;
-#endif RLD
+#endif /* RLD */
 	    return(object_file);
 	}
 	*p = allocate(sizeof(struct object_list));
@@ -103,7 +102,7 @@ new_object_file(void)
 	nobjects++;
 #ifdef RLD
 	object_file->set_num = cur_set;
-#endif RLD
+#endif /* RLD */
 	return(object_file);
 }
 
@@ -111,7 +110,7 @@ new_object_file(void)
 /*
  * object_index() returns the index into the module table for a object file
  * structure.  It is only used in the creation of the table of contents entries
- * in a MH_DYLIB file.
+ * in a multi module MH_DYLIB file.
  */
 __private_extern__
 unsigned long
@@ -122,6 +121,8 @@ struct object_file *obj)
     struct object_list *object_list, **p;
     struct object_file *cmp_obj;
 
+	if(multi_module_dylib == FALSE)
+	    return(0);
 	index = 0;
 	for(p = &objects; *p; p = &(object_list->next)){
 	    object_list = *p;
@@ -418,6 +419,7 @@ unsigned long output_base_address)
 	else if((map->s->flags & SECTION_TYPE) == S_SYMBOL_STUBS &&
 	        fine_reloc->indirect_defined == TRUE){
 	    if(filetype != MH_DYLIB ||
+	       (filetype == MH_DYLIB && multi_module_dylib == FALSE) ||
 	       (cur_obj == fine_reloc->merged_symbol->definition_object &&
 		input_offset - fine_reloc->input_offset == 0)){
 		if(cur_obj == fine_reloc->merged_symbol->definition_object)
@@ -560,7 +562,7 @@ unsigned long input_offset)
 	}
 	else if((map->s->flags & SECTION_TYPE) == S_SYMBOL_STUBS &&
 	        fine_reloc->indirect_defined == TRUE &&
-	        filetype != MH_DYLIB){
+	        (filetype != MH_DYLIB || multi_module_dylib == FALSE)){
 	    merged_symbol = (struct merged_symbol *)fine_reloc->output_offset;
 	    if((merged_symbol->nlist.n_type & N_TYPE) == N_INDR)
 		merged_symbol = (struct merged_symbol *)
@@ -742,7 +744,7 @@ remove_objects(void)
 	    }while(object_list != NULL);
 	}
 }
-#endif RLD
+#endif /* RLD */
 
 #ifdef DEBUG
 /*
@@ -802,8 +804,8 @@ print_object_list(void)
 		}
 #ifdef RLD
 		print("\tset_num = %d\n", object_file->set_num);
-#endif RLD
+#endif /* RLD */
 	    }
 	}
 }
-#endif DEBUG
+#endif /* DEBUG */

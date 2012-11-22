@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -63,7 +62,7 @@ __private_extern__ struct merged_segment *base_obj_segments;
 __private_extern__ char *bsearch_strings;
 #ifndef RLD
 __private_extern__ struct nlist *bsearch_symbols;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /*
  * The lists of libraries to be search with dynamic library search semantics.
@@ -119,7 +118,7 @@ struct dynamic_library {
  * libraries on the link line.
  */
 __private_extern__ struct dynamic_library *dynamic_libs;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 __private_extern__ void pass1(
     char *filename,
@@ -152,7 +151,7 @@ __private_extern__ struct dynamic_library *add_dynamic_lib(
 __private_extern__ int dylib_bsearch(
     const char *symbol_name,
     const struct dylib_table_of_contents *toc);
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 #ifdef RLD
 __private_extern__ void merge_base_program(
@@ -163,4 +162,4 @@ __private_extern__ void merge_base_program(
     unsigned long nsyms,
     char *strtab,
     unsigned long strsize);
-#endif RLD
+#endif /* RLD */

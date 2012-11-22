@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -285,6 +284,18 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+	case CPU_TYPE_VEO:
+	    switch(fat_arch->cpusubtype){
+	    case CPU_SUBTYPE_VEO_1:
+		printf("veo1\n");
+		break;
+	    case CPU_SUBTYPE_VEO_2:
+		printf("veo2\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
 	case CPU_TYPE_HPPA:
 	    switch(fat_arch->cpusubtype){
 	    case CPU_SUBTYPE_HPPA_ALL:
@@ -468,6 +479,20 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_POWERPC_7450:
 		printf("    cputype CPU_TYPE_POWERPC\n"
 		       "    cpusubtype CPU_SUBTYPE_POWERPC_7450\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+	case CPU_TYPE_VEO:
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_VEO_1:
+		printf("    cputype CPU_TYPE_VEO\n"
+		       "    cpusubtype CPU_SUBTYPE_VEO_1\n");
+		break;
+	    case CPU_SUBTYPE_VEO_2:
+		printf("    cputype CPU_TYPE_VEO\n"
+		       "    cpusubtype CPU_SUBTYPE_VEO_2\n");
 		break;
 	    default:
 		goto print_arch_unknown;
@@ -1059,6 +1084,20 @@ NS32:
 		    break;
 		case CPU_SUBTYPE_POWERPC_7450:
 		    printf("    ppc7450");
+		    break;
+		default:
+		    printf(" %10d", mh->cpusubtype);
+		    break;
+		}
+		break;
+	    case CPU_TYPE_VEO:
+		printf("     VEO");
+		switch(mh->cpusubtype){
+		case CPU_SUBTYPE_VEO_1:
+		    printf("       veo1");
+		    break;
+		case CPU_SUBTYPE_VEO_2:
+		    printf("       veo2");
 		    break;
 		default:
 		    printf(" %10d", mh->cpusubtype);
@@ -2798,7 +2837,8 @@ enum byte_sex thread_states_byte_sex)
 		}
 	    }
 	}
-	if(mh->cputype == CPU_TYPE_POWERPC){
+	if(mh->cputype == CPU_TYPE_POWERPC ||
+	   mh->cputype == CPU_TYPE_VEO){
 	    ppc_thread_state_t cpu;
 	    ppc_float_state_t fpu;
 	    ppc_exception_state_t except;
@@ -3964,7 +4004,8 @@ enum bool verbose)
 			sr->r_type == GENERIC_RELOC_PAIR) ||
 		       (mh->cputype == CPU_TYPE_MC88000 &&
 			sr->r_type == M88K_RELOC_PAIR) ||
-		       (mh->cputype == CPU_TYPE_POWERPC &&
+		       ((mh->cputype == CPU_TYPE_POWERPC ||
+		         mh->cputype == CPU_TYPE_VEO) &&
 			sr->r_type == PPC_RELOC_PAIR) ||
 		       (mh->cputype == CPU_TYPE_HPPA &&
 			sr->r_type == HPPA_RELOC_PAIR) ||
@@ -4009,14 +4050,15 @@ enum bool verbose)
 				 sr->r_type == HPPA_RELOC_PAIR)
 			    printf(" other_part = 0x%06x ",
 				   (unsigned int)sr->r_address);
-			else if((mh->cputype == CPU_TYPE_POWERPC &&
+			else if(((mh->cputype == CPU_TYPE_POWERPC ||
+				  mh->cputype == CPU_TYPE_VEO) &&
 				 sr->r_type == PPC_RELOC_PAIR)){
 			    if(previous_ppc_jbsr == FALSE)
 				printf(" half = 0x%04x ",
 				       (unsigned int)reloc.r_address);
-			    else
-				printf(" other_part = 0x%08x ",
-				       (unsigned int)reloc.r_address);
+			    else{
+				printf(" <- other_part ");
+			    }
 			}
 		    }
 		    else if(mh->cputype == CPU_TYPE_HPPA &&
@@ -4031,7 +4073,8 @@ enum bool verbose)
 			    printf(" other_part = 0x%06x ",
 				   (unsigned int)sr->r_address);
 		    }
-		    else if(mh->cputype == CPU_TYPE_POWERPC &&
+		    else if((mh->cputype == CPU_TYPE_POWERPC ||
+			     mh->cputype == CPU_TYPE_VEO) &&
 			    (sectdiff_r_type == PPC_RELOC_HI16_SECTDIFF ||
 			     sectdiff_r_type == PPC_RELOC_LO16_SECTDIFF ||
 			     sectdiff_r_type == PPC_RELOC_HA16_SECTDIFF)){
@@ -4044,7 +4087,8 @@ enum bool verbose)
 			sr->r_type == GENERIC_RELOC_SECTDIFF) ||
 		       (mh->cputype == CPU_TYPE_MC88000 &&
 			sr->r_type == M88K_RELOC_SECTDIFF) ||
-		       (mh->cputype == CPU_TYPE_POWERPC &&
+		       ((mh->cputype == CPU_TYPE_POWERPC ||
+		         mh->cputype == CPU_TYPE_VEO) &&
 			(sr->r_type == PPC_RELOC_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_HI16_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_LO16_SECTDIFF ||
@@ -4064,7 +4108,8 @@ enum bool verbose)
 		    }
 		    else
 			previous_sectdiff = FALSE;
-		    if((mh->cputype == CPU_TYPE_POWERPC &&
+		    if(((mh->cputype == CPU_TYPE_POWERPC ||
+		         mh->cputype == CPU_TYPE_VEO) &&
 			 sr->r_type == PPC_RELOC_JBSR))
 			previous_ppc_jbsr = TRUE;
 		    else
@@ -4082,7 +4127,8 @@ enum bool verbose)
 		if(verbose){
 		    if((mh->cputype == CPU_TYPE_MC88000 &&
 			reloc.r_type == M88K_RELOC_PAIR) ||
-		       (mh->cputype == CPU_TYPE_POWERPC &&
+		       ((mh->cputype == CPU_TYPE_POWERPC ||
+		         mh->cputype == CPU_TYPE_VEO) &&
 			reloc.r_type == PPC_RELOC_PAIR) ||
 		       (mh->cputype == CPU_TYPE_HPPA &&
 			reloc.r_type == HPPA_RELOC_PAIR) ||
@@ -4143,7 +4189,8 @@ enum bool verbose)
 			    printf(" other_part = 0x%06x\n",
 				   (unsigned int)reloc.r_address);
 			}
-			else if((mh->cputype == CPU_TYPE_POWERPC &&
+			else if(((mh->cputype == CPU_TYPE_POWERPC ||
+				  mh->cputype == CPU_TYPE_VEO) &&
 				 reloc.r_type == PPC_RELOC_PAIR)){
 			    if(previous_ppc_jbsr == FALSE)
 				printf("half = 0x%04x\n",
@@ -4166,7 +4213,8 @@ enum bool verbose)
 			    }
 			}
 		    }
-		    if((mh->cputype == CPU_TYPE_POWERPC &&
+		    if(((mh->cputype == CPU_TYPE_POWERPC ||
+		         mh->cputype == CPU_TYPE_VEO) &&
 			 reloc.r_type == PPC_RELOC_JBSR))
 			previous_ppc_jbsr = TRUE;
 		    else
@@ -4237,6 +4285,7 @@ unsigned long r_type)
 	    printf("%s", i860_r_types[r_type]);
 	    break;
 	case CPU_TYPE_POWERPC:
+	case CPU_TYPE_VEO:
 	    printf("%s", ppc_r_types[r_type]);
 	    break;
 	case CPU_TYPE_HPPA:

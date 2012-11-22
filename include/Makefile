@@ -11,7 +11,7 @@ FILES = mach-o/ldsyms.h mach-o/reloc.h mach-o/dyld.h \
 	mach-o/nlist.h mach-o/stab.h mach-o/loader.h mach-o/fat.h \
 	mach-o/dyld_debug.h mach-o/arch.h mach-o/gmon.h mach-o/ranlib.h \
 	mach-o/swap.h mach-o/getsect.h mach-o/i386/swap.h mach-o/dyld_gdb.h \
-	mach-o/ppc/swap.h mach-o/ppc/reloc.h \
+	mach-o/ppc/swap.h mach-o/ppc/reloc.h
 
 LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
 	   mach-o/redo_prebinding.h \
@@ -32,8 +32,9 @@ OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/print.h stuff/version_number.h stuff/crc32.h sys/gmon.h \
 	     stuff/openstep_mach.h stuff/seg_addr_table.h stuff/dylib_table.h \
 	     stuff/SymLoc.h stuff/dylib_roots.h stuff/guess_short_name.h \
-	     stuff/macosx_deployment_target.h \
+	     stuff/macosx_deployment_target.h stuff/symbol_list.h \
 	     $(GAS_OTHER_SRCS)
+
 ENCUMBERED_SRCS = gnu/a.out.h gnu/exec.h
 
 # Note that MISSING_SRCS are those may not be on all build machines

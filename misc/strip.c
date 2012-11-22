@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -39,11 +38,13 @@
 #include <mach-o/reloc.h>
 #include <mach-o/nlist.h>
 #include <mach-o/stab.h>
-#include <stuff/breakout.h>
-#include <stuff/allocate.h>
-#include <stuff/errors.h>
-#include <stuff/round.h>
+#include "stuff/breakout.h"
+#include "stuff/allocate.h"
+#include "stuff/errors.h"
+#include "stuff/round.h"
 #include "stuff/reloc.h"
+#include "stuff/reloc.h"
+#include "stuff/symbol_list.h"
 
 /* These are set from the command line arguments */
 char *progname;		/* name of the program for error messages (argv[0]) */
@@ -77,11 +78,6 @@ static enum bool default_dyld_executable = FALSE;
  * save_symbols is the names of the symbols from the -s <file> argument.
  * remove_symbols is the names of the symbols from the -R <file> argument.
  */
-struct symbol_list {
-    char *name;		/* name of the global symbol */
-    struct nlist *sym;	/* pointer to the nlist structure for this symbol */
-    enum bool seen;	/* set if the symbol is seen in the input file */
-};
 static struct symbol_list *save_symbols = NULL;
 static unsigned long nsave_symbols = 0;
 static struct symbol_list *remove_symbols = NULL;
@@ -213,19 +209,6 @@ static enum bool edit_symtab(
     struct dylib_reference *refs,
     unsigned long nextrefsyms);
 #endif /* NMEDIT */
-
-static void setup_symbol_list(
-    char *file,
-    struct symbol_list **list,
-    unsigned long *size);
-
-static int cmp_qsort_name(
-    const struct symbol_list *sym1,
-    const struct symbol_list *sym2);
-
-static int cmp_bsearch(
-    const char *name,
-    const struct symbol_list *sym);
 
 #ifndef NMEDIT
 static void setup_debug_filenames(
@@ -427,7 +410,7 @@ char *envp[])
 				 save_symbols, nsave_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
-				    cmp_bsearch);
+				    symbol_list_bsearch);
 		    if(sp != NULL){
 			error("symbol name: %s is listed in both -s %s and -R "
 			      "%s files (can't be both saved and removed)",
@@ -1424,120 +1407,6 @@ struct object *object)
 	}
 }
 
-/*
- * This is called to setup a symbol list from a file.  It reads the file with
- * the strings in it and places them in an array of symbol_list structures and
- * then sorts them by name.
- *
- * The file that contains the symbol names must have symbol names one per line,
- * leading and trailing white space is removed and lines starting with a '#'
- * and lines with only white space are ignored.
- */
-static
-void
-setup_symbol_list(
-char *file,
-struct symbol_list **list,
-unsigned long *size)
-{
-    int fd, i, j, len, strings_size;
-    struct stat stat_buf;
-    char *strings, *p, *line;
-
-	if((fd = open(file, O_RDONLY)) < 0){
-	    system_error("can't open: %s", file);
-	    return;
-	}
-	if(fstat(fd, &stat_buf) == -1){
-	    system_error("can't stat: %s", file);
-	    close(fd);
-	    return;
-	}
-	strings_size = stat_buf.st_size;
-	strings = (char *)allocate(strings_size + 2);
-	strings[strings_size] = '\n';
-	strings[strings_size + 1] = '\0';
-	if(read(fd, strings, strings_size) != strings_size){
-	    system_error("can't read: %s", file);
-	    close(fd);
-	    return;
-	}
-	/*
-	 * Change the newlines to '\0' and count the number of lines with
-	 * symbol names.  Lines starting with '#' are comments and lines
-	 * contain all space characters do not contain symbol names.
-	 */
-	p = strings;
-	line = p;
-	for(i = 0; i < strings_size + 1; i++){
-	    if(*p == '\n' || *p == '\r'){
-		*p = '\0';
-		if(*line != '#'){
-		    while(*line != '\0' && isspace(*line))
-			line++;
-		    if(*line != '\0')
-			(*size)++;
-		}
-		p++;
-		line = p;
-	    }
-	    else{
-		p++;
-	    }
-	}
-	*list = (struct symbol_list *)
-		allocate((*size) * sizeof(struct symbol_list));
-
-	/*
-	 * Place the strings in the list trimming leading and trailing spaces
-	 * from the lines with symbol names.
-	 */
-	p = strings;
-	line = p;
-	for(i = 0; i < (*size); ){
-	    p += strlen(p) + 1;
-	    if(*line != '#' && *line != '\0'){
-		while(*line != '\0' && isspace(*line))
-		    line++;
-		if(*line != '\0'){
-		    (*list)[i].name = line;
-		    (*list)[i].seen = FALSE;
-		    i++;
-		    len = strlen(line);
-		    j = len - 1;
-		    while(j > 0 && isspace(line[j])){
-			j--;
-		    }
-		    if(j > 0 && j + 1 < len && isspace(line[j+1]))
-			line[j+1] = '\0';
-		}
-	    }
-	    line = p;
-	}
-
-	qsort(*list, *size, sizeof(struct symbol_list),
-	      (int (*)(const void *, const void *))cmp_qsort_name);
-
-	/* remove duplicates on the list */
-	for(i = 0; i < (*size); i++){
-	    if(i + 1 < (*size)){
-		if(strcmp((*list)[i].name, (*list)[i+1].name) == 0){
-		    for(j = 1; j < (*size) - i; j++){
-			(*list)[i + j].name = (*list)[i + j + 1].name;
-		    }
-		    *size = *size - 1;
-		}
-	    }
-	}
-
-#ifdef DEBUG
-	printf("symbol list:\n");
-	for(i = 0; i < (*size); i++){
-	    printf("0x%x name = %s\n", &((*list)[i]),(*list)[i].name);
-	}
-#endif DEBUG
-}
-
 #ifndef NMEDIT
 /*
  * This is called if there is a -d option specified.  It reads the file with
@@ -1593,7 +1462,7 @@ char *dfile)
 	for(i = 0; i < ndebug_filenames; i++){
 	    printf("filename = %s\n", debug_filenames[i]);
 	}
-#endif DEBUG
+#endif /* DEBUG */
 }
 
 /*
@@ -1839,7 +1708,7 @@ unsigned long nindirectsyms)
 				     save_symbols, nsave_symbols,
 				     sizeof(struct symbol_list),
 				     (int (*)(const void *, const void *))
-					cmp_bsearch);
+					symbol_list_bsearch);
 			if(sp != NULL){
 			    if(sp->sym == NULL){
 				sp->sym = &(symbols[i]);
@@ -1886,7 +1755,7 @@ unsigned long nindirectsyms)
 				 remove_symbols, nremove_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
-				    cmp_bsearch);
+				    symbol_list_bsearch);
 		    if(sp != NULL){
 			if((symbols[i].n_type & N_TYPE) == N_UNDF ||
 			   (symbols[i].n_type & N_TYPE) == N_PBUD){
@@ -1961,7 +1830,7 @@ unsigned long nindirectsyms)
 				 save_symbols, nsave_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
-				    cmp_bsearch);
+				    symbol_list_bsearch);
 		    if(sp != NULL){
 			if(sp->sym != NULL &&
 			   (sp->sym->n_type & N_PEXT) != N_PEXT){
@@ -2468,30 +2337,6 @@ const struct undef_map *sym2)
 }
 #endif /* !defined(NMEDIT) */
 
-/*
- * Function for qsort for comparing symbol list names.
- */
-static
-int
-cmp_qsort_name(
-const struct symbol_list *sym1,
-const struct symbol_list *sym2)
-{
-	return(strcmp(sym1->name, sym2->name));
-}
-
-/*
- * Function for bsearch for finding a symbol.
- */
-static
-int
-cmp_bsearch(
-const char *name,
-const struct symbol_list *sym)
-{
-	return(strcmp(name, sym->name));
-}
-
 #ifndef NMEDIT
 /*
  * Function for qsort for comparing object names.
@@ -2696,7 +2541,7 @@ unsigned long nextrefsyms)
 					 remove_symbols, nremove_symbols,
 					 sizeof(struct symbol_list),
 					 (int (*)(const void *, const void *))
-					    cmp_bsearch);
+					    symbol_list_bsearch);
 			    if(sp != NULL){
 				if(sp->sym != NULL){
 				    error_arch(arch, member, "more than one "
@@ -2720,7 +2565,7 @@ unsigned long nextrefsyms)
 					 save_symbols, nsave_symbols,
 					 sizeof(struct symbol_list),
 					 (int (*)(const void *, const void *))
-					    cmp_bsearch);
+					    symbol_list_bsearch);
 			    if(sp != NULL){
 				if(sp->sym != NULL){
 				    error_arch(arch, member, "more than one "
@@ -2739,7 +2584,7 @@ unsigned long nextrefsyms)
 				 remove_symbols, nremove_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
-				    cmp_bsearch);
+				    symbol_list_bsearch);
 		    if(sp != NULL){
 			if(sp->sym != NULL){
 			    error_arch(arch, member, "more than one symbol "
@@ -2778,7 +2623,7 @@ unsigned long nextrefsyms)
 				 save_symbols, nsave_symbols,
 				 sizeof(struct symbol_list),
 				 (int (*)(const void *, const void *))
-				    cmp_bsearch);
+				    symbol_list_bsearch);
 		    if(sp != NULL){
 			if(sp->sym != NULL){
 			    error_arch(arch, member, "more than one symbol "

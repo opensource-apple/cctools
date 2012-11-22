@@ -1,3 +1,7 @@
+Changes for the 5.11 release (the cctools-440 release):
+- Fixed the warnings about extra tokens at end of #endif directive in
+  getsecbyname.c (Radar bug #3072042).
+
 Changes for the 5.10 release (the cctools-414 release):
 - Changed the calls to mach_host_self() in NXGetLocalArchInfo() in arch.c to
   call mach_port_deallocate() on the port after the call.  Radar bug #2895931.

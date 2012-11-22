@@ -1,4 +1,4 @@
-.TH LD 1 "May 30, 2002" "Apple Computer, Inc."
+.TH LD 1 "October 28, 2002" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -1329,6 +1329,30 @@ invoke this option in this way:
 .TP
 .B \-Sn
 Don't strip any symbols.
+.TP
+.BI \-exported_symbols_list " filename"
+The specified
+.I filename
+contains lists of global symbol names that will remain as global symbols in the 
+output file.  All other global symbols will be treated as if they were marked as
+.I __private_extern__
+and will not be global in the output file. The symbol names listed in
+.I filename
+must be one per line. Leading and trailing white space are not part of the
+symbol name.  Lines starting with # are ignored, as are lines with only white
+space.
+.TP
+.BI \-unexported_symbols_list " filename"
+The specified
+.I filename
+contains lists of global symbol names that will not remain as global symbols in
+the output file.  The symbols will be treated as if they were marked as
+.I __private_extern__
+and will not be global in the output file. The symbol names listed in
+.I filename
+must be one per line. Leading and trailing white space are not part of the
+symbol name.  Lines starting with # are ignored, as are lines with only white
+space.
 
 .PP
 The remaining options are infrequently used:
@@ -1499,7 +1523,7 @@ The argument
 is taken to be the symbol name of the dynamic shared library initialization
 routine.  If any module is used from the dynamic library the library
 initialization routine is called before any symbol is used from the library
-including C++ static initializers (and #pragma CALL_ON_MODULE_BIND routines).
+including C++ static initializers (and #pragma CALL_ON_LOAD routines).
 .TP
 .BI \-run_init_lazily
 This option is obsolete.
@@ -1518,7 +1542,7 @@ must be a positive non-zero number less than or equal to 65535, and
 .I .Y
 and
 .I .Z
-are optional and if present must be a positive non-zero numbers less than or
+are optional and if present must be non-negative numbers less than or
 equal to 255.
 If the compatibility version number is not specified, it has a
 value of 0 and no checking is done when the library is used.
@@ -1544,7 +1568,7 @@ must be a positive non-zero number less than or equal to 65535, and
 .I .Y
 and
 .I .Z
-are optional and if present must be a positive non-zero numbers less than or
+are optional and if present must be non-negative numbers less than or
 equal to 255.
 If the version number is not specified, it has a
 value of 0.
@@ -1554,6 +1578,14 @@ This option is used as the
 option when its
 .B \-dynamic
 option is set.
+.TP
+.BI \-single_module
+When building a dynamic library build the library so that it contains only
+one module.
+.TP
+.BI \-multi_module
+When building a dynamic library build the library so that it contains one
+module for each object file linked in.  This is the default.
 .TP
 .BI \-dylinker_install_name " name"
 For dynamic link editor files, specifies the name of the file

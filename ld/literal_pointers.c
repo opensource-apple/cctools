@@ -3,28 +3,27 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifdef SHLIB
 #include "shlib.h"
-#endif SHLIB
+#endif /* SHLIB */
 /*
  * This file contains the routines that deal with literal pointers sections.
  * A literal pointer must point to something in another literal section.  And
@@ -136,7 +135,7 @@ struct section_map *section_map)
 #ifdef DEBUG
     data->nfiles++;
     data->nliterals += nliterals;
-#endif DEBUG
+#endif /* DEBUG */
     /*
      * The size is not zero an it has as many relocation entries as literals so
      * this section is being relocated.
@@ -375,15 +374,16 @@ struct section_map *section_map)
 		continue;
 	    }
 	    /*
-	     * For dynamic shared library format files the merged sections that
-	     * could have had external relocation entries must be resolved to
-	     * private extern symbols.  This is because for MH_DYLIB files all
-	     * modules share the merged sections and the entire section gets
-	     * relocated when the library is mapped in.  So the above
-	     * restriction assures the merged section will get relocated
-	     * properly and can be shared amoung library modules.
+	     * For multi module dynamic shared library format files the
+	     * merged sections that could have had external relocation
+	     * entries must be resolved to private extern symbols.  This is
+	     * because for multi module MH_DYLIB files all modules share the
+	     * merged sections and the entire section gets relocated when
+	     * the library is mapped in. So the above restriction assures
+	     * the merged section will get relocated properly and can be
+	     * shared amoung library modules.
 	     */
-	    if(filetype == MH_DYLIB){
+	    if(filetype == MH_DYLIB && multi_module_dylib == TRUE){
 		/*
 		 * If the symbol is undefined or not a private extern it is an
 		 * error for in this section for a MH_DYLIB file.
@@ -391,21 +391,22 @@ struct section_map *section_map)
 		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF)){
 		    if(merged_symbol->error_flagged_for_dylib == 0){
 			error_with_cur_obj("illegal undefined reference for "
-			    "MH_DYLIB output file to symbol: %s from a literal "
-			    "pointer section (section (%.16s,%.16s) relocation "
-			    "entry: %lu)", merged_symbol->nlist.n_un.n_name,
-			    s->segname, s->sectname, i);
+			    "multi module MH_DYLIB output file to symbol: %s "
+			    "from a literal pointer section (section (%.16s,"
+			    "%.16s) relocation entry: %lu)",
+			    merged_symbol->nlist.n_un.n_name, s->segname,
+			    s->sectname, i);
 			merged_symbol->error_flagged_for_dylib = 1;
 		    }
 		}
 		else if((merged_symbol->nlist.n_type & N_PEXT) != N_PEXT){
 		    if(merged_symbol->error_flagged_for_dylib == 0){
 			error_with_cur_obj("illegal external reference for "
-			    "MH_DYLIB output file to symbol: %s (not a private "
-			    "extern symbol) from a literal pointer section "
-			    "(section (%.16s,%.16s) relocation entry: %lu)",
-			    merged_symbol->nlist.n_un.n_name, s->segname,
-			    s->sectname, i);
+			    "multi module MH_DYLIB output file to symbol: %s "
+			    "(not a private extern symbol) from a literal "
+			    "pointer section (section (%.16s,%.16s) relocation "
+			    "entry: %lu)", merged_symbol->nlist.n_un.n_name,
+			    s->segname, s->sectname, i);
 			merged_symbol->error_flagged_for_dylib = 1;
 		    }
 		}
@@ -607,16 +608,16 @@ enum bool defined)
 	    /*
 	     * The number of relocation entries in the output file is based
 	     * on one of three different cases:
-	     *  The output file is a dynamic shared library file
+	     *  The output file is a multi module dynamic shared library
 	     *  The output file has a dynamic linker load command
 	     *  The output does not have a dynamic linker load command
 	     */
-	    if(filetype == MH_DYLIB){
+	    if(filetype == MH_DYLIB && multi_module_dylib == TRUE){
 		/*
-		 * For dynamic shared library files there are no external
-		 * relocation entries that will be left as external as
-		 * checked above.  Only non-sectdiff local relocation
-		 * entries are kept.  Modules of dylibs are not linked
+		 * For a multi module dynamic shared library there are no
+		 * external relocation entries that will be left as external as
+		 * checked above.  Only non-sectdiff local relocation entries
+		 * are kept.  Modules of multi module dylibs are not linked
 		 * together and can only be slid keeping all sections
 		 * relative to each other the same.
 		 */
@@ -992,7 +993,7 @@ struct merged_section *ms)
     struct relocation_info *reloc, *extreloc, *r;
     struct scattered_relocation_info *sreloc;
     unsigned long r_address;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 	/*
 	 * Put the literal pointers into the output file.
@@ -1150,7 +1151,7 @@ struct merged_section *ms)
 			     ms->s.nreloc * sizeof(struct relocation_info));
 	    }
 	}
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 	literal_pointer_free(data);
 }
@@ -1260,4 +1261,4 @@ struct merged_section *ms)
 	      (double)((double)data->nprobes / (double)(data->nliterals)));
 	}
 }
-#endif DEBUG
+#endif /* DEBUG */

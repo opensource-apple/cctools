@@ -236,10 +236,18 @@ fragS *fragP)
 void
 frag_align(
 int alignment,
-int fill_character)
+int fill_character,
+int size)
 {
-    *(frag_var (rs_align, 1, 1, (relax_substateT)0, (symbolS *)0,
- (long)alignment, (char *)0)) = fill_character;
+    void *fill_value_ptr = (void *)
+    (frag_var (rs_align, size, size, (relax_substateT)0, (symbolS *)0,
+ (long)alignment, (char *)0));
+    if (size == 1)
+	*(char *)fill_value_ptr = fill_character;
+    else if (size == 4)
+	*(long *)fill_value_ptr = fill_character;
+    else
+	as_warn("Invalid width for fill expression.");
 }
 
 /* end: frags.c */

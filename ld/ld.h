@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -42,6 +41,7 @@ enum strip_levels {
     STRIP_L_SYMBOLS,
     STRIP_DEBUG,
     STRIP_NONGLOBALS,
+    STRIP_DYNAMIC_EXECUTABLE,
     STRIP_ALL
 };
 
@@ -97,6 +97,8 @@ __private_extern__ enum byte_sex host_byte_sex;
 __private_extern__ char *outputfile;
 /* type of output file */
 __private_extern__ unsigned long filetype;
+/* multi or single module dylib output */
+__private_extern__ enum bool multi_module_dylib;
 
 /*
  * The architecture of the output file as specified by -arch and the cputype
@@ -163,6 +165,18 @@ __private_extern__ enum strip_levels strip_level;
 /* Strip the base file symbols (the -A argument's symbols) */
 __private_extern__ enum bool strip_base_symbols;
 
+#ifndef RLD
+/*
+ * Data structures to perform selective exporting of global symbols.     
+ * save_symbols is the names of the symbols from -exported_symbols_list
+ * remove_symbols is the names of the symbols from -unexported_symbols_list
+ */
+__private_extern__ struct symbol_list *save_symbols;
+__private_extern__ unsigned long nsave_symbols;
+__private_extern__ struct symbol_list *remove_symbols;
+__private_extern__ unsigned long nremove_symbols;
+#endif /* RLD */
+
 /* The list of symbols to be traced */
 __private_extern__ char **trace_syms;
 __private_extern__ unsigned long ntrace_syms;
@@ -211,7 +225,7 @@ __private_extern__ enum bool allow_multiply_defined_symbols;
 __private_extern__ unsigned long segalign;
 #ifndef RLD
 __private_extern__ enum bool segalign_specified;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 /* The size of pagezero from the -pagezero_size flag */
 __private_extern__ unsigned long pagezero_size;
 /* The maximum segment alignment allowed to be specified, in hex */
@@ -339,4 +353,4 @@ __private_extern__ void mach_fatal(
 
 #ifdef DEBUG
 __private_extern__ unsigned long debug;		/* link-editor debugging */
-#endif DEBUG
+#endif /* DEBUG */

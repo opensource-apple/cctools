@@ -349,7 +349,7 @@ apc@(num8,reg:sz:scale)		--> *(apc+num8+reg*scale)
 #define BAC	(BAD+8)		/* 64,65,66,67, 68,69,70,71 */
 #define PSR	(BAC+8)		/* 72 */
 #define PCSR	(PSR+1)		/* 73 */
-#endif m68851
+#endif /* m68851 */
 
 
 /* Note that COPNUM==processor #1 -- COPNUM+7==#8, which stores as 000 */
@@ -3882,7 +3882,7 @@ int value)
 
 	temp = 1;		/* JF should be 2? */
 	temp_fill = get_absolute_expression ();
-	frag_align(temp, (int)temp_fill);
+	frag_align(temp, (int)temp_fill, 1);
 	/*
 	 * If this alignment is larger than any previous alignment then this
 	 * becomes the section's alignment.

@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -1247,6 +1246,119 @@ error_return:
 	return(NULL);
 }
 
+/*
+ * install_name() takes a file_name of a binary and returns a malloc(3)'ed
+ * pointer to a NULL terminated string containing the install_name value for
+ * the binary. If unsuccessful install_name() returns NULL.  In particular,
+ * NULL is returned if the binary is not a dylib and there is no error_message
+ * set.  If the all of the arch's are dylibs but all the install names don't
+ * match NULL is returned and a error_message is set.  If some but not all of
+ * the archs are dylibs NULL is returned and a error_message is set.
+ */ 
+char *
+install_name(
+const char *file_name,
+const char *program_name,
+char **error_message)
+{
+    struct arch *archs;
+    unsigned long narchs, i, j;
+    struct ofile *ofile;
+    char *install_name, *dylib_name;
+    struct load_command *lc;
+    struct dylib_command *dl_id;
+    enum bool non_dylib_found;
+
+	reset_statics();
+	progname = (char *)program_name;
+	if(error_message != NULL)
+	    *error_message = NULL;
+
+	ofile = NULL;
+	archs = NULL;
+	narchs = 0;
+	install_name = NULL;
+	non_dylib_found = FALSE;
+
+	/*
+	 * Set up to handle recoverable errors.
+	 */
+	if(setjmp(library_env) != 0){
+	    /*
+	     * It takes a longjmp() to get to this point.  So we got an error
+	     * so clean up and return NULL to say we were unsuccessful.
+	     */
+	    goto error_return;
+	}
+
+	/* breakout the file for processing */
+	ofile = breakout((char *)file_name, &archs, &narchs, FALSE);
+	if(errors)
+	    goto error_return;
+
+	/* checkout the file for processing */
+	checkout(archs, narchs);
+
+	/*
+	 * Count the number of dynamic librarys in the all of the archs which
+	 * are executables and dynamic libraries.
+	 */
+	for(i = 0; i < narchs; i++){
+	    arch = archs + i;
+	    if(arch->type == OFILE_Mach_O &&
+	       arch->object->mh->filetype == MH_DYLIB){
+		lc = arch->object->load_commands;
+		for(j = 0; j < arch->object->mh->ncmds; j++){
+		    switch(lc->cmd){
+		    case LC_ID_DYLIB:
+			dl_id = (struct dylib_command *)lc;
+			dylib_name = (char *)dl_id +
+				     dl_id->dylib.name.offset;
+			if(install_name != NULL){
+			    if(strcmp(install_name, dylib_name) != 0){
+				error("install names in all arch's don't "
+				      "match");
+				goto error_return;
+			    }
+			}
+			else{
+			    install_name = dylib_name;
+			}
+		    }
+		    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+		}
+	    }
+	    else{
+		non_dylib_found = TRUE;
+	    }
+	}
+	if(install_name != NULL && non_dylib_found == TRUE){
+	    error("not all arch's are dylibs");
+	    goto error_return;
+	}
+	if(install_name != NULL){
+	    dylib_name = malloc(strlen(install_name) + 1);
+	    strcpy(dylib_name, install_name);
+	    install_name = dylib_name;
+	}
+
+	free_archs(archs, narchs);
+	if(ofile != NULL)
+	    ofile_unmap(ofile);
+	cleanup();
+	return(install_name);
+
+error_return:
+	free_archs(archs, narchs);
+	if(ofile != NULL)
+	    ofile_unmap(ofile);
+	cleanup();
+	if(error_message != NULL && error_message_buffer != NULL)
+	    *error_message = error_message_buffer;
+	else if(error_message_buffer != NULL)
+	    free(error_message_buffer);
+	return(NULL);
+}
 
 /*
  * redo_prebinding() takes a file_name of a binary and redoes the prebinding on
@@ -1957,12 +2069,11 @@ enum bool has_resource_fork)
 	    process_arch();
 #ifdef LIBRARY_API
 	    /*
-	     * for needs_redo_prebinding() we only check the first arch if
-	     * arch_cant_be_missing is not set.  Or we return if this is the
+	     * for needs_redo_prebinding() we return if this is the
 	     * arch that can't be missing.
 	     */
 	    if(check_only == TRUE &&
-	       (arch_cant_be_missing == 0 ||
+	       (arch_cant_be_missing != 0 &&
 	        arch_cant_be_missing == arch->object->mh->cputype))
 		return;
 #endif
@@ -6854,10 +6965,7 @@ unsigned long vmslide)
 			sizeof(struct prebound_dylib_command) +
 			round(strlen(libs[i].dylib_name) + 1, sizeof(long));
 		for(j = 0; j < libs[i].nmodtab; j++){
-		    if(libs[i].module_states[j] == LINKED ||
-		       (prebind_all_twolevel_modules == TRUE &&
-			(libs[i].ofile->mh->flags & MH_TWOLEVEL) ==
-				 MH_TWOLEVEL))
+		    if(libs[i].module_states[j] == LINKED)
 			linked_modules[j / 8] |= 1 << j % 8;
 		}
 		lc2 = (struct load_command *)

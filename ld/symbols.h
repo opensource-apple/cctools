@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -107,7 +106,7 @@ struct merged_symbol {
 #define NSYMBOLS 2001
 #else
 #define NSYMBOLS 201
-#endif RLD
+#endif /* RLD */
 /* The number of size of the hash table in a merged_symbol_list */
 #define SYMBOL_LIST_HASH_SIZE	(NSYMBOLS * 2)
 
@@ -139,7 +138,7 @@ struct string_block {
 #ifdef RLD
     long set_num;		/* the object file set number these strings */
 				/*  come from. */
-#endif RLD
+#endif /* RLD */
     struct string_block *next;	/* the next block */
 };
 
@@ -183,6 +182,12 @@ __private_extern__ struct merged_symbol_list *merged_symbol_lists;
 __private_extern__ unsigned long nmerged_symbols;
 __private_extern__ unsigned long nmerged_private_symbols;
 __private_extern__ unsigned long nmerged_symbols_referenced_only_from_dylibs;
+
+/*
+ * nstripped_merged_symbols is set to the number of merged symbol being stripped
+ * out when the strip_level is STRIP_DYNAMIC_EXECUTABLE.
+ */
+__private_extern__ unsigned long nstripped_merged_symbols;
 
 /*
  * The head of the list of the blocks that store the strings for the merged
@@ -385,7 +390,7 @@ __private_extern__ void free_multiple_defs(
     void);
 __private_extern__ void remove_merged_symbols(
     void);
-#endif RLD
+#endif /* RLD */
 
 __private_extern__ struct section *get_output_section(
     unsigned long sect);
@@ -396,4 +401,4 @@ __private_extern__ void print_symbol_list(
     enum bool input_based);
 __private_extern__ void print_undefined_list(
     void);
-#endif DEBUG
+#endif /* DEBUG */

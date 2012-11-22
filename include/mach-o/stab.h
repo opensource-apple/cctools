@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -100,6 +99,9 @@
 #define	N_LSYM	0x80	/* local sym: name,,NO_SECT,type,offset */
 #define N_BINCL	0x82	/* include file beginning: name,,NO_SECT,0,sum */
 #define	N_SOL	0x84	/* #included file name: name,,n_sect,0,address */
+#define	N_PARAMS  0x86	/* compiler parameters: name,,NO_SECT,0,0 */
+#define	N_VERSION 0x88	/* compiler version: name,,NO_SECT,0,0 */
+#define	N_OLEVEL  0x8A	/* compiler -O level: name,,NO_SECT,0,0 */
 #define	N_PSYM	0xa0	/* parameter: name,,NO_SECT,type,offset */
 #define N_EINCL	0xa2	/* include file end: name,,NO_SECT,0,0 */
 #define	N_ENTRY	0xa4	/* alternate entry: name,,n_sect,linenumber,address */
@@ -116,4 +118,4 @@
  */
 #define	N_PC	0x30	/* global pascal symbol: name,,NO_SECT,subtype,line */
 
-#endif _MACHO_STAB_H_
+#endif /* _MACHO_STAB_H_ */

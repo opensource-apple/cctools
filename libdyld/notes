@@ -1,6 +1,15 @@
 TODO:
 - Test dlopen() with Apache, perl, and tcl.
 
+Changes for the 5.11 release (the cctools-440 release):
+- Fixed the warnings about extra tokens at end of #endif directive in debug.c 
+  (Radar bug #3072042).
+
+Changes for the 5.11 release (the cctools-439 release):
+- Changed make_dyld_image_data_writable() in debug.c to use 0x8fe00000 instead
+  of 0x41100000 as the place to start looking in the address space for dyld.
+  Radar bug #3042819.
+
 Changes for the 5.10 release (the cctools-415 release):
 - Changed the incomplete implementation of dlopen() to have the dlsym() function
   append the needed underbar for symbol name lookups.  Radar bug #2908831.

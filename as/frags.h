@@ -96,7 +96,8 @@ extern void frag_wane(
     fragS *fragP);
 extern void frag_align(
     int alignment,
-    int fill_character);
+    int fill_character,
+    int size);
 
 /*
  * A macro to speed up appending exactly 1 char

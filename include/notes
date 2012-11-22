@@ -1,3 +1,32 @@
+Changes for the 5.11 release (the cctools-444 release):
+- Added the file <stuff/symbol_list.h> which contains the interface for the
+  symbol lists code taken from strip.c.  Now also used by ld(1)'s
+  -exported_symbols_list and -unexported_symbols_list options.  Radar bug
+  #3083844.
+
+Changes for the 5.11 release (the cctools-439 release):
+- Added the VEO cputype and its subtypes to <mach/machine.h>.  Radar bug
+  #3068161.
+- Added the install_name() API to <mach-o/redo_prebinding.h> .
+  Radar bug #3065586.
+
+Changes for the 5.11 release (the cctools-440 release):
+- Fixed the warnings about extra tokens at end of #endif directive in
+  <mach-o/loader.h>, <mach/m68k/thread_status.h>, <architecture/nrw/reg_help.h>,
+  <architecture/m88k/reg_help.h>, <mach/m88k/thread_status.h>,
+  <mach/i860/thread_status.h>, <architecture/sparc/reg.h>,
+  <mach/sparc/thread_status.h>, <mach-o/nlist.h>, <architecture/m88k/fp_regs.h>,
+  <gnu/exec.h>, <mach/machine.h>, <architecture/nrw/macro_help.h>,
+  <mach-o/gmon.h> and <mach-o/stab.h> (Radar bug #3072042).
+
+Changes for the 5.11 release (the cctools-438 release):
+- Added the constant MACOSX_DEPLOYMENT_TARGET_10_3 to the header file
+  <stuff/macosx_deployment_target.h>.  Radar bug #3049974.
+
+Changes for the 5.11 release (the cctools-437 release):
+- Added the new N_PARAMS, N_VERSION and N_OLEVEL defines to <mach-o/stab.h>.
+  Radar bug #3000792.
+
 Changes for the 5.10 release (the cctools-422 release):
 - Added the section attribute S_ATTR_STRIP_STATIC_SYMS to <mach-o/loader.h>.
   Radar bug #2945659.

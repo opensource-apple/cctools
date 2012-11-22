@@ -215,7 +215,7 @@ int value)
     }
     /* Only make a frag if we HAVE to. . . */
     if (temp) {
-	frag_align (temp, (int)temp_fill);
+	frag_align (temp, (int)temp_fill, 1);
     }
     /*
      * If this alignment is larger than any previous alignment then this

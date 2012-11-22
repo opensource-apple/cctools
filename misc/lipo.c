@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -232,7 +231,7 @@ char *envp[])
 			if(get_arch_from_flag(argv[i+1],
 					      &(input->arch_flag)) == 0){
 			    error("unknown architecture specification flag: %s "
-				  "in specifing input file %s %s %s", argv[i+1],
+				  "in specifying input file %s %s %s", argv[i+1],
 				  argv[i], argv[i+1], argv[i+2]);
 			    arch_usage();
 			    usage();
@@ -272,7 +271,7 @@ char *envp[])
 						&nextract_arch_flags);
 			if(get_arch_from_flag(argv[i+1], arch_flag) == 0){
 			    error("unknown architecture specification flag: "
-				  "%s in specifing extract operation: %s %s",
+				  "%s in specifying extract operation: %s %s",
 				  argv[i+1], argv[i], argv[i+1]);
 			    arch_usage();
 			    usage();
@@ -314,7 +313,7 @@ char *envp[])
 						&nremove_arch_flags);
 			if(get_arch_from_flag(argv[i+1], arch_flag) == 0){
 			    error("unknown architecture specification flag: "
-				  "%s in specifing remove operation: %s %s",
+				  "%s in specifying remove operation: %s %s",
 				  argv[i+1], argv[i], argv[i+1]);
 			    arch_usage();
 			    usage();
@@ -331,7 +330,7 @@ char *envp[])
 			if(get_arch_from_flag(argv[i+1],
 					      &(replace->arch_flag)) == 0){
 			    error("unknown architecture specification flag: "
-				  "%s in specifing replace operation: %s %s %s",
+				  "%s in specifying replace operation: %s %s %s",
 				  argv[i+1], argv[i], argv[i+1], argv[i+2]);
 			    arch_usage();
 			    usage();
@@ -352,7 +351,7 @@ char *envp[])
 			if(get_arch_from_flag(argv[i+1],
 					      &(segalign->arch_flag)) == 0){
 			    error("unknown architecture specification flag: "
-				  "%s in specifing segment alignment: %s %s %s",
+				  "%s in specifying segment alignment: %s %s %s",
 				  argv[i+1], argv[i], argv[i+1], argv[i+2]);
 			    arch_usage();
 			    usage();
@@ -389,7 +388,7 @@ char *envp[])
 			}
 			if(get_arch_from_flag(argv[i+1], &thin_arch_flag) == 0){
 			    error("unknown architecture specification flag: "
-				  "%s in specifing thin operation: %s %s",
+				  "%s in specifying thin operation: %s %s",
 				  argv[i+1], argv[i], argv[i+1]);
 			    arch_usage();
 			    usage();
@@ -1446,6 +1445,18 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+	case CPU_TYPE_VEO:
+	    switch(fat_arch->cpusubtype){
+	    case CPU_SUBTYPE_VEO_1:
+		printf("veo1");
+		break;
+	    case CPU_SUBTYPE_VEO_2:
+		printf("veo2");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
 	case CPU_TYPE_MC88000:
 	    switch(fat_arch->cpusubtype){
 	    case CPU_SUBTYPE_MC88000_ALL:
@@ -1606,6 +1617,20 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_POWERPC_7450:
 		printf("    cputype CPU_TYPE_POWERPC\n"
 		       "    cpusubtype CPU_SUBTYPE_POWERPC_7450\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+	case CPU_TYPE_VEO:
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_VEO_1:
+		printf("    cputype CPU_TYPE_VEO\n"
+		       "    cpusubtype CPU_SUBTYPE_VEO_1\n");
+		break;
+	    case CPU_SUBTYPE_VEO_2:
+		printf("    cputype CPU_TYPE_VEO\n"
+		       "    cpusubtype CPU_SUBTYPE_VEO_2\n");
 		break;
 	    default:
 		goto print_arch_unknown;

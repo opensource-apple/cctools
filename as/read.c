@@ -402,7 +402,8 @@ static void s_ppcasm_end(int value);
  */
 static const pseudo_typeS pseudo_table[] = {
 #if !defined(I860) /* i860 has it's own align and org */
-  { "align",	s_align,	0	},
+  { "align",	s_align,	1	},
+  { "align32",	s_align,	4	},
   { "org",	s_org,		0	},
 #endif
 #ifndef M88K /* m88k has it's own abs that uses the s_abs() in here */
@@ -1504,6 +1505,8 @@ int value)
 #define MAX_ALIGNMENT (15)
 	if(temp > MAX_ALIGNMENT)
 	    as_warn("Alignment too large: %d. assumed.", temp = MAX_ALIGNMENT);
+	else if(value > 1 && temp < 2)
+	    as_warn("Alignment too small: %d. assumed.", temp = 2);
 	else if(temp < 0){
 	    as_warn("Alignment negative. 0 assumed.");
 	    temp = 0;
@@ -1517,7 +1520,7 @@ int value)
 
 	/* Only make a frag if we HAVE to. . . */
 	if(temp != 0)
-	    frag_align(temp, (int)temp_fill);
+	    frag_align(temp, (int)temp_fill, value);
 
 	/*
 	 * If this alignment is larger than any previous alignment then this
@@ -3976,7 +3979,10 @@ char *macro_contents)
 	obstack_1grow(&macros, '\n');
 	while((c = *macro_contents++)){
 	    if(c == '$'){
-		if((*macro_contents >= '0') && (*macro_contents <= '9')){
+		if(*macro_contents == '$'){
+		    macro_contents++;
+		}
+		else if((*macro_contents >= '0') && (*macro_contents <= '9')){
 		    index = *macro_contents++ - '0';
 		    last_input_line_pointer = macro_contents;
 		    macro_contents = arguments[index];

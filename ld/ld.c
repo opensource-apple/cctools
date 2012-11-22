@@ -3,28 +3,27 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifdef SHLIB
 #include "shlib.h"
-#endif SHLIB
+#endif /* SHLIB */
 /*
  * The Apple, Inc. Mach-O (Mach object file format) link-editor.  This file
  * contains the main() routine and the global error handling routines and other
@@ -51,6 +50,9 @@
 #include <mach/mach.h>
 #include <mach/mach_error.h>
 #include "stuff/seg_addr_table.h"
+#ifndef RLD
+#include "stuff/symbol_list.h"
+#endif
 #include "make.h"
 #include <mach/mach_init.h>
 #if defined(__OPENSTEP__) || defined(__GONZO_BUNSEN_BEAKER__)
@@ -92,11 +94,14 @@ __private_extern__ enum byte_sex host_byte_sex = UNKNOWN_BYTE_SEX;
 __private_extern__ char *outputfile = NULL;
 /* type of output file */
 __private_extern__ unsigned long filetype = MH_EXECUTE;
+/* multi or single module dylib output */
+__private_extern__ enum bool multi_module_dylib = TRUE;
 #ifndef RLD
 static enum bool filetype_specified = FALSE;
+static enum bool moduletype_specified = FALSE;
 /* if the -A flag is specified use to set the object file type */
 static enum bool Aflag_specified = FALSE;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 /*
  * The architecture of the output file as specified by -arch and the cputype
  * and cpusubtype of the object files being loaded which will be the output
@@ -146,20 +151,20 @@ enum bool define_comldsyms = TRUE;	/* define common and link-editor defined
 #ifndef RLD
 static enum bool
     dflag_specified = FALSE;		/* the -d flag has been specified */
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 __private_extern__
 enum bool seglinkedit = FALSE;		/* create the link edit segment */
 #ifndef RLD
 static enum bool
     seglinkedit_specified = FALSE;	/* if either -seglinkedit or */
 					/*  -noseglinkedit was specified */
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 __private_extern__
 enum bool whyload = FALSE;		/* print why archive members are 
 					   loaded */
 #ifndef RLD
 static enum bool whatsloaded = FALSE;	/* print which object files are loaded*/
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 __private_extern__
 enum bool flush = TRUE;			/* Use the output_flush routine to flush
 					   output file by pages */
@@ -190,6 +195,19 @@ static enum bool static_specified = FALSE;
 __private_extern__ enum strip_levels strip_level = STRIP_DUP_INCLS;
 /* Strip the base file symbols (the -A argument's symbols) */
 __private_extern__ enum bool strip_base_symbols = FALSE;
+
+#ifndef RLD
+/*
+ * Data structures to perform selective exporting of global symbols.     
+ * save_symbols is the names of the symbols from -exported_symbols_list
+ * remove_symbols is the names of the symbols from -unexported_symbols_list
+ */
+__private_extern__ struct symbol_list *save_symbols = NULL;
+__private_extern__ unsigned long nsave_symbols = 0;
+__private_extern__ struct symbol_list *remove_symbols = NULL;
+__private_extern__ unsigned long nremove_symbols = 0;
+#endif /* RLD */
+
 
 /* The list of symbols to be traced */
 __private_extern__ char **trace_syms = NULL;
@@ -263,7 +281,7 @@ __private_extern__ enum bool allow_multiply_defined_symbols = FALSE;
 __private_extern__ unsigned long segalign = 0x2000;
 #ifndef RLD
 __private_extern__ enum bool segalign_specified = FALSE;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 __private_extern__ unsigned long pagezero_size = 0;
 
 /* The default section alignment */
@@ -284,7 +302,7 @@ __private_extern__ enum bool segs_read_write_addr_specified = FALSE;
 static char *seg_addr_table_name = NULL;
 /* the file system path name to use instead of the install name */
 static char *seg_addr_table_filename = NULL;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /* The stack address and size */
 __private_extern__ unsigned long stack_addr = 0;
@@ -295,7 +313,7 @@ __private_extern__ enum bool stack_size_specified = FALSE;
 #ifndef RLD
 /* A -segaddr option was specified */
 static enum bool segaddr_specified = FALSE;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /*
  * The header pad, the default is set to the size of a section strcuture so
@@ -305,7 +323,7 @@ static enum bool segaddr_specified = FALSE;
 __private_extern__ unsigned long headerpad = sizeof(struct section) * 2;
 #ifndef RLD
 static enum bool headerpad_specified = FALSE;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 /*
  * If specified makes sure the header pad is big enough to change all the
  * install name of the dylibs in the output to MAXPATHLEN.
@@ -386,12 +404,12 @@ __private_extern__ enum bool twolevel_namespace_hints = TRUE;
 
 #ifdef DEBUG
 __private_extern__ unsigned long debug = 0;	/* link-editor debugging */
-#endif DEBUG
+#endif /* DEBUG */
 
 #ifdef RLD
 /* the cleanup routine for fatal errors to remove the output file */
 __private_extern__ void cleanup(void);
-#else !defined(RLD)
+#else /* !defined(RLD) */
 static void cleanup(void);
 static void ld_exit(int exit_value);
 
@@ -402,7 +420,7 @@ static int talking_to_ProjectBuilder = 0;
 static mach_port_t ProjectBuilder_port;
 static void check_for_ProjectBuilder(void);
 
-/* The signal hander routine for SIGINT and SIGTERM */
+/* The signal hander routine for SIGINT, SIGTERM, SIGBUS & SIGSEGV */
 static void handler(int sig);
 
 /* Static routines to help parse arguments */
@@ -439,11 +457,16 @@ char *envp[])
     enum weak_reference_mismatches_handling new_weak_reference_mismatches;
     enum bool is_framework;
     char *has_suffix;
+    struct symbol_list *sp;
+    char *exported_symbols_list, *unexported_symbols_list;
+    enum bool missing_syms;
 
 #ifdef __MWERKS__
     char **dummy;
         dummy = envp;
 #endif
+	exported_symbols_list = NULL;
+	unexported_symbols_list = NULL;
 
 	progname = argv[0];
 #ifndef BINARY_COMPARE
@@ -464,6 +487,10 @@ char *envp[])
 	    signal(SIGINT, handler);
 	if(signal(SIGTERM, SIG_IGN) != SIG_IGN)
 	    signal(SIGTERM, handler);
+	if(signal(SIGBUS, SIG_IGN) != SIG_IGN)
+	    signal(SIGBUS, handler);
+	if(signal(SIGSEGV, SIG_IGN) != SIG_IGN)
+	    signal(SIGSEGV, handler);
 
 	/* If ProjectBuilder is around set up for it */
 	check_for_ProjectBuilder();
@@ -772,7 +799,7 @@ char *envp[])
 			    fatal("argument for -debug %s not a proper "
 				  "decimal number less than 32", argv[i]);
 		    }
-#endif DEBUG
+#endif /* DEBUG */
 		    else
 			goto unknown_flag;
 		    break;
@@ -1222,6 +1249,15 @@ char *envp[])
 			sub_librarys[nsub_librarys++] = argv[i+1];
 			i += 1;
 		    }
+		    /* -single_module for MH_DYLIB output */
+		    else if(strcmp(p, "single_module") == 0){
+			if(moduletype_specified == TRUE &&
+			   multi_module_dylib == TRUE)
+			    fatal("can't specify both -single_module and "
+				  "-multi_module");
+			moduletype_specified = TRUE;
+			multi_module_dylib = FALSE;
+		    }
 		    else
 			goto unknown_flag;
 		    break;
@@ -1406,6 +1442,16 @@ char *envp[])
 			    new_multiply_defined_unused_flag;
 			break;
 		    }
+		    /* -multi_module for MH_DYLIB output */
+		    else if(strcmp(p, "multi_module") == 0){
+			if(moduletype_specified == TRUE &&
+			   multi_module_dylib == FALSE)
+			    fatal("can't specify both -single_module and "
+				  "-multi_module");
+			moduletype_specified = TRUE;
+			multi_module_dylib = TRUE;
+			break;
+		    }
 		    /* treat multiply defined symbols as a warning not a
 		       hard error */
 		    if(p[1] != '\0')
@@ -1447,6 +1493,17 @@ char *envp[])
 			i += 1;
 			break;
 		    }
+		    else if(strcmp(p, "unexported_symbols_list") == 0){
+			if(i + 1 >= argc)
+			    fatal("%s: argument missing", argv[i]);
+			if(remove_symbols != NULL)
+			    fatal("%s: multiply specified", argv[i]);
+			setup_symbol_list(argv[i+1], &remove_symbols,
+					  &nremove_symbols);
+			unexported_symbols_list = argv[i+1];
+			i += 1;
+			break;
+		    }
 		    if(p[1] != '\0')
 			goto unknown_flag;
 		    /* cause the specified symbol name to be undefined */
@@ -1462,6 +1519,17 @@ char *envp[])
 			    fatal("more than one output filetype specified");
 			filetype_specified = TRUE;
 			filetype = MH_EXECUTE;
+			break;
+		    }
+		    else if(strcmp(p, "exported_symbols_list") == 0){
+			if(i + 1 >= argc)
+			    fatal("%s: argument missing", argv[i]);
+			if(save_symbols != NULL)
+			    fatal("%s: multiply specified", argv[i]);
+			setup_symbol_list(argv[i+1], &save_symbols,
+					  &nsave_symbols);
+			exported_symbols_list = argv[i+1];
+			i += 1;
 			break;
 		    }
 		    /* specify the entry point, the symbol who's value to be
@@ -1762,6 +1830,31 @@ unknown_flag:
 	if(save_reloc && strip_base_symbols == TRUE)
 	    fatal("can't use -b with -r (resulting file would not be "
 		  "relocatable)");
+	if(keep_private_externs == TRUE){
+	    if(save_symbols != NULL)
+		fatal("can't use both -keep_private_externs and "
+		      "-exported_symbols_list");
+	    if(remove_symbols != NULL)
+		fatal("can't use both -keep_private_externs and "
+		      "-unexported_symbols_list");
+	}
+	if(save_symbols != NULL && remove_symbols != NULL){
+	    for(i = 0; i < nremove_symbols ; i++){
+		sp = bsearch(remove_symbols[i].name,
+			     save_symbols, nsave_symbols,
+			     sizeof(struct symbol_list),
+			     (int (*)(const void *, const void *))
+				symbol_list_bsearch);
+		if(sp != NULL){
+		    error("symbol name: %s is listed in both "
+			  "-exported_symbols_list and -unexported_symbols_list "
+			  "(can't be both exported and unexported)",
+			  remove_symbols[i].name);
+		}
+	    }
+	    if(errors != 0)
+		ld_exit(1);
+	}
 	if(filetype_specified == TRUE && filetype == MH_OBJECT){
 	    if(dynamic == TRUE)
 		fatal("incompatible to specifiy -object when -dynamic is used "
@@ -2029,6 +2122,9 @@ unknown_flag:
 	    if(nallowable_clients != 0)
 		fatal("-allowable_client flags can only be used when -dylib "
 		      "is also specified");
+	    if(moduletype_specified == TRUE)
+		fatal("-single_module or -multi_module flags can only be used "
+		      "when -dylib is also specified");
 	}
 	if(filetype == MH_BUNDLE){
 	    if(dynamic == FALSE)
@@ -2178,10 +2274,9 @@ unknown_flag:
 	 * can have one.
 	 */
 	if(seglinkedit_specified == FALSE){
-	    if((filetype == MH_EXECUTE || filetype == MH_BUNDLE ||
-		filetype == MH_FVMLIB ||
-		filetype == MH_DYLIB || filetype == MH_DYLINKER) &&
-	        strip_level != STRIP_ALL)
+	    if(filetype == MH_EXECUTE || filetype == MH_BUNDLE ||
+	       filetype == MH_FVMLIB ||
+	       filetype == MH_DYLIB || filetype == MH_DYLINKER)
 		seglinkedit = TRUE;
 	    else
 		seglinkedit = FALSE;
@@ -2311,7 +2406,8 @@ unknown_flag:
 		    break;
 		case 'u':
 		    if(strcmp(p, "undefined") == 0 ||
-		       strcmp(p, "umbrella") == 0){
+		       strcmp(p, "umbrella") == 0 ||
+		       strcmp(p, "unexported_symbols_list") == 0){
 			i++;
 			break;
 		    }
@@ -2480,7 +2576,7 @@ unknown_flag:
 	    print("Number of objects loaded = %lu\n", nobjects);
 	    print("Number of merged symbols = %lu\n", nmerged_symbols);
 	}
-#endif DEBUG
+#endif /* DEBUG */
 
 	/*
 	 * If there were any errors from pass1() then don't continue.
@@ -2506,6 +2602,38 @@ unknown_flag:
 	 * Layout the output object file.
 	 */
 	layout();
+
+	/*
+	 * Check to that the exported or unexported symbols listed were seen.
+	 */
+	if(save_symbols != NULL){
+	    missing_syms = FALSE;
+	    for(i = 0; i < nsave_symbols ; i++){
+		if(save_symbols[i].seen == FALSE){
+		    if(missing_syms == FALSE){
+			error("symbols names listed in "
+			      "-exported_symbols_list: %s not in linked "
+			      "objects", exported_symbols_list);
+			missing_syms = TRUE;
+		    }
+		    printf("%s\n", save_symbols[i].name);
+		}
+	    }
+	}
+	if(remove_symbols != NULL){
+	    missing_syms = FALSE;
+	    for(i = 0; i < nremove_symbols ; i++){
+		if(remove_symbols[i].seen == FALSE){
+		    if(missing_syms == FALSE){
+			error("symbols names listed in "
+			      "-unexported_symbols_list: %s not in linked "
+			      "objects", unexported_symbols_list);
+			missing_syms = TRUE;
+		    }
+		    printf("%s\n", remove_symbols[i].name);
+		}
+	    }
+	}
 
 	/*
 	 * If there were any errors from layout() then don't continue.
@@ -2703,8 +2831,8 @@ cleanup(void)
 }
 
 /*
- * handler() is the routine for catching SIGINT and SIGTERM signals.
- * It cleans up and exit()'s non-zero.
+ * handler() is the routine for catching SIGINT, SIGTERM, SIGBUG & SIGSEGV
+ *  signals. It cleans up and exit()'s non-zero.
  */
 static
 void
@@ -2812,7 +2940,7 @@ const char *args,
 	}
 	return(s);
 }
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /*
  * round() rounds v to a multiple of r.
@@ -2841,7 +2969,7 @@ va_list ap)
 {
 	vprintf(format, ap);
 }
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /*
  * The print function that just calls the above vprint() function.

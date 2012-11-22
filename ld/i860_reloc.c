@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -93,7 +92,7 @@ struct section_map *section_map)
 	pair_r_value = 0;
 	other_half = 0;
 	offset = 0;
-#endif DEBUG
+#endif /* DEBUG */
 
 	for(i = 0; i < section_map->s->nreloc; i++){
 	    force_extern_reloc = FALSE;
@@ -371,13 +370,13 @@ struct section_map *section_map)
 		/*
 		 * If the symbol is undefined (or common) or a global coalesced 
 		 * symbol where we need to force an external relocation entry
-		 * and we are not prebinding no relocation is done.
-		 * Or if the output file is MH_DYLIB no relocation is done
+		 * and we are not prebinding no relocation is done.  Or if the
+		 * output file is a multi module MH_DYLIB no relocation is done
 		 * unless the symbol is a private extern or we are prebinding.
 		 */
 		if(((merged_symbol->nlist.n_type & N_TYPE) == N_UNDF) ||
 		   (force_extern_reloc == TRUE && prebinding == FALSE) ||
-		   (filetype == MH_DYLIB &&
+		   ((filetype == MH_DYLIB && multi_module_dylib == TRUE) &&
 		    (((merged_symbol->nlist.n_type & N_PEXT) != N_PEXT) &&
 		     prebinding == FALSE) ) )
 		    value = 0;
@@ -763,19 +762,21 @@ struct section_map *section_map)
 		     * For external relocation entries that the symbol is
 		     * defined (not undefined or common) but not when we are
 		     * forcing an external relocation entry for a global
-		     * coalesced symbol and if the output file is not MH_DYLIB
-		     * or the symbol is a private extern it is changed to a
-		     * local relocation entry using the section that symbol is
-		     * defined in.  If still undefined or forcing an external
-		     * relocation entry for a global coalesced symbol then the
-		     * index of the symbol in the output file is set into
-		     * r_symbolnum.
+		     * coalesced symbol and if the output file is not a multi
+		     * module MH_DYLIB or the symbol is a private extern, it is
+		     * changed to a local relocation entry using the section
+		     * that symbol is defined in.  If still undefined or forcing
+		     * an external relocation entry for a global coalesced
+		     * symbol, then the index of the symbol in the output file
+		     * is set into r_symbolnum.
 		     */
 		    if((merged_symbol->nlist.n_type & N_TYPE) != N_UNDF &&
 			(merged_symbol->nlist.n_type & N_TYPE) != N_PBUD &&
 			force_extern_reloc == FALSE &&
-			(filetype != MH_DYLIB ||
+			((filetype != MH_DYLIB ||
+			  multi_module_dylib == FALSE) ||
 			 (merged_symbol->nlist.n_type & N_PEXT) == N_PEXT)){
+			reloc->r_extern = 0;
 			reloc->r_extern = 0;
 			/*
 			 * If this symbol was in the base file then no futher
@@ -885,4 +886,4 @@ struct section_map *section_map)
 		i++;
 	}
 }
-#endif !defined(RLD)
+#endif /* !defined(RLD) */

@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -255,6 +254,22 @@ unsigned long nfat_archs)
 		}
 	    }
 	    break;
+	case CPU_TYPE_VEO:
+	    /*
+	     * An exact match was not found.  So for the VEO subtypes if VEO1
+	     * is wanted then VEO2 can be used.  But if VEO2 is wanted only
+	     * VEO2 can be used.  Any unknown values don't match.
+	     */
+	    switch(cpusubtype){
+	    case CPU_SUBTYPE_VEO_1:
+		for(i = 0; i < nfat_archs; i++){
+		    if(fat_archs[i].cputype != cputype)
+			continue;
+		    if(fat_archs[i].cpusubtype == CPU_SUBTYPE_VEO_2)
+			return(fat_archs + i);
+		}
+	    }
+	    break;
 	case CPU_TYPE_MC88000:
 	    for(i = 0; i < nfat_archs; i++){
 		if(fat_archs[i].cputype != cputype)
@@ -409,6 +424,20 @@ cpu_subtype_t cpusubtype2)
 		return(cpusubtype1);
 	    else
 		return(cpusubtype2);
+	    break; /* logically can't get here */
+
+	case CPU_TYPE_VEO:
+	    /*
+	     * Combining VEO1 with VEO2 returns VEO1.  Any unknown values don't
+	     * combine.
+	     */
+	    if(cpusubtype1 == CPU_SUBTYPE_VEO_1 &&
+	       cpusubtype2 == CPU_SUBTYPE_VEO_2)
+		return(CPU_SUBTYPE_VEO_1);
+	    if(cpusubtype1 == CPU_SUBTYPE_VEO_2 &&
+	       cpusubtype2 == CPU_SUBTYPE_VEO_1)
+		return(CPU_SUBTYPE_VEO_1);
+	    return((cpu_subtype_t)-1);
 	    break; /* logically can't get here */
 
 	case CPU_TYPE_MC88000:

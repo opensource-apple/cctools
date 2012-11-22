@@ -3,28 +3,27 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifdef SHLIB
 #include "shlib.h"
-#endif SHLIB
+#endif /* SHLIB */
 /*
  * This file contains the routines that drives pass2 of the link-editor.  In
  * pass2 the output is created and written.  The sections from the input files
@@ -106,11 +105,11 @@ static void setup_output_flush(void);
 static void final_output_flush(void);
 #ifdef DEBUG
 static void print_block_list(void);
-#endif DEBUG
+#endif /* DEBUG */
 static struct block *get_block(void);
 static void remove_block(struct block *block);
 static unsigned long trunc(unsigned long v, unsigned long r);
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 static void create_output_sections_array(void);
 static void set_SG_NORELOC_flags(void);
 static void output_headers(void);
@@ -214,7 +213,7 @@ pass2(void)
 	output_literal_sections();
 #ifndef RLD
 	output_sections_from_files();
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 	/*
 	 * For each non-literal content section in each object file loaded 
@@ -241,7 +240,7 @@ pass2(void)
 		    for(j = 0; j < cur_obj->nsection_maps; j++){
 #ifdef RLD
 			if(cur_obj->set_num == cur_set)
-#endif RLD
+#endif /* RLD */
 			{
 			    section_type = (cur_obj->section_maps[j].s->flags &
                                                    SECTION_TYPE);
@@ -296,7 +295,7 @@ pass2(void)
 		}
 	    }
 	}
-#endif RLD
+#endif /* RLD */
 
 	/*
 	 * Set the SG_NORELOC flag in the segments that had no relocation to
@@ -350,7 +349,7 @@ pass2(void)
 #endif
 	if(close(fd) == -1)
 	    system_fatal("can't close output file");
-#endif RLD
+#endif /* RLD */
 }
 
 #if defined(RLD) && !defined(SA_RLD)
@@ -678,13 +677,13 @@ unsigned long size)
 	    print_block_list();
 	if(debug & (1 << 11))
 	    print("output_flush(offset = %lu, size %lu)", offset, size);
-#endif DEBUG
+#endif /* DEBUG */
 
 	if(size == 0){
 #ifdef DEBUG
 	if(debug & (1 << 11))
 	    print("\n");
-#endif DEBUG
+#endif /* DEBUG */
 	    return;
 	}
 
@@ -857,7 +856,7 @@ unsigned long size)
 	if((debug & (1 << 11)) || (debug & (1 << 10)))
 	    print(" writing (write_offset = %lu write_size = %lu)\n",
 		   write_offset, write_size);
-#endif DEBUG
+#endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
 	    if(write(fd, output_addr + write_offset, write_size) != write_size)
 		system_fatal("can't write to output file");
@@ -870,7 +869,7 @@ unsigned long size)
 	    if(debug & (1 << 11))
 		print(" no write\n");
 	}
-#endif DEBUG
+#endif /* DEBUG */
 }
 
 /*
@@ -893,7 +892,7 @@ final_output_flush(void)
 	    print("final_output_flush block_list:\n");
 	    print_block_list();
 	}
-#endif DEBUG
+#endif /* DEBUG */
 
 	write_size = 0;
 	block = output_blocks;
@@ -918,7 +917,7 @@ final_output_flush(void)
 	    if((debug & (1 << 11)) || (debug & (1 << 10)))
 		print(" writing (write_offset = %lu write_size = %lu)\n",
 		       write_offset, write_size);
-#endif DEBUG
+#endif /* DEBUG */
 	    lseek(fd, write_offset, L_SET);
 	    if(write(fd, output_addr + write_offset, write_size) != write_size)
 		system_fatal("can't write to output file");
@@ -952,7 +951,7 @@ print_block_list(void)
 	    p = &(block->next);
 	}
 }
-#endif DEBUG
+#endif /* DEBUG */
 
 /*
  * get_block() returns a pointer to a new block.  This could be done by
@@ -998,7 +997,7 @@ unsigned long r)
 	    return(0);
 	return(v & ~(r - 1));
 }
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 /*
  * output_headers() copys the headers of the object file into the buffer for
@@ -1019,7 +1018,7 @@ output_headers(void)
     struct dylib_command *dl;
     struct dynamic_library *dp;
     enum bool some_symbols_referenced, some_non_weak_refs;
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
     struct mach_header *mh;
     struct load_command *lc;
 
@@ -1163,7 +1162,7 @@ output_headers(void)
 		}
 	    }
 	}
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 
 	/* next the symbol table load command */
 	memcpy(output_addr + header_offset,
@@ -1248,5 +1247,5 @@ output_headers(void)
 #ifndef RLD
 	output_flush(0, sizeof(struct mach_header) +
 			output_mach_header.sizeofcmds);
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 }

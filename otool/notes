@@ -3,6 +3,25 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.11 release (the cctools-439 release):
+- Made the needed changes to main.c and ofile_print.c for VEO support.  Radar
+  bug #3068161.
+- Added the disassembly of the SSE2 instructions.  Radar bug #2972491.
+- Changed the disassembly of i386 opcode "fildl" and "fistpl" to not use the
+  'l' suffix because of the added i386 opcode "fildll" to be the same as "fildq"
+  and "fistpll" to be the same as "fistpq" (done for Radar bug #2909568).
+
+Changes for the 5.11 release (the cctools-437 release):
+- Fixed the disassembly of jbsr ppc instruction's (those with JBSR relocation
+  entries) so the "true target address" is correctly printed.  This fix is in
+  print_immediate() in ppc_disasm.c where the value should just be other_half
+  not "other_half + value".  Radar bug #3046962.
+- Fixed the printing of the pair JBSR relocation when it is a scattered
+  relocation to point at the r_value as the other half "<- other_half".  This
+  fix is in print_relocs() in ofile_print.c.  Radar bug #3046962.
+- Added the disassembly of the fxsave instruction in i386_disasm.c. Radar bug
+  #2972491.
+
 Changes for the 5.10 release (the cctools-422 release):
 - Added the disassembly of some pentium pro instructions in i386_disasm.c.
   Radar bug #2928507.

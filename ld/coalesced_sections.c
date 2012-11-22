@@ -3,28 +3,27 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifdef SHLIB
 #include "shlib.h"
-#endif SHLIB
+#endif /* SHLIB */
 /*
  * This file contains the routines that deal with indirect sections (both
  * lazy and non-lazy symbol pointer sections as well as symbol stub sections). 
@@ -212,7 +211,7 @@ struct section_map *section_map)
 	if(debug & (1 << 14))
 	    print_load_order(load_orders, count, ms,
 			     cur_obj, "names and values");
-#endif DEBUG
+#endif /* DEBUG */
 
 	/*
 	 * Sort the load order map by symbol value so the
@@ -243,7 +242,7 @@ struct section_map *section_map)
 	if(debug & (1 << 15))
 	    print_load_order(load_orders, count, ms,
 			     cur_obj, "sizes and offsets");
-#endif DEBUG
+#endif /* DEBUG */
 
 	/*
 	 * First deal with the contents of section for each symbol and determine
@@ -580,15 +579,15 @@ struct section_map *section_map)
 		/*
 		 * The number of relocation entries in the output file is based
 		 * on one of three different cases:
-		 *  The output file is a dynamic shared library file
+		 *  The output file is a multi module dynamic shared library
 		 *  The output file has a dynamic linker load command
 		 *  The output does not have a dynamic linker load command
 		 */
-		if(filetype == MH_DYLIB){
+		if(filetype == MH_DYLIB && multi_module_dylib == TRUE){
 		    /*
-		     * For dynamic shared library files the modules are kept
-		     * separate so external relocation entries on input will be 
-		     * external relocation entries on output.  For local
+		     * For a multi module dynamic shared library the modules are
+		     * kept separate so external relocation entries on input
+		     * will be external relocation entries on output.  For local
 		     * relocation entries only non-position-independent local
 		     * relocation entries are kept.  Modules of dylibs are not
 		     * linked together and can only be slid keeping all sections
@@ -632,7 +631,7 @@ struct section_map *section_map)
 		ms->s.nreloc += 1 + pair;
 		nreloc += 1 + pair;
 	    }
-#endif !defined(RLD)
+#endif /* !defined(RLD) */
 	    i += pair;
 	}
 	/*

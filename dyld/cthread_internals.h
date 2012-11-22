@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -83,7 +82,7 @@ typedef struct cproc {
 	unsigned int stack_size;
 #if	NeXT
 	int	error;
-#endif	NeXT
+#endif	/* NeXT */
 
 } *cproc_t;
 
@@ -103,14 +102,14 @@ typedef struct cproc {
 #define CPROC_INITIAL_STACK	0x1
 #if	NeXT
 #define	CPROC_NOCACHE_THREAD	/* Don't try to cache this cthread on exit */
-#endif	NeXT
+#endif	/* NeXT */
 
 /*
  * C Threads imports:
  */
 #ifdef __STRICT_BSD__
 extern char *malloc();
-#endif __STRICT_BSD__
+#endif /* __STRICT_BSD__ */
 
 /*
  * Mach imports:
@@ -124,7 +123,7 @@ extern void mach_error();
 extern exit();
 #else
 #include <stdlib.h>
-#endif __STRICT_BSD__
+#endif /* __STRICT_BSD__ */
 
 /*
  * Macro for MACH kernel calls.
@@ -151,9 +150,9 @@ extern int cthread_debug;
  */
 extern printf(), fprintf(), abort();
 
-#else	DEBUG
+#else	/* DEBUG */
 
 #define	private static
 #define	TRACE(x)
 
-#endif	DEBUG
+#endif	/* DEBUG */

@@ -30,6 +30,14 @@ TODO for MacOS X:
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
 
+Changes for the 5.11 release (the cctools-440 release):
+- Fixed the warnings about extra tokens at end of #endif directive in
+  malloc.c, mig_support.c and cthread_internals.h (Radar bug #3072042).
+
+Changes for the 5.11 release (the cctools-439 release):
+- Disabled DYLD_MEM_PROTECT because NXProtectZone() currently does not work
+  anymore.  Radar bug #3035901.
+
 Changes for the 5.10 release (the cctools-433 release):
 - Changed setup_prebound_coalesed_symbols() in symbols.c to skip looking for
   global coalesed symbols if flat_reference is FALSE.  Then a count of global

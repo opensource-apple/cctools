@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -50,6 +49,7 @@ static const struct arch_flag arch_flags[] = {
     { "sparc",	CPU_TYPE_SPARC,   CPU_SUBTYPE_SPARC_ALL },
     { "m88k",   CPU_TYPE_MC88000, CPU_SUBTYPE_MC88000_ALL },
     { "i860",   CPU_TYPE_I860,    CPU_SUBTYPE_I860_ALL },
+    { "veo",    CPU_TYPE_VEO,     CPU_SUBTYPE_VEO_ALL },
     /* specific architecture implementations */
     { "ppc601", CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_601 },
     { "ppc603", CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_603 },
@@ -70,6 +70,8 @@ static const struct arch_flag arch_flags[] = {
     { "m68030", CPU_TYPE_MC680x0, CPU_SUBTYPE_MC68030_ONLY },
     { "m68040", CPU_TYPE_MC680x0, CPU_SUBTYPE_MC68040 },
     { "hppa7100LC", CPU_TYPE_HPPA,  CPU_SUBTYPE_HPPA_7100LC },
+    { "veo1",   CPU_TYPE_VEO,     CPU_SUBTYPE_VEO_1 },
+    { "veo2",   CPU_TYPE_VEO,     CPU_SUBTYPE_VEO_2 },
     { NULL,	0,		  0 }
 };
 
@@ -172,7 +174,8 @@ const struct arch_flag *flag)
       flag->cputype == CPU_TYPE_POWERPC ||
       flag->cputype == CPU_TYPE_HPPA ||
       flag->cputype == CPU_TYPE_SPARC ||
-      flag->cputype == CPU_TYPE_I860)
+      flag->cputype == CPU_TYPE_I860 ||
+      flag->cputype == CPU_TYPE_VEO)
         return BIG_ENDIAN_BYTE_SEX;
     else if(flag->cputype == CPU_TYPE_I386)
         return LITTLE_ENDIAN_BYTE_SEX;
@@ -195,7 +198,8 @@ const struct arch_flag *flag)
       flag->cputype == CPU_TYPE_POWERPC ||
       flag->cputype == CPU_TYPE_I386 ||
       flag->cputype == CPU_TYPE_SPARC ||
-      flag->cputype == CPU_TYPE_I860)
+      flag->cputype == CPU_TYPE_I860 ||
+      flag->cputype == CPU_TYPE_VEO)
         return(-1);
     else if(flag->cputype == CPU_TYPE_HPPA)
         return(+1);
@@ -221,6 +225,7 @@ const struct arch_flag *flag)
     case CPU_TYPE_MC88000:
 	return(0xffffe000);
     case CPU_TYPE_POWERPC:
+    case CPU_TYPE_VEO:
 	return(0xc0000000);
     case CPU_TYPE_I386:
 	return(0xc0000000);
@@ -263,7 +268,8 @@ unsigned long
 get_segalign_from_flag(
 const struct arch_flag *flag)
 {
-	if(flag->cputype == CPU_TYPE_POWERPC)
+	if(flag->cputype == CPU_TYPE_POWERPC ||
+	   flag->cputype == CPU_TYPE_VEO)
 	    return(0x1000); /* 4K */
 	else
 	    return(0x2000); /* 8K */

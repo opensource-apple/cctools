@@ -363,9 +363,9 @@ installsrc installGASsrc:
 install: all $(RC_OS)_install
 
 macos_install: common_install xcommon_install
-	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/i386
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/i386
 	install -c -s -m 555 $(SYMROOT)/a386_dir/as \
-		$(DSTROOT)$(LOCLIBDIR)/i386/as
+		$(DSTROOT)$(LIBDIR)/i386/as
 
 teflon_install: common_install xcommon_install
 	$(MKDIRS) $(DSTROOT)$(LIBDIR)/i386
