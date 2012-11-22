@@ -857,12 +857,15 @@ struct arch *arch)
 	    reloc_scnhdr = scnhdrs + j;
 	    scn_contents[j] = reloc_contents;
 	    j++;
+	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
+	}
+	else{
+	    debug_addr = round(reloc_addr, section_alignment);
 	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
 	    scnhdrs[j].s_vsize = debug_size;
-	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
 	    scnhdrs[j].s_vaddr = debug_addr;
 	    scnhdrs[j].s_size = round(debug_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;
@@ -998,6 +1001,13 @@ struct arch *arch)
 	}
 
 	/*
+	 * If there is a -d flag add one for the .debug section to contain
+	 * the information.
+	 */
+	if(debug_filename != NULL)
+	    nscns++;
+
+	/*
 	 * At the beginning of the COFF string table are 4 bytes that contain
 	 * the total size (in bytes) of the rest of the string table. This size
 	 * includes the size field itself, so that the value in this location
@@ -1127,12 +1137,15 @@ struct arch *arch)
 	    reloc_scnhdr = scnhdrs + j;
 	    scn_contents[j] = reloc_contents;
 	    j++;
+	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
+	}
+	else{
+	    debug_addr = round(reloc_addr, section_alignment);
 	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
 	    scnhdrs[j].s_vsize = debug_size;
-	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
 	    scnhdrs[j].s_vaddr = debug_addr;
 	    scnhdrs[j].s_size = round(debug_size, file_alignment);
 	    scnhdrs[j].s_relptr = 0;

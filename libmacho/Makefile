@@ -1,6 +1,5 @@
 RC_OS = macos
 OFLAG = -O
-OPEN = -D__OPEN_SOURCE__
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
 
@@ -34,13 +33,17 @@ ifeq "macos" "$(RC_OS)"
 		     echo "$(CC)" ; \
 	     fi; )
 endif
+ifneq "" "$(SDKROOT)"
+  SDK = -isysroot $(SDKROOT)
+  CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+endif
 ifeq "clang" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) $(OPEN) -g -Wall $(LEGACY) \
-     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
+  CFLAGS = $(OFLAG) -g -Wall $(LEGACY) \
+     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK)
   PG =
 else
-  CFLAGS = $(OFLAG) $(OPEN) -g -Wall $(X_CFLAGS) $(LEGACY) \
-     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
+  CFLAGS = $(OFLAG) -g -Wall $(X_CFLAGS) $(LEGACY) \
+     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK)
   PG = -pg
 endif
 

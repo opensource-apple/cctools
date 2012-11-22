@@ -627,7 +627,7 @@ unknown_flag:
 	    /* remove those thin files not marked for extraction */
 	    for(i = 0; i < nthin_files; ){
 		if(thin_files[i].extract == FALSE){
-		    for(j = i; j < nthin_files; j++)
+		    for(j = i; j < nthin_files - 1; j++)
 			thin_files[j] = thin_files[j + 1];
 		    nthin_files--;
 		}
@@ -1038,7 +1038,7 @@ struct input_file *input)
 		if(input->fat_arches[i].offset %
 		   (1 << input->fat_arches[i].align) != 0)
 		    fatal("offset %u of fat file %s (cputype (%d) cpusubtype "
-			  "(%d)) not aligned on it's alignment (2^%u)",
+			  "(%d)) not aligned on its alignment (2^%u)",
 			  input->fat_arches[i].offset, input->name,
 			  input->fat_arches[i].cputype,
 			  input->fat_arches[i].cpusubtype & ~CPU_SUBTYPE_MASK,
@@ -1855,6 +1855,9 @@ struct fat_arch *fat_arch)
 	    case CPU_SUBTYPE_ARM_V6:
 		printf("armv6");
 		break;
+	    case CPU_SUBTYPE_ARM_V7:
+		printf("armv7");
+		break;
 	    default:
 		goto print_arch_unknown;
 	    }
@@ -2313,7 +2316,7 @@ struct thin_file *thin)
 {
 	if(input->arch_flag.cputype != thin->fat_arch.cputype)
 	    fatal("specifed architecture type (%s) for file (%s) does "
-		  "not match it's cputype (%d) and cpusubtype (%d) "
+		  "not match its cputype (%d) and cpusubtype (%d) "
 		  "(should be cputype (%d) and cpusubtype (%d))",
 		  input->arch_flag.name, input->name,
 		  thin->fat_arch.cputype, thin->fat_arch.cpusubtype &

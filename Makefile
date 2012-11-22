@@ -87,7 +87,6 @@ else
   LTO =
 endif
 
-
 # work around to avoid 5820763
 ifeq "$(IPHONEOS_DEPLOYMENT_TARGET)" "2.0"
    EFITOOLS =
@@ -119,7 +118,7 @@ all clean: $(DSTROOT)
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)" 				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -133,7 +132,7 @@ all clean: $(DSTROOT)
 		    (cd $$i; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS" 	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)" 				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -146,7 +145,7 @@ all clean: $(DSTROOT)
 		    echo =========== $(MAKE) $@ for $$i =============;	\
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)" 				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT 	\
 			$@) || exit 1 ; 				\
 	      done;							\
@@ -157,7 +156,7 @@ all clean: $(DSTROOT)
 		    echo =========== $(MAKE) $@ for $$i =============;	\
 		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)"				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			$@) || exit 1 ; 				\
 	      done							\
@@ -186,7 +185,7 @@ install:
 	    $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
-		EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" TRIE="$(TRIE)"	\
+		EFITOOLS="$(EFITOOLS)" TRIE="$(TRIE)"			\
 		LTO="$(LTO)" DSTROOT=$$DSTROOT/$(INSTALL_LOCATION)	\
 		SRCROOT=$(SRCROOT)					\
 		OBJROOT=$(OBJROOT)					\
@@ -198,7 +197,7 @@ install:
 		RC_OS="$(RC_OS)" SUBDIRS="$(SUBDIRS)" 			\
 		SUBDIRS_32="$(SUBDIRS_32)"				\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
-		EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" TRIE="$(TRIE)"	\
+		EFITOOLS="$(EFITOOLS)" TRIE="$(TRIE)"			\
 		LTO="$(LTO)" DSTROOT=$$DSTROOT install_tools 		\
 		lib_ofiles_install;					\
 	fi
@@ -213,7 +212,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)" 				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -227,7 +226,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)"				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -242,7 +241,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)"		\
+			EFITOOLS="$(EFITOOLS)"				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT	\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -257,7 +256,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" 		\
+			EFITOOLS="$(EFITOOLS)"				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT 	\
 			install) || exit 1;				\
 	      done;							\
@@ -269,7 +268,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" 		\
+			EFITOOLS="$(EFITOOLS)"				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT 	\
 			install) || exit 1;				\
 	      done							\
@@ -280,11 +279,11 @@ ofiles_install:
 	$(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)"					\
 		RC_OS="$(RC_OS)"					\
-		DSTROOT=$$DSTROOT					\
+		DSTROOT=$$DSTROOT/$(INSTALL_LOCATION)			\
 		SRCROOT=$(SRCROOT)					\
 		OBJROOT=$(OBJROOT)					\
 		SYMROOT=$(SYMROOT)					\
-		EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" TRIE="$(TRIE)"	\
+		EFITOOLS="$(EFITOOLS)" TRIE="$(TRIE)"			\
 		LTO="$(LTO)" lib_ofiles_install
 
 lib_ofiles lib_ofiles_install: installhdrs
@@ -377,7 +376,7 @@ installsrc: SRCROOT
 	  do \
 		echo =========== $(MAKE) $@ for $$i =============;	\
 		(cd $$i; $(MAKE) SRCROOT=$$SRCROOT/$$i 			\
-		 EFITOOLS="$(EFITOOLS)" OPEN="$(OPEN)" $@) || exit 1;	\
+		 EFITOOLS="$(EFITOOLS)" $@) || exit 1;	\
 	  done
 
 installGASsrc: SRCROOT

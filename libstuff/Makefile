@@ -1,7 +1,6 @@
 RC_OS = macos
 OFLAG = -O
 LTO = -DLTO_SUPPORT
-OPEN = -D__OPEN_SOURCE__
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
 
@@ -32,13 +31,19 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
 	     echo YES ; else echo NO ; \
 	     fi; )
 	
+ifneq "" "$(SDKROOT)"
+  SDK = -isysroot $(SDKROOT)
+  CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+endif
+
 G = -g
 ifeq "clang" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) $(OPEN) $(LTO) $(G) -I$(SRCROOT)/../include -Wall $(LEGACY)
+  CFLAGS = $(OFLAG) $(LTO) $(G) -I$(SRCROOT)/../include -Wall \
+	   $(LEGACY) $(SDK)
   PG =
 else
-  CFLAGS = $(OFLAG) $(OPEN) $(LTO) $(G) -I$(SRCROOT)/../include -Wall \
-	   $(X_CFLAGS) $(LEGACY)
+  CFLAGS = $(OFLAG) $(LTO) $(G) -I$(SRCROOT)/../include -Wall \
+	   $(X_CFLAGS) $(LEGACY) $(SDK)
   PG = -pg
 endif
 
@@ -79,7 +84,8 @@ else
 	STATIC_KLD = 
 endif
 
-all: $(OFILE_DIRS) $(SYMROOT) static dynamic profile $(STATIC_KLD) $(RC_OS)
+#all: $(OFILE_DIRS) $(SYMROOT) static dynamic profile $(STATIC_KLD) $(RC_OS)
+all: $(OFILE_DIRS) $(SYMROOT) dynamic profile $(STATIC_KLD) $(RC_OS)
 
 lib_ofiles: $(OFILE_DIRS) $(SYMROOT) dynamic
 

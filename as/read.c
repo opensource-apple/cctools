@@ -2657,7 +2657,8 @@ uintptr_t value)
     section_t s;
     frchainS *frcP;
     symbolS *symbolP;
-    int size, align;
+    uint64_t size;
+    int align;
 
 	segname = input_line_pointer;
 	do{
@@ -2734,7 +2735,7 @@ uintptr_t value)
 	}
 	input_line_pointer ++;
 	if((size = get_absolute_expression()) < 0){
-	    as_bad("zerofill size (%d.) <0! Ignored.", size);
+	    as_bad("zerofill size (%lld.) <0! Ignored.", size);
 	    ignore_rest_of_line();
 	    return;
 	}

@@ -688,6 +688,17 @@ char **envp)
 				archflag_cpusubtype =
 				    CPU_SUBTYPE_ARM_V6;
 			    }
+			    else if(strcmp(*work_argv,
+					   "armv7") == 0){
+				if(archflag_cpusubtype != -1 &&
+				   archflag_cpusubtype !=
+					CPU_SUBTYPE_ARM_V7)
+				    as_fatal("can't specify more "
+				       "than one -arch flag ");
+				specific_archflag = *work_argv;
+				archflag_cpusubtype =
+				    CPU_SUBTYPE_ARM_V7;
+			    }
 			    else
 				as_fatal("I expected 'arm' after "
 					 "-arch for this assembler.");

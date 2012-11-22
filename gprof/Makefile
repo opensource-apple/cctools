@@ -11,7 +11,11 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "clang" ] && \
 	     echo YES ; else echo NO ; \
 	     fi; )
 
-CFLAGS = $(OFLAG) -g -I../include -Wall $(GCC_FLAGS) -DNeXT_MOD -DDEBUG
+ifneq "" "$(SDKROOT)"
+  SDK = -isysroot $(SDKROOT)
+  CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+endif
+CFLAGS = $(OFLAG) -g -I../include -Wall $(GCC_FLAGS) -DNeXT_MOD -DDEBUG $(SDK)
 
 ifneq "" "$(wildcard /bin/mkdirs)"
   MKDIRS = /bin/mkdirs
@@ -42,7 +46,7 @@ all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/$@.private.o $(OBJS) $(LIBSTUFF)
-	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
+	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
 
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@

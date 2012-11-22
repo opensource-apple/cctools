@@ -1,3 +1,16 @@
+Changes for the 5.27 release (the cctools-772 release):
+- Added getsectiondata() API to mach-o/getsect.h . Radar bug #5724145.
+
+Changes for the 5.27 release (the cctools-769 release):
+- Changed round() in stuff/round.h to take and return uint64_t types.  Radar
+  bug #7245879.
+
+Changes for the 5.26 release (the cctools-760 release):
+- Changed the sources so the armv7 stuff is a no longer #ifndef __OPEN_SOURCE__
+  Radar bug #7016121.
+  - Changed the Makefile and removed #ifndef __OPEN_SOURCE__ for "opcode/arm.h".
+  - Removed the #ifndef __OPEN_SOURCE__ in "mach/machine.h" that bracket armv7.
+
 Changes for the 5.26 release (the cctools-758 release):
 - Backed out the change for Radar bug #6511482:
   - Left in ARM_THUMB_32BIT_BRANCH in <mach-o/arm/reloc.h> but added a comment

@@ -4536,12 +4536,12 @@ i386_displacement (disp_start, disp_end)
   END_STRING_AND_SAVE (disp_end);
 
 #ifndef GCC_ASM_O_HACK
-#define GCC_ASM_O_HACK 0
+#define GCC_ASM_O_HACK 1
 #endif
 #if GCC_ASM_O_HACK
   END_STRING_AND_SAVE (disp_end + 1);
   if ((i.types[this_operand] & BaseIndex) != 0
-      && displacement_string_end[-1] == '+')
+      && disp_end[-1] == '+')
     {
       /* This hack is to avoid a warning when using the "o"
 	 constraint within gcc asm statements.
@@ -4576,7 +4576,7 @@ i386_displacement (disp_start, disp_end)
 
 	 So here we provide the missing zero.  */
 
-      *displacement_string_end = '0';
+      *disp_end = '0';
     }
 #endif
 #ifndef LEX_AT

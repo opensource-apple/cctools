@@ -5547,7 +5547,7 @@ do_barrier (void)
 {
   if (inst.operands[0].present)
     {
-      constraint ((inst.instruction & 0xf0) != 0x40
+      constraint ((inst.instruction & 0xf0) == 0x60
 		  && inst.operands[0].imm != 0xf,
 		  "bad barrier type");
       inst.instruction |= inst.operands[0].imm;
@@ -6091,6 +6091,21 @@ do_mrs (void)
   inst.instruction |= (inst.operands[1].imm & SPSR_BIT);
 }
 
+static void
+do_vmrs (void)
+{
+  if (inst.operands[0].isvec)
+    {
+      if (inst.operands[1].reg != 1)
+        first_error (_("operand 1 must be FPSCR"));
+      memset (&inst.operands[0], '\0', sizeof (inst.operands[0]));
+      memset (&inst.operands[1], '\0', sizeof (inst.operands[1]));
+      do_vfp_nsyn_opcode ("fmstat");
+    }
+  else
+    do_rd_rn();
+}
+
 /* Two possible forms:
       "{C|S}PSR_<field>, Rm",
       "{C|S}PSR_f, #expression".  */
@@ -6538,6 +6553,72 @@ do_vfp_sp_dp_cvt (void)
 {
   encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Sd);
   encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Dm);
+}
+
+static void
+do_vfp_sp_hp_cvt (void)
+{
+  if (thumb_mode)
+    inst.instruction |= 0xff000000;
+  else
+    {
+      inst.instruction |= 0xf3000000;
+      if(inst.cond != COND_ALWAYS)
+	{
+	  /* delayed diagnostic */
+	  inst.error = BAD_COND;
+	  inst.cond = COND_ALWAYS;
+	}
+    }
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Dd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Dm);
+}
+
+static void
+do_vfp_hp_sp_cvt (void)
+{
+  if (thumb_mode)
+    inst.instruction |= 0xff000000;
+  else
+    {
+      inst.instruction |= 0xf3000000;
+      if(inst.cond != COND_ALWAYS)
+	{
+	  /* delayed diagnostic */
+	  inst.error = BAD_COND;
+	  inst.cond = COND_ALWAYS;
+	}
+    }
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Dd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Dm);
+}
+
+static void
+do_vfp_t_sp_hp_cvt (void)
+{
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Sd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Sm);
+}
+
+static void
+do_vfp_b_sp_hp_cvt (void)
+{
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Sd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Sm);
+}
+
+static void
+do_vfp_t_hp_sp_cvt (void)
+{
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Sd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Sm);
+}
+
+static void
+do_vfp_b_hp_sp_cvt (void)
+{
+  encode_arm_vfp_reg (inst.operands[0].reg, VFP_REG_Sd);
+  encode_arm_vfp_reg (inst.operands[1].reg, VFP_REG_Sm);
 }
 
 static void
@@ -7721,7 +7802,7 @@ do_t_barrier (void)
 {
   if (inst.operands[0].present)
     {
-      constraint ((inst.instruction & 0xf0) != 0x40
+      constraint ((inst.instruction & 0xf0) == 0x60
 		  && inst.operands[0].imm != 0xf,
 		  "bad barrier type");
       inst.instruction |= inst.operands[0].imm;
@@ -8064,7 +8145,8 @@ encode_thumb2_ldmstm (int base, unsigned mask, bfd_boolean writeback)
       if (mask & (1 << 15))
 	inst.error = _("PC not allowed in register list");
 
-      if (mask & (1 << base))
+      if ((mask & (1 << base)) &&
+	  (mask & (0xffffffff >> (32 - (base -1)))) != 0)
 	as_warn (_("value stored for r%d is UNPREDICTABLE"), base);
     }
 
@@ -8900,6 +8982,33 @@ do_t_neg (void)
 }
 
 static void
+do_t_orn (void)
+{
+  int Rs;
+
+  Rs = (inst.operands[1].present
+	? inst.operands[1].reg    /* Rd, Rs, foo */
+	: inst.operands[0].reg);  /* Rd, foo -> Rd, Rd, foo */
+
+  if (!inst.operands[2].isreg)
+    {
+      inst.instruction = 0xf0600000 | (0x00100000 & inst.instruction);
+      inst.instruction |= inst.operands[0].reg << 8;
+      inst.instruction |= Rs << 16;
+      inst.reloc.type = BFD_RELOC_ARM_T32_IMMEDIATE;
+    }
+  else
+    {
+      constraint (inst.operands[2].shifted
+		  && inst.operands[2].immisreg,
+		  _("shift must be constant"));
+      inst.instruction |= inst.operands[0].reg << 8;
+      inst.instruction |= Rs << 16;
+      encode_thumb32_shifted_operand (2);
+    }
+}
+
+static void
 do_t_pkhbt (void)
 {
   inst.instruction |= inst.operands[0].reg << 8;
@@ -8970,6 +9079,13 @@ do_t_rbit (void)
   /* Rm is bits 3-0 is in of *both* 16-bit halves of the opcode */
   inst.instruction |= inst.operands[1].reg;
   inst.instruction |= inst.operands[1].reg << 16;
+}
+
+static void
+do_t_rd_rm (void)
+{
+  inst.instruction |= inst.operands[0].reg << 8;
+  inst.instruction |= inst.operands[1].reg;
 }
 
 static void
@@ -9416,6 +9532,8 @@ struct neon_tab_entry
   X(vmvn,	0x1b00580, N_INV,     0x0800030),	\
   X(vshll,	0x1b20300, N_INV,     0x0800a10), /* max shift, immediate.  */ \
   X(vcvt,       0x1b30600, N_INV,     0x0800e10), /* integer, fixed-point.  */ \
+  X(vcvtt,      0x1b30600, N_INV,     0x0800e10), /* single, half-precision.*/ \
+  X(vcvtb,      0x1b30600, N_INV,     0x0800e10), /* single, half-precision.*/ \
   X(vdup,       0xe800b10, N_INV,     0x1b00c00), /* arm, scalar.  */ \
   X(vld1,       0x0200000, 0x0a00000, 0x0a00c00), /* interlv, lane, dup.  */ \
   X(vst1,	0x0000000, 0x0800000, N_INV),		\
@@ -9430,8 +9548,8 @@ struct neon_tab_entry
   X(vqmovn,	0x1b20200, N_INV,     N_INV),		\
   X(vqmovun,	0x1b20240, N_INV,     N_INV),		\
   X(vnmul,      0xe200a40, 0xe200b40, N_INV),		\
-  X(vnmla,      0xe000a40, 0xe000b40, N_INV),		\
-  X(vnmls,      0xe100a40, 0xe100b40, N_INV),		\
+  X(vnmla,      0xe100a40, 0xe100b40, N_INV),		\
+  X(vnmls,      0xe100a00, 0xe100b00, N_INV),		\
   X(vcmp,	0xeb40a40, 0xeb40b40, N_INV),		\
   X(vcmpz,	0xeb50a40, 0xeb50b40, N_INV),		\
   X(vcmpe,	0xeb40ac0, 0xeb40bc0, N_INV),		\
@@ -9630,11 +9748,12 @@ enum neon_type_mask
   N_64   = 0x008000,
   N_P8   = 0x010000,
   N_P16  = 0x020000,
-  N_F32  = 0x040000,
-  N_F64  = 0x080000,
-  N_KEY  = 0x100000, /* key element (main type specifier).  */
-  N_EQK  = 0x200000, /* given operand has the same type & size as the key.  */
-  N_VFP  = 0x400000, /* VFP mode: operand size must match register width.  */
+  N_F16  = 0x040000,
+  N_F32  = 0x080000,
+  N_F64  = 0x100000,
+  N_KEY  = 0x200000, /* key element (main type specifier).  */
+  N_EQK  = 0x400000, /* given operand has the same type & size as the key.  */
+  N_VFP  = 0x800000, /* VFP mode: operand size must match register width.  */
   N_DBL  = 0x000001, /* if N_EQK, this operand is twice the size.  */
   N_HLF  = 0x000002, /* if N_EQK, this operand is half the size.  */
   N_SGN  = 0x000004, /* if N_EQK, this operand is forced to be signed.  */
@@ -9835,6 +9954,7 @@ type_chk_of_el_type (enum neon_el_type type, unsigned size)
     case NT_float:
       switch (size)
         {
+        case 16: return N_F16;
         case 32: return N_F32;
         case 64: return N_F64;
         default: ;
@@ -10237,14 +10357,14 @@ do_vfp_nsyn_mla_mls (enum neon_shape rs)
       if (is_mla)
         do_vfp_nsyn_opcode ("fmacs");
       else
-        do_vfp_nsyn_opcode ("fmscs");
+        do_vfp_nsyn_opcode ("fnmacs");
     }
   else
     {
       if (is_mla)
         do_vfp_nsyn_opcode ("fmacd");
       else
-        do_vfp_nsyn_opcode ("fmscd");
+        do_vfp_nsyn_opcode ("fnmacd");
     }
 }
 
@@ -11547,6 +11667,10 @@ neon_cvt_flavour (enum neon_shape rs)
   CVT_VAR (15, N_U16, N_F32 | key);
   CVT_VAR (16, N_S16, N_F64 | key);
   CVT_VAR (17, N_U16, N_F64 | key);
+
+  whole_reg = 0;
+  CVT_VAR (18, N_F32, N_F16);
+  CVT_VAR (19, N_F16, N_F32);
   
   return -1;
 #undef CVT_VAR
@@ -11593,19 +11717,57 @@ do_vfp_nsyn_cvt (enum neon_shape rs, int flavour)
           memset (&inst.operands[2], '\0', sizeof (inst.operands[2]));
         }
     }
+  else if (rs == NS_QD || rs == NS_DQ)
+    {
+      /* Conversions between half-percision and single-precision.  */
+      if (flavour == 18)
+	{
+          opname = "fcvtshp";
+	}
+      else if (flavour == 19)
+	{
+          opname = "fcvthps";
+	}
+    }
+  else if (rs == NS_FF && (flavour == 18 || flavour == 19))
+    {
+      /*
+       * Conversions between half-percision (in top or bottom half of register)
+       * and single-precision.  The routines do_neon_cvtt() and do_neon_cvtb()
+       * set or cleared the T bit (0x80) in the inst.instruction to pass that
+       * info to say this is for the top half of the register (T bit set) or the
+       * bottom half of the register (T bit cleared) information here to know
+       * which opname to use.  This is done this way because the call to
+       * do_vfp_nsyn_opcode() will set inst.instruction and loose this info.
+       */
+      if (flavour == 18)
+	{
+	  if((inst.instruction & 0x80) == 0x80)
+	    opname = "fcvtthps";
+	  else
+	    opname = "fcvtbhps";
+	}
+      else if(flavour == 19)
+	{
+	  if((inst.instruction & 0x80) == 0x80)
+	    opname = "fcvttshp";
+	  else
+	    opname = "fcvtbshp";
+	}
+    }
   else
     {
       /* Conversions without bitshift.  */
       const char *enc[] =
         {
-          "ftosis",
-          "ftouis",
+          "ftosizs",
+          "ftouizs",
           "fsitos",
           "fuitos",
           "fcvtsd",
           "fcvtds",
-          "ftosid",
-          "ftouid",
+          "ftosizd",
+          "ftouizd",
           "fsitod",
           "fuitod"
         };
@@ -11619,20 +11781,20 @@ do_vfp_nsyn_cvt (enum neon_shape rs, int flavour)
 }
 
 static void
-do_vfp_nsyn_cvtz (void)
+do_vfp_nsyn_cvtr (void)
 {
   enum neon_shape rs = neon_select_shape (NS_FF, NS_FD, NS_NULL);
   int flavour = neon_cvt_flavour (rs);
   const char *enc[] =
     {
-      "ftosizs",
-      "ftouizs",
+      "ftosis",
+      "ftouis",
       NULL,
       NULL,
       NULL,
       NULL,
-      "ftosizd",
-      "ftouizd"
+      "ftosid",
+      "ftouid",
     };
 
   if (flavour >= 0 && flavour < (int) ARRAY_SIZE (enc) && enc[flavour])
@@ -11643,7 +11805,7 @@ static void
 do_neon_cvt (void)
 {
   enum neon_shape rs = neon_select_shape (NS_DDI, NS_QQI, NS_FFI, NS_DD, NS_QQ,
-    NS_FD, NS_DF, NS_FF, NS_NULL);
+    NS_FD, NS_DF, NS_FF, NS_QD, NS_DQ, NS_NULL);
   int flavour = neon_cvt_flavour (rs);
 
   /* VFP rather than Neon conversions.  */
@@ -11711,6 +11873,24 @@ do_neon_cvt (void)
       /* Some VFP conversions go here (s32 <-> f32, u32 <-> f32).  */
       do_vfp_nsyn_cvt (rs, flavour);
     }
+}
+
+static void
+do_neon_cvtt (void)
+{
+  /* set the T bit to say this is for the top half of the register for the
+     routine do_vfp_nsyn_cvt() to use to pick the opname */
+  inst.instruction |= 0x80;
+  do_neon_cvt ();
+}
+
+static void
+do_neon_cvtb (void)
+{
+  /* clear the T bit to say this is for the bottom half of the register for the
+     routine do_vfp_nsyn_cvt() to use to pick the opname */
+  inst.instruction = inst.instruction & ~(0x80);
+  do_neon_cvt ();
 }
 
 static void
@@ -12823,10 +13003,12 @@ output_relax_insn (void)
       break;
     default:
       /* Avoid make_expr_symbol() if their is no subtract symbol and the
-	 symbol is just an undefined symbol, if so use that in the expression.*/
+	 symbol is just an undefined symbol or absolute, if so use that in the
+	 expression. */
       if (inst.reloc.exp.X_subtract_symbol == NULL &&
 	  inst.reloc.exp.X_add_symbol != NULL &&
-	  (inst.reloc.exp.X_add_symbol->sy_nlist.n_type & N_TYPE) == N_UNDF)
+	  ((inst.reloc.exp.X_add_symbol->sy_nlist.n_type & N_TYPE) == N_UNDF ||
+	   (inst.reloc.exp.X_add_symbol->sy_nlist.n_type & N_TYPE) == N_ABS) )
 	{
 	  sym = inst.reloc.exp.X_add_symbol;
 	  offset = inst.reloc.exp.X_add_number;
@@ -13675,7 +13857,13 @@ static struct asm_barrier_opt barrier_opt_names[] =
   { "sy",   0xf },
   { "un",   0x7 },
   { "st",   0xe },
-  { "unst", 0x6 }
+  { "unst", 0x6 },
+  { "ish",  0xb },
+  { "ishst",0xa },
+  { "nsh",  0x7 },
+  { "nshst",0x6 },
+  { "osh",  0x3 },
+  { "oshst",0x2 }
 };
 
 /* Table of ARM-format instructions.	*/
@@ -13952,6 +14140,9 @@ static const struct asm_opcode insns[] =
  /* These may simplify to neg.  */
  TCE(rsb,	0600000, ebc00000, 3, (RR, oRR, SH), arit, t_rsb),
  TC3(rsbs,	0700000, ebd00000, 3, (RR, oRR, SH), arit, t_rsb),
+
+ TCE(rrx,	1a00060, ea4f0030, 2, (RR, RR),      rd_rm, t_rd_rm),
+ TCE(rrxs,	1b00060, ea5f0030, 2, (RR, RR),      rd_rm, t_rd_rm),
 
 #undef THUMB_VARIANT
 #define THUMB_VARIANT &arm_ext_v6
@@ -14293,6 +14484,8 @@ static const struct asm_opcode insns[] =
  TCE(subw,	0, f2a00000, 3, (RR, RR, EXPi), 0, t_add_sub_w),
  TCE(tbb,       0, e8d0f000, 1, (TB), 0, t_tb),
  TCE(tbh,       0, e8d0f010, 1, (TB), 0, t_tb),
+ TCE(orn,	0, ea600000, 3, (RR, oRR, SH), 0, t_orn),
+ TCE(orns,	0, ea700000, 3, (RR, oRR, SH), 0, t_orn),
 
  /* Thumb-2 hardware division instructions (R and M profiles only).  */
 #undef THUMB_VARIANT
@@ -14305,6 +14498,7 @@ static const struct asm_opcode insns[] =
 #define ARM_VARIANT &arm_ext_v7
 #undef THUMB_VARIANT
 #define THUMB_VARIANT &arm_ext_v7
+ TUF(pldw,	410f000, f830f000, 1, (ADDR),	  pld,	    t_pld),
  TUF(pli,	450f000, f910f000, 1, (ADDR),	  pli,	    t_pld),
  TCE(dbg,	320f0f0, f3af80f0, 1, (I15),	  dbg,	    t_dbg),
  TUF(dmb,	57ff050, f3bf8f50, 1, (oBARRIER), barrier,  t_barrier),
@@ -14766,7 +14960,7 @@ static const struct asm_opcode insns[] =
  cCE(ftouis,	ebc0a40, 2, (RVS, RVS),	      vfp_sp_monadic),
  cCE(ftouizs,	ebc0ac0, 2, (RVS, RVS),	      vfp_sp_monadic),
  cCE(fmrx,	ef00a10, 2, (RR, RVC),	      rd_rn),
- cCE(vmrs,	ef00a10, 2, (RR, RVC),	      rd_rn),
+ cCE(vmrs,	ef00a10, 2, (APSR_RR, RVC),   vmrs),
  cCE(fmxr,	ee00a10, 2, (RVC, RR),	      rn_rd),
  cCE(vmsr,	ee00a10, 2, (RVC, RR),	      rn_rd),
 
@@ -14828,6 +15022,12 @@ static const struct asm_opcode insns[] =
  cCE(ftosizd,	ebd0bc0, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
  cCE(ftouid,	ebc0b40, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
  cCE(ftouizd,	ebc0bc0, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
+ cCE(fcvtshp,	0b60600, 2, (RNQ, RVD),	      vfp_sp_hp_cvt),
+ cCE(fcvthps,	0b60700, 2, (RVD, RNQ),	      vfp_hp_sp_cvt),
+ cCE(fcvttshp,	eb30ac0, 2, (RVS, RVS),	      vfp_t_sp_hp_cvt),
+ cCE(fcvtbshp,	eb30a40, 2, (RVS, RVS),	      vfp_b_sp_hp_cvt),
+ cCE(fcvtthps,	eb20ac0, 2, (RVS, RVS),	      vfp_t_hp_sp_cvt),
+ cCE(fcvtbhps,	eb20a40, 2, (RVS, RVS),	      vfp_b_hp_sp_cvt),
 
   /* Memory operations.	 */
  cCE(fldd,	d100b00, 2, (RVD, ADDRGLDC),  vfp_dp_ldst),
@@ -14886,7 +15086,7 @@ static const struct asm_opcode insns[] =
  nCE(vcmpe,     vcmpe,   2, (RVSD, RVSD_I0),    vfp_nsyn_cmp),
  NCE(vpush,     0,       1, (VRSDLST),          vfp_nsyn_push),
  NCE(vpop,      0,       1, (VRSDLST),          vfp_nsyn_pop),
- NCE(vcvtz,     0,       2, (RVSD, RVSD),       vfp_nsyn_cvtz),
+ NCE(vcvtr,     0,       2, (RVSD, RVSD),       vfp_nsyn_cvtr),
 
   /* Mnemonics shared by Neon and VFP.  */
  nCEF(vmul,     vmul,    3, (RNSDQ, oRNSDQ, RNSDQ_RNSC), neon_mul),
@@ -14909,6 +15109,8 @@ static const struct asm_opcode insns[] =
  NCE(vstr,      d000b00, 2, (RVSD, ADDRGLDC), neon_ldr_str),
 
  nCEF(vcvt,     vcvt,    3, (RNSDQ, RNSDQ, oI32b), neon_cvt),
+ nCEF(vcvtt,    vcvtt,   2, (RVS, RVS), neon_cvtt),
+ nCEF(vcvtb,    vcvtt,   2, (RVS, RVS), neon_cvtb),
 
   /* NOTE: All VMOV encoding is special-cased!  */
  NCE(vmov,      0,       1, (VMOV), neon_mov),

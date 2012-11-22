@@ -25,6 +25,88 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.27 release (the cctools-772 release):
+- Fixed the arm's assembler's vmls.f32 and vmls.f64 encodings, the changes were
+  in do_vfp_nsyn_mla_mls() in arm.c to use "fnmacs" instead of "fmscs" and
+  "fnmacd" instead of "fmscd".  Fixed the arm's assembler's vnmla.f32, vnmls.f32
+  and vnmla.f64, vnmls.f64 encoding in their respective table entries.
+  Radar bug #7331301.
+- Changed the arm assembler to make the vcvt.* forms match the manual the same
+  as what was the vcvtz.* forms.  And removed the vcvtz.* forms.  Then added
+  the vcvtr.* forms as in the manual as what was the old vcvt.* forms.  Changes
+  were in do_vfp_nsyn_cvt() in arm.c in the last enc[] array entries and a
+  change to the "if (rs == NS_FF" to add "&& (flavour == 18 || flavour == 19))".
+  Then changed do_vfp_nsyn_cvtz() to do_vfp_nsyn_cvtr() and changed the entries
+  in the enc[] array in there.  And also changed the vcvt entry to use
+  vfp_nsyn_cvtr . Radar bug #7329319 & #7329326.
+- Changed the arm assembler to allow "vmrs APSR_nzcv, FPSCR" by adding the
+  routine do_vmrs() in arm.c and changing the table entry for "vmrs" to allow
+  ASPR_RR for the first argument and use the new routine.  Radar bug #7327031.
+- Changed i386_displacement() in i386.c and turned on the GCC_ASM_O_HACK to
+  allow displacements like "4+(%esp)".  Radar bug #5828463.
+
+Changes for the 5.27 release (the cctools-771 release):
+- Changed fixup_section() in layout.c for the first #if ARM case and removed the
+  check for the add symbol not being weak to set the low bit of the value.
+  Radar bug #7262421.
+- Changed the test in encode_thumb2_ldmstm() for the warning of the value
+  stored is UNPREDICTABLE to check that the base is also not the lowest register
+  in the mask.  Radar bug #7268941.
+
+Changes for the 5.27 release (the cctools-769 release):
+- Fixed a bug in s_zerofill() in read.c that did not allow zerofill sizes
+  greater than 32-bits.  In s_zerofill() in read.c changed the local variable 
+  "size" to a uint64_t type.  Changed the type of the field "fr_address"
+  in the frag struct in frags.h to a uint64_t type.  And fixed types for
+  relax_addressT in relax.h which were reversed in the #ifdef ARCH64.
+  Radar bug #7245879.
+
+Changes for the 5.27 release (the cctools-767 release):
+- Added an error check for the call to realpath(3) in driver.c in main().
+  Radar bug #7201696.
+
+Changes for the 5.27 release (the cctools-766 release):
+- Picked up the change that never made it in the sources from cctools-685 but
+  made in in the notes below.  Changed relax_section() in layout.c in two plaves
+  #ifdef'ed ARM.  In the first look it now sets frag's relax_marker field to 
+  zero.  In the "Do relax" loop it flips the relax_marker field with an "^= 1".
+  This is to fix a problem in relaxed_symbol_addr() so it knows to add the
+  stretch amount to the addr it is returning.  Radar bug #7141908.
+
+Changes for the 5.27 release (the cctools-765 release):
+- Fixed a problem with the mask used for checking overflow of 2 byte values
+  in fixup_section() in layout.c that was 0xffff8000 which should have been
+  0xffff0000.  Also fixed the resulting error message so it would print the
+  source line number.  Radar bug #7114412.
+- Added the assembly for the orn (immediate) instructions to arm.c in
+  t_do_orn().  Radar bug #7096522.
+
+Changes for the 5.27 release (the cctools-763 release):
+- Added the assembly for the orn instructions to arm.c .  Radar bug #7096522.
+- Added the assembly for the rrx instructions to arm.c .  Radar bug #7098328.
+
+Changes for the 5.27 release (the cctools-762 release):
+- Changed the Makefile to set CC when when SDKROOT is set.  Radar bug #7078805.
+- Changed output_relax_insn() in arm.c to allow symbols that are just an
+  absolute symbol.  As this occurs when using a symbol from .set for an
+  immediate value.  Radar bug #7069304.
+
+Changes for the 5.27 release (the cctools-760 release):
+- Changed the sources so the armv7 stuff is a no longer #ifndef __OPEN_SOURCE__
+  Radar bug #7016121.
+  - Changed the Makefile and removed the #ifndef __OPEN_SOURCE__ for the arm
+    build.
+  - Removed the #ifndef __OPEN_SOURCE__ from as.c that was bracketing armv7
+    the reference.
+
+Changes for the 5.27 release (the cctools-759 release):
+- Added the assembly for the pldw, vcvt.f32.f16, vcvt.f16.f32, vcvtt and
+  vcvtb instructions to arm.c .  Radar bug #6959129.
+- Added the memory barrior options ish, ishst, osh, oshst, nsh and nshst
+  to arm.c . Radar bug #6982242.
+- Changed the Makefile to add -isysroot $(SDKROOT) to compile and link lines
+  when SDKROOT is set.  Radar bug #6965029.
+
 Changes for the 5.27 release (the cctools-758 release):
 - Backed out the change in Radar bug #6511482 in the arm assembler to put out a
   relocation entry for 32-bit thumb branches using the ARM_THUMB_32BIT_BRANCH

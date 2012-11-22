@@ -35,8 +35,12 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
 	     echo YES ; else echo NO ; \
 	     fi; )
 
+ifneq "" "$(SDKROOT)"
+  SDK = -isysroot $(SDKROOT)
+  CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+endif
 CFLAGS = -g -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -Wall \
-	 $(GCC_FLAGS)
+	 $(GCC_FLAGS) $(SDK)
 
 ifeq "macos" "$(RC_OS)"
   SYSTEMDIR := $(shell if [ "$(RC_RELEASE)" = "Beaker" ] ||    \
@@ -307,14 +311,14 @@ ld.NEW:	$(OBJS) ld_vers.o
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		$(OBJS) ld_vers.o $(LIBSTUFF) \
 		-o $(SYMROOT)/ld.private.o
-	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/ld.NEW \
+	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/ld.NEW \
 		$(SYMROOT)/ld.private.o
 
 ld_g.NEW: $(OBJS) ld_vers.o
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		$(OBJS) ld_vers.o $(LIBSTUFF) \
 		-o $(SYMROOT)/ld_g.private.o
-	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/ld_g.NEW \
+	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/ld_g.NEW \
 		$(SYMROOT)/ld_g.private.o
 
 librld_static.a librld_pg.a librld.a: librld.o

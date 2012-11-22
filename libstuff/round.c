@@ -31,13 +31,13 @@
  * round() rounds v to a multiple of r.
  */
 __private_extern__
-uint32_t
+uint64_t
 round(
-uint32_t v,
-uint32_t r)
+uint64_t v,
+uint64_t r)
 {
 	r--;
 	v += r;
-	v &= ~(int32_t)r;
+	v &= ~(int64_t)r;
 	return(v);
 }

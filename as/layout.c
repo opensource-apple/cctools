@@ -537,7 +537,6 @@ int nsect)
 	    /* If the symbol is defined in this file, the linker won't set the
 	       low-order bit for a Thumb symbol, so we have to do it here.  */
 	    if(add_symbolP != NULL && add_symbolP->sy_desc & N_ARM_THUMB_DEF &&
-	       !(add_symbolP->sy_desc & N_WEAK_DEF) &&
 	       !(sub_symbolP != NULL && sub_symbolP->sy_desc & N_ARM_THUMB_DEF) &&
 	       !pcrel){
 	        value |= 1;
@@ -612,7 +611,7 @@ int nsect)
 			}
 			else{
 			    as_warn("Can't emit reloc type %u {-symbol \"%s\"} "
-			            "@ file address %u (mode?).",
+			            "@ file address %llu (mode?).",
 				    fixP->fx_r_type, sub_symbolP->sy_name,
 				    fragP->fr_address + where);
 			}
@@ -848,10 +847,15 @@ down:
 
 	    if((size == 1 && (value & 0xffffff00) &&
 			    ((value & 0xffffff80) != 0xffffff80)) ||
-	       (size == 2 && (value & 0xffff8000) &&
-			    ((value & 0xffff8000) != 0xffff8000)))
+	       (size == 2 && (value & 0xffff0000) &&
+			    ((value & 0xffff8000) != 0xffff8000))){
+		layout_line = fixP->line;
+		layout_file = fixP->file;
 		as_bad("Fixup of %lld too large for field width of %d",
 			value, size);
+		layout_line = 0;
+		layout_file = NULL;
+	    }
 
 	    /*
 	     * Now place the fix expression's value in the place for the size.
@@ -1068,6 +1072,9 @@ int nsect)
 	 */
 	address = 0;
 	for(fragP = frag_root; fragP != NULL; fragP = fragP->fr_next){
+#ifdef ARM
+            fragP->relax_marker = 0;
+#endif /* ARM */
 	    fragP->fr_address = address;
 	    address += fragP->fr_fix;
 	    switch(fragP->fr_type){
@@ -1134,6 +1141,9 @@ int nsect)
 	    stretch = 0;
 	    stretched = 0;
 	    for(fragP = frag_root; fragP != NULL; fragP = fragP->fr_next){
+#ifdef ARM
+                fragP->relax_marker ^= 1;
+#endif /* ARM */
 		was_address = fragP->fr_address;
 		fragP->fr_address += stretch;
 		address = fragP->fr_address;

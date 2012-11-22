@@ -403,6 +403,11 @@ static const struct opcode32 coprocessor_opcodes[] =
   {FPU_VFP_EXT_V1, 0x0eb10bc0, 0x0fbf0fd0, "fsqrtd%c\t%z1, %z0"},
   {FPU_VFP_EXT_V1, 0x0eb70ac0, 0x0fbf0fd0, "fcvtds%c\t%z1, %y0"},
   {FPU_VFP_EXT_V1, 0x0eb70bc0, 0x0fbf0fd0, "fcvtsd%c\t%y1, %z0"},
+  {FPU_VFP_EXT_V1, 0x0eb30ac0, 0x0fbf0fd0, "fcvttshp%c\t%y1, %y0"},
+  {FPU_VFP_EXT_V1, 0x0eb30a40, 0x0fbf0fd0, "fcvtbshp%c\t%y1, %y0"},
+  {FPU_VFP_EXT_V1, 0x0eb20ac0, 0x0fbf0fd0, "fcvtthps%c\t%y1, %y0"},
+  {FPU_VFP_EXT_V1, 0x0eb20a40, 0x0fbf0fd0, "fcvtbhps%c\t%y1, %y0"},
+
   {FPU_VFP_EXT_V1xD, 0x0eb80a40, 0x0fbf0fd0, "fuitos%c\t%y1, %y0"},
   {FPU_VFP_EXT_V1xD, 0x0eb80ac0, 0x0fbf0fd0, "fsitos%c\t%y1, %y0"},
   {FPU_VFP_EXT_V1, 0x0eb80b40, 0x0fbf0fd0, "fuitod%c\t%z1, %y0"},
@@ -640,6 +645,8 @@ static const struct opcode32 neon_opcodes[] =
   {FPU_NEON_EXT_V1, 0xf3b00200, 0xffb30f10, "vpaddl%c.%7?us%18-19S2\t%12-15,22R, %0-3,5R"},
   {FPU_NEON_EXT_V1, 0xf3b00600, 0xffb30f10, "vpadal%c.%7?us%18-19S2\t%12-15,22R, %0-3,5R"},
   {FPU_NEON_EXT_V1, 0xf3b30600, 0xffb30e10, "vcvt%c.%7-8?usff%18-19Sa.%7-8?ffus%18-19Sa\t%12-15,22R, %0-3,5R"},
+  {FPU_NEON_EXT_V1, 0xf3b60600, 0xffbf0fd0, "fcvtshp%c\t%12-15,22Q, %0-3,5D"},
+  {FPU_NEON_EXT_V1, 0xf3b60700, 0xffbf0fd0, "fcvthps%c\t%12-15,22D, %0-3,5Q"},
 
   /* Three registers of the same length */
   {FPU_NEON_EXT_V1, 0xf2000110, 0xffb00f10, "vand%c\t%12-15,22R, %16-19,7R, %0-3,5R"},
@@ -741,7 +748,7 @@ static const struct opcode32 neon_opcodes[] =
   {FPU_NEON_EXT_V1, 0xf3900410, 0xffb00f90, "vsri%c.16\t%12-15,22R, %0-3,5R, #%16-19e"},
   {FPU_NEON_EXT_V1, 0xf3900510, 0xffb00f90, "vsli%c.16\t%12-15,22R, %0-3,5R, #%16-19d"},
   {FPU_NEON_EXT_V1, 0xf3900610, 0xffb00f90, "vqshlu%c.s16\t%12-15,22R, %0-3,5R, #%16-19d"},
-  {FPU_NEON_EXT_V1, 0xf2a00a10, 0xfea00fd0, "vshll%c.%24?us32\t%12-15,22D, %0-3,5Q, #%16-20d"},
+  {FPU_NEON_EXT_V1, 0xf2a00a10, 0xfea00fd0, "vshll%c.%24?us32\t%12-15,22Q, %0-3,5D, #%16-20d"},
   {FPU_NEON_EXT_V1, 0xf2900010, 0xfeb00f90, "vshr%c.%24?us16\t%12-15,22R, %0-3,5R, #%16-19e"},
   {FPU_NEON_EXT_V1, 0xf2900110, 0xfeb00f90, "vsra%c.%24?us16\t%12-15,22R, %0-3,5R, #%16-19e"},
   {FPU_NEON_EXT_V1, 0xf2900210, 0xfeb00f90, "vrshr%c.%24?us16\t%12-15,22R, %0-3,5R, #%16-19e"},
@@ -888,6 +895,7 @@ static const struct opcode32 arm_opcodes[] =
   {ARM_EXT_V3M, 0x00a00090, 0x0fa000f0, "%22?sumlal%20's%c\t%12-15r, %16-19r, %0-3r, %8-11r"},
 
   /* V7 instructions.  */
+  {ARM_EXT_V7, 0xf410f000, 0xfc70f000, "pldw\t%a"},
   {ARM_EXT_V7, 0xf450f000, 0xfd70f000, "pli\t%P"},
   {ARM_EXT_V7, 0x0320f0f0, 0x0ffffff0, "dbg%c\t#%0-3d"},
   {ARM_EXT_V7, 0xf57ff050, 0xfffffff0, "dmb\t%U"},
@@ -1337,6 +1345,7 @@ static const struct opcode32 thumb32_opcodes[] =
 {
   /* V7 instructions.  */
   {ARM_EXT_V7, 0xf910f000, 0xff70f000, "pli%c\t%a"},
+  {ARM_EXT_V7, 0xf830f000, 0xff70f000, "pldw%c\t%a"},
   {ARM_EXT_V7, 0xf3af80f0, 0xfffffff0, "dbg%c\t#%0-3d"},
   {ARM_EXT_V7, 0xf3bf8f50, 0xfffffff0, "dmb%c\t%U"},
   {ARM_EXT_V7, 0xf3bf8f40, 0xfffffff0, "dsb%c\t%U"},
@@ -1453,6 +1462,7 @@ static const struct opcode32 thumb32_opcodes[] =
   {ARM_EXT_V6T2, 0xf0900f00, 0xfbf08f00, "teq%c\t%16-19r, %M"},
   {ARM_EXT_V6T2, 0xf1100f00, 0xfbf08f00, "cmn%c.w\t%16-19r, %M"},
   {ARM_EXT_V6T2, 0xf1b00f00, 0xfbf08f00, "cmp%c.w\t%16-19r, %M"},
+  {ARM_EXT_V6T2, 0xea4f0030, 0xffef80f0, "rrx%20's\t%8-11r, %0-3r"},
   {ARM_EXT_V6T2, 0xea4f0000, 0xffef8000, "mov%20's%c.w\t%8-11r, %S"},
   {ARM_EXT_V6T2, 0xea6f0000, 0xffef8000, "mvn%20's%c.w\t%8-11r, %S"},
   {ARM_EXT_V6T2, 0xe8c00070, 0xfff000f0, "strexd%c\t%0-3r, %12-15r, %8-11r, [%16-19r]"},
@@ -3009,9 +3019,13 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		      switch (given & 0xf)
 			{
 			case 0xf: func(stream, "sy"); break;
-			case 0x7: func(stream, "un"); break;
+			case 0x7: func(stream, "nsh"); break;
 			case 0xe: func(stream, "st"); break;
-			case 0x6: func(stream, "unst"); break;
+			case 0x6: func(stream, "nshst"); break;
+			case 0xb: func(stream, "ish"); break;
+			case 0xa: func(stream, "ishst"); break;
+			case 0x3: func(stream, "osh"); break;
+			case 0x2: func(stream, "oshst"); break;
 			default:
 			  func(stream, "#%d", (int)given & 0xf);
 			  break;
@@ -3773,9 +3787,13 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		switch (given & 0xf)
 		  {
 		  case 0xf: func(stream, "sy"); break;
-		  case 0x7: func(stream, "un"); break;
 		  case 0xe: func(stream, "st"); break;
-		  case 0x6: func(stream, "unst"); break;
+		  case 0x7: func(stream, "nsh"); break;
+		  case 0x6: func(stream, "nshst"); break;
+		  case 0xb: func(stream, "ish"); break;
+		  case 0xa: func(stream, "ishst"); break;
+		  case 0x3: func(stream, "osh"); break;
+		  case 0x2: func(stream, "oshst"); break;
 		  default:
 		    func(stream, "#%d", (int)given & 0xf);
 		    break;

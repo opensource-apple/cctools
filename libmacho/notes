@@ -1,3 +1,21 @@
+Changes for the 5.27 release (the cctools-773 release):
+- Added getsectiondata() API to getsecbyname.c . Radar bug #5724145.
+
+Changes for the 5.27 release (the cctools-762 release):
+- Changed the Makefile to set CC when when SDKROOT is set.  Radar bug #7078805.
+
+Changes for the 5.27 release (the cctools-760 release):
+- Changed the sources so the armv7 stuff is a no longer #ifndef __OPEN_SOURCE__
+  Radar bug #7016121.
+  - Changed the Makefile to remove the OPEN macro which was -D__OPEN_SOURCE__
+    and removed it from the CFLAGS.
+  - Removed the #ifndef __OPEN_SOURCE__ in arch.c that bracketed armv7
+    references.
+
+Changes for the 5.27 release (the cctools-759 release):
+- Changed the Makefile to add -isysroot $(SDKROOT) to compile and link lines
+  when SDKROOT is set.  Radar bug #6965029.
+
 Changes for the 5.26 release (the cctools-753 release):
 - Fixed OSSwapInt32Long to be OSSwapInt64 and added
   #include <libkern/OSByteOrder.h> to i386_swap.c and swap.c to removed

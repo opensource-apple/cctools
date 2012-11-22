@@ -3,6 +3,33 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.27 release (the cctools-772 release):
+- Fixed the disassembly of vshll where the table entry on line 751 had the first
+  and second register operands switched.  Radar bug 7308888.
+
+Changes for the 5.27 release (the cctools-764 release):
+- Changed the license on all otool source files.  Radar bug #6538662.
+
+Changes for the 5.27 release (the cctools-763 release):
+- Added the disassembly for the rrx instructions to arm_disasm.c .  Radar bug
+  #7098328.
+
+Changes for the 5.27 release (the cctools-762 release):
+- Changed the Makefile to set CC when when SDKROOT is set.  Radar bug #7078805.
+
+Changes for the 5.27 release (the cctools-760 release):
+- Fixed a problem with the leading address for raw text bytes of x86_64 not
+  being printed as a 64-bit hex value.  The fix was in print_text() in main.c .
+  Radar bug #7012357,
+
+Changes for the 5.27 release (the cctools-759 release):
+- Added the disassembly for the pldw, vcvt.f32.f16, vcvt.f16.f32, vcvtt and
+  vcvtb instructions to arm_disasm.c .  Radar bug #6959129.
+- Added printing the memory barrior options ish, ishst, osh and oshst and
+  changed un to nsh and unst to nshst in arm_disasm.c . Radar bug #6982242.
+- Changed the Makefile to add -isysroot $(SDKROOT) to compile and link lines
+  when SDKROOT is set.  Radar bug #6965029.
+
 Changes for the 5.27 release (the cctools-757 release):
 - Fixed a problem with 64-bit call (near) instructions not showing 64-bit
   register names.  This is a special case where in a 64-bit object the

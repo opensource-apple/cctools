@@ -5,6 +5,26 @@ Add flags for:
 Add support for:
 - Remove empty __IMPORT segment
 
+Changes for the 5.27 release (the cctools-765 release):
+- Moved the install location of motc(1) back to /usr/local/efi/bin . Radar bug
+  #7117645.
+
+Changes for the 5.27 release (the cctools-762 release):
+- Changed the Makefile to set CC when when SDKROOT is set.  Radar bug #7078805.
+
+Changes for the 5.27 release (the cctools-761 release):
+- Moved the install location of motc(1) into /usr/bin .  Radar bug #7038602.
+- Fixed a problem in mtoc(1) with the -p option that caused it to crash.  The
+  First problem was process_64bit_arch() needed to account for the debug
+  section when the -d option was used just like process_32bit_arch() did.
+  Second problem was if there happen to be no relocation entries then both
+  routines needed to set the debug_addr when reloc_size was zero and not use
+  reloc_scnhdr as it may be NULL.  Radar bug #6904701.
+
+Changes for the 5.27 release (the cctools-759 release):
+- Changed the Makefile to add -isysroot $(SDKROOT) to compile and link lines
+  when SDKROOT is set.  Radar bug #6965029.
+
 Changes for the 5.27 release (the cctools-754 release):
 - Changed mtoc(1) to not create a .reloc section if it would have a zero size.
   Also changed mtoc(1) to include the SizeOfHeaders in SizeOfImage.

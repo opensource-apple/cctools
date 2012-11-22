@@ -2,6 +2,16 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.27 release (the cctools-773 release):
+- Changed the description of otool(1)'s -X flag.  Radar bug #7328418.
+
+Changes for the 5.27 release (the cctools-765 release):
+- Moved the install location of motc(1) back to /usr/local/efi/share/man .
+  Radar bug #7117645.
+
+Changes for the 5.27 release (the cctools-761 release):
+- Moved the install location of motc(1) into /usr/share/man. Radar bug #7038602.
+
 Changes for the 5.27 release (the cctools-758 release):
 - Fixed the strings(1) man page for the -arch option and removed the comment
   about -arch all being the default.  Radar bug #6945015.

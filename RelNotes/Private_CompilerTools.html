@@ -1,21 +1,21 @@
 <HTML>
-<!--This file created 6/3/09 5:38 PM by Claris Home Page version 3.0-->
+<!--This file created 11/5/09 10:17 AM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=82 BOTTOM=1131 LEFT=851 RIGHT=1593>
+   <X-CLARIS-WINDOW TOP=82 BOTTOM=1131 LEFT=611 RIGHT=1353>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 3.2.1 Developer Release Copyright
+<P><FONT SIZE="-1">Mac OS X Xcode 3.2.2 Developer Release Copyright
 2009 by Apple, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 3.2.1 Developer Release:<BR>
-Compiler Tools (cctools-758)</H2>
+<H2>Private Mac OS X Xcode 3.2.2 Developer Release:<BR>
+Compiler Tools (cctools-773)</H2>
 
 <P>This file contains release notes for the 5.27 release of the
-Compiler Tools for the Mac OS X Xcode 3.2.1 Developer Release. This
+Compiler Tools for the Mac OS X Xcode 3.2.2 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -27,11 +27,197 @@ file contains information about the following topics:</P>
    on)&nbsp;</LI>
 </UL>
 
-<H2>Notes Specific to Release 5.27 (Mac OS X Xcode 3.2.1 Developer
+<H2>Notes Specific to Release 5.27 (Mac OS X Xcode 3.2.2 Developer
 Release)</H2>
 
+<H5><FONT SIZE="+1">Changes since the last release (cctools-772 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the getsectiondata(3) API. Radar bug 5724145.</LI>
+   
+   <LI>Changed the description of otool(1)'s -X flag.  Radar bug
+   #7328418.</LI>
+   
+   <LI>Fixed a typo in two lipo(1) error messages where "it's" should
+   have been "its".  Radar bug 7362293.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-771 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed the arm's assembler's vmls.f32, vmls.f64, vnmla.f32,
+   vnmls.f32, vnmla.f64 and vnmls.f64 encodings. Radar bug
+   #7331301.</LI>
+   
+   <LI>Changed the arm assembler to make the vcvt.* forms match the
+   manual the same as what was the vcvtz.* forms. And removed the
+   vcvtz.* forms. Then added the vcvtr.* forms as in the manual as
+   what was the old vcvt.* forms. Radar bugs #7329319 &amp;
+   #7329326.</LI>
+   
+   <LI>Changed the arm assembler to allow "vmrs APSR_nzcv, FPSCR".
+   Radar bug #5828463.</LI>
+   
+   <LI>Changed the i386 assembler to allow displacements like
+   "4+(%esp)". Radar bug #5828463.</LI>
+   
+   <LI>Fixed a bug in lipo(1) with the -extract option that could
+   cause the program to crash. Radar bug #7255585.</LI>
+   
+   <LI>Fixed in otool(1) the arm the disassembly of vshll. Radar bug
+   7308888.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-770 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the arm assember to set the low bit of expressions of
+   the form foo-bar+offset when foo is a thumb symbol regardless if
+   it is weak or not. Radar bug #7262421.</LI>
+   
+   <LI>Changed the arm assember to not warm that the value stored for
+   a base register is UNPREDICTABLE if it is the lowest register
+   being stored. Radar bug #7268941.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-769 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed problems with ld_classic(1) incorrectly causing an error
+   when linking with archives stating they are malformed. Radar bug
+   #7257030.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-768 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed problems with the assember not incorrectly handing
+   .zerofill with sizes greater than 4GB. Radar bug #7245879.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-767 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed checksyms(1) to check for read-only-relocs in 64-bit
+   binaries. And also changed checksyms(l) to not to dynamic library
+   checks on MH_KEXT_BUNDLE file types. Radar bug #7236271.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-766 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a problem with get_byte_sex_from_flag () not knowing
+   about CPU_TYPE_X86_64. Radar bug #7222145.</LI>
+   
+   <LI>Fixed a crash in the assembler driver when realpath(3) fails.
+   Radar bug #7201696.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-765 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed problems with the armv7 assember incorrectly using wide
+   instructions when it could use narrow instructions. Radar bug
+   #7141908.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-764 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the armv7 assember orn (immediate) instructions. Radar
+   bug #7096522.</LI>
+   
+   <LI>Fixed a problem with an incorrect too large for field width
+   error and missing line number in error message. Radar bug
+   #7114412.</LI>
+   
+   <LI>Moved motc(1) back into /usr/local along with its man page.
+   Radar bug #7117645.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-763 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the license on all otool source files. Radar bug
+   #6538662.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-762 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the armv7 assember orn instructions. Radar bug
+   #7096522.</LI>
+   
+   <LI>Added the armv7 assember rrx instructions. Radar bug
+   #7098328.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-761 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a probem with the arm assembler crashing if a .set
+   symbol with a subtract expression was used in an instruction.
+   Radar bug #7069304.</LI>
+   
+   <LI>Changed the cctools project Makefiles to use the platform
+   compiler when SDKROOT is set. Radar bug #7078805.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-760 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a probem with mtoc(1) crashing if the -p option is used
+   on an x86_64 binary. Radar bug #6904701.</LI>
+   
+   <LI>Moved motc(1) into /usr/bin and its man page into
+   /usr/share/man. Radar bug #7038602.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-759 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a probem with otool(1) only printing only a 32-bit
+   address for the -t option of an x86_64 binary. Radar bug
+   #7012357.</LI>
+   
+   <LI>Removed the #ifndef __OPEN_SOURCE__ lines around the armv7
+   code. Radar bug #7016121.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-758 for
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the armv7 assember instructions pldw, vcvt.f32.f16,
+   vcvt.f16.f32, vcvtt and vcvtb. Radar bug #6959129.</LI>
+   
+   <LI>Added the armv7 barrior options ish, ishst, osh, oshst, nsh
+   and nshst. Radar bug #6982242.</LI>
+   
+   <LI>Changed to the cctools project to add -isysroot $(SDKROOT) to
+   compile and link line when SDKROOT is set. Radar bug
+   #6965029.</LI>
+   
+   <LI>Changed checksyms(1) to allow read-only-relocs in arm stubs.
+   Radar bug #6958263.</LI>
+</UL>
+
 <H5><FONT SIZE="+1">Changes since the last release (cctools-757 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the armv7 assember to no longer mark 32-bit branch
@@ -48,7 +234,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-756 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with the arm assembler assemling the rbit
@@ -68,7 +254,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-755 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed problems with ar(1), libtool(1), redo_prebinding(1) and
@@ -77,7 +263,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-754 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with otool -oV printing incorrect values for
@@ -89,7 +275,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-753 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed a problem with otool -ov printing meaningless strings
@@ -105,7 +291,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-752 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Changed the cctools sources so it builds with respect to
@@ -113,7 +299,7 @@ the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-751 for
-the 5.26 Mac OS X Xcode 3.2.1 Developer release)</FONT></H5>
+the 5.26 Mac OS X Xcode 3.2.2 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed the cctools sources so it builds with clang and without

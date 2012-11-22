@@ -1,8 +1,12 @@
+ifneq "" "$(SDKROOT)"
+  SDK = -isysroot $(SDKROOT)
+  CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+endif
 OFLAG = -O
 ifeq "mwccppc" "$(notdir $(CC))"
-  CFLAGS = -g $(OFLAG) -I$(SRCROOT)/../include
+  CFLAGS = -g $(OFLAG) -I$(SRCROOT)/../include $(SDK)
 else
-  CFLAGS = -g $(OFLAG) -Wall -I$(SRCROOT)/../include
+  CFLAGS = -g $(OFLAG) -Wall -I$(SRCROOT)/../include $(SDK)
 endif
 
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
@@ -41,7 +45,7 @@ PRODUCT = ar
 all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
-	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(OBJS) $(LIBSTUFF)
+	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/$@ $(OBJS) $(LIBSTUFF)
 
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@

@@ -65,6 +65,8 @@ char **envp)
 	    _NSGetExecutablePath(p, &bufsize);
 	}
 	prefix = realpath(p, resolved_name);
+	if(realpath == NULL)
+	    system_fatal("realpath(3) for %s failed", p);
 	p = rindex(prefix, '/');
 	if(p != NULL)
 	    p[1] = '\0';
