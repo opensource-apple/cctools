@@ -9,6 +9,7 @@
 #include "stuff/ofile.h"
 #include "stuff/lto.h"
 #include "stuff/allocate.h"
+#include <mach-o/nlist.h>
 #include <mach-o/dyld.h>
 
 static int set_lto_cputype(
@@ -35,9 +36,9 @@ int
 is_llvm_bitcode(
 struct ofile *ofile,
 char *addr,
-unsigned long size)
+size_t size)
 {
-   unsigned long bufsize;
+   size_t bufsize;
    char *p, *prefix, *lto_path, buf[MAXPATHLEN], resolved_name[PATH_MAX];
    int i;
 
@@ -154,7 +155,8 @@ char *target_triple)
 	if(p == NULL)
 	    return(0);
 	n = p - target_triple;
-	if(strncmp(target_triple, "i686", n) == 0){
+	if(strncmp(target_triple, "i686", n) == 0 ||
+	   strncmp(target_triple, "i386", n) == 0){
 	    ofile->lto_cputype = CPU_TYPE_I386;
 	    ofile->lto_cpusubtype = CPU_SUBTYPE_I386_ALL;
 	}
@@ -169,6 +171,27 @@ char *target_triple)
 	else if(strncmp(target_triple, "powerpc64", n) == 0){
 	    ofile->lto_cputype = CPU_TYPE_POWERPC64;
 	    ofile->lto_cpusubtype = CPU_SUBTYPE_POWERPC_ALL;
+	}
+	else if(strncmp(target_triple, "arm", n) == 0){
+	    ofile->lto_cputype = CPU_TYPE_ARM;
+	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V4T;
+	}
+	else if(strncmp(target_triple, "armv5", n) == 0 ||
+	        strncmp(target_triple, "armv5e", n) == 0 ||
+		strncmp(target_triple, "thumbv5", n) == 0 ||
+		strncmp(target_triple, "thumbv5e", n) == 0){
+	    ofile->lto_cputype = CPU_TYPE_ARM;
+	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V5TEJ;
+	}
+	else if(strncmp(target_triple, "armv6", n) == 0 ||
+	        strncmp(target_triple, "thumbv6", n) == 0){
+	    ofile->lto_cputype = CPU_TYPE_ARM;
+	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V6;
+	}
+	else if(strncmp(target_triple, "armv7", n) == 0 ||
+	        strncmp(target_triple, "thumbv7", n) == 0){
+	    ofile->lto_cputype = CPU_TYPE_ARM;
+	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V7;
 	}
 	else{
 	    return(0);
@@ -203,6 +226,8 @@ int commons_in_toc)
     lto_symbol_attributes attr;
 
 	attr = lto_get_sym_attr(mod, symbol_index);
+	if((attr & LTO_SYMBOL_SCOPE_MASK) == LTO_SYMBOL_SCOPE_INTERNAL)
+	   return(0);
 
 	if((attr & LTO_SYMBOL_DEFINITION_MASK) ==
 		LTO_SYMBOL_DEFINITION_REGULAR ||
@@ -214,6 +239,65 @@ int commons_in_toc)
 	   commons_in_toc)
 	    return(1);
 	return(0);
+}
+
+/*
+ * lto_get_nlist_64() is used by nm(1) to fake up an nlist structure to used
+ * for printing.  The "object" is assumed to have three sections, code: data,
+ * and rodata.
+ */
+__private_extern__
+void
+lto_get_nlist_64(
+struct nlist_64 *nl,
+void *mod,
+uint32_t symbol_index)
+{
+    lto_symbol_attributes attr;
+
+	memset(nl, '\0', sizeof(struct nlist_64));
+	attr = lto_get_sym_attr(mod, symbol_index);
+
+	switch(attr & LTO_SYMBOL_SCOPE_MASK){
+	case LTO_SYMBOL_SCOPE_INTERNAL:
+	    break;
+	case LTO_SYMBOL_SCOPE_HIDDEN:
+	    nl->n_type |= N_EXT;
+	    nl->n_type |= N_PEXT;
+	    break;
+	case LTO_SYMBOL_SCOPE_DEFAULT:
+	    nl->n_type |= N_EXT;
+	}
+
+	if((attr & LTO_SYMBOL_DEFINITION_MASK) == LTO_SYMBOL_DEFINITION_WEAK)
+	    nl->n_desc |= N_WEAK_DEF;
+
+	if((attr & LTO_SYMBOL_DEFINITION_MASK) ==
+	   LTO_SYMBOL_DEFINITION_TENTATIVE){
+	    nl->n_type |= N_EXT;
+	    nl->n_type |= N_UNDF;
+	    nl->n_value = 1; /* no interface to get the size */
+	}
+	if((attr & LTO_SYMBOL_DEFINITION_MASK) ==
+	   LTO_SYMBOL_DEFINITION_UNDEFINED){
+	    nl->n_type |= N_EXT;
+	    nl->n_type |= N_UNDF;
+	}
+	else
+	    switch(attr & LTO_SYMBOL_PERMISSIONS_MASK){
+	    case LTO_SYMBOL_PERMISSIONS_CODE:
+		nl->n_sect = 1;
+		nl->n_type |= N_SECT;
+		break;
+	    case LTO_SYMBOL_PERMISSIONS_DATA:
+		nl->n_sect = 2;
+		nl->n_type |= N_SECT;
+		break;
+	    case LTO_SYMBOL_PERMISSIONS_RODATA:
+		nl->n_sect = 3;
+		nl->n_type |= N_SECT;
+		break;
+	}
 }
 
 /*

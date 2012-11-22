@@ -360,9 +360,6 @@ struct object_file link_edit_common_object = {
  */
 static char **multiple_defs = NULL;
 static unsigned long nmultiple_defs = 0;
-#ifndef RLD
-static enum bool told_ProjectBuilder = FALSE;
-#endif
 
 /*
  * This is the count of indirect symbols in the merged symbol table.  It is used
@@ -2281,14 +2278,9 @@ char *indr_symbol_name)
 		    if(allow_multiply_defined_symbols == TRUE)
 			warning("multiple definitions of symbol %s",
 			      merged_symbol->nlist.n_un.n_name);
-		    else{
-			if(told_ProjectBuilder == FALSE){
-			    tell_ProjectBuilder("Multiply defined symbols");
-			    told_ProjectBuilder = TRUE;
-			}
+		    else
 			error("multiple definitions of symbol %s",
 			      merged_symbol->nlist.n_un.n_name);
-		    }
 		    multiple_defs = reallocate(multiple_defs, (nmultiple_defs +
 					       1) * sizeof(char *));
 		    multiple_defs[nmultiple_defs++] =
@@ -2569,11 +2561,6 @@ struct dynamic_library *dynamic_library)
 				}
 				else if(multiply_defined_flag ==
 				   MULTIPLY_DEFINED_ERROR){
-				    if(told_ProjectBuilder == FALSE){
-					tell_ProjectBuilder("Multiply defined "
-							    "symbols");
-					told_ProjectBuilder = TRUE;
-				    }
 				    error("multiple definitions of symbol %s",
 					  merged_symbol->nlist.n_un.n_name);
 				}
@@ -2582,10 +2569,6 @@ struct dynamic_library *dynamic_library)
 				    continue;
 			}
 			else{
-			    if(told_ProjectBuilder == FALSE){
-				tell_ProjectBuilder("Multiply defined symbols");
-				told_ProjectBuilder = TRUE;
-			    }
 			    error("multiple definitions of symbol %s",
 				  merged_symbol->nlist.n_un.n_name);
 			}
@@ -3121,11 +3104,6 @@ struct dynamic_library *dynamic_library)
 					  merged_symbol->nlist.n_un.n_name);
 				else if(multiply_defined_flag ==
 				   MULTIPLY_DEFINED_ERROR){
-				    if(told_ProjectBuilder == FALSE){
-					tell_ProjectBuilder("Multiply defined "
-							    "symbols");
-					told_ProjectBuilder = TRUE;
-				    }
 				    error("multiple definitions of symbol %s",
 					  merged_symbol->nlist.n_un.n_name);
 				}
@@ -3134,10 +3112,6 @@ struct dynamic_library *dynamic_library)
 				    continue;
 			}
 			else{
-			    if(told_ProjectBuilder == FALSE){
-				tell_ProjectBuilder("Multiply defined symbols");
-				told_ProjectBuilder = TRUE;
-			    }
 			    error("multiple definitions of symbol %s",
 				  merged_symbol->nlist.n_un.n_name);
 			}
@@ -3920,12 +3894,6 @@ char *object_strings)
 		warning("multiple definitions of symbol %s",
 		      merged_symbol->nlist.n_un.n_name);
 	    else{
-#ifndef RLD
-		if(told_ProjectBuilder == FALSE){
-		    tell_ProjectBuilder("Multiply defined symbols");
-		    told_ProjectBuilder = TRUE;
-		}
-#endif
 		error("multiple definitions of symbol %s",
 		      merged_symbol->nlist.n_un.n_name);
 	    }
@@ -7369,9 +7337,6 @@ void)
 				       prebound_undef == TRUE)
 					errors = errors_save;
 				}
-#ifndef RLD
-	    			tell_ProjectBuilder("Undefined symbols");
-#endif
 				printed_undef = TRUE;
 			    }
 			    else if(errors == 0 &&

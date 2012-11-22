@@ -67,10 +67,10 @@ swap_class_ro_t(
 struct class_ro_t *cro,
 enum byte_sex target_byte_sex)
 {
-	cro->flags = SWAP_LONG(cro->flags);
-	cro->instanceStart = SWAP_LONG(cro->instanceStart);
-	cro->instanceSize = SWAP_LONG(cro->instanceSize);
-	cro->reserved = SWAP_LONG(cro->reserved);
+	cro->flags = SWAP_INT(cro->flags);
+	cro->instanceStart = SWAP_INT(cro->instanceStart);
+	cro->instanceSize = SWAP_INT(cro->instanceSize);
+	cro->reserved = SWAP_INT(cro->reserved);
 	cro->ivarLayout = SWAP_LONG_LONG(cro->ivarLayout);
 	cro->name = SWAP_LONG_LONG(cro->name);
 	cro->baseMethods = SWAP_LONG_LONG(cro->baseMethods);
@@ -92,8 +92,8 @@ swap_method_list_t(
 struct method_list_t *ml,
 enum byte_sex target_byte_sex)
 {
-	ml->entsize = SWAP_LONG(ml->entsize);
-	ml->count = SWAP_LONG(ml->count);
+	ml->entsize = SWAP_INT(ml->entsize);
+	ml->count = SWAP_INT(ml->count);
 }
 
 struct method_t {
@@ -125,8 +125,8 @@ swap_ivar_list_t(
 struct ivar_list_t *il,
 enum byte_sex target_byte_sex)
 {
-	il->entsize = SWAP_LONG(il->entsize);
-	il->count = SWAP_LONG(il->count);
+	il->entsize = SWAP_INT(il->entsize);
+	il->count = SWAP_INT(il->count);
 }
 
 struct ivar_t {
@@ -146,8 +146,8 @@ enum byte_sex target_byte_sex)
 	i->offset = SWAP_LONG_LONG(i->offset);
 	i->name = SWAP_LONG_LONG(i->name);
 	i->type = SWAP_LONG_LONG(i->type);
-	i->alignment = SWAP_LONG(i->alignment);
-	i->size = SWAP_LONG(i->size);
+	i->alignment = SWAP_INT(i->alignment);
+	i->size = SWAP_INT(i->size);
 }
 
 struct protocol_list_t {
@@ -161,7 +161,7 @@ swap_protocol_list_t(
 struct protocol_list_t *pl,
 enum byte_sex target_byte_sex)
 {
-	pl->count = SWAP_LONG(pl->count);
+	pl->count = SWAP_LONG_LONG(pl->count);
 }
 
 struct protocol_t {
@@ -205,8 +205,8 @@ swap_objc_property_list(
 struct objc_property_list *pl,
 enum byte_sex target_byte_sex)
 {
-	pl->entsize = SWAP_LONG(pl->entsize);
-	pl->count = SWAP_LONG(pl->count);
+	pl->entsize = SWAP_INT(pl->entsize);
+	pl->count = SWAP_INT(pl->count);
 }
 
 struct objc_property {
@@ -278,8 +278,8 @@ swap_objc_image_info(
 struct objc_image_info *o,
 enum byte_sex target_byte_sex)
 {
-	o->version = SWAP_LONG(o->version);
-	o->flags = SWAP_LONG(o->flags);
+	o->version = SWAP_INT(o->version);
+	o->flags = SWAP_INT(o->flags);
 }
 
 struct objc_string_object_64 {
@@ -297,28 +297,29 @@ enum byte_sex target_byte_sex)
 {
 	string_object->isa = SWAP_LONG_LONG(string_object->isa);
 	string_object->characters = SWAP_LONG_LONG(string_object->characters);
-	string_object->_length = SWAP_LONG(string_object->_length);
-	string_object->_pad = SWAP_LONG(string_object->_pad);
+	string_object->_length = SWAP_INT(string_object->_length);
+	string_object->_pad = SWAP_INT(string_object->_pad);
 }
 
 struct info {
     enum bool swapped;
     enum byte_sex host_byte_sex;
     struct section_info_64 *sections;
-    unsigned long nsections;
+    uint32_t nsections;
     cpu_type_t cputype;
     struct nlist_64 *symbols64;
-    unsigned long nsymbols;
+    uint32_t nsymbols;
     char *strings;
-    unsigned long strings_size;
+    uint32_t strings_size;
     struct symbol *sorted_symbols;
-    unsigned long nsorted_symbols;
+    uint32_t nsorted_symbols;
     uint64_t database;
     struct relocation_info *ext_relocs;
-    unsigned long next_relocs;
+    uint32_t next_relocs;
     struct relocation_info *loc_relocs;
-    unsigned long nloc_relocs;
+    uint32_t nloc_relocs;
     enum bool verbose;
+    enum bool Vflag;
 };
 
 struct section_info_64 {
@@ -328,7 +329,7 @@ struct section_info_64 {
     uint64_t addr;
     uint64_t size;
     struct relocation_info *relocs;
-    unsigned long nrelocs;
+    uint32_t nrelocs;
 };
 
 static void walk_pointer_list(
@@ -343,7 +344,8 @@ static void print_class_t(
 
 static void print_class_ro_t(
     uint64_t p,
-    struct info *info);
+    struct info *info,
+    enum bool *is_meta_class);
 
 static void print_layout_map(
     uint64_t p,
@@ -384,14 +386,14 @@ static void get_sections_64(
     uint32_t sizeofcmds,
     enum byte_sex object_byte_sex,
     char *object_addr,
-    unsigned long object_size,
+    uint32_t object_size,
     struct section_info_64 **sections,
-    unsigned long *nsections,
+    uint32_t *nsections,
     uint64_t *database);
 
 static struct section_info_64 *get_section_64(
     struct section_info_64 *sections,
-    unsigned long nsections,
+    uint32_t nsections,
     char *segname,
     char *sectname);
 
@@ -401,24 +403,25 @@ static void get_cstring_section_64(
     uint32_t sizeofcmds,
     enum byte_sex object_byte_sex,
     char *object_addr,
-    unsigned long object_size,
+    uint32_t object_size,
     struct section_info_64 *cstring_section_ptr);
 
 static void *get_pointer_64(
     uint64_t p,
-    unsigned long *offset,
-    unsigned long *left,
+    uint32_t *offset,
+    uint32_t *left,
     struct section_info_64 **s,
     struct section_info_64 *sections,
-    unsigned long nsections);
+    uint32_t nsections);
 
 static const char *get_symbol_64(
-    unsigned long sect_offset,
+    uint32_t sect_offset,
     uint64_t database_offset,
-    unsigned long long value,
+    uint64_t value,
     struct relocation_info *relocs,
-    unsigned long nrelocs,
-    struct info *info);
+    uint32_t nrelocs,
+    struct info *info,
+    uint64_t *n_value);
 
 /*
  * Print the objc2 meta data in 64-bit Mach-O files.
@@ -431,18 +434,19 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 struct nlist_64 *symbols64,
-unsigned long nsymbols,
+uint32_t nsymbols,
 char *strings,
-unsigned long strings_size,
+uint32_t strings_size,
 struct symbol *sorted_symbols,
-unsigned long nsorted_symbols,
+uint32_t nsorted_symbols,
 struct relocation_info *ext_relocs,
-unsigned long next_relocs,
+uint32_t next_relocs,
 struct relocation_info *loc_relocs,
-unsigned long nloc_relocs,
-enum bool verbose)
+uint32_t nloc_relocs,
+enum bool verbose,
+enum bool Vflag)
 {
     struct section_info_64 *s;
     struct info info;
@@ -461,6 +465,7 @@ enum bool verbose)
 	info.loc_relocs = loc_relocs;
 	info.nloc_relocs = nloc_relocs;
 	info.verbose = verbose;
+	info.Vflag = Vflag;
 	get_sections_64(load_commands, ncmds, sizeofcmds, object_byte_sex,
 			object_addr, object_size, &info.sections,
 			&info.nsections, &info.database);
@@ -523,14 +528,14 @@ struct section_info_64 *s,
 struct info *info,
 void (*func)(uint64_t, struct info *))
 {
-    unsigned long i, size, left;
-    uint64_t p;
+    uint32_t i, size, left;
+    uint64_t p, n_value;
     const char *name;
 
 	if(s == NULL)
 	    return;
 
-	printf("Contents of (%s,%s) section\n", s->segname, s->sectname);
+	printf("Contents of (%.16s,%.16s) section\n", s->segname, s->sectname);
 	for(i = 0; i < s->size; i += sizeof(uint64_t)){
 
 	    memset(&p, '\0', sizeof(uint64_t));
@@ -545,15 +550,22 @@ void (*func)(uint64_t, struct info *))
 	    printf("%016llx ", s->addr + i);
 
 	    if(info->swapped)
-		SWAP_LONG_LONG(p);
-	    printf("0x%llx", p);
+		p = SWAP_LONG_LONG(p);
 
 	    name = get_symbol_64(i, s->addr - info->database, p,
-			         s->relocs, s->nrelocs, info);
-	    if(name != NULL)
-		printf(" %s\n", name);
+			         s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		printf("0x%llx", n_value);
+		if(p != 0)
+		    printf(" + 0x%llx", p);
+	    }
 	    else
-		printf("\n");
+		printf("0x%llx", p);
+	    if(name != NULL)
+		printf(" %s", name);
+	    printf("\n");
+
+	    p += n_value;
 	    if(func != NULL)
 		func(p, info);
 	}
@@ -567,10 +579,13 @@ struct info *info)
 {
     struct class_t c;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_64 *s;
     const char *name;
+    enum bool is_meta_class;
+    uint64_t n_value, isa_n_value;
 
+	is_meta_class = FALSE;
 	r = get_pointer_64(p, &offset, &left, &s,
 			   info->sections, info->nsections);
 	if(r == NULL)
@@ -587,7 +602,7 @@ struct info *info)
 	printf("           isa 0x%llx", c.isa);
 	name = get_symbol_64(offset + offsetof(struct class_t, isa),
 			     s->addr - info->database, c.isa, s->relocs,
-			     s->nrelocs, info);
+			     s->nrelocs, info, &isa_n_value);
 	if(name != NULL)
 	    printf(" %s\n", name);
 	else
@@ -595,7 +610,7 @@ struct info *info)
 	printf("    superclass 0x%llx", c.superclass);
 	name = get_symbol_64(offset + offsetof(struct class_t, superclass),
 			     s->addr - info->database, c.superclass, s->relocs,
-			     s->nrelocs, info);
+			     s->nrelocs, info, NULL);
 	if(name != NULL)
 	    printf(" %s\n", name);
 	else
@@ -603,7 +618,7 @@ struct info *info)
 	printf("         cache 0x%llx", c.cache);
 	name = get_symbol_64(offset + offsetof(struct class_t, cache),
 			     s->addr - info->database, c.cache, s->relocs,
-			     s->nrelocs, info);
+			     s->nrelocs, info, NULL);
 	if(name != NULL)
 	    printf(" %s\n", name);
 	else
@@ -611,26 +626,50 @@ struct info *info)
 	printf("        vtable 0x%llx", c.vtable);
 	name = get_symbol_64(offset + offsetof(struct class_t, vtable),
 			     s->addr - info->database, c.vtable, s->relocs,
-			     s->nrelocs, info);
+			     s->nrelocs, info, NULL);
 	if(name != NULL)
 	    printf(" %s\n", name);
 	else
 	    printf("\n");
-	printf("          data 0x%llx (struct class_ro_t *)\n", c.data);
-	print_class_ro_t(c.data, info);
+
+	name = get_symbol_64(offset + offsetof(struct class_t, data),
+			     s->addr - info->database, c.data, s->relocs,
+			     s->nrelocs, info, &n_value);
+	printf("          data ");
+	if(n_value != 0){
+	    if(info->Vflag && name != NULL)
+		printf("%s", name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.data != 0)
+		printf(" + 0x%llx", c.data);
+	}
+	else{
+	    printf("0x%llx", c.data);
+	}
+	printf(" (struct class_ro_t *)");
+	printf("\n");
+	print_class_ro_t(c.data + n_value, info, &is_meta_class);
+
+	if(is_meta_class == FALSE){
+	    printf("Meta Class\n");
+	    print_class_t(c.isa + isa_n_value, info);
+	}
 }
 
 static
 void
 print_class_ro_t(
 uint64_t p,
-struct info *info)
+struct info *info,
+enum bool *is_meta_class)
 {
     struct class_ro_t cro;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
+    uint64_t n_value;
 
 	r = get_pointer_64(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -658,28 +697,123 @@ struct info *info)
 	printf("                 reserved 0x%x\n", cro.reserved);
 	printf("               ivarLayout 0x%llx\n", cro.ivarLayout);
 	print_layout_map(cro.ivarLayout, info);
-	printf("                     name 0x%llx", cro.name);
-	name = get_pointer_64(cro.name, NULL, &left, NULL, info->sections,
-			      info->nsections);
-	if(name != NULL)
-	    printf(" %.*s\n", (int)left, name);
+
+	printf("                     name ");
+	sym_name = get_symbol_64(offset + offsetof(struct class_ro_t, name),
+			         s->addr - info->database, cro.name, s->relocs,
+			         s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.name != 0)
+		printf(" + 0x%llx", cro.name);
+	}
 	else
-	    printf("\n");
-	printf("              baseMethods 0x%llx (struct method_list_t *)\n",
-	       cro.baseMethods);
-	if(cro.baseMethods != 0)
-	    print_method_list_t(cro.baseMethods, info, "");
-	printf("            baseProtocols 0x%llx\n", cro.baseProtocols);
-	if(cro.baseProtocols != 0)
-	    print_protocol_list_t(cro.baseProtocols, info);
-	printf("                    ivars 0x%llx\n", cro.ivars);
-	if(cro.ivars != 0)
-	    print_ivar_list_t(cro.ivars, info);
-	printf("           weakIvarLayout 0x%llx\n", cro.weakIvarLayout);
-	print_layout_map(cro.weakIvarLayout, info);
-	printf("           baseProperties 0x%llx\n", cro.baseProperties);
-	if(cro.baseProperties != 0)
-	    print_objc_property_list(cro.baseProperties, info);
+	    printf("0x%llx", cro.name);
+	name = get_pointer_64(cro.name + n_value, NULL, &left, NULL,
+			      info->sections, info->nsections);
+	if(name != NULL)
+	    printf(" %.*s", (int)left, name);
+	printf("\n");
+
+	printf("              baseMethods ");
+	sym_name = get_symbol_64(offset +
+				    offsetof(struct class_ro_t, baseMethods),
+			         s->addr - info->database, cro.baseMethods,
+				 s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.baseMethods != 0)
+		printf(" + 0x%llx", cro.baseMethods);
+	}
+	else
+	    printf("0x%llx", cro.baseMethods);
+	printf(" (struct method_list_t *)\n");
+	if(cro.baseMethods + n_value != 0)
+	    print_method_list_t(cro.baseMethods + n_value, info, "");
+
+	printf("            baseProtocols ");
+	sym_name = get_symbol_64(offset +
+				    offsetof(struct class_ro_t, baseProtocols),
+			         s->addr - info->database, cro.baseProtocols,
+				 s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.baseProtocols != 0)
+		printf(" + 0x%llx", cro.baseProtocols);
+	}
+	else
+	    printf("0x%llx", cro.baseProtocols);
+	printf("\n");
+	if(cro.baseProtocols + n_value != 0)
+	    print_protocol_list_t(cro.baseProtocols + n_value, info);
+
+	printf("                    ivars ");
+	sym_name = get_symbol_64(offset +
+				    offsetof(struct class_ro_t, ivars),
+			         s->addr - info->database, cro.ivars,
+				 s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.ivars != 0)
+		printf(" + 0x%llx", cro.ivars);
+	}
+	else
+	    printf("0x%llx", cro.ivars);
+	printf("\n");
+	if(cro.ivars + n_value != 0)
+	    print_ivar_list_t(cro.ivars + n_value, info);
+
+	printf("           weakIvarLayout ");
+	sym_name = get_symbol_64(offset +
+				    offsetof(struct class_ro_t, weakIvarLayout),
+			         s->addr - info->database, cro.weakIvarLayout,
+				 s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.weakIvarLayout != 0)
+		printf(" + 0x%llx", cro.weakIvarLayout);
+	}
+	else
+	    printf("0x%llx", cro.weakIvarLayout);
+	printf("\n");
+	print_layout_map(cro.weakIvarLayout + n_value, info);
+
+	printf("           baseProperties ");
+	sym_name = get_symbol_64(offset +
+				    offsetof(struct class_ro_t, baseProperties),
+			         s->addr - info->database, cro.baseProperties,
+				 s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(cro.baseProperties != 0)
+		printf(" + 0x%llx", cro.baseProperties);
+	}
+	else
+	    printf("0x%llx", cro.baseProperties);
+	printf("\n");
+	if(cro.baseProperties + n_value != 0)
+	    print_objc_property_list(cro.baseProperties + n_value, info);
+
+	if(is_meta_class)
+	    *is_meta_class = (cro.flags & RO_META) ? TRUE : FALSE;
 }
 
 static
@@ -688,7 +822,7 @@ print_layout_map(
 uint64_t p,
 struct info *info)
 {
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_64 *s;
     char *layout_map;
 
@@ -717,9 +851,10 @@ char *indent)
     struct method_list_t ml;
     struct method_t m;
     void *r;
-    unsigned long offset, left, i;
+    uint32_t offset, left, i;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
+    uint64_t n_value;
 
 	r = get_pointer_64(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -756,28 +891,62 @@ char *indent)
 	    if(info->swapped)
 		swap_method_t(&m, info->host_byte_sex);
 
-	    printf("%s\t\t      name 0x%llx", indent, m.name);
-	    name = get_pointer_64(m.name, NULL, &left, NULL, info->sections,
-				  info->nsections);
-	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+	    printf("%s\t\t      name ", indent);
+	    sym_name = get_symbol_64(offset + offsetof(struct method_t, name),
+				     s->addr - info->database, m.name,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(m.name != 0)
+		    printf(" + 0x%llx", m.name);
+	    }
 	    else
-		printf("\n");
-	    printf("%s\t\t     types 0x%llx", indent, m.types);
-	    name = get_pointer_64(m.types, NULL, &left, NULL, info->sections,
-				  info->nsections);
+		printf("0x%llx", m.name);
+	    name = get_pointer_64(m.name + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
 	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
+	    printf("%s\t\t     types ", indent);
+	    sym_name = get_symbol_64(offset + offsetof(struct method_t, types),
+				     s->addr - info->database, m.types,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(m.name != 0)
+		    printf(" + 0x%llx", m.types);
+	    }
 	    else
-		printf("\n");
-	    printf("%s\t\t       imp 0x%llx", indent, m.imp);
+		printf("0x%llx", m.types);
+	    name = get_pointer_64(m.types + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
+	    printf("%s\t\t       imp ", indent);
 	    name = get_symbol_64(offset + offsetof(struct method_t, imp),
 				 s->addr - info->database, m.imp, s->relocs,
-				 s->nrelocs, info);
+				 s->nrelocs, info, &n_value);
+	    if(info->Vflag == FALSE || name == NULL){
+		if(n_value != 0){
+		    printf("0x%llx ", n_value);
+		    if(m.imp != 0)
+			printf("+ 0x%llx ", m.imp);
+		}
+		else
+		    printf("0x%llx ", m.imp);
+	    }
 	    if(name != NULL)
-		printf(" %s\n", name);
-	    else
-		printf("\n");
+		printf("%s", name);
+	    printf("\n");
 
 	    p += sizeof(struct method_t);
 	    offset += sizeof(struct method_t);
@@ -793,9 +962,11 @@ struct info *info)
     struct ivar_list_t il;
     struct ivar_t i;
     void *r;
-    unsigned long offset, left, j;
+    uint32_t offset, left, j;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
+    uint64_t *ivar_offset_p, ivar_offset, n_value;
+
 
 	r = get_pointer_64(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -830,21 +1001,71 @@ struct info *info)
 	    if(info->swapped)
 		swap_ivar_t(&i, info->host_byte_sex);
 
-	    printf("\t\t\t   offset %llu\n", i.offset);
-	    printf("\t\t\t     name 0x%llx", i.name);
-	    name = get_pointer_64(i.name, NULL, &left, NULL, info->sections,
-				  info->nsections);
-	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+	    printf("\t\t\t   offset ");
+	    sym_name = get_symbol_64(offset + offsetof(struct ivar_t, offset),
+				     s->addr - info->database, i.offset,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(i.offset != 0)
+		    printf(" + 0x%llx", i.offset);
+	    }
+	    else
+		printf("0x%llx", i.offset);
+	    ivar_offset_p = get_pointer_64(i.offset + n_value, NULL, &left,
+					   NULL,info->sections,info->nsections);
+	    if(ivar_offset_p != NULL && left >= sizeof(*ivar_offset_p)){
+		memcpy(&ivar_offset, ivar_offset_p, sizeof(ivar_offset));
+		if(info->swapped) 
+		    ivar_offset = SWAP_LONG_LONG(ivar_offset);
+		printf(" %llu\n", ivar_offset);
+            }
 	    else
 		printf("\n");
-	    printf("\t\t\t     type 0x%llx", i.type);
-	    name = get_pointer_64(i.type, NULL, &left, NULL, info->sections,
-				  info->nsections);
-	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+
+	    printf("\t\t\t     name ");
+	    sym_name = get_symbol_64(offset + offsetof(struct ivar_t, name),
+				     s->addr - info->database, i.name,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(i.name != 0)
+		    printf(" + 0x%llx", i.name);
+	    }
 	    else
-		printf("\n");
+		printf("0x%llx", i.name);
+	    name = get_pointer_64(i.name + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
+	    printf("\t\t\t     type ");
+	    sym_name = get_symbol_64(offset + offsetof(struct ivar_t, type),
+				     s->addr - info->database, i.type,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    name = get_pointer_64(i.type + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(i.type != 0)
+		    printf(" + 0x%llx", i.type);
+	    }
+	    else
+		printf("0x%llx", i.type);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
 	    printf("\t\t\talignment %u\n", i.alignment);
 	    printf("\t\t\t     size %u\n", i.size);
 
@@ -860,12 +1081,12 @@ uint64_t p,
 struct info *info)
 {
     struct protocol_list_t pl;
-    uint64_t q;
+    uint64_t q, n_value;
     struct protocol_t pc;
     void *r;
-    unsigned long offset, left, i;
+    uint32_t offset, left, i;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
 
 	r = get_pointer_64(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -900,9 +1121,23 @@ struct info *info)
 		memcpy(&q, r, sizeof(uint64_t));
 	    if(info->swapped)
 		q = SWAP_LONG_LONG(q);
-	    printf("\t\t      list[%lu] 0x%llx (struct protocol_t *)\n", i, q);
 
-	    r = get_pointer_64(q, &offset, &left, &s, info->sections,
+	    printf("\t\t      list[%u] ", i);
+	    sym_name = get_symbol_64(offset, s->addr - info->database, q,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(q != 0)
+		    printf(" + 0x%llx", q);
+	    }
+	    else
+		printf("0x%llx", q);
+	    printf(" (struct protocol_t *)\n");
+
+	    r = get_pointer_64(q + n_value, &offset, &left, &s, info->sections,
 			       info->nsections);
 	    if(r == NULL)
 		return;
@@ -917,22 +1152,69 @@ struct info *info)
 		swap_protocol_t(&pc, info->host_byte_sex);
 
 	    printf("\t\t\t      isa 0x%llx\n", pc.isa);
-	    printf("\t\t\t     name 0x%llx", pc.name);
-	    name = get_pointer_64(pc.name, NULL, &left, NULL, info->sections,
-				  info->nsections);
-	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+
+	    printf("\t\t\t     name ");
+	    sym_name = get_symbol_64(offset + offsetof(struct protocol_t, name),
+				     s->addr - info->database, pc.name,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(pc.name != 0)
+		    printf(" + 0x%llx", pc.name);
+	    }
 	    else
-		printf("\n");
+		printf("0x%llx", pc.name);
+	    name = get_pointer_64(pc.name + n_value , NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
 	    printf("\t\t\tprotocols 0x%llx\n", pc.protocols);
-	    printf("\t\t  instanceMethods 0x%llx (struct method_list_t *)\n",
-		   pc.instanceMethods);
-	    if(pc.instanceMethods != 0)
-		print_method_list_t(pc.instanceMethods, info, "\t");
-	    printf("\t\t     classMethods 0x%llx (struct method_list_t *)\n",
-		   pc.classMethods);
-	    if(pc.classMethods != 0)
-		print_method_list_t(pc.classMethods, info, "\t");
+
+	    printf("\t\t  instanceMethods ");
+	    sym_name = get_symbol_64(offset + offsetof(struct protocol_t,
+						       instanceMethods),
+				     s->addr - info->database,
+				     pc.instanceMethods, s->relocs, s->nrelocs,
+				     info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(pc.instanceMethods != 0)
+		    printf(" + 0x%llx", pc.instanceMethods);
+	    }
+	    else
+		printf("0x%llx", pc.instanceMethods);
+	    printf(" (struct method_list_t *)\n");
+	    if(pc.instanceMethods + n_value != 0)
+		print_method_list_t(pc.instanceMethods + n_value, info, "\t");
+
+	    printf("\t\t     classMethods ");
+	    sym_name = get_symbol_64(offset + offsetof(struct protocol_t,
+						       classMethods),
+				     s->addr - info->database,
+				     pc.classMethods, s->relocs, s->nrelocs,
+				     info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(pc.classMethods != 0)
+		    printf(" + 0x%llx", pc.classMethods);
+	    }
+	    else
+		printf("0x%llx", pc.classMethods);
+	    printf(" (struct method_list_t *)\n");
+
+	    if(pc.classMethods + n_value != 0)
+		print_method_list_t(pc.classMethods + n_value, info, "\t");
 	    printf("\t  optionalInstanceMethods 0x%llx\n",
 		   pc.optionalInstanceMethods);
 	    printf("\t     optionalClassMethods 0x%llx\n",
@@ -954,9 +1236,10 @@ struct info *info)
     struct objc_property_list opl;
     struct objc_property op;
     void *r;
-    unsigned long offset, left, j;
+    uint32_t offset, left, j;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
+    uint64_t n_value;
 
 	r = get_pointer_64(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -993,20 +1276,47 @@ struct info *info)
 	    if(info->swapped)
 		swap_objc_property(&op, info->host_byte_sex);
 
-	    printf("\t\t\t     name 0x%llx", op.name);
-	    name = get_pointer_64(op.name, NULL, &left, NULL, info->sections,
-				  info->nsections);
-	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+	    printf("\t\t\t     name ");
+	    sym_name = get_symbol_64(offset + offsetof(struct objc_property,
+						       name),
+				     s->addr - info->database, op.name,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(op.name != 0)
+		    printf(" + 0x%llx", op.name);
+	    }
 	    else
-		printf("\n");
-	    printf("\t\t\tattributes x%llx", op.attributes);
-	    name = get_pointer_64(op.attributes, NULL, &left, NULL,
+		printf("0x%llx", op.name);
+	    name = get_pointer_64(op.name + n_value, NULL, &left, NULL,
 				  info->sections, info->nsections);
 	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
+	    printf("\t\t\tattributes ");
+	    sym_name = get_symbol_64(offset + offsetof(struct objc_property,
+						       attributes),
+				     s->addr - info->database, op.attributes,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(op.attributes != 0)
+		    printf(" + 0x%llx", op.attributes);
+	    }
 	    else
-		printf("\n");
+		printf("0x%llx", op.attributes);
+	    name = get_pointer_64(op.attributes + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
 
 	    p += sizeof(struct objc_property);
 	    offset += sizeof(struct objc_property);
@@ -1021,9 +1331,10 @@ struct info *info)
 {
     struct category_t c;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_64 *s;
-    const char *name;
+    const char *name, *sym_name;
+    uint64_t n_value;
 
 	r = get_pointer_64(p, &offset, &left, &s,
 			   info->sections, info->nsections);
@@ -1038,29 +1349,120 @@ struct info *info)
 	    memcpy(&c, r, sizeof(struct category_t));
 	if(info->swapped)
 	    swap_category_t(&c, info->host_byte_sex);
-	printf("              name 0x%llx", c.name);
-	name = get_symbol_64(offset + offsetof(struct category_t, name),
-			     s->addr - info->database, c.name, s->relocs,
-			     s->nrelocs, info);
-	if(name != NULL)
-	    printf(" %s\n", name);
+
+	printf("              name ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t, name),
+			         s->addr - info->database, c.name, s->relocs,
+			         s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.name != 0)
+		printf(" + 0x%llx", c.name);
+	}
 	else
-	    printf("\n");
-	printf("               cls 0x%llx\n", c.cls);
-	if(c.cls != 0)
-	    print_class_t(c.cls, info);
-	printf("   instanceMethods 0x%llx\n", c.instanceMethods);
-	if(c.instanceMethods != 0)
-	    print_method_list_t(c.instanceMethods, info, "");
-	printf("      classMethods 0x%llx\n", c.classMethods);
-	if(c.classMethods != 0)
-	    print_method_list_t(c.classMethods, info, "");
-	printf("         protocols 0x%llx\n", c.protocols);
-	if(c.protocols != 0)
-	    print_protocol_list_t(c.protocols, info);
-	printf("instanceProperties 0x%llx\n", c.instanceProperties);
-	if(c.instanceProperties)
-	    print_objc_property_list(c.instanceProperties, info);
+	    printf("0x%llx", c.name);
+	name = get_pointer_64(c.name + n_value, NULL, &left, NULL,
+			      info->sections, info->nsections);
+	if(name != NULL)
+	    printf(" %.*s", (int)left, name);
+	printf("\n");
+
+	printf("               cls ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t, cls),
+			         s->addr - info->database, c.cls, s->relocs,
+			         s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.cls != 0)
+		printf(" + 0x%llx", c.cls);
+	}
+	else
+	    printf("0x%llx", c.cls);
+	printf("\n");
+	if(c.cls + n_value != 0)
+	    print_class_t(c.cls + n_value, info);
+
+	printf("   instanceMethods ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t,
+						   instanceMethods),
+			     s->addr - info->database, c.instanceMethods,
+			     s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.instanceMethods != 0)
+		printf(" + 0x%llx", c.instanceMethods);
+	}
+	else
+	    printf("0x%llx", c.instanceMethods);
+	printf("\n");
+	if(c.instanceMethods + n_value != 0)
+	    print_method_list_t(c.instanceMethods + n_value, info, "");
+
+	printf("      classMethods ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t,
+						   classMethods),
+			     s->addr - info->database, c.classMethods,
+			     s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.classMethods != 0)
+		printf(" + 0x%llx", c.classMethods);
+	}
+	else
+	    printf("0x%llx", c.classMethods);
+	printf("\n");
+	if(c.classMethods + n_value != 0)
+	    print_method_list_t(c.classMethods + n_value, info, "");
+
+	printf("         protocols ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t,
+						   protocols),
+			     s->addr - info->database, c.protocols,
+			     s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.protocols != 0)
+		printf(" + 0x%llx", c.protocols);
+	}
+	else
+	    printf("0x%llx", c.protocols);
+	printf("\n");
+	if(c.protocols + n_value != 0)
+	    print_protocol_list_t(c.protocols + n_value, info);
+
+	printf("instanceProperties ");
+	sym_name = get_symbol_64(offset + offsetof(struct category_t,
+						   instanceProperties),
+			     s->addr - info->database, c.instanceProperties,
+			     s->relocs, s->nrelocs, info, &n_value);
+	if(n_value != 0){
+	    if(info->Vflag && sym_name != NULL)
+		printf("%s", sym_name);
+	    else
+		printf("0x%llx", n_value);
+	    if(c.instanceProperties != 0)
+		printf(" + 0x%llx", c.instanceProperties);
+	}
+	else
+	    printf("0x%llx", c.instanceProperties);
+	printf("\n");
+	if(c.instanceProperties + n_value)
+	    print_objc_property_list(c.instanceProperties + n_value, info);
 }
 
 static
@@ -1069,16 +1471,16 @@ print_message_refs(
 struct section_info_64 *s,
 struct info *info)
 {
-    unsigned long i, left, offset;
-    uint64_t p;
+    uint32_t i, left, offset;
+    uint64_t p, n_value;
     struct message_ref mr;
-    const char *name;
+    const char *name, *sym_name;
     void *r;
 
 	if(s == NULL)
 	    return;
 
-	printf("Contents of (%s,%s) section\n", s->segname, s->sectname);
+	printf("Contents of (%.16s,%.16s) section\n", s->segname, s->sectname);
 	offset = 0;
 	for(i = 0; i < s->size; i += sizeof(struct message_ref)){
 	    p = s->addr + i;
@@ -1095,21 +1497,42 @@ struct info *info)
 		memcpy(&mr, r, sizeof(struct message_ref));
 	    if(info->swapped)
 		swap_message_ref(&mr, info->host_byte_sex);
-	    printf("  imp 0x%llx", mr.imp);
+
+	    printf("  imp ");
 	    name = get_symbol_64(offset + offsetof(struct message_ref, imp),
 				 s->addr - info->database, mr.imp, s->relocs,
-				 s->nrelocs, info);
-	    if(name != NULL)
-		printf(" %s\n", name);
+				 s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		printf("0x%llx", n_value);
+		if(mr.imp != 0)
+		    printf(" + 0x%llx", mr.imp);
+	    }
 	    else
-		printf("\n");
-	    printf("  sel 0x%llx", mr.sel);
-	    name = get_pointer_64(mr.sel, NULL, &left, NULL, info->sections,
-				  info->nsections);
+		printf("0x%llx", mr.imp);
 	    if(name != NULL)
-		printf(" %.*s\n", (int)left, name);
+		printf(" %s", name);
+	    printf("\n");
+
+	    printf("  sel ");
+	    sym_name = get_symbol_64(offset + offsetof(struct message_ref, sel),
+				     s->addr - info->database, mr.sel,
+				     s->relocs, s->nrelocs, info, &n_value);
+	    if(n_value != 0){
+		if(info->Vflag && sym_name != NULL)
+		    printf("%s", sym_name);
+		else
+		    printf("0x%llx", n_value);
+		if(mr.sel != 0)
+		    printf(" + 0x%llx", mr.sel);
+	    }
 	    else
-		printf("\n");
+		printf("0x%llx", mr.sel);
+	    name = get_pointer_64(mr.sel + n_value, NULL, &left, NULL,
+				  info->sections, info->nsections);
+	    if(name != NULL)
+		printf(" %.*s", (int)left, name);
+	    printf("\n");
+
 	    offset += sizeof(struct message_ref);
 	}
 }
@@ -1120,7 +1543,7 @@ print_image_info(
 struct section_info_64 *s,
 struct info *info)
 {
-    unsigned long left, offset;
+    uint32_t left, offset;
     uint64_t p;
     struct objc_image_info o;
     void *r;
@@ -1128,7 +1551,7 @@ struct info *info)
 	if(s == NULL)
 	    return;
 
-	printf("Contents of (%s,%s) section\n", s->segname, s->sectname);
+	printf("Contents of (%.16s,%.16s) section\n", s->segname, s->sectname);
 	p = s->addr;
 	r = get_pointer_64(p, &offset, &left, &s,
 			   info->sections, info->nsections);
@@ -1160,21 +1583,21 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 cpu_type_t cputype,
 struct nlist_64 *symbols64,
-unsigned long nsymbols,
+uint32_t nsymbols,
 char *strings,
-const unsigned long strings_size,
+const uint32_t strings_size,
 struct symbol *sorted_symbols,
-unsigned long nsorted_symbols,
+uint32_t nsorted_symbols,
 enum bool verbose)
 {
     struct info info;
     struct section_info_64 *o, cstring_section;
     struct objc_string_object_64 *string_objects, *s, string_object;
     uint64_t string_objects_addr, string_objects_size;
-    unsigned long size, left;
+    uint32_t size, left;
     char *p;
     const char *name;
 
@@ -1221,7 +1644,7 @@ enum bool verbose)
 	    printf("           isa 0x%llx", string_object.isa);
 	    name = get_symbol_64((uintptr_t)s - (uintptr_t)string_objects,
 				 o->addr - info.database, string_object.isa,
-				 o->relocs, o->nrelocs, &info);
+				 o->relocs, o->nrelocs, &info, NULL);
 	    if(name != NULL)
 		printf(" %s\n", name);
 	    else
@@ -1248,15 +1671,15 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 struct section_info_64 **sections,
-unsigned long *nsections,
+uint32_t *nsections,
 uint64_t *database) 
 {
     enum byte_sex host_byte_sex;
     enum bool swapped, database_set, zerobased;
 
-    unsigned long i, j, left, size;
+    uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command_64 sg64;
@@ -1276,12 +1699,12 @@ uint64_t *database)
 	    memcpy((char *)&lcmd, (char *)lc, sizeof(struct load_command));
 	    if(swapped)
 		swap_load_command(&lcmd, host_byte_sex);
-	    if(lcmd.cmdsize % sizeof(long) != 0)
-		printf("load command %lu size not a multiple of "
-		       "sizeof(long)\n", i);
+	    if(lcmd.cmdsize % sizeof(int32_t) != 0)
+		printf("load command %u size not a multiple of "
+		       "sizeof(int32_t)\n", i);
 	    if((char *)lc + lcmd.cmdsize >
 	       (char *)load_commands + sizeofcmds)
-		printf("load command %lu extends past end of load "
+		printf("load command %u extends past end of load "
 		       "commands\n", i);
 	    left = sizeofcmds - ((char *)lc - (char *)load_commands);
 
@@ -1375,7 +1798,7 @@ uint64_t *database)
 		break;
 	    }
 	    if(lcmd.cmdsize == 0){
-		printf("load command %lu size zero (can't advance to other "
+		printf("load command %u size zero (can't advance to other "
 		       "load commands)\n", i);
 		break;
 	    }
@@ -1383,19 +1806,17 @@ uint64_t *database)
 	    if((char *)lc > (char *)load_commands + sizeofcmds)
 		break;
 	}
-	if(zerobased == TRUE)
-	    *database = 0;
 }
 
 static
 struct section_info_64 *
 get_section_64(
 struct section_info_64 *sections,
-unsigned long nsections,
+uint32_t nsections,
 char *segname,
 char *sectname)
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = 0; i < nsections; i++){
 	    if(strncmp(sections[i].segname, segname, 16) == 0 &&
@@ -1414,13 +1835,13 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 struct section_info_64 *cstring_section)
 {
     enum byte_sex host_byte_sex;
     enum bool swapped;
 
-    unsigned long i, j, left, size;
+    uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command_64 sg64;
@@ -1436,12 +1857,12 @@ struct section_info_64 *cstring_section)
 	    memcpy((char *)&lcmd, (char *)lc, sizeof(struct load_command));
 	    if(swapped)
 		swap_load_command(&lcmd, host_byte_sex);
-	    if(lcmd.cmdsize % sizeof(long) != 0)
-		printf("load command %lu size not a multiple of "
-		       "sizeof(long)\n", i);
+	    if(lcmd.cmdsize % sizeof(int32_t) != 0)
+		printf("load command %u size not a multiple of "
+		       "sizeof(int32_t)\n", i);
 	    if((char *)lc + lcmd.cmdsize >
 	       (char *)load_commands + sizeofcmds)
-		printf("load command %lu extends past end of load "
+		printf("load command %u extends past end of load "
 		       "commands\n", i);
 	    left = sizeofcmds - ((char *)lc - (char *)load_commands);
 
@@ -1497,7 +1918,7 @@ struct section_info_64 *cstring_section)
 		break;
 	    }
 	    if(lcmd.cmdsize == 0){
-		printf("load command %lu size zero (can't advance to other "
+		printf("load command %u size zero (can't advance to other "
 		       "load commands)\n", i);
 		break;
 	    }
@@ -1511,15 +1932,15 @@ static
 void *
 get_pointer_64(
 uint64_t p,
-unsigned long *offset,
-unsigned long *left,
+uint32_t *offset,
+uint32_t *left,
 struct section_info_64 **s,
 struct section_info_64 *sections,
-unsigned long nsections)
+uint32_t nsections)
 {
     void *r;
     uint64_t addr;
-    unsigned long i;
+    uint32_t i;
 
 	addr = p;
 	for(i = 0; i < nsections; i++){
@@ -1551,22 +1972,23 @@ unsigned long nsections)
 static
 const char *
 get_symbol_64(
-unsigned long sect_offset,
+uint32_t sect_offset,
 uint64_t database_offset,
-unsigned long long value,
+uint64_t value,
 struct relocation_info *relocs,
-unsigned long nrelocs,
-struct info *info)
+uint32_t nrelocs,
+struct info *info,
+uint64_t *n_value)
 {
-    unsigned long i;
+    uint32_t i;
     unsigned int r_symbolnum;
-    unsigned long n_strx;
+    uint32_t n_strx;
 
 	if(info->verbose == FALSE)
 	    return(NULL);
 
 	for(i = 0; i < nrelocs; i++){
-	    if((unsigned long)relocs[i].r_address == sect_offset){
+	    if((uint32_t)relocs[i].r_address == sect_offset){
 		r_symbolnum = relocs[i].r_symbolnum;
 		if(relocs[i].r_extern){
 		    if(r_symbolnum >= info->nsymbols)
@@ -1574,6 +1996,8 @@ struct info *info)
 		    n_strx = info->symbols64[r_symbolnum].n_un.n_strx;
 		    if(n_strx <= 0 || n_strx >= info->strings_size)
 			break;
+		    if(n_value != NULL)
+			*n_value = info->symbols64[r_symbolnum].n_value;
 		    return(info->strings + n_strx);
 		}
 		break;
@@ -1582,7 +2006,7 @@ struct info *info)
 		i++;
 	}
 	for(i = 0; i < info->next_relocs; i++){
-	    if((unsigned long)info->ext_relocs[i].r_address ==
+	    if((uint32_t)info->ext_relocs[i].r_address ==
 		database_offset + sect_offset){
 		r_symbolnum = info->ext_relocs[i].r_symbolnum;
 		if(info->ext_relocs[i].r_extern){
@@ -1591,6 +2015,8 @@ struct info *info)
 		    n_strx = info->symbols64[r_symbolnum].n_un.n_strx;
 		    if(n_strx <= 0 || n_strx >= info->strings_size)
 			break;
+		    if(n_value != NULL)
+			*n_value = info->symbols64[r_symbolnum].n_value;
 		    return(info->strings + n_strx);
 		}
 		break;
@@ -1598,6 +2024,10 @@ struct info *info)
 	    if(reloc_has_pair(info->cputype, info->ext_relocs[i].r_type) ==TRUE)
 		i++;
 	}
+	if(n_value != NULL)
+	    *n_value = 0;
+	if(value == 0)
+	    return(NULL);
 	return(guess_symbol(value, info->sorted_symbols, info->nsorted_symbols,
 			    info->verbose));
 }

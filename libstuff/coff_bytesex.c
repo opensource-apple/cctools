@@ -7,6 +7,7 @@
 #include "coff/scnhdr.h"
 #include "coff/syment.h"
 #include "coff/bytesex.h"
+#include "coff/debug_directory.h"
 
 __private_extern__
 void
@@ -22,10 +23,10 @@ __private_extern__
 void
 swap_base_relocation_entry(
 struct base_relocation_entry *b,
-unsigned long n,
+uint32_t n,
 enum byte_sex target_byte_sex)
 {
-    unsigned long i;
+    uint32_t i;
     enum byte_sex host_byte_sex;
     enum bool to_host_byte_sex;
 
@@ -90,7 +91,7 @@ enum byte_sex target_byte_sex)
 	m->e_oeminfo = SWAP_SHORT(m->e_oeminfo);
 	for(i = 0; i < 10; i++)
 	    m->e_res2[i] = SWAP_SHORT(m->e_res2[i]);
-	m->e_lfanew = SWAP_LONG(m->e_lfanew);
+	m->e_lfanew = SWAP_INT(m->e_lfanew);
 }
 
 __private_extern__
@@ -101,9 +102,9 @@ enum byte_sex target_byte_sex)
 {
 	f->f_magic = SWAP_SHORT(f->f_magic);
 	f->f_nscns = SWAP_SHORT(f->f_nscns);
-	f->f_timdat = SWAP_LONG(f->f_timdat);
-	f->f_symptr = SWAP_LONG(f->f_symptr);
-	f->f_nsyms = SWAP_LONG(f->f_nsyms);
+	f->f_timdat = SWAP_INT(f->f_timdat);
+	f->f_symptr = SWAP_INT(f->f_symptr);
+	f->f_nsyms = SWAP_INT(f->f_nsyms);
 	f->f_opthdr = SWAP_SHORT(f->f_opthdr);
 	f->f_flags = SWAP_SHORT(f->f_flags);
 }
@@ -118,15 +119,15 @@ enum byte_sex target_byte_sex)
 
 	a->magic = SWAP_SHORT(a->magic);
 	a->vstamp = SWAP_SHORT(a->vstamp);
-	a->tsize = SWAP_LONG(a->tsize);
-	a->dsize = SWAP_LONG(a->dsize);
-	a->bsize = SWAP_LONG(a->bsize);
-	a->entry = SWAP_LONG(a->entry);
-	a->text_start = SWAP_LONG(a->text_start);
-	a->data_start = SWAP_LONG(a->data_start);
-	a->ImageBase = SWAP_LONG(a->ImageBase);
-	a->SectionAlignment = SWAP_LONG(a->SectionAlignment);
-	a->FileAlignment = SWAP_LONG(a->FileAlignment);
+	a->tsize = SWAP_INT(a->tsize);
+	a->dsize = SWAP_INT(a->dsize);
+	a->bsize = SWAP_INT(a->bsize);
+	a->entry = SWAP_INT(a->entry);
+	a->text_start = SWAP_INT(a->text_start);
+	a->data_start = SWAP_INT(a->data_start);
+	a->ImageBase = SWAP_INT(a->ImageBase);
+	a->SectionAlignment = SWAP_INT(a->SectionAlignment);
+	a->FileAlignment = SWAP_INT(a->FileAlignment);
 	a->MajorOperatingSystemVersion =
 		SWAP_SHORT(a->MajorOperatingSystemVersion);
 	a->MinorOperatingSystemVersion =
@@ -135,21 +136,21 @@ enum byte_sex target_byte_sex)
 	a->MinorImageVersion = SWAP_SHORT(a->MinorImageVersion);
 	a->MajorSubsystemVersion = SWAP_SHORT(a->MajorSubsystemVersion);
 	a->MinorSubsystemVersion = SWAP_SHORT(a->MinorSubsystemVersion);
-	a->Win32VersionValue = SWAP_LONG(a->Win32VersionValue);
-	a->SizeOfImage = SWAP_LONG(a->SizeOfImage);
-	a->SizeOfHeaders = SWAP_LONG(a->SizeOfHeaders);
-	a->CheckSum = SWAP_LONG(a->CheckSum);
+	a->Win32VersionValue = SWAP_INT(a->Win32VersionValue);
+	a->SizeOfImage = SWAP_INT(a->SizeOfImage);
+	a->SizeOfHeaders = SWAP_INT(a->SizeOfHeaders);
+	a->CheckSum = SWAP_INT(a->CheckSum);
 	a->Subsystem = SWAP_SHORT(a->Subsystem);
 	a->DllCharacteristics = SWAP_SHORT(a->DllCharacteristics);
-	a->SizeOfStackReserve = SWAP_LONG(a->SizeOfStackReserve);
-	a->SizeOfStackCommit = SWAP_LONG(a->SizeOfStackCommit);
-	a->SizeOfHeapReserve = SWAP_LONG(a->SizeOfHeapReserve);
-	a->SizeOfHeapCommit = SWAP_LONG(a->SizeOfHeapCommit);
-	a->LoaderFlags = SWAP_LONG(a->LoaderFlags);
-	a->NumberOfRvaAndSizes = SWAP_LONG(a->NumberOfRvaAndSizes);
+	a->SizeOfStackReserve = SWAP_INT(a->SizeOfStackReserve);
+	a->SizeOfStackCommit = SWAP_INT(a->SizeOfStackCommit);
+	a->SizeOfHeapReserve = SWAP_INT(a->SizeOfHeapReserve);
+	a->SizeOfHeapCommit = SWAP_INT(a->SizeOfHeapCommit);
+	a->LoaderFlags = SWAP_INT(a->LoaderFlags);
+	a->NumberOfRvaAndSizes = SWAP_INT(a->NumberOfRvaAndSizes);
 	for(i = 0; i < 16; i++){
-	    a->DataDirectory[i][0] = SWAP_LONG(a->DataDirectory[i][0]);
-	    a->DataDirectory[i][1] = SWAP_LONG(a->DataDirectory[i][1]);
+	    a->DataDirectory[i][0] = SWAP_INT(a->DataDirectory[i][0]);
+	    a->DataDirectory[i][1] = SWAP_INT(a->DataDirectory[i][1]);
 	}
 }
 
@@ -163,14 +164,14 @@ enum byte_sex target_byte_sex)
 
 	a->magic = SWAP_SHORT(a->magic);
 	a->vstamp = SWAP_SHORT(a->vstamp);
-	a->tsize = SWAP_LONG(a->tsize);
-	a->dsize = SWAP_LONG(a->dsize);
-	a->bsize = SWAP_LONG(a->bsize);
-	a->entry = SWAP_LONG(a->entry);
-	a->text_start = SWAP_LONG(a->text_start);
-	a->ImageBase = SWAP_LONG_LONG(a->ImageBase);
-	a->SectionAlignment = SWAP_LONG(a->SectionAlignment);
-	a->FileAlignment = SWAP_LONG(a->FileAlignment);
+	a->tsize = SWAP_INT(a->tsize);
+	a->dsize = SWAP_INT(a->dsize);
+	a->bsize = SWAP_INT(a->bsize);
+	a->entry = SWAP_INT(a->entry);
+	a->text_start = SWAP_INT(a->text_start);
+	a->ImageBase = SWAP_INT(a->ImageBase);
+	a->SectionAlignment = SWAP_INT(a->SectionAlignment);
+	a->FileAlignment = SWAP_INT(a->FileAlignment);
 	a->MajorOperatingSystemVersion =
 		SWAP_SHORT(a->MajorOperatingSystemVersion);
 	a->MinorOperatingSystemVersion =
@@ -179,21 +180,21 @@ enum byte_sex target_byte_sex)
 	a->MinorImageVersion = SWAP_SHORT(a->MinorImageVersion);
 	a->MajorSubsystemVersion = SWAP_SHORT(a->MajorSubsystemVersion);
 	a->MinorSubsystemVersion = SWAP_SHORT(a->MinorSubsystemVersion);
-	a->Win32VersionValue = SWAP_LONG(a->Win32VersionValue);
-	a->SizeOfImage = SWAP_LONG(a->SizeOfImage);
-	a->SizeOfHeaders = SWAP_LONG(a->SizeOfHeaders);
-	a->CheckSum = SWAP_LONG(a->CheckSum);
+	a->Win32VersionValue = SWAP_INT(a->Win32VersionValue);
+	a->SizeOfImage = SWAP_INT(a->SizeOfImage);
+	a->SizeOfHeaders = SWAP_INT(a->SizeOfHeaders);
+	a->CheckSum = SWAP_INT(a->CheckSum);
 	a->Subsystem = SWAP_SHORT(a->Subsystem);
 	a->DllCharacteristics = SWAP_SHORT(a->DllCharacteristics);
-	a->SizeOfStackReserve = SWAP_LONG_LONG(a->SizeOfStackReserve);
-	a->SizeOfStackCommit = SWAP_LONG_LONG(a->SizeOfStackCommit);
-	a->SizeOfHeapReserve = SWAP_LONG_LONG(a->SizeOfHeapReserve);
-	a->SizeOfHeapCommit = SWAP_LONG(a->SizeOfHeapCommit);
-	a->LoaderFlags = SWAP_LONG(a->LoaderFlags);
-	a->NumberOfRvaAndSizes = SWAP_LONG(a->NumberOfRvaAndSizes);
+	a->SizeOfStackReserve = SWAP_INT(a->SizeOfStackReserve);
+	a->SizeOfStackCommit = SWAP_INT(a->SizeOfStackCommit);
+	a->SizeOfHeapReserve = SWAP_INT(a->SizeOfHeapReserve);
+	a->SizeOfHeapCommit = SWAP_INT(a->SizeOfHeapCommit);
+	a->LoaderFlags = SWAP_INT(a->LoaderFlags);
+	a->NumberOfRvaAndSizes = SWAP_INT(a->NumberOfRvaAndSizes);
 	for(i = 0; i < 16; i++){
-	    a->DataDirectory[i][0] = SWAP_LONG(a->DataDirectory[i][0]);
-	    a->DataDirectory[i][1] = SWAP_LONG(a->DataDirectory[i][1]);
+	    a->DataDirectory[i][0] = SWAP_INT(a->DataDirectory[i][0]);
+	    a->DataDirectory[i][1] = SWAP_INT(a->DataDirectory[i][1]);
 	}
 }
 
@@ -207,15 +208,15 @@ enum byte_sex target_byte_sex)
     uint32_t i;
 
 	for(i = 0; i < n; i++){
-	    s[i].s_vsize = SWAP_LONG(s[i].s_vsize);
-	    s[i].s_vaddr = SWAP_LONG(s[i].s_vaddr);
-	    s[i].s_size = SWAP_LONG(s[i].s_size);
-	    s[i].s_scnptr = SWAP_LONG(s[i].s_scnptr);
-	    s[i].s_relptr = SWAP_LONG(s[i].s_relptr);
-	    s[i].s_lnnoptr = SWAP_LONG(s[i].s_lnnoptr);
+	    s[i].s_vsize = SWAP_INT(s[i].s_vsize);
+	    s[i].s_vaddr = SWAP_INT(s[i].s_vaddr);
+	    s[i].s_size = SWAP_INT(s[i].s_size);
+	    s[i].s_scnptr = SWAP_INT(s[i].s_scnptr);
+	    s[i].s_relptr = SWAP_INT(s[i].s_relptr);
+	    s[i].s_lnnoptr = SWAP_INT(s[i].s_lnnoptr);
 	    s[i].s_nreloc = SWAP_SHORT(s[i].s_nreloc);
 	    s[i].s_nlnno = SWAP_SHORT(s[i].s_nlnno);
-	    s[i].s_flags = SWAP_LONG(s[i].s_flags);
+	    s[i].s_flags = SWAP_INT(s[i].s_flags);
 	}
 }
 
@@ -230,9 +231,34 @@ enum byte_sex target_byte_sex)
 
 	for(i = 0; i < n; i++){
 	    if(s[i].e.e.e_zeroes == 0)
-		s[i].e.e.e_offset = SWAP_LONG(s[i].e.e.e_offset);
-	    s[i].e_value = SWAP_LONG(s[i].e_value);
+		s[i].e.e.e_offset = SWAP_INT(s[i].e.e.e_offset);
+	    s[i].e_value = SWAP_INT(s[i].e_value);
 	    s[i].e_scnum = SWAP_SHORT(s[i].e_scnum);
 	    s[i].e_type = SWAP_SHORT(s[i].e_type);
 	}
+}
+
+__private_extern__
+void
+swap_debug_directory_entry(
+struct debug_directory_entry *d,
+enum byte_sex target_byte_sex)
+{
+	d->Characteristics = SWAP_INT(d->Characteristics);
+	d->TimeDateStamp = SWAP_INT(d->TimeDateStamp);
+	d->MajorVersion = SWAP_SHORT(d->MajorVersion);
+	d->MinorVersion = SWAP_SHORT(d->MinorVersion);
+	d->Type = SWAP_INT(d->Type);
+	d->SizeOfData = SWAP_INT(d->SizeOfData);
+	d->AddressOfRawData = SWAP_INT(d->AddressOfRawData);
+	d->PointerToRawData = SWAP_INT(d->PointerToRawData);
+}
+
+__private_extern__
+void
+swap_mtoc_debug_info(
+struct mtoc_debug_info *m,
+enum byte_sex target_byte_sex)
+{
+	m->Signature = SWAP_INT(m->Signature);
 }

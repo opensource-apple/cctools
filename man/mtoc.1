@@ -1,9 +1,9 @@
-.TH MTOC 1 "March 18, 2008" "Apple, Inc."
+.TH MTOC 1 "September 12, 2008" "Apple, Inc."
 .SH NAME
 mtoc \- convert a Mach-O file to a PECOFF file
 .SH SYNOPSIS
 .B mtoc
-[ \-subsystem type ] input output
+[ \-subsystem type ] [ \-section_alignment value ] [ \-align value ] [ \-d filename ] input output
 .SH DESCRIPTION
 .I mtoc
 converts the
@@ -31,3 +31,14 @@ The default is the Mac OS X target pagesize (1000 hex).  This value should
 match the value used for
 .B "\-segalign"
 when linking the Mach-O file.
+.TP
+.BI "\-align" " value"
+Specifies the PECOFF file and section alignment.
+.I value
+is a hexadecimal number that must be an integral power of 2.
+The default is 400 hex.  This value should match the value used for
+.B "\-segalign"
+when linking the Mach-O file.
+.TP
+.BI "\-d " filename"
+Specifies the filename to be used to create a debug directory entry with.

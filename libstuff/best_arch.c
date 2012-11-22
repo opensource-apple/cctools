@@ -44,9 +44,9 @@ cpusubtype_findbestarch(
 cpu_type_t cputype,
 cpu_subtype_t cpusubtype,
 struct fat_arch *fat_archs,
-unsigned long nfat_archs)
+uint32_t nfat_archs)
 {
-    unsigned long i;
+    uint32_t i;
     long lowest_family, lowest_model, lowest_index;
 
 	/*

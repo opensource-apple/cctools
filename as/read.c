@@ -202,10 +202,8 @@ static void pseudo_op_begin(void);
 #ifdef PPC
 static void ppcasm_pseudo_op_begin(void);
 #endif 
-static void pseudo_set(symbolS *symbolP);
-static void stab(int what);
-static char get_absolute_expression_and_terminator(long *val_pointer);
-static char *demand_copy_C_string(int *len_pointer);
+static void stab(uintptr_t what);
+static char get_absolute_expression_and_terminator(int32_t *val_pointer);
 static char *demand_copy_string(int *lenP);
 static int is_it_end_of_statement(void);
 static void equals(char *sym_name);
@@ -228,7 +226,7 @@ static void grow_bignum(void);
  * for used by the machine dependent md_assemble() to create line number stabs
  * for assembly instructions in the text section when -g is seen.
  */
-unsigned long text_nsect = 0;
+uint32_t text_nsect = 0;
 
 /*
  * These are the names of the section types used by the .section directive.
@@ -284,9 +282,9 @@ struct builtin_section {
     char *directive;
     char *segname;
     char *sectname;
-    unsigned long flags; /* type & attribute */
-    unsigned long default_align;
-    unsigned long sizeof_stub;
+    uint32_t flags; /* type & attribute */
+    uint32_t default_align;
+    uint32_t sizeof_stub;
 };
 static const struct builtin_section builtin_sections[] = {
     /*
@@ -394,49 +392,50 @@ static struct hash_control *ppcasm_po_hash = NULL;
  */
 #if !defined(I860) /* i860 has it's own align and org */
 static void s_align(int value, int bytes_p);
-static void s_align_bytes(int arg);
-static void s_align_ptwo(int arg);
-static void s_org(int value);
+static void s_align_bytes(uintptr_t arg);
+static void s_align_ptwo(uintptr_t arg);
+static void s_org(uintptr_t value);
 #endif
-static void s_private_extern(int value);
+static void s_private_extern(uintptr_t value);
 #if !(defined(I386) && defined(ARCH64))
-static void s_indirect_symbol(int value);
+static void s_indirect_symbol(uintptr_t value);
 #endif
-static void s_abort(int value);
-static void s_comm(int value);
-static void s_desc(int value);
-static void s_file(int value);
-static void s_fill(int value);
-static void s_lcomm(int value);
-static void s_lsym(int value);
-static void s_set(int value);
-static void s_reference(int value);
-static void s_lazy_reference(int value);
-static void s_weak_reference(int value);
-static void s_weak_definition(int value);
-static void s_no_dead_strip(int value);
-static void s_include(int value);
-static void s_dump(int value);
-static void s_load(int value);
-static void s_if(int value);
-static void s_elseif(int value);
-static void s_else(int value);
-static void s_endif(int value);
-static void s_macros_on(int value);
-static void s_macros_off(int value);
-static void s_section(int value);
-static void s_zerofill(int value);
-static unsigned long s_builtin_section(const struct builtin_section *s);
-static void s_subsections_via_symbols(int value);
-static void s_machine(int value);
-static void s_secure_log_unique(int value);
-static void s_secure_log_reset(int value);
+static void s_abort(uintptr_t value);
+static void s_comm(uintptr_t value);
+static void s_desc(uintptr_t value);
+static void s_fill(uintptr_t value);
+static void s_lcomm(uintptr_t value);
+static void s_lsym(uintptr_t value);
+static void s_set(uintptr_t value);
+static void s_reference(uintptr_t value);
+static void s_lazy_reference(uintptr_t value);
+static void s_weak_reference(uintptr_t value);
+static void s_weak_definition(uintptr_t value);
+static void s_no_dead_strip(uintptr_t value);
+static void s_include(uintptr_t value);
+static void s_dump(uintptr_t value);
+static void s_load(uintptr_t value);
+static void s_if(uintptr_t value);
+static void s_elseif(uintptr_t value);
+static void s_else(uintptr_t value);
+static void s_endif(uintptr_t value);
+static void s_macros_on(uintptr_t value);
+static void s_macros_off(uintptr_t value);
+static void s_section(uintptr_t value);
+static void s_zerofill(uintptr_t value);
+static uint32_t s_builtin_section(const struct builtin_section *s);
+static void s_subsections_via_symbols(uintptr_t value);
+static void s_machine(uintptr_t value);
+static void s_secure_log_unique(uintptr_t value);
+static void s_secure_log_reset(uintptr_t value);
+static void s_inlineasm(uintptr_t value);
+static void s_leb128(uintptr_t sign);
 
 #ifdef PPC
 /*
  * The routines that implement the ppcasm pseudo-ops.
  */
-static void s_ppcasm_end(int value);
+static void s_ppcasm_end(uintptr_t value);
 #endif /* PPC */
 
 /*
@@ -468,7 +467,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "comm",	s_comm,		0	},
   { "desc",	s_desc,		0	},
   { "double",	float_cons,	'd'	},
-  { "file",	s_file,		0	},
+  { "appfile",	s_app_file,	0	},
   { "fill",	s_fill,		0	},
   { "globl",	s_globl,	0	},
   { "lcomm",	s_lcomm,	0	},
@@ -484,6 +483,8 @@ static const pseudo_typeS pseudo_table[] = {
   { "short",	cons,		2	},
   { "single",	float_cons,	'f'	},
   { "space",	s_space,	0	},
+  { "sleb128",	s_leb128,	1},
+  { "uleb128",	s_leb128,	0},
   { "stabd",	stab,		'd'	},
   { "stabn",	stab,		'n'	},
   { "stabs",	stab,		's'	},
@@ -507,6 +508,8 @@ static const pseudo_typeS pseudo_table[] = {
   { "load",	s_load,		0	},
   { "subsections_via_symbols",	s_subsections_via_symbols,	0	},
   { "machine",	s_machine,	0	},
+  { "inlineasmstart",	s_inlineasm,	1	},
+  { "inlineasmend",	s_inlineasm,	0	},
   { NULL }	/* end sentinel */
 };
 
@@ -538,7 +541,7 @@ void)
       obstack_begin(&notes, 5000);
 
 #ifdef M68K /* we allow big cons only on the 68k machines */
-      bignum_low = xmalloc((long)BIGNUM_BEGIN_SIZE);
+      bignum_low = xmalloc((int32_t)BIGNUM_BEGIN_SIZE);
       bignum_limit = bignum_low + BIGNUM_BEGIN_SIZE;
 #endif
 }
@@ -575,11 +578,12 @@ void)
 {
     const char *errtxt;
     const pseudo_typeS *pop;
-    unsigned long i;
+    uint32_t i;
     pseudo_typeS *sections_pseudo_table;
 
 	po_hash = hash_new();
 	errtxt = NULL;
+
 	for(pop = pseudo_table;
 	    pop->poc_name && (!errtxt || *errtxt == '\0');
 	    pop++)
@@ -596,8 +600,8 @@ void)
 	for(i = 0; builtin_sections[i].directive != NULL; i++){
 	    sections_pseudo_table[i].poc_name = builtin_sections[i].directive;
 	    sections_pseudo_table[i].poc_handler =
-					      (void (*)(int))s_builtin_section;
-	    sections_pseudo_table[i].poc_val = (int)(builtin_sections + i);
+				      (void (*)(uintptr_t))s_builtin_section;
+	    sections_pseudo_table[i].poc_val = (uintptr_t)(builtin_sections +i);
 	}
 	sections_pseudo_table[i].poc_name = NULL;
 	for(pop = (const pseudo_typeS *)sections_pseudo_table;
@@ -623,7 +627,7 @@ void)
     const char *errtxt;
     char *uppercase;
     const pseudo_typeS *pop;
-    unsigned long len, i;
+    uint32_t len, i;
 
 	ppcasm_po_hash = hash_new();
 	errtxt = NULL;
@@ -1041,7 +1045,7 @@ char *buffer)
 		 * Look for a user defined label.
 		 */
 		else if(after_name == ':'){
-		    colon(s);
+		    colon(s, 0);
 #ifdef I860
 		    /*
 		     * Intel :: feature, which makes the label global if
@@ -1265,7 +1269,7 @@ char *buffer)
 		after_name = c;
 		after_name_pointer = input_line_pointer;
 		*after_name_pointer = '\0';
-		colon(s);
+		colon(s, 0);
 		*after_name_pointer = after_name;
 		/*
 		 * A colon after the name is optional and may have a spaces
@@ -1548,7 +1552,7 @@ char **buffer)
 static
 void
 s_abort(
-int value)
+uintptr_t value)
 {
     char *p;
 
@@ -1568,7 +1572,7 @@ int value)
 static
 void
 s_align_bytes(
-int arg)
+uintptr_t arg)
 {
 	s_align(arg, 1);
 }
@@ -1579,8 +1583,8 @@ int arg)
  */
 static
 void
-s_align_ptwo
-(int arg)
+s_align_ptwo(
+uintptr_t arg)
 {
 	s_align(arg, 0);
 }
@@ -1605,13 +1609,14 @@ int fill_size,
 int bytes_p)
 {
     int power_of_2_alignment, byte_alignment, i;
-    long temp_fill, fill_specified, max_bytes_to_fill;
+    int32_t temp_fill, fill_specified, max_bytes_to_fill;
     char fill[4];
 
 	if(fill_size != 1 && fill_size != 2 && fill_size != 4)
 	    as_bad("Internal error, s_align() called with bad fill_size %d",
 		    fill_size);
 
+	power_of_2_alignment = 0;
 	if(bytes_p == 0){
 	    power_of_2_alignment = get_absolute_expression();
 	}
@@ -1691,6 +1696,25 @@ int bytes_p)
 		fill_size = 4; /* 4 byte fill size */
 	    }
 #endif /* PPC */
+#ifdef ARM
+	    if(power_of_2_alignment >= 1){
+		extern int thumb_mode; /* from arm.c */
+		if(thumb_mode){
+	    	    if(archflag_cpusubtype == CPU_SUBTYPE_ARM_V7){
+			temp_fill = 0xbf00; /* thumb2 nop */
+			fill_size = 2; /* 2 byte fill size */
+		    }
+		    else{
+			temp_fill = 0x46c0; /* thumb1 nop */
+			fill_size = 2; /* 2 byte fill size */
+		    }
+		}
+		else if(power_of_2_alignment >= 2){
+		    temp_fill = 0xe1a00000; /* arm nop */
+		    fill_size = 4; /* 4 byte fill size */
+		}
+	    }
+#endif /* ARM */
 	    ; /* empty statement for other architectures */
 	}
 
@@ -1709,7 +1733,7 @@ int bytes_p)
 	 */
 	if(max_bytes_to_fill == 0 &&
            frchain_now->frch_section.align <
-	   (unsigned long)power_of_2_alignment)
+	   (uint32_t)power_of_2_alignment)
 	    frchain_now->frch_section.align = power_of_2_alignment;
 
 	demand_empty_rest_of_line();
@@ -1723,7 +1747,7 @@ int bytes_p)
 static
 void
 s_comm(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -1776,7 +1800,7 @@ int value)
 	    return;
 	}
 	if(symbolP->sy_value != 0){
-	    if(symbolP->sy_value != (unsigned long)temp)
+	    if(symbolP->sy_value != (uint32_t)temp)
 		as_bad("Length of .comm \"%s\" is already " TA_DFMT ". Not "
 			"changed to " TA_DFMT ".", symbolP->sy_name,
 			symbolP->sy_value, temp);
@@ -1798,7 +1822,7 @@ int value)
 static
 void
 s_desc(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -1833,14 +1857,13 @@ int value)
 }
 
 /*
- * s_file() implements the pseudo op:
+ * s_app_file() implements the pseudo op:
  *	.file name [ level_number ]
  * the level number is generated by /lib/cpp and is just ignored.
  */
-static
 void
-s_file(
-int value)
+s_app_file(
+uintptr_t value)
 {
     char *s;
     int length;
@@ -1881,11 +1904,11 @@ int value)
 static
 void
 s_fill(
-int value)
+uintptr_t value)
 {
-    long temp_repeat;
-    long temp_size;
-    long temp_fill;
+    int32_t temp_repeat;
+    int32_t temp_size;
+    int32_t temp_fill;
     char *p;
 
 	if(get_absolute_expression_and_terminator(&temp_repeat) != ','){
@@ -1921,8 +1944,9 @@ int value)
 	else if(temp_size != 0 &&
 		temp_size != 1 &&
 		temp_size != 2 &&
-		temp_size != 4){
-	    as_bad(".fill size must be 0,1,2 or 4, .fill ignored");
+		temp_size != 4 &&
+		temp_size != 8){
+	    as_bad(".fill size must be 0,1,2,4 or 8, .fill ignored");
 	    temp_size = 0;
 	}
 	else if(temp_repeat <= 0){
@@ -1965,7 +1989,7 @@ int value)
  */
 void
 s_globl(
-int value)
+uintptr_t value)
 {
     char *name;
     int c;
@@ -1998,7 +2022,7 @@ int value)
 static
 void
 s_private_extern(
-int value)
+uintptr_t value)
 {
     char *name;
     int c;
@@ -2033,11 +2057,11 @@ int value)
 static
 void
 s_indirect_symbol(
-int value)
+uintptr_t value)
 {
     char *name;
     int c;
-    unsigned long section_type;
+    uint32_t section_type;
 
 	if(!flagseen['k'])
 	    as_fatal("incompatible feature used: .indirect_symbol (must "
@@ -2078,7 +2102,7 @@ int value)
 static
 void
 s_lcomm(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2143,7 +2167,7 @@ int value)
 	     * If this alignment is larger than any previous alignment then this
 	     * becomes the section's alignment.
 	     */
-	    if(bss->frch_section.align < (unsigned long)align)
+	    if(bss->frch_section.align < (uint32_t)align)
 		bss->frch_section.align = align;
 	}
 	else
@@ -2157,7 +2181,7 @@ int value)
  */
 void
 s_line(
-int value)
+uintptr_t value)
 {
 	/*
 	 * Assume delimiter is part of expression. BSD4.2 as fails with
@@ -2181,7 +2205,7 @@ int value)
 static
 void
 s_lsym(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2242,11 +2266,11 @@ int value)
 static
 void
 s_org(
-int value)
+uintptr_t value)
 {
     segT segment;
     expressionS exp;
-    long temp_fill;
+    int32_t temp_fill;
     char *p;
 
 	/*
@@ -2292,7 +2316,7 @@ int value)
 static
 void
 s_set(
-int value)
+uintptr_t value)
 {
     char *name;
     char delim;
@@ -2353,7 +2377,7 @@ int value)
  */
 void
 s_abs(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2398,10 +2422,10 @@ int value)
  */
 void
 s_space(
-int value)
+uintptr_t value)
 {
-    long temp_repeat;
-    long temp_fill;
+    int32_t temp_repeat;
+    int32_t temp_fill;
     char *p;
 
 	/* Just like .fill, but temp_size = 1 */
@@ -2429,7 +2453,7 @@ int value)
 }
 
 static
-unsigned long
+uint32_t
 s_builtin_section(
 const struct builtin_section *s)
 {
@@ -2463,15 +2487,15 @@ const struct builtin_section *s)
 static
 void
 s_section(
-int value)
+uintptr_t value)
 {
     char *segname, *sectname, *typename;
     char c, d, e, *p, *q, *r;
     struct type_name *type_name;
-    unsigned long type, attribute;
+    uint32_t type, attribute;
     section_t s;
     frchainS *frcP;
-    unsigned long sizeof_stub;
+    uint32_t sizeof_stub;
 
     struct attribute_name *attribute_name;
     char *attributename, *sizeof_stub_name, f, g, *t, *u, *endp;
@@ -2627,7 +2651,7 @@ int value)
 static
 void
 s_zerofill(
-int value)
+uintptr_t value)
 {
     char *segname, *sectname, c, d, *p, *q, *name;
     section_t s;
@@ -2638,13 +2662,16 @@ int value)
 	segname = input_line_pointer;
 	do{
 	    c = *input_line_pointer++ ;
-	}while(c != ',' && c != '\0' && c != '\n');
+	}while(c != ' ' && c != ',' && c != '\0' && c != '\n');
+	p = input_line_pointer - 1;
+	while(c == ' '){
+            c = *input_line_pointer++ ;
+        }
 	if(c != ','){
 	    as_bad("Expected comma after segment-name");
 	    ignore_rest_of_line();
 	    return;
 	}
-	p = input_line_pointer - 1;
 
 	SKIP_WHITESPACE();
 	sectname = input_line_pointer;
@@ -2727,7 +2754,7 @@ int value)
 	     * If this alignment is larger than any previous alignment then this
 	     * becomes the section's alignment.
 	     */
-	    if(frcP->frch_section.align < (unsigned long)align)
+	    if(frcP->frch_section.align < (uint32_t)align)
 		frcP->frch_section.align = align;
 	}
 	*p = 0;
@@ -2756,7 +2783,7 @@ int value)
 static
 void
 s_reference(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2784,7 +2811,7 @@ int value)
 static
 void
 s_lazy_reference(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2818,7 +2845,7 @@ int value)
 static
 void
 s_weak_reference(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2851,7 +2878,7 @@ int value)
 static
 void
 s_weak_definition(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2867,11 +2894,6 @@ int value)
 
 	*p = 0;
 	symbolP = symbol_find_or_make(name);
-        if((symbolP->sy_type & N_TYPE) != N_UNDF &&
-	   ((symbolP->sy_type & N_TYPE) != N_SECT ||
-	   is_section_coalesced(symbolP->sy_other) == FALSE))
-	      as_fatal("symbol: %s can't be a weak_definition (currently "
-		       "only supported in section of type coalesced)", name);
 	symbolP->sy_desc |= N_WEAK_DEF;
 	*p = c;
 	demand_empty_rest_of_line();
@@ -2884,7 +2906,7 @@ int value)
 static
 void
 s_no_dead_strip(
-int value)
+uintptr_t value)
 {
     char *name;
     char c;
@@ -2912,7 +2934,7 @@ int value)
 static
 void
 s_include(
-int value)
+uintptr_t value)
 {
 	char *filename;
 	int length;
@@ -2958,7 +2980,8 @@ void)
 
 /* we simply ignore the rest of this statement */
 void
-s_ignore (int arg ATTRIBUTE_UNUSED)
+s_ignore(
+uintptr_t arg ATTRIBUTE_UNUSED)
 {
   totally_ignore_line ();
 }
@@ -3005,14 +3028,14 @@ void)
 static
 void
 stab(
-int what) /* d == .stabd, n == .stabn, and s == .stabs */
+uintptr_t what) /* d == .stabd, n == .stabn, and s == .stabs */
 {
     symbolS *symbolP;
     char *string;
     int saved_type;
     int length;
     int goof;	/* TRUE if we have aborted. */
-    long longint;
+    int32_t longint;
 
 	saved_type = 0;
 	symbolP = NULL;
@@ -3053,7 +3076,7 @@ int what) /* d == .stabd, n == .stabn, and s == .stabs */
 		break;
 
 	    default:
-		BAD_CASE( what );
+		BAD_CASE( (int)what );
 		break;
 	    }
 	    if(get_absolute_expression_and_terminator(&longint) == ','){
@@ -3115,7 +3138,6 @@ int what) /* d == .stabd, n == .stabn, and s == .stabs */
  *(old ->> May set need_pass_2 == TRUE. <<-- commented out by GNU below it
  * uses symbolP->sy_forward = exp.X_add_symbol;)
  */
-static
 void
 pseudo_set(
 symbolS *symbolP)
@@ -3157,12 +3179,21 @@ symbolS *symbolP)
 		    expression = xmalloc(sizeof(expressionS));
 		    *expression = exp;
 		    symbolP->expression = expression;
-
 		}
 		else{
 		    exp.X_add_number += exp.X_add_symbol->sy_value -
 					exp.X_subtract_symbol->sy_value;
 		}
+	    }
+	    else if(exp.X_add_symbol &&
+	            exp.X_subtract_symbol == NULL &&
+	            exp.X_add_symbol->expression != NULL){
+		    expressionS *expression;
+
+		    expression = xmalloc(sizeof(expressionS));
+		    memcpy(expression, exp.X_add_symbol->expression,
+			   sizeof(expressionS));
+		    symbolP->expression = expression;
 	    }
 	    else
 		as_bad("Complex expression. Absolute segment assumed." );
@@ -3218,7 +3249,7 @@ symbolS *symbolP)
  */
 void
 cons(	
-int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
+uintptr_t nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 {
     char c;
     signed_expr_t
@@ -3283,9 +3314,9 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 		 */
 		if(exp.X_add_number > 0 &&
 		   (((LITTLENUM_NUMBER_OF_BITS * exp.X_add_number) / 8) <=
-		   sizeof(long long))){
+		   sizeof(int64_t))){
 		    int i;
-		    long long sum;
+		    int64_t sum;
 
 		    sum = 0;
 		    for(i = 0; i < exp.X_add_number; ++i)
@@ -3297,7 +3328,7 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 		{
 		    as_bad("%s number illegal. Absolute 0 assumed.",
 			    exp.X_add_number > 0 ? "Bignum" : "Floating-Point");
-		    md_number_to_chars(p, (long)0, nbytes);
+		    md_number_to_chars(p, (int32_t)0, nbytes);
 	        }
 		break;
 
@@ -3380,11 +3411,11 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
  */
 void
 big_cons(
-int nbytes) /* 8 == .quad, 16 == .octa ... */
+uintptr_t nbytes) /* 8 == .quad, 16 == .octa ... */
 {
     char c;	/* input_line_pointer -> c. */
     int radix;
-    long length;/* Number of chars in an object. */
+    int32_t length;/* Number of chars in an object. */
     int digit;	/* Value of 1 digit. */
     int carry;	/* For multi-precision arithmetic. */
     int work;	/* For multi-precision arithmetic. */
@@ -3452,7 +3483,7 @@ int nbytes) /* 8 == .quad, 16 == .octa ... */
 		as_bad("Most significant bits truncated in integer constant.");
 	    }
 	    else{
-		long leading_zeroes;
+		int32_t leading_zeroes;
 
 		for(leading_zeroes = nbytes - length;
 		    leading_zeroes;
@@ -3487,7 +3518,7 @@ void
 grow_bignum(
 void)
 {
-    long length;
+    int32_t length;
 
 	bignum_high++;
 	if(bignum_high >= bignum_limit)
@@ -3522,7 +3553,7 @@ void)
  */
 void
 float_cons(
-int float_type) /* 'f':.ffloat ... 'F':.float ... */
+uintptr_t float_type) /* 'f':.ffloat ... 'F':.float ... */
 {
     char *p;
     char c;
@@ -3577,6 +3608,129 @@ int float_type) /* 'f':.ffloat ... 'F':.float ... */
 	demand_empty_rest_of_line();
 }
 
+static void
+emit_leb128_expr (expressionS *exp, int sign)
+{
+  segT op = exp->X_op;
+#ifdef notyet
+  unsigned int nbytes;
+#endif
+
+  if (op == O_absent)
+    {
+      as_warn (_("zero assumed for missing expression"));
+      exp->X_add_number = 0;
+      op = O_constant;
+    }
+  else if (op == O_big && exp->X_add_number <= 0)
+    {
+      as_bad (_("floating point number invalid"));
+      exp->X_add_number = 0;
+      op = O_constant;
+    }
+#ifdef notyet
+  else if (op == O_register)
+    {
+      as_warn (_("register value used as expression"));
+      op = O_constant;
+    }
+  else if (op == O_constant
+	   && sign
+	   && (exp->X_add_number < 0) != !exp->X_unsigned)
+    {
+      /* We're outputting a signed leb128 and the sign of X_add_number
+	 doesn't reflect the sign of the original value.  Convert EXP
+	 to a correctly-extended bignum instead.  */
+      convert_to_bignum (exp);
+      op = O_big;
+    }
+
+  /* Let check_eh_frame know that data is being emitted.  nbytes == -1 is
+     a signal that this is leb128 data.  It shouldn't optimize this away.  */
+  nbytes = (unsigned int) -1;
+  if (check_eh_frame (exp, &nbytes))
+    abort ();
+
+  /* Let the backend know that subsequent data may be byte aligned.  */
+#ifdef md_cons_align
+  md_cons_align (1);
+#endif
+#endif /* notyet */
+
+  if (op == O_constant)
+    {
+      /* If we've got a constant, emit the thing directly right now.  */
+
+      valueT value = exp->X_add_number;
+      int size;
+      char *p;
+
+      size = sizeof_leb128 (value, sign);
+      p = frag_more (size);
+      output_leb128 (p, value, sign);
+    }
+#ifdef notyet
+  else if (op == O_big)
+    {
+      /* O_big is a different sort of constant.  */
+
+      int size;
+      char *p;
+
+      size = output_big_leb128 (NULL, generic_bignum, exp->X_add_number, sign);
+      p = frag_more (size);
+      output_big_leb128 (p, generic_bignum, exp->X_add_number, sign);
+    }
+#endif /* notyet */
+  else
+    {
+      /* Otherwise, we have to create a variable sized fragment and
+	 resolve things later.  */
+
+#ifdef OLD
+      frag_var (rs_leb128, sizeof_uleb128 (~(valueT) 0), 0, sign,
+		make_expr_symbol (exp), 0, (char *) NULL);
+#else
+      symbolS *sym;
+      expressionS *expression;
+  
+      sym = symbol_temp_new(exp->X_add_symbol->sy_other /* GUESS */, 0, NULL);
+      expression = xmalloc(sizeof(expressionS));
+      *expression = *exp;
+      sym->expression = expression;
+      sym->sy_frag = &zero_address_frag;
+      frag_var (rs_leb128, sizeof_leb128 ( ((valueT) (~(valueT) 0) >> 1), 0), 0, sign,
+		sym, 0, (char *) NULL);
+      frchain_now->has_rs_leb128s = TRUE;
+#endif
+
+    }
+}
+
+/* Parse the .sleb128 and .uleb128 pseudos.  */
+
+static
+void
+s_leb128(
+uintptr_t sign)
+{
+  expressionS exp;
+
+#ifdef md_flush_pending_output
+  md_flush_pending_output ();
+#endif
+
+  do
+    {
+      expression (&exp);
+      emit_leb128_expr (&exp, sign);
+    }
+  while (*input_line_pointer++ == ',');
+
+  input_line_pointer--;
+  demand_empty_rest_of_line ();
+}
+
 /*
  *			stringer()
  *
@@ -3587,7 +3741,7 @@ int float_type) /* 'f':.ffloat ... 'F':.float ... */
  */
 void
 stringer(
-int append_zero) /* 0: don't append '\0', else 1 */
+uintptr_t append_zero) /* 0: don't append '\0', else 1 */
 {
     int c;
 
@@ -3639,7 +3793,7 @@ next_char_of_string(
 void)
 {
     int c;
-    long number, i;
+    int32_t number, i;
 
 	c = *input_line_pointer++;
 	/* make sure the 0xff char is not returned as -1 */
@@ -3806,7 +3960,7 @@ void)
 static
 char			/* return terminator */
 get_absolute_expression_and_terminator(
-long *val_pointer)	/* return value of expression */
+int32_t *val_pointer)	/* return value of expression */
 {
     *val_pointer = get_absolute_expression();
     return(*input_line_pointer++);
@@ -3818,7 +3972,6 @@ long *val_pointer)	/* return value of expression */
  * Like demand_copy_string, but return NULL if the string contains any '\0's.
  * Give a warning if that happens.
  */
-static
 char *
 demand_copy_C_string(
 int *len_pointer)
@@ -3960,7 +4113,7 @@ char *sym_name)
 static
 void
 s_if(
-int value)
+uintptr_t value)
 {
 	if(if_depth >= MAX_IF_DEPTH)
 	    as_fatal("You can't nest if's more than %d levels deep",
@@ -3984,7 +4137,7 @@ int value)
 static
 void
 s_elseif(
-int value)
+uintptr_t value)
 {
     int last_ignore_state;
 
@@ -4016,7 +4169,7 @@ int value)
 static
 void
 s_else(
-int value)
+uintptr_t value)
 {
     int last_ignore_state;
 
@@ -4043,7 +4196,7 @@ int value)
 static
 void
 s_endif(
-int value)
+uintptr_t value)
 {
 	if((the_cond_state.the_cond == no_cond) || (if_depth == 0))
 	    as_fatal("Encountered a .endif that doesn't follow a .if or .else");
@@ -4075,7 +4228,7 @@ void)
 static
 void
 s_macros_on(
-int value)
+uintptr_t value)
 {
 	macros_on = TRUE;
 	demand_empty_rest_of_line();
@@ -4087,7 +4240,7 @@ int value)
  */
 void
 s_macros_off(
-int value)
+uintptr_t value)
 {
 	macros_on = FALSE;
 	demand_empty_rest_of_line();
@@ -4100,7 +4253,7 @@ int value)
  */
 void
 s_macro(
-int value)
+uintptr_t value)
 {
     int c;
     pseudo_typeS *pop;
@@ -4114,7 +4267,7 @@ int value)
 	    obstack_1grow(&macros, '\0');
 	    --input_line_pointer;
 	    macro_name = obstack_finish(&macros);
-	    if(macro_name == "")
+	    if(macro_name == NULL)
 		as_bad("Missing name of macro");
 	    if(*macro_name == '.'){
 		pop = (pseudo_typeS *)hash_find(po_hash, macro_name + 1);
@@ -4133,7 +4286,7 @@ int value)
  */
 void
 s_endmacro(
-int value)
+uintptr_t value)
 {
     const char *errorString;
 
@@ -4313,7 +4466,7 @@ char *macro_contents)
 static
 void
 s_dump(
-int value)
+uintptr_t value)
 {
     char *filename;
     int length;
@@ -4381,7 +4534,7 @@ PTR value)
 static
 void
 s_load(
-int value)
+uintptr_t value)
 {
     char *char_pointer;
     char *filename;
@@ -4455,7 +4608,7 @@ int value)
 static
 void
 s_subsections_via_symbols(
-int value)
+uintptr_t value)
 {
 	demand_empty_rest_of_line();
 	subsections_via_symbols = TRUE;
@@ -4470,7 +4623,7 @@ int value)
 static
 void
 s_machine(
-int value)
+uintptr_t value)
 {
     char *arch_name, c;
     struct arch_flag arch_flag;
@@ -4531,7 +4684,7 @@ int value)
 static
 void
 s_secure_log_reset(
-int value)
+uintptr_t value)
 {
 	s_secure_log_used = FALSE;
 	demand_empty_rest_of_line();
@@ -4549,7 +4702,7 @@ int value)
 static
 void
 s_secure_log_unique(
-int value)
+uintptr_t value)
 {
     FILE *secure_log_fp;
     char *log_msg, c;
@@ -4585,6 +4738,58 @@ int value)
 	s_secure_log_used = TRUE;
 
 	*input_line_pointer = c;
+	demand_empty_rest_of_line();
+}
+
+/*
+ * When inlineasm_checks is non-zero, then these variable are set and used
+ * when reporting errors for the properties of GCC function-scope inline asms.
+ */
+int inlineasm_checks = 0;
+char *inlineasm_file_name = NULL;
+int inlineasm_line_number = 0;
+int inlineasm_column_number = 0;
+
+/*
+ * s_inlineasm() handles the pseudo ops:
+ *	.inlineasmstart [[["file_name"] [,<line_number>]] [,<column_number>]]
+ *	.inlineasmend
+ * The parameter value is 1 for start and 0 for end.  The arguments to the
+ * start directive are optional.
+ *
+ * This causes the assembler enforces properties required of GCC function-scope
+ * inline asms.
+ *
+ * The requirement that does not allow non-numeric labels to be defined in an
+ * inline asm is checked for in colon().
+ */
+static
+void
+s_inlineasm(
+uintptr_t value)
+{
+    int length;
+
+	inlineasm_checks = value;
+	inlineasm_file_name = NULL;
+	inlineasm_line_number = 0;
+	inlineasm_column_number = 0;
+
+	SKIP_WHITESPACE();
+	if(value == 1 && *input_line_pointer == '"'){
+	    if((inlineasm_file_name = demand_copy_string(&length))){
+		SKIP_WHITESPACE();
+		if(*input_line_pointer == ','){
+		    input_line_pointer++;
+		    inlineasm_line_number = get_absolute_expression();
+		    SKIP_WHITESPACE();
+		    if(*input_line_pointer == ','){
+			input_line_pointer++;
+			inlineasm_column_number = get_absolute_expression();
+		    }
+		}
+	    }
+	}
 	demand_empty_rest_of_line();
 }
 
@@ -4628,7 +4833,7 @@ s_seg (ignore)
       if (ps_t == 0)
 	as_bad ("invalid .seg argument");
 
-      printf("INDEX %s, %d\n", s, ps_t->poc_val);
+      printf("INDEX %s, %p\n", s, (void *)ps_t->poc_val);
 
       s_builtin_section ((const struct builtin_section *)ps_t->poc_val);
       demand_empty_rest_of_line();
@@ -4652,8 +4857,164 @@ s_seg (ignore)
 static
 void
 s_ppcasm_end(
-int value)
+uintptr_t value)
 {
       demand_empty_rest_of_line();
 }
 #endif /* PPC */
+
+/* Return the size of a LEB128 value.  */
+
+static inline int
+sizeof_sleb128_32 (int32_t value)
+{
+  register int size = 0;
+  register unsigned byte;
+
+  do
+    {
+      byte = (value & 0x7f);
+      /* Sadly, we cannot rely on typical arithmetic right shift behaviour.
+	 Fortunately, we can structure things so that the extra work reduces
+	 to a noop on systems that do things "properly".  */
+      value = (value >> 7) | ~(-(offsetT)1 >> 7);
+      size += 1;
+    }
+  while (!(((value == 0) && ((byte & 0x40) == 0))
+	   || ((value == -1) && ((byte & 0x40) != 0))));
+
+  return size;
+}
+
+static inline int
+sizeof_sleb128_64 (int64_t value)
+{
+  register int size = 0;
+  register unsigned byte;
+
+  do
+    {
+      byte = (value & 0x7f);
+      /* Sadly, we cannot rely on typical arithmetic right shift behaviour.
+	 Fortunately, we can structure things so that the extra work reduces
+	 to a noop on systems that do things "properly".  */
+      value = (value >> 7) | ~(-(offsetT)1 >> 7);
+      size += 1;
+    }
+  while (!(((value == 0) && ((byte & 0x40) == 0))
+	   || ((value == -1) && ((byte & 0x40) != 0))));
+
+  return size;
+}
+
+static inline int
+sizeof_uleb128_32 (uint32_t value)
+{
+  register int size = 0;
+  register unsigned byte;
+
+  do
+    {
+      byte = (value & 0x7f);
+      value >>= 7;
+      size += 1;
+    }
+  while (value != 0);
+
+  return size;
+}
+
+static inline int
+sizeof_uleb128_64 (uint64_t value)
+{
+  register int size = 0;
+  register unsigned byte;
+
+  do
+    {
+      byte = (value & 0x7f);
+      value >>= 7;
+      size += 1;
+    }
+  while (value != 0);
+
+  return size;
+}
+
+#ifdef ARCH64
+int
+sizeof_leb128 (valueT value, int sign)
+{
+  if (sign)
+    return sizeof_sleb128_64 ((offsetT) value);
+  else
+    return sizeof_uleb128_64 (value);
+}
+#else
+int
+sizeof_leb128 (valueT value, int sign)
+{
+  if (sign)
+    return sizeof_sleb128_32 ((offsetT) value);
+  else
+    return sizeof_uleb128_32 (value);
+}
+#endif
+
+/* Output a LEB128 value.  */
+
+static inline int
+output_sleb128 (char *p, offsetT value)
+{
+  register char *orig = p;
+  register int more;
+
+  do
+    {
+      unsigned byte = (value & 0x7f);
+
+      /* Sadly, we cannot rely on typical arithmetic right shift behaviour.
+	 Fortunately, we can structure things so that the extra work reduces
+	 to a noop on systems that do things "properly".  */
+      value = (value >> 7) | ~(-(offsetT)1 >> 7);
+
+      more = !((((value == 0) && ((byte & 0x40) == 0))
+		|| ((value == -1) && ((byte & 0x40) != 0))));
+      if (more)
+	byte |= 0x80;
+
+      *p++ = byte;
+    }
+  while (more);
+
+  return p - orig;
+}
+
+static inline int
+output_uleb128 (char *p, valueT value)
+{
+  char *orig = p;
+
+  do
+    {
+      unsigned byte = (value & 0x7f);
+      value >>= 7;
+      if (value != 0)
+	/* More bytes to follow.  */
+	byte |= 0x80;
+
+      *p++ = byte;
+    }
+  while (value != 0);
+
+  return p - orig;
+}
+
+int
+output_leb128 (char *p, valueT value, int sign)
+{
+  if (sign)
+    return output_sleb128 (p, (offsetT) value);
+  else
+    return output_uleb128 (p, value);
+}

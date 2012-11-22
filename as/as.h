@@ -132,8 +132,25 @@ typedef enum {
 /* FROM line 285 */
 typedef int subsegT;
 
-/* What subseg we are accessing now?  */
-extern subsegT now_subseg;
+/* Type of debugging information we should generate.  We currently support
+   stabs, ECOFF, and DWARF2.
+
+   NOTE!  This means debug information about the assembly source code itself
+   and _not_ about possible debug information from a high-level language.
+   This is especially relevant to DWARF2, since the compiler may emit line
+   number directives that the assembler resolves.  */
+
+enum debug_info_type
+{
+  DEBUG_UNSPECIFIED,
+  DEBUG_NONE,
+  DEBUG_STABS,
+  DEBUG_ECOFF,
+  DEBUG_DWARF,
+  DEBUG_DWARF2
+};
+
+extern enum debug_info_type debug_type;
 
 /*
  * main program "as.c" (command arguments etc)

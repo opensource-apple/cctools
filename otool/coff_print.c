@@ -14,14 +14,14 @@ uint32_t sizeofcmds,
 uint32_t filetype,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 enum bool verbose)
 {
     char *sect, *p;
     uint64_t sect_addr, sect_size, size;
     int64_t left;
     struct relocation_info *sect_relocs;
-    unsigned long sect_nrelocs, sect_flags, block_size;
+    uint32_t sect_nrelocs, sect_flags, block_size;
     enum byte_sex host_byte_sex;
     enum bool swapped;
     struct base_relocation_block_header h;

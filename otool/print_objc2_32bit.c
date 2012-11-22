@@ -12,7 +12,7 @@ extern char *oname;
 
 /*
  * Here we need structures that have the same memory layout and size as the
- * 32-bit Objective-C meta data structures.
+ * 32-bit Objective-C 2 meta data structures.
  *
  * The real structure definitions come from the objc4 project in the private
  * header file runtime/objc-runtime-new.h in that project.
@@ -32,11 +32,11 @@ swap_class_t(
 struct class_t *c,
 enum byte_sex target_byte_sex)
 {
-	c->isa = SWAP_LONG(c->isa);
-	c->superclass = SWAP_LONG(c->superclass);
-	c->cache = SWAP_LONG(c->cache);
-	c->vtable = SWAP_LONG(c->vtable);
-	c->data = SWAP_LONG(c->data);
+	c->isa = SWAP_INT(c->isa);
+	c->superclass = SWAP_INT(c->superclass);
+	c->cache = SWAP_INT(c->cache);
+	c->vtable = SWAP_INT(c->vtable);
+	c->data = SWAP_INT(c->data);
 }
 
 struct class_ro_t {
@@ -65,16 +65,16 @@ swap_class_ro_t(
 struct class_ro_t *cro,
 enum byte_sex target_byte_sex)
 {
-	cro->flags = SWAP_LONG(cro->flags);
-	cro->instanceStart = SWAP_LONG(cro->instanceStart);
-	cro->instanceSize = SWAP_LONG(cro->instanceSize);
-	cro->ivarLayout = SWAP_LONG(cro->ivarLayout);
-	cro->name = SWAP_LONG(cro->name);
-	cro->baseMethods = SWAP_LONG(cro->baseMethods);
-	cro->baseProtocols = SWAP_LONG(cro->baseProtocols);
-	cro->ivars = SWAP_LONG(cro->ivars);
-	cro->weakIvarLayout = SWAP_LONG(cro->weakIvarLayout);
-	cro->baseProperties = SWAP_LONG(cro->baseProperties);
+	cro->flags = SWAP_INT(cro->flags);
+	cro->instanceStart = SWAP_INT(cro->instanceStart);
+	cro->instanceSize = SWAP_INT(cro->instanceSize);
+	cro->ivarLayout = SWAP_INT(cro->ivarLayout);
+	cro->name = SWAP_INT(cro->name);
+	cro->baseMethods = SWAP_INT(cro->baseMethods);
+	cro->baseProtocols = SWAP_INT(cro->baseProtocols);
+	cro->ivars = SWAP_INT(cro->ivars);
+	cro->weakIvarLayout = SWAP_INT(cro->weakIvarLayout);
+	cro->baseProperties = SWAP_INT(cro->baseProperties);
 }
 
 struct method_list_t {
@@ -89,8 +89,8 @@ swap_method_list_t(
 struct method_list_t *ml,
 enum byte_sex target_byte_sex)
 {
-	ml->entsize = SWAP_LONG(ml->entsize);
-	ml->count = SWAP_LONG(ml->count);
+	ml->entsize = SWAP_INT(ml->entsize);
+	ml->count = SWAP_INT(ml->count);
 }
 
 struct method_t {
@@ -105,9 +105,9 @@ swap_method_t(
 struct method_t *m,
 enum byte_sex target_byte_sex)
 {
-	m->name = SWAP_LONG(m->name);
-	m->types = SWAP_LONG(m->types);
-	m->imp = SWAP_LONG(m->imp);
+	m->name = SWAP_INT(m->name);
+	m->types = SWAP_INT(m->types);
+	m->imp = SWAP_INT(m->imp);
 }
 
 struct ivar_list_t {
@@ -122,8 +122,8 @@ swap_ivar_list_t(
 struct ivar_list_t *il,
 enum byte_sex target_byte_sex)
 {
-	il->entsize = SWAP_LONG(il->entsize);
-	il->count = SWAP_LONG(il->count);
+	il->entsize = SWAP_INT(il->entsize);
+	il->count = SWAP_INT(il->count);
 }
 
 struct ivar_t {
@@ -140,11 +140,11 @@ swap_ivar_t(
 struct ivar_t *i,
 enum byte_sex target_byte_sex)
 {
-	i->offset = SWAP_LONG(i->offset);
-	i->name = SWAP_LONG(i->name);
-	i->type = SWAP_LONG(i->type);
-	i->alignment = SWAP_LONG(i->alignment);
-	i->size = SWAP_LONG(i->size);
+	i->offset = SWAP_INT(i->offset);
+	i->name = SWAP_INT(i->name);
+	i->type = SWAP_INT(i->type);
+	i->alignment = SWAP_INT(i->alignment);
+	i->size = SWAP_INT(i->size);
 }
 
 struct protocol_list_t {
@@ -158,7 +158,7 @@ swap_protocol_list_t(
 struct protocol_list_t *pl,
 enum byte_sex target_byte_sex)
 {
-	pl->count = SWAP_LONG(pl->count);
+	pl->count = SWAP_INT(pl->count);
 }
 
 struct protocol_t {
@@ -180,14 +180,14 @@ swap_protocol_t(
 struct protocol_t *p,
 enum byte_sex target_byte_sex)
 {
-	p->isa = SWAP_LONG(p->isa);
-	p->name = SWAP_LONG(p->name);
-	p->protocols = SWAP_LONG(p->protocols);
-	p->instanceMethods = SWAP_LONG(p->instanceMethods);
-	p->classMethods = SWAP_LONG(p->classMethods);
-	p->optionalInstanceMethods = SWAP_LONG(p->optionalInstanceMethods);
-	p->optionalClassMethods = SWAP_LONG(p->optionalClassMethods);
-	p->instanceProperties = SWAP_LONG(p->instanceProperties);
+	p->isa = SWAP_INT(p->isa);
+	p->name = SWAP_INT(p->name);
+	p->protocols = SWAP_INT(p->protocols);
+	p->instanceMethods = SWAP_INT(p->instanceMethods);
+	p->classMethods = SWAP_INT(p->classMethods);
+	p->optionalInstanceMethods = SWAP_INT(p->optionalInstanceMethods);
+	p->optionalClassMethods = SWAP_INT(p->optionalClassMethods);
+	p->instanceProperties = SWAP_INT(p->instanceProperties);
 }
 
 struct objc_property_list {
@@ -202,8 +202,8 @@ swap_objc_property_list(
 struct objc_property_list *pl,
 enum byte_sex target_byte_sex)
 {
-	pl->entsize = SWAP_LONG(pl->entsize);
-	pl->count = SWAP_LONG(pl->count);
+	pl->entsize = SWAP_INT(pl->entsize);
+	pl->count = SWAP_INT(pl->count);
 }
 
 struct objc_property {
@@ -217,8 +217,8 @@ swap_objc_property(
 struct objc_property *op,
 enum byte_sex target_byte_sex)
 {
-	op->name = SWAP_LONG(op->name);
-	op->attributes = SWAP_LONG(op->attributes);
+	op->name = SWAP_INT(op->name);
+	op->attributes = SWAP_INT(op->attributes);
 }
 
 struct category_t {
@@ -237,12 +237,12 @@ swap_category_t(
 struct category_t *c,
 enum byte_sex target_byte_sex)
 {
-	c->name = SWAP_LONG(c->name);
-	c->cls = SWAP_LONG(c->cls);
-	c->instanceMethods = SWAP_LONG(c->instanceMethods);
-	c->classMethods = SWAP_LONG(c->classMethods);
-	c->protocols = SWAP_LONG(c->protocols);
-	c->instanceProperties = SWAP_LONG(c->instanceProperties);
+	c->name = SWAP_INT(c->name);
+	c->cls = SWAP_INT(c->cls);
+	c->instanceMethods = SWAP_INT(c->instanceMethods);
+	c->classMethods = SWAP_INT(c->classMethods);
+	c->protocols = SWAP_INT(c->protocols);
+	c->instanceProperties = SWAP_INT(c->instanceProperties);
 }
 
 struct message_ref {
@@ -256,8 +256,8 @@ swap_message_ref(
 struct message_ref *mr,
 enum byte_sex target_byte_sex)
 {
-	mr->imp = SWAP_LONG(mr->imp);
-	mr->sel = SWAP_LONG(mr->sel);
+	mr->imp = SWAP_INT(mr->imp);
+	mr->sel = SWAP_INT(mr->sel);
 }
 
 struct objc_image_info {
@@ -275,27 +275,27 @@ swap_objc_image_info(
 struct objc_image_info *o,
 enum byte_sex target_byte_sex)
 {
-	o->version = SWAP_LONG(o->version);
-	o->flags = SWAP_LONG(o->flags);
+	o->version = SWAP_INT(o->version);
+	o->flags = SWAP_INT(o->flags);
 }
 
 struct info {
     enum bool swapped;
     enum byte_sex host_byte_sex;
     struct section_info_32 *sections;
-    unsigned long nsections;
+    uint32_t nsections;
     cpu_type_t cputype;
     struct nlist *symbols;
-    unsigned long nsymbols;
+    uint32_t nsymbols;
     char *strings;
-    unsigned long strings_size;
+    uint32_t strings_size;
     struct symbol *sorted_symbols;
-    unsigned long nsorted_symbols;
+    uint32_t nsorted_symbols;
     uint32_t database;
     struct relocation_info *ext_relocs;
-    unsigned long next_relocs;
+    uint32_t next_relocs;
     struct relocation_info *loc_relocs;
-    unsigned long nloc_relocs;
+    uint32_t nloc_relocs;
     enum bool verbose;
 };
 
@@ -306,7 +306,7 @@ struct section_info_32 {
     uint32_t addr;
     uint32_t size;
     struct relocation_info *relocs;
-    unsigned long nrelocs;
+    uint32_t nrelocs;
 };
 
 static void walk_pointer_list(
@@ -321,7 +321,8 @@ static void print_class_t(
 
 static void print_class_ro_t(
     uint32_t p,
-    struct info *info);
+    struct info *info,
+    enum bool *is_meta_class);
 
 static void print_layout_map(
     uint32_t p,
@@ -362,31 +363,31 @@ static void get_sections_32(
     uint32_t sizeofcmds,
     enum byte_sex object_byte_sex,
     char *object_addr,
-    unsigned long object_size,
+    uint32_t object_size,
     struct section_info_32 **sections,
-    unsigned long *nsections,
+    uint32_t *nsections,
     uint32_t *database);
 
 static struct section_info_32 *get_section_32(
     struct section_info_32 *sections,
-    unsigned long nsections,
+    uint32_t nsections,
     char *segname,
     char *sectname);
 
 static void *get_pointer_32(
     uint32_t p,
-    unsigned long *offset,
-    unsigned long *left,
+    uint32_t *offset,
+    uint32_t *left,
     struct section_info_32 **s,
     struct section_info_32 *sections,
-    unsigned long nsections);
+    uint32_t nsections);
 
 static const char *get_symbol_32(
-    unsigned long sect_offset,
+    uint32_t sect_offset,
     uint32_t database_offset,
-    unsigned long long value,
+    uint64_t value,
     struct relocation_info *relocs,
-    unsigned long nrelocs,
+    uint32_t nrelocs,
     struct info *info);
 
 /*
@@ -400,17 +401,17 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 struct nlist *symbols,
-unsigned long nsymbols,
+uint32_t nsymbols,
 char *strings,
-unsigned long strings_size,
+uint32_t strings_size,
 struct symbol *sorted_symbols,
-unsigned long nsorted_symbols,
+uint32_t nsorted_symbols,
 struct relocation_info *ext_relocs,
-unsigned long next_relocs,
+uint32_t next_relocs,
 struct relocation_info *loc_relocs,
-unsigned long nloc_relocs,
+uint32_t nloc_relocs,
 enum bool verbose)
 {
     struct section_info_32 *s;
@@ -492,7 +493,7 @@ struct section_info_32 *s,
 struct info *info,
 void (*func)(uint32_t, struct info *))
 {
-    unsigned long i, size, left;
+    uint32_t i, size, left;
     uint32_t p;
     const char *name;
 
@@ -511,10 +512,10 @@ void (*func)(uint32_t, struct info *))
 	    if(i + sizeof(uint32_t) > s->size)
 		printf("%s list pointer extends past end of (%.16s,%.16s) "
 		       "section\n", listname, s->segname, s->sectname);
-	    printf("%08lx ", s->addr + i);
+	    printf("%08x ", s->addr + i);
 
 	    if(info->swapped)
-		p = SWAP_LONG(p);
+		p = SWAP_INT(p);
 	    printf("0x%x", p);
 
 	    name = get_symbol_32(i, s->addr - info->database, p,
@@ -536,10 +537,12 @@ struct info *info)
 {
     struct class_t c;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_32 *s;
     const char *name;
+    enum bool is_meta_class;
 
+	is_meta_class = FALSE;
 	r = get_pointer_32(p, &offset, &left, &s,
 			   info->sections, info->nsections);
 	if(r == NULL)
@@ -586,18 +589,25 @@ struct info *info)
 	else
 	    printf("\n");
 	printf("          data 0x%x (struct class_ro_t *)\n", c.data);
-	print_class_ro_t(c.data, info);
+	print_class_ro_t(c.data, info, &is_meta_class);
+
+	if(! is_meta_class)
+	    {
+		printf("Meta Class\n");
+		print_class_t(c.isa, info);
+	    }
 }
 
 static
 void
 print_class_ro_t(
 uint32_t p,
-struct info *info)
+struct info *info,
+enum bool *is_meta_class)
 {
     struct class_ro_t cro;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_32 *s;
     const char *name;
 
@@ -648,6 +658,8 @@ struct info *info)
 	printf("           baseProperties 0x%x\n", cro.baseProperties);
 	if(cro.baseProperties != 0)
 	    print_objc_property_list(cro.baseProperties, info);
+	if (is_meta_class)
+	    *is_meta_class = (cro.flags & RO_META) ? TRUE : FALSE;
 }
 
 static
@@ -656,7 +668,7 @@ print_layout_map(
 uint32_t p,
 struct info *info)
 {
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_32 *s;
     char *layout_map;
 
@@ -685,7 +697,7 @@ char *indent)
     struct method_list_t ml;
     struct method_t m;
     void *r;
-    unsigned long offset, left, i;
+    uint32_t offset, left, i;
     struct section_info_32 *s;
     const char *name;
 
@@ -761,9 +773,10 @@ struct info *info)
     struct ivar_list_t il;
     struct ivar_t i;
     void *r;
-    unsigned long offset, left, j;
+    uint32_t offset, left, j;
     struct section_info_32 *s;
     const char *name;
+    uint32_t *ivar_offset_p, ivar_offset;
 
 	r = get_pointer_32(p, &offset, &left, &s, info->sections,
 			   info->nsections);
@@ -798,7 +811,18 @@ struct info *info)
 	    if(info->swapped)
 		swap_ivar_t(&i, info->host_byte_sex);
 
-	    printf("\t\t\t   offset %u\n", i.offset);
+	    printf("\t\t\t   offset 0x%x", i.offset);
+	    ivar_offset_p = get_pointer_32(i.offset, NULL, &left, NULL, 
+					   info->sections, info->nsections);
+	    if(ivar_offset_p != NULL && left >= sizeof(*ivar_offset_p)){
+		memcpy(&ivar_offset, ivar_offset_p, sizeof(ivar_offset));
+		if(info->swapped) 
+		    ivar_offset = SWAP_INT(ivar_offset);
+		printf(" %u\n", ivar_offset);
+            }
+	    else
+		printf("\n");
+
 	    printf("\t\t\t     name 0x%x", i.name);
 	    name = get_pointer_32(i.name, NULL, &left, NULL, info->sections,
 				  info->nsections);
@@ -831,7 +855,7 @@ struct info *info)
     uint32_t q;
     struct protocol_t pc;
     void *r;
-    unsigned long offset, left, i;
+    uint32_t offset, left, i;
     struct section_info_32 *s;
     const char *name;
 
@@ -867,8 +891,8 @@ struct info *info)
 	    else
 		memcpy(&q, r, sizeof(uint32_t));
 	    if(info->swapped)
-		q = SWAP_LONG(q);
-	    printf("\t\t      list[%lu] 0x%x (struct protocol_t *)\n", i, q);
+		q = SWAP_INT(q);
+	    printf("\t\t      list[%u] 0x%x (struct protocol_t *)\n", i, q);
 
 	    r = get_pointer_32(q, &offset, &left, &s, info->sections,
 			       info->nsections);
@@ -922,7 +946,7 @@ struct info *info)
     struct objc_property_list opl;
     struct objc_property op;
     void *r;
-    unsigned long offset, left, j;
+    uint32_t offset, left, j;
     struct section_info_32 *s;
     const char *name;
 
@@ -989,7 +1013,7 @@ struct info *info)
 {
     struct category_t c;
     void *r;
-    unsigned long offset, left;
+    uint32_t offset, left;
     struct section_info_32 *s;
     const char *name;
 
@@ -1037,7 +1061,7 @@ print_message_refs(
 struct section_info_32 *s,
 struct info *info)
 {
-    unsigned long i, left, offset;
+    uint32_t i, left, offset;
     uint32_t p;
     struct message_ref mr;
     const char *name;
@@ -1088,7 +1112,7 @@ print_image_info(
 struct section_info_32 *s,
 struct info *info)
 {
-    unsigned long left, offset;
+    uint32_t left, offset;
     uint32_t p;
     struct objc_image_info o;
     void *r;
@@ -1128,15 +1152,15 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum byte_sex object_byte_sex,
 char *object_addr,
-unsigned long object_size,
+uint32_t object_size,
 struct section_info_32 **sections,
-unsigned long *nsections,
+uint32_t *nsections,
 uint32_t *database) 
 {
     enum byte_sex host_byte_sex;
     enum bool swapped, database_set, zerobased;
 
-    unsigned long i, j, left, size;
+    uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command sg;
@@ -1156,12 +1180,12 @@ uint32_t *database)
 	    memcpy((char *)&lcmd, (char *)lc, sizeof(struct load_command));
 	    if(swapped)
 		swap_load_command(&lcmd, host_byte_sex);
-	    if(lcmd.cmdsize % sizeof(long) != 0)
-		printf("load command %lu size not a multiple of "
-		       "sizeof(long)\n", i);
+	    if(lcmd.cmdsize % sizeof(int32_t) != 0)
+		printf("load command %u size not a multiple of "
+		       "sizeof(int32_t)\n", i);
 	    if((char *)lc + lcmd.cmdsize >
 	       (char *)load_commands + sizeofcmds)
-		printf("load command %lu extends past end of load "
+		printf("load command %u extends past end of load "
 		       "commands\n", i);
 	    left = sizeofcmds - ((char *)lc - (char *)load_commands);
 
@@ -1255,7 +1279,7 @@ uint32_t *database)
 		break;
 	    }
 	    if(lcmd.cmdsize == 0){
-		printf("load command %lu size zero (can't advance to other "
+		printf("load command %u size zero (can't advance to other "
 		       "load commands)\n", i);
 		break;
 	    }
@@ -1271,11 +1295,11 @@ static
 struct section_info_32 *
 get_section_32(
 struct section_info_32 *sections,
-unsigned long nsections,
+uint32_t nsections,
 char *segname,
 char *sectname)
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = 0; i < nsections; i++){
 	    if(strncmp(sections[i].segname, segname, 16) == 0 &&
@@ -1290,15 +1314,15 @@ static
 void *
 get_pointer_32(
 uint32_t p,
-unsigned long *offset,
-unsigned long *left,
+uint32_t *offset,
+uint32_t *left,
 struct section_info_32 **s,
 struct section_info_32 *sections,
-unsigned long nsections)
+uint32_t nsections)
 {
     void *r;
     uint32_t addr;
-    unsigned long i;
+    uint32_t i;
 
 	addr = p;
 	for(i = 0; i < nsections; i++){
@@ -1330,22 +1354,22 @@ unsigned long nsections)
 static
 const char *
 get_symbol_32(
-unsigned long sect_offset,
+uint32_t sect_offset,
 uint32_t database_offset,
-unsigned long long value,
+uint64_t value,
 struct relocation_info *relocs,
-unsigned long nrelocs,
+uint32_t nrelocs,
 struct info *info)
 {
-    unsigned long i;
+    uint32_t i;
     unsigned int r_symbolnum;
-    unsigned long n_strx;
+    uint32_t n_strx;
 
 	if(info->verbose == FALSE)
 	    return(NULL);
 
 	for(i = 0; i < nrelocs; i++){
-	    if((unsigned long)relocs[i].r_address == sect_offset){
+	    if((uint32_t)relocs[i].r_address == sect_offset){
 		r_symbolnum = relocs[i].r_symbolnum;
 		if(relocs[i].r_extern){
 		    if(r_symbolnum >= info->nsymbols)
@@ -1361,7 +1385,7 @@ struct info *info)
 		i++;
 	}
 	for(i = 0; i < info->next_relocs; i++){
-	    if((unsigned long)info->ext_relocs[i].r_address ==
+	    if((uint32_t)info->ext_relocs[i].r_address ==
 		database_offset + sect_offset){
 		r_symbolnum = info->ext_relocs[i].r_symbolnum;
 		if(info->ext_relocs[i].r_extern){

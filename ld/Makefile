@@ -3,7 +3,7 @@ RC_OS = macos
 OFLAG = -O
 ifeq "" "$(NEXT_ROOT)"
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
-       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -msoft-float -nostdinc \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/libsa \
@@ -12,17 +12,16 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 else
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
-       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -msoft-float -nostdinc \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/libsa \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/bsd \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
-       -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE \
-       -D__DARWIN_UNIX03=__arm__
+       -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 endif
 
-MIG = $(NEXT_ROOT)/usr/bin/mig
+KERN += -D__DARWIN_UNIX03=__arm__
 
 X_CFLAGS = -fno-builtin-round -fno-builtin-trunc
 
@@ -87,7 +86,7 @@ CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
 	 debugcompunit.c debugline.c arm_reloc.c
 OBJS = $(CFILES:.c=.o)
 INSTALL_FILES = $(CFILES) $(HFILES) Makefile notes \
-		make.defs make_defs.h librld.ofileList
+		librld.ofileList
 
 all:	$(OFILE_DIRS) $(SYMROOT) ld_build kld_build lib_ofiles
 
@@ -302,16 +301,16 @@ kld_build: $(OBJROOT)/dynamic_kld $(OBJROOT)/static_kld $(SYMROOT)/ld_dir
 		MAKEINCDIR="`pwd`" RC_ARCHS="$(RC_ARCHS)";		\
 	fi
 
-ld.NEW:	$(OBJS) ld_vers.o makeUser.o
+ld.NEW:	$(OBJS) ld_vers.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
-		$(OBJS) ld_vers.o makeUser.o $(LIBSTUFF) \
+		$(OBJS) ld_vers.o $(LIBSTUFF) \
 		-o $(SYMROOT)/ld.private.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/ld.NEW \
 		$(SYMROOT)/ld.private.o
 
-ld_g.NEW: $(OBJS) ld_vers.o makeUser.o
+ld_g.NEW: $(OBJS) ld_vers.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
-		$(OBJS) ld_vers.o makeUser.o $(LIBSTUFF) \
+		$(OBJS) ld_vers.o $(LIBSTUFF) \
 		-o $(SYMROOT)/ld_g.private.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/ld_g.NEW \
 		$(SYMROOT)/ld_g.private.o
@@ -344,12 +343,6 @@ ld_vers.c:
 	echo "const char apple_version[]= " \"`vers_string $(VERS_STRING_FLAGS) -f cctools`\" ";" > \
                 $(OFILE_DIR)/$@
 
-makeUser.c ld.c: make.h
-
-make.h makeUser.c: make.defs
-	$(MIG) $(MIG_FLAGS) $(SRCROOT)/make.defs
-	rm -f makeServer.c
-
 ld_vers.o: ld_vers.c
 ifeq "mwccppc" "$(notdir $(CC))"
 	$(CC) $(COPTS) $(CFLAGS) $(OFLAG) $(RC_CFLAGS) -c \
@@ -361,23 +354,6 @@ ifeq "NO" "$(USE_DEPENDENCY_FILE)"
 else
 	$(CC) $(COPTS) $(CFLAGS) $(OFLAG) $(RC_CFLAGS) -c -MD \
 		-Dstatic=__private_extern__ \
-		-dependency-file $(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
-	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
-endif
-endif
-
-makeUser.o: makeUser.c
-ifeq "mwccppc" "$(notdir $(CC))"
-	$(CC) $(COPTS) $(CFLAGS) $(OFLAG) $(RC_CFLAGS) -c \
-		-Dmig_external="__declspec(private_extern)" \
-		-o $(OFILE_DIR)/$*.o $<
-else
-ifeq "NO" "$(USE_DEPENDENCY_FILE)"
-	$(CC) $(COPTS) $(CFLAGS) $(OFLAG) $(RC_CFLAGS) -c \
-		-Dmig_external=__private_extern__ -o $(OFILE_DIR)/$*.o $<
-else
-	$(CC) $(COPTS) $(CFLAGS) $(OFLAG) $(RC_CFLAGS) -c -MD \
-		-Dmig_external=__private_extern__ \
 		-dependency-file $(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
 endif
@@ -400,7 +376,7 @@ clean:
 shlib_clean:
 	-rm -r -f $(OBJROOT)/ld_dir $(OBJROOT)/ptmp_obj $(OBJROOT)/otmp_obj \
 		$(OBJROOT)/dtmp_obj $(OBJROOT)/sarld_dir ld_g_dir ld_p_dir
-	-cd $(OBJROOT)/shlib_obj; rm -f $(OBJS) make.h makeUser.c makeUser.o \
+	-cd $(OBJROOT)/shlib_obj; rm -f $(OBJS) \
 		Makedep ld_vers.c ld_vers.o
 
 
@@ -484,7 +460,7 @@ macos_lib_ofiles_install: $(KLD_BUILD) $(X_LIB_OFILES)
 	    fi								\
 	fi
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)
-	if [ $(KLD_BUILD) = kld_build ];				\
+	if [ "$(KLD_BUILD)" = kld_build ];				\
 	then								\
 	    if [ $(SRCROOT) = . ];					\
 	    then							\

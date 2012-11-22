@@ -3,6 +3,9 @@ TODO:
   stuff).
 - Add multi-arch support for findcalls() and make work better (use disasm).
 
+Changes for the 5.26 release (the cctools-705 release):
+- Ported to run on 64-bit hosts.  Radar bug #6022298.
+
 Changes for the 5.25 release (the cctools-677 release):
 - Changed the Makefile to not use -Wno-long-double and -no-cpp-precomp .
   Radar bug #5563553.

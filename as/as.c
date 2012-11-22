@@ -46,7 +46,11 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "xmalloc.h"
 #include "layout.h"
 #include "write_object.h"
+#include "dwarf2dbg.h"
 #include "stuff/arch.h"
+
+/* Used for --gdwarf2 to generate dwarf2 debug info for assembly source files */
+enum debug_info_type debug_type = DEBUG_NONE;
 
 /* ['x'] TRUE if "-x" seen. */
 char flagseen[128] = { 0 };
@@ -157,7 +161,9 @@ char **envp)
 		continue;
 	    }
 	    if(strcmp(arg, "--gdwarf2") == 0){
-		as_fatal("%s: I don't understand %s flag!", progname, arg);
+		debug_type = DEBUG_DWARF2;
+		*work_argv = NULL; /* NULL means 'not a file-name' */
+		continue;
 	    }
 
 	    /* Keep scanning args looking for flags. */
@@ -218,7 +224,7 @@ char **envp)
 
 		case 'v':
 		    fprintf(stderr,"Apple Inc version %s, ", apple_version);
-		    fprintf(stderr, version_string);
+		    fprintf(stderr, "%s", version_string);
 		    if(*arg && strcmp(arg,"ersion"))
 			as_fatal("Unknown -v option ignored");
 		    while(*arg)
@@ -735,9 +741,6 @@ unknown_flag:
 	/*
 	 * Call the initialization routines.
 	 */
-#ifdef OLD_PROJECTBUILDER_INTERFACE
-	check_for_ProjectBuilder();	/* messages.c */
-#endif /* OLD_PROJECTBUILDER_INTERFACE */
 	symbol_begin();			/* symbols.c */
 	sections_begin();		/* sections.c */
 	read_begin();			/* read.c */
@@ -752,6 +755,12 @@ unknown_flag:
 	perform_an_assembly_pass(argc, argv); /* Assemble it. */
 
 	if(seen_at_least_1_file() && bad_error != TRUE){
+	    /*
+	     * If we've been collecting dwarf2 .debug_line info, either for
+	     * assembly debugging or on behalf of the compiler, emit it now.
+	     */
+	    dwarf2_finish();
+
 	    layout_addresses();
 	    write_object(out_file_name);
 	}

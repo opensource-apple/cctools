@@ -162,5 +162,5 @@ extern void md_convert_frag(
  * md_pcrel_from() returns the PC-relative offset from the given fixup.
  * This is not implemented or used for most targets.
  */
-extern long md_pcrel_from(
+extern int32_t md_pcrel_from(
     const fixS *fixP);

@@ -6,7 +6,7 @@ LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 
 ifeq "" "$(NEXT_ROOT)"
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
-       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -msoft-float -nostdinc \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/Headers/libsa \
@@ -15,7 +15,7 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 else
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
-       -force_cpusubtype_ALL -msoft-float -nostdinc \
+       -msoft-float -nostdinc \
 -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
 -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers/libsa \

@@ -109,11 +109,11 @@ void)
 #define LOCAL_LABEL_CHAR	'\002'
 #define FB_LABEL_SPECIAL (10)
 
-static long fb_low_counter[FB_LABEL_SPECIAL];
-static long *fb_labels;
-static long *fb_label_instances;
-static long fb_label_count;
-static long fb_label_max;
+static int32_t fb_low_counter[FB_LABEL_SPECIAL];
+static int32_t *fb_labels;
+static int32_t *fb_label_instances;
+static int32_t fb_label_count;
+static int32_t fb_label_max;
 
 /* This must be more than FB_LABEL_SPECIAL.  */
 #define FB_LABEL_BUMP_BY (FB_LABEL_SPECIAL + 6)
@@ -127,9 +127,9 @@ fb_label_init (void)
 /* Add one to the instance number of this fb label.  */
 
 void
-fb_label_instance_inc (long label)
+fb_label_instance_inc (int32_t label)
 {
-  long *i;
+  int32_t *i;
 
   if (label < FB_LABEL_SPECIAL)
     {
@@ -154,8 +154,8 @@ fb_label_instance_inc (long label)
 
   if (fb_labels == NULL)
     {
-      fb_labels = (long *) xmalloc (FB_LABEL_BUMP_BY * sizeof (long));
-      fb_label_instances = (long *) xmalloc (FB_LABEL_BUMP_BY * sizeof (long));
+      fb_labels = (int32_t *) xmalloc (FB_LABEL_BUMP_BY * sizeof (int32_t));
+      fb_label_instances = (int32_t *) xmalloc (FB_LABEL_BUMP_BY * sizeof (int32_t));
       fb_label_max = FB_LABEL_BUMP_BY;
       fb_label_count = FB_LABEL_SPECIAL;
 
@@ -163,10 +163,10 @@ fb_label_instance_inc (long label)
   else if (fb_label_count == fb_label_max)
     {
       fb_label_max += FB_LABEL_BUMP_BY;
-      fb_labels = (long *) xrealloc ((char *) fb_labels,
-				     fb_label_max * sizeof (long));
-      fb_label_instances = (long *) xrealloc ((char *) fb_label_instances,
-					      fb_label_max * sizeof (long));
+      fb_labels = (int32_t *) xrealloc ((char *) fb_labels,
+				     fb_label_max * sizeof (int32_t));
+      fb_label_instances = (int32_t *) xrealloc ((char *) fb_label_instances,
+					      fb_label_max * sizeof (int32_t));
     }				/* if we needed to grow  */
 
   fb_labels[fb_label_count] = label;
@@ -174,10 +174,10 @@ fb_label_instance_inc (long label)
   ++fb_label_count;
 }
 
-static long
-fb_label_instance (long label)
+static int32_t
+fb_label_instance (int32_t label)
 {
-  long *i;
+  int32_t *i;
 
   if (label < FB_LABEL_SPECIAL)
     {
@@ -210,10 +210,10 @@ fb_label_instance (long label)
    symbol. The first "4:" is "L4^B1" - the m numbers begin at 1. */
 
 char *				/* Return local label name.  */
-fb_label_name (long n,	/* We just saw "n:", "nf" or "nb" : n a number.  */
-	       long augend	/* 0 for nb, 1 for n:, nf.  */)
+fb_label_name (int32_t n,	/* We just saw "n:", "nf" or "nb" : n a number.  */
+	       int32_t augend	/* 0 for nb, 1 for n:, nf.  */)
 {
-  long i;
+  int32_t i;
   /* Returned to caller, then copied.  Used for created names ("4f").  */
   static char symbol_name_build[24];
   register char *p;
@@ -222,9 +222,9 @@ fb_label_name (long n,	/* We just saw "n:", "nf" or "nb" : n a number.  */
 
   know (n >= 0);
 #ifdef TC_MMIX
-  know ((unsigned long) augend <= 2 /* See mmix_fb_label.  */);
+  know ((uint32_t) augend <= 2 /* See mmix_fb_label.  */);
 #else
-  know ((unsigned long) augend <= 1);
+  know ((uint32_t) augend <= 1);
 #endif
   p = symbol_name_build;
 #ifdef LOCAL_LABEL_PREFIX
@@ -304,7 +304,7 @@ local_colon(
 int n)	/* just saw "n:" */
 {
   fb_label_instance_inc (n);
-  colon (fb_label_name (n, 0));
+  colon (fb_label_name (n, 0), 1);
 }
 
 /*
@@ -350,6 +350,7 @@ struct frag    *frag)	/* For sy_frag. */
   symbolP -> sy_value		= value;
   symbolP -> sy_frag		= frag;
   symbolP -> sy_prev_by_index	= NULL; /* Don't know what this is yet. */
+  symbolP -> sy_has_been_resolved = 0;
   symbolP -> sy_next		= NULL;	/* End of chain. */
   symbolP -> sy_forward		= NULL; /* JF */
   symbolP -> expression		= NULL;
@@ -418,8 +419,9 @@ static volatile unsigned int temp;
 
 void
 colon(		/* just seen "x:" - rattle symbols & frags */
-char *sym_name) /* symbol name, as a cannonical string */
+char *sym_name, /* symbol name, as a cannonical string */
 		/* We copy this string: OK to alter later. */
+int local_colon)/* non-zero if called from local_colon() */
 {
   register struct symbol * symbolP; /* symbol we are working with */
 
@@ -429,6 +431,14 @@ char *sym_name) /* symbol name, as a cannonical string */
       as_fatal("with -n a section directive must be seen before assembly "
 	       "can begin");
     }
+  if (inlineasm_checks && local_colon == 0)
+   {
+     if (inlineasm_file_name)
+       as_warn_where_with_column(inlineasm_file_name, inlineasm_line_number,
+		    inlineasm_column_number, "label definition in inlineasm");
+     else
+       as_bad("label definition in inlineasm");
+   }
   if ((symbolP = symbol_table_lookup( sym_name )))
     {
       /*
@@ -454,11 +464,6 @@ char *sym_name) /* symbol name, as a cannonical string */
 	      symbolP -> sy_desc &= ~REFERENCE_TYPE;
 	      symbolP -> sy_desc &= ~N_WEAK_REF;
 	      symbol_assign_index(symbolP);
-	      if((symbolP->sy_desc & N_WEAK_DEF) == N_WEAK_DEF &&
-		 (frchain_now->frch_section.flags & S_COALESCED) != S_COALESCED)
-		  as_fatal("symbol: %s can't be a weak_definition (currently "
-			   "only supported in section of type coalesced)",
-			   sym_name);
 #ifdef NeXT_MOD	/* generate stabs for debugging assembly code */
 	      if(flagseen['g'])
 		  make_stab_for_symbol(symbolP);
@@ -632,16 +637,16 @@ isymbolS *
 indirect_symbol_new(
 char	       *name,	  /* We copy this: OK to alter your copy. */
 struct frag    *frag,	  /* For sy_frag. */
-unsigned long	offset)	  /* Offset from frag address. */
+uint32_t	offset)	  /* Offset from frag address. */
 {
     isymbolS *isymbolP;
     char *preserved_copy_of_name;
-    unsigned long name_length;
+    uint32_t name_length;
     char *p;
     struct frag *fr_next;
     symbolS *symbolP;
 #ifdef CHECK_INDIRECTS
-    unsigned long stride, fr_fix;
+    uint32_t stride, fr_fix;
 #endif
 
 	/*
@@ -695,7 +700,7 @@ unsigned long	offset)	  /* Offset from frag address. */
 	       S_SYMBOL_STUBS)
 		stride = frchain_now->frch_section.reserved2;
 	    else
-		stride = sizeof(unsigned long);
+		stride = sizeof(uint32_t);
 	    if(frag == frchain_now->frch_isym_last->isy_frag){
 		if(offset - frchain_now->frch_isym_last->isy_offset != stride)
 		    as_bad("missing or bad indirect symbol for section "
@@ -801,6 +806,47 @@ fragS *
 symbol_get_frag (symbolS *s)
 {
 	return(s->sy_frag);
+}
+
+/*
+ * symbol_temp_new(), symbol_temp_new_now() are used by dwarf2dbg.c to make
+ * symbols in dwarf sections.  symbol_temp_make() is used to make an undefined
+ * symbol that its values are later set by symbol_set_value_now() to the current
+ * address in a dwarf section.
+ *
+ * These are used in expressions, so the expression values can be put out in
+ * dwarf section contents.
+ */
+symbolS *
+symbol_temp_new(
+segT nsect,
+valueT value,
+struct frag *frag)
+{
+    return(symbol_new(FAKE_LABEL_NAME, N_SECT, nsect, 0, value, frag));
+}
+
+symbolS *
+symbol_temp_new_now(void)
+{
+    return(symbol_temp_new(now_seg, frag_now_fix(), frag_now));
+}
+
+symbolS *
+symbol_temp_make(void)
+{
+    return(symbol_new(FAKE_LABEL_NAME, N_UNDF, 0, 0, 0, & zero_address_frag));
+}
+
+/* Set the value of SYM to the current position in the current segment.  */
+void
+symbol_set_value_now(
+symbolS *sym)
+{
+    sym->sy_type = N_SECT;
+    sym->sy_other = now_seg;
+    sym->sy_value = frag_now_fix();
+    sym->sy_frag = frag_now;
 }
 
 /* end: symbols.c */

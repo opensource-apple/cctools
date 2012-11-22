@@ -55,7 +55,6 @@
 #ifndef RLD
 #include "stuff/symbol_list.h"
 #endif
-#include "make.h"
 #include <mach/mach_init.h>
 #if defined(__OPENSTEP__) || defined(__GONZO_BUNSEN_BEAKER__)
 #include <servers/netname.h>
@@ -217,9 +216,9 @@ __private_extern__ enum bool dead_strip_times = FALSE;
  * remove_symbols is the names of the symbols from -unexported_symbols_list
  */
 __private_extern__ struct symbol_list *save_symbols = NULL;
-__private_extern__ unsigned long nsave_symbols = 0;
+__private_extern__ uint32_t nsave_symbols = 0;
 __private_extern__ struct symbol_list *remove_symbols = NULL;
-__private_extern__ unsigned long nremove_symbols = 0;
+__private_extern__ uint32_t nremove_symbols = 0;
 
 /*
  * -executable_path option's argument, executable_path is used to replace
@@ -364,8 +363,8 @@ __private_extern__ char *init_name = NULL;
 
 /* The dylib information */
 __private_extern__ char *dylib_install_name = NULL;
-__private_extern__ unsigned long dylib_current_version = 0;
-__private_extern__ unsigned long dylib_compatibility_version = 0;
+__private_extern__ uint32_t dylib_current_version = 0;
+__private_extern__ uint32_t dylib_compatibility_version = 0;
 
 /* the umbrella/sub/client framework information */
 __private_extern__ enum bool sub_framework = FALSE;
@@ -426,8 +425,10 @@ __private_extern__ enum bool namespace_specified = FALSE;
 __private_extern__ enum bool twolevel_namespace = TRUE;
 __private_extern__ enum bool force_flat_namespace = FALSE;
 
+#ifndef RLD
 /* Variable to support options logging.  */
 static enum bool ld_print_options = FALSE;
+#endif
 
 /*
  * Because the MacOS X 10.0 code in libSystem for the NSObjectFileImage*() APIs
@@ -453,13 +454,6 @@ __private_extern__ void cleanup(void);
 static void cleanup(void);
 static void ld_exit(int exit_value);
 
-/*
- * This is for the ProjectBuilder (formally MakeApp) interface.
- */
-static int talking_to_ProjectBuilder = 0;
-static mach_port_t ProjectBuilder_port;
-static void check_for_ProjectBuilder(void);
-
 /* The signal hander routine for SIGINT, SIGTERM, SIGBUS & SIGSEGV */
 static void handler(int sig);
 
@@ -482,7 +476,7 @@ char *envp[])
 {
     int i;
     unsigned long j, symbols_created, objects_specified, sections_created;
-    unsigned long table_size;
+    uint32_t table_size;
     int fd;
     char *p, *symbol_name, *indr_symbol_name, *endp, *file_name;
     char *filelist, *dirname, *addr, *env_seg_addr_table_name;
@@ -543,9 +537,6 @@ char *envp[])
 	    signal(SIGBUS, handler);
 	if(signal(SIGSEGV, SIG_IGN) != SIG_IGN)
 	    signal(SIGSEGV, handler);
-
-	/* If ProjectBuilder is around set up for it */
-	check_for_ProjectBuilder();
 
 	/* This needs to be here so that we test the environment variable before
 	   the rest of options parsing.  */
@@ -2296,7 +2287,7 @@ unknown_flag:
 			    warning("-read_only_relocs %s ignored, when using "
 				    "with format produced with the "
 				    "-segs_read_only_addr option (via the "
-				    "segment address table: %s %s line %lu)",
+				    "segment address table: %s %s line %u)",
 		      		    read_only_reloc_flag ==
 					READ_ONLY_RELOC_WARNING ?
 				    "warning" : "suppress",
@@ -2310,7 +2301,7 @@ unknown_flag:
 			    warning("-seg1addr 0x%x ignored, using "
 				    "-segs_read_only_addr 0x%x and "
 				    "-segs_read_write_addr 0x%x from segment "
-				    "address table: %s %s line %lu",
+				    "address table: %s %s line %u",
 				    (unsigned int)seg1addr,
 				    (unsigned int)seg_addr_table_entry->
 					    segs_read_only_addr,
@@ -2326,7 +2317,7 @@ unknown_flag:
 				    seg_addr_table_entry->segs_read_only_addr){
 			    warning("-segs_read_only_addr 0x%x ignored, using "
 				    "-segs_read_only_addr 0x%x from segment "
-				    "address table: %s %s line %lu",
+				    "address table: %s %s line %u",
 				    (unsigned int)segs_read_only_addr,
 				    (unsigned int)seg_addr_table_entry->
 					    segs_read_only_addr,
@@ -2340,7 +2331,7 @@ unknown_flag:
 				    seg_addr_table_entry->segs_read_write_addr){
 			    warning("-segs_read_write_addr 0x%x ignored, using "
 				    "-segs_read_write_addr 0x%x from segment "
-				    "address table: %s %s line %lu",
+				    "address table: %s %s line %u",
 				    (unsigned int)segs_read_write_addr,
 				    (unsigned int)seg_addr_table_entry->
 					    segs_read_write_addr,
@@ -2361,7 +2352,7 @@ unknown_flag:
 			   segs_read_write_addr == 0){
 			    segs_read_write_addr = get_shared_region_size_from_flag(&arch_flag);
 			    warning("-segs_read_write_addr 0x0 ignored from "
-				    "segment address table: %s %s line %lu "
+				    "segment address table: %s %s line %u "
 				    "using -segs_read_write_addr 0x%x",
 				    env_seg_addr_table_name != NULL ?
 				    "LD_SEG_ADDR_TABLE" : "-seg_addr_table",
@@ -2375,7 +2366,7 @@ unknown_flag:
 			   seg1addr != seg_addr_table_entry->seg1addr){
 			    warning("-seg1addr 0x%x ignored, using "
 				    "-seg1addr 0x%x from segment address "
-				    "table: %s %s line %lu",
+				    "table: %s %s line %u",
 				    (unsigned int)seg1addr,
 				    (unsigned int)seg_addr_table_entry->
 					    seg1addr,
@@ -2387,7 +2378,7 @@ unknown_flag:
 			if(segs_read_only_addr_specified){
 			    warning("-segs_read_only_addr 0x%x ignored, using "
 				    "-seg1addr 0x%x from segment address "
-				    "table: %s %s line %lu",
+				    "table: %s %s line %u",
 				    (unsigned int)segs_read_only_addr,
 				    (unsigned int)seg_addr_table_entry->
 					    seg1addr,
@@ -2399,7 +2390,7 @@ unknown_flag:
 			if(segs_read_write_addr_specified){
 			    warning("-segs_read_write_addr 0x%x ignored, using "
 				    "-seg1addr 0x%x from segment address "
-				    "table: %s %s line %lu",
+				    "table: %s %s line %u",
 				    (unsigned int)segs_read_write_addr,
 				    (unsigned int)seg_addr_table_entry->
 					    seg1addr,
@@ -2532,14 +2523,16 @@ unknown_flag:
 		     */
 		    if(seg_addr_table_entry == NULL &&
 		       getenv("LD_SPLITSEGS_NEW_LIBRARIES") != NULL){
-		    unsigned long arch_rw_addr = get_shared_region_size_from_flag(&arch_flag);
+		    unsigned long arch_rw_addr =
+			get_shared_region_size_from_flag(&arch_flag);
 
 			if(seg1addr_specified){
 			    warning("-seg1addr 0x%x ignored, using "
 				    "-segs_read_only_addr 0x%x and "
 				    "-segs_read_write_addr 0x%x because "
 				    "LD_SPLITSEGS_NEW_LIBRARIES environment is "
-				    "set",(unsigned int)seg1addr, 0, arch_rw_addr);
+				    "set",(unsigned int)seg1addr, 0,
+				    (unsigned int)arch_rw_addr);
 			}
 			seg1addr_specified = FALSE;
 			seg1addr = 0;
@@ -2617,10 +2610,10 @@ unknown_flag:
 		warning("flag: -dylib_install_name %s ignored (-dylib "
 			"was not specified", dylib_install_name);
 	    if(dylib_current_version != 0)
-		warning("flag: -dylib_current_version %lu ignored (-dylib "
+		warning("flag: -dylib_current_version %u ignored (-dylib "
 			"was not specified", dylib_current_version);
 	    if(dylib_compatibility_version != 0)
-		warning("flag: -dylib_compatibility_version %lu ignored (-dylib"
+		warning("flag: -dylib_compatibility_version %u ignored (-dylib"
 			" was not specified", dylib_compatibility_version);
 	    if(init_name != NULL)
 		warning("flag: -init %s ignored (-dylib was not specified",
@@ -3322,58 +3315,6 @@ vm_prot_t initprot)
 }
 
 /*
- * check_for_ProjectBuilder() is called once before any error messages are
- * generated and sets up what is needed to send error messages to project
- * builder.
- */
-static
-void
-check_for_ProjectBuilder(void)
-{
-    char *portName;
-#if defined(__OPENSTEP__) || defined(__GONZO_BUNSEN_BEAKER__)
-    char *hostName;
-
-	hostName = getenv("MAKEHOST");
-	if(hostName == NULL)
-	    hostName = "";
-#endif
-	portName = getenv("MAKEPORT");
-	if(portName == NULL)
-	    return;
-#if defined(__OPENSTEP__) || defined(__GONZO_BUNSEN_BEAKER__)
-	if(netname_look_up(name_server_port, hostName, portName,
-	   (int *)&ProjectBuilder_port) != KERN_SUCCESS)
-	    return;
-#else
-	if(bootstrap_look_up(bootstrap_port, portName,
-	   (unsigned int *)&ProjectBuilder_port) != KERN_SUCCESS)
-	    return;
-#endif
-	if(ProjectBuilder_port == MACH_PORT_NULL)
-	    return;
-	talking_to_ProjectBuilder = 1;
-}
-
-/*
- * tell_ProjectBuilder() sends the message to project builder if talking to
- * project builder.
- */
-__private_extern__
-void
-tell_ProjectBuilder(
-char *message)
-{
-	make_alert(ProjectBuilder_port,
-	    2, /* eventType */
-	    NULL, 0, /* functionName, not used by ProjectBuilder */
-	    NULL, 0, /* fileName */
-	    NULL, 0, /* directory */
-	    0, /* line */
-	    message, strlen(message)+1 > 1024 ? 1024 : strlen(message)+1);
-}
-
-/*
  * ld_exit() is use for all exit()s from the link editor.
  */
 static
@@ -3381,8 +3322,6 @@ void
 ld_exit(
 int exit_value)
 {
-	if(exit_value != 0 && talking_to_ProjectBuilder)
-	    tell_ProjectBuilder("Link errors");
 	exit(exit_value);
 }
 

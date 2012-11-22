@@ -452,7 +452,8 @@ statement */
 		}
 		else{
 		    if(seg2 == SEG_ABSOLUTE){
-			resultP->X_seg = seg1;
+			if(resultP->X_seg != SEG_DIFFSECT)
+			    resultP->X_seg = seg1;
 		    }
 		    else{
 /* also know seg2 != -1 (SEG_PASS1) */
@@ -804,7 +805,7 @@ expressionS *expressionP)
 		    LITTLENUM_TYPE *leader;
 		    /* -> littlenum we are frobbing now. */
 		    LITTLENUM_TYPE *pointer;
-		    long carry;
+		    int32_t carry;
 
 		    leader = generic_bignum;
 		    generic_bignum [0] = 0;
@@ -817,7 +818,7 @@ expressionS *expressionP)
 			for(pointer = generic_bignum;
 			    pointer <= leader;
 			    pointer++){
-			    long work;
+			    int32_t work;
 
 			    work = carry + radix * *pointer;
 			    *pointer = work & LITTLENUM_MASK;
@@ -1008,7 +1009,7 @@ expressionS *expressionP)
 			 * then assigning it to the 64-bit value the expression
 			 * will be correct.
 			 */
-			(long)
+			(int32_t)
 #endif
 			symbolP->sy_value;
 		}
@@ -1353,7 +1354,7 @@ expressionS *expressionP) /* Deliver result here. */
 		     * any machine dependent frags of variable length in the
 		     * chain.
 		     */
-		    unsigned long size, fail;
+		    uint32_t size, fail;
 		    struct frag *frag;
 
 		    if(add_symbol->sy_frag != NULL &&

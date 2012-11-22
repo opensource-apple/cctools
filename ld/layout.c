@@ -1283,8 +1283,8 @@ layout_segments(void)
 	    else if (arch_flag.cputype == CPU_TYPE_ARM) {
 	      output_thread_info.flavor = ARM_THREAD_STATE;
 	      output_thread_info.count = ARM_THREAD_STATE_COUNT;
-	      output_thread_info.entry_point = &(arm_state.r15);
-	      output_thread_info.stack_pointer = &(arm_state.r13);
+	      output_thread_info.entry_point = (int *)&(arm_state.r15);
+	      output_thread_info.stack_pointer = (int *)&(arm_state.r13);
 	      output_thread_info.state = &arm_state;
 	      output_thread_info.thread_command.cmdsize += sizeof(long) *
 		ARM_THREAD_STATE_COUNT;

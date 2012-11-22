@@ -64,6 +64,7 @@ extern const struct section *getsectbynamefromheader(
 #endif /* KLD */
 #include <mach-o/rld_state.h>
 #include <mach-o/ldsyms.h>
+#define __darwin_i386_float_state i386_float_state
 #include "stuff/arch.h"
 #include "stuff/best_arch.h"
 

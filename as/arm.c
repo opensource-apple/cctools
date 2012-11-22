@@ -12,6 +12,7 @@
 #include "atof-ieee.h"
 #include "input-scrub.h"
 #include "sections.h"
+#include "dwarf2dbg.h"
 
 #include "opcode/arm.h"
 
@@ -49,7 +50,6 @@ symbolS *md_undefined_symbol (char * name ATTRIBUTE_UNUSED);
 
 /* HACKS for bfd_* and BFD_RELOC_* These would come from bfd/reloc.c */
 typedef int bfd_reloc_code_real_type;
-typedef int bfd_boolean;
 typedef int bfd_vma;
 #define BFD_RELOC_UNUSED	0
 enum {
@@ -113,7 +113,6 @@ enum {
   BFD_RELOC_ARM_T32_ADD_IMM,
   BFD_RELOC_ARM_T32_ADD_PC12,
   BFD_RELOC_THUMB_PCREL_BRANCH25,
-  BFD_RELOC_THUMB_PCREL_BRANCH20,
   BFD_RELOC_THUMB_PCREL_BRANCH7,
   BFD_RELOC_ARM_T32_OFFSET_U8,
   BFD_RELOC_ARM_THUMB_MOVW,
@@ -128,6 +127,7 @@ enum {
   BFD_RELOC_ARM_ROSEGREL32,
   BFD_RELOC_ARM_SBREL32,
   BFD_RELOC_32_PCREL,
+  BFD_RELOC_THUMB_PCREL_BRANCH20 = ARM_THUMB_32BIT_BRANCH,
   BFD_RELOC_THUMB_PCREL_BRANCH23 = ARM_THUMB_RELOC_BR22,
   BFD_RELOC_ARM_PCREL_BRANCH = ARM_RELOC_BR24
 };
@@ -150,7 +150,6 @@ typedef enum {
 /* STUFF FROM gas/as.h */
 #define COMMON
 COMMON subsegT now_subseg;
-COMMON segT now_seg;
 
 /* STUFF FROM gas/config/tc-arm.h */
 #define ARM_FLAG_THUMB 		(1 << 0)	/* The symbol is a Thumb symbol rather than an Arm symbol.  */
@@ -251,7 +250,7 @@ static const arm_feature_set fpu_vfp_v3_or_neon_ext =
    1: assemble for Thumb,
    2: assemble for Thumb even though target CPU does not support thumb
       instructions.  */
-static int thumb_mode = 0;
+int thumb_mode = 0;
 
 /* If unified_syntax is true, we are processing the new unified
    ARM/Thumb syntax.  Important differences from the old ARM mode:
@@ -306,7 +305,7 @@ struct neon_type
 struct arm_it
 {
   const char *  error;
-  unsigned long instruction;
+  uint32_t instruction;
   int           size;
   int		size_req;
   int		cond;
@@ -317,7 +316,7 @@ struct arm_it
   struct neon_type vectype;
   /* Set to the opcode if the instruction needs relaxation.
      Zero if the instruction is not relaxed.  */
-  unsigned long	relax;
+  uint32_t	relax;
   struct
   {
     bfd_reloc_code_real_type type;
@@ -387,7 +386,7 @@ LITTLENUM_TYPE fp_values[NUM_FLOAT_VALS][MAX_LITTLENUMS];
 struct asm_cond
 {
   const char *  template;
-  unsigned long value;
+  uint32_t value;
 };
 
 #define COND_ALWAYS 0xE
@@ -395,13 +394,13 @@ struct asm_cond
 struct asm_psr
 {
   const char *template;
-  unsigned long field;
+  uint32_t field;
 };
 
 struct asm_barrier_opt
 {
   const char *template;
-  unsigned long value;
+  uint32_t value;
 };
 
 /* The bit that distinguishes CPSR and SPSR.  */
@@ -1000,7 +999,7 @@ arm_reg_alt_syntax (char **ccp, char *start, struct reg_entry *reg,
     case REG_TYPE_CP:
       /* For backward compatibility, a bare number is valid here.  */
       {
-	unsigned long processor = strtoul (start, ccp, 10);
+	uint32_t processor = strtoul (start, ccp, 10);
 	if (*ccp != start && processor <= 15)
 	  return processor;
       }
@@ -1365,11 +1364,11 @@ parse_scalar (char **ccp, int elsize, struct neon_type_el *type)
 }
 
 /* Parse an ARM register list.  Returns the bitmask, or FAIL.  */
-static long
+static int32_t
 parse_reg_list (char ** strp)
 {
   char * str = * strp;
-  long	 range = 0;
+  int32_t range = 0;
   int	 another_range;
 
   /* We come back here if we get ranges concatenated by '+' or '|'.  */
@@ -1523,7 +1522,7 @@ parse_vfp_reg_list (char **ccp, unsigned int *pbase, enum reg_list_els etype)
   int max_regs = 0;
   int count = 0;
   int warned = 0;
-  unsigned long mask = 0;
+  uint32_t mask = 0;
   int i;
 
   if (*str != '{')
@@ -1731,7 +1730,7 @@ parse_neon_el_struct_list (char **str, unsigned *pbase,
   int addregs = 1;
   const char *const incr_error = "register stride must be 1 or 2";
   const char *const type_error = "mismatched element/structure types in list";
-  struct neon_typed_alias firsttype;
+  struct neon_typed_alias firsttype = { 0 };
   
   if (skip_past_char (&ptr, '{') == SUCCESS)
     leading_brace = 1;
@@ -1784,7 +1783,17 @@ parse_neon_el_struct_list (char **str, unsigned *pbase,
         {
           struct neon_typed_alias htype;
           int hireg, dregs = (rtype == REG_TYPE_NQ) ? 2 : 1;
-          if (lane == -1)
+	  if ((atype.defined & NTA_HASINDEX) != 0)
+	    {
+	      if (lane == -1)
+		lane = atype.index;
+	      else if (lane != atype.index)
+		{
+		  first_error (_(type_error));
+		  return FAIL;
+		}
+	    }
+	  else if (lane == -1)
             lane = NEON_INTERLEAVE_LANES;
           else if (lane != NEON_INTERLEAVE_LANES)
             {
@@ -2172,19 +2181,19 @@ create_neon_reg_alias (char *newname, char *p)
 /* Should never be called, as .req goes between the alias and the
    register name, not at the beginning of the line.  */
 static void
-s_req (int a ATTRIBUTE_UNUSED)
+s_req (uintptr_t a ATTRIBUTE_UNUSED)
 {
   as_bad (_("invalid syntax for .req directive"));
 }
 
 static void
-s_dn (int a ATTRIBUTE_UNUSED)
+s_dn (uintptr_t a ATTRIBUTE_UNUSED)
 {
   as_bad (_("invalid syntax for .dn directive"));
 }
 
 static void
-s_qn (int a ATTRIBUTE_UNUSED)
+s_qn (uintptr_t a ATTRIBUTE_UNUSED)
 {
   as_bad (_("invalid syntax for .qn directive"));
 }
@@ -2196,7 +2205,7 @@ s_qn (int a ATTRIBUTE_UNUSED)
        .unreq my_alias	  */
 
 static void
-s_unreq (int a ATTRIBUTE_UNUSED)
+s_unreq (uintptr_t a ATTRIBUTE_UNUSED)
 {
   char * name;
   char saved_char;
@@ -2328,21 +2337,21 @@ opcode_select (int width)
 }
 
 static void
-s_arm (int ignore ATTRIBUTE_UNUSED)
+s_arm (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
   opcode_select (32);
   demand_empty_rest_of_line ();
 }
 
 static void
-s_thumb (int ignore ATTRIBUTE_UNUSED)
+s_thumb (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
   opcode_select (16);
   demand_empty_rest_of_line ();
 }
 
 static void
-s_code (int unused ATTRIBUTE_UNUSED)
+s_code (uintptr_t unused ATTRIBUTE_UNUSED)
 {
   int temp;
 
@@ -2360,7 +2369,7 @@ s_code (int unused ATTRIBUTE_UNUSED)
 }
 
 static void
-s_force_thumb (int ignore ATTRIBUTE_UNUSED)
+s_force_thumb (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
   /* If we are not already in thumb mode go into it, EVEN if
      the target processor does not support thumb instructions.
@@ -2382,7 +2391,7 @@ s_force_thumb (int ignore ATTRIBUTE_UNUSED)
    '.thumb_func /symbol_name/', to avoid the inherent pitfalls of
    looking for the next valid label.  */
 static void
-s_thumb_func (int ignore ATTRIBUTE_UNUSED)
+s_thumb_func (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
   if (is_end_of_line(*input_line_pointer))
     {
@@ -2422,7 +2431,7 @@ s_thumb_func (int ignore ATTRIBUTE_UNUSED)
    being a thumb function.  */
 
 static void
-s_thumb_set (int equiv)
+s_thumb_set (uintptr_t equiv)
 {
   /* XXX the following is a duplicate of the code for s_set() in read.c
      We cannot just call that code as we need to get at the symbol that
@@ -2495,9 +2504,9 @@ s_thumb_set (int equiv)
       && S_IS_DEFINED (symbolP)
       && S_GET_SEGMENT (symbolP) != reg_section)
     as_bad (_("symbol `%s' already defined"), S_GET_NAME (symbolP));
+#endif NOTYET
 
   pseudo_set (symbolP);
-#endif NOTYET
 
   demand_empty_rest_of_line ();
 
@@ -2505,6 +2514,7 @@ s_thumb_set (int equiv)
 
   THUMB_SET_FUNC (symbolP, 1);
   ARM_SET_THUMB (symbolP, 1);
+  symbolP->sy_desc |= N_ARM_THUMB_DEF;
 #if defined OBJ_ELF || defined OBJ_COFF
   ARM_SET_INTERWORK (symbolP, support_interwork);
 #endif
@@ -2516,7 +2526,7 @@ s_thumb_set (int equiv)
    (same for Arm and Thumb encoding, modulo slight differences in what
    can be represented) or the old divergent syntax for each mode.  */
 static void
-s_syntax (int unused ATTRIBUTE_UNUSED)
+s_syntax (uintptr_t unused ATTRIBUTE_UNUSED)
 {
   char *name, delim;
 
@@ -2542,12 +2552,12 @@ s_syntax (int unused ATTRIBUTE_UNUSED)
 /* Same as s_align_ptwo but align 0 => align 2.	 */
 
 static void
-s_align (int unused ATTRIBUTE_UNUSED)
+s_align (uintptr_t unused ATTRIBUTE_UNUSED)
 {
   int temp;
   bfd_boolean fill_p;
-  long temp_fill;
-  long max_alignment = 15;
+  int32_t temp_fill;
+  int32_t max_alignment = 15;
 
   temp = get_absolute_expression ();
   if (temp > max_alignment)
@@ -2600,7 +2610,7 @@ s_align (int unused ATTRIBUTE_UNUSED)
 #endif NOTYET
 
 static void
-s_bss (int ignore ATTRIBUTE_UNUSED)
+s_bss (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
 #ifdef NOTYET
   /* We don't support putting frags in the BSS segment, we fake it by
@@ -2614,7 +2624,7 @@ s_bss (int ignore ATTRIBUTE_UNUSED)
 }
 
 static void
-s_even (int ignore ATTRIBUTE_UNUSED)
+s_even (uintptr_t ignore ATTRIBUTE_UNUSED)
 {
   /* Never make frag if expect extra pass.  */
 #ifdef NOTYET
@@ -2794,7 +2804,7 @@ symbol_locate (symbolS *    symbolP,
 }
 
 static void
-s_ltorg (int ignored ATTRIBUTE_UNUSED)
+s_ltorg (uintptr_t ignored ATTRIBUTE_UNUSED)
 {
   unsigned int entry;
   literal_pool * pool;
@@ -2886,12 +2896,10 @@ const pseudo_typeS md_pseudo_table[] =
   {"2byte", cons, 2},
   {"4byte", cons, 4},
   {"8byte", cons, 8},
-#ifdef NOTYET
   /* These are used for dwarf2.  */
-  { "file", (void (*) (int)) dwarf2_directive_file, 0 },
+  { "file", (void (*) (uintptr_t)) dwarf2_directive_file, 0 },
   { "loc",  dwarf2_directive_loc,  0 },
   { "loc_mark_labels", dwarf2_directive_loc_mark_labels, 0 },
-#endif NOTYET
 #endif
   { "extend",	   float_cons, 'x' },
   { "ldouble",	   float_cons, 'x' },
@@ -3046,7 +3054,7 @@ parse_fpa_immediate (char ** str)
     {
       /* FIXME: 5 = X_PRECISION, should be #define'd where we can use it.
 	 Ditto for 15.	*/
-      if (gen_to_words (words, 5, (long) 15) == 0)
+      if (gen_to_words (words, 5, (int32_t) 15) == 0)
 	{
 	  for (i = 0; i < NUM_FLOAT_VALS; i++)
 	    {
@@ -3809,7 +3817,7 @@ static int
 parse_psr (char **str)
 {
   char *p;
-  unsigned long psr_field;
+  uint32_t psr_field;
   const struct asm_psr *psr;
   char *start;
 
@@ -5339,7 +5347,7 @@ encode_arm_cp_address (int i, int wb_ok, int unind_ok, int reloc_override)
 static int
 move_or_literal_pool (int i, bfd_boolean thumb_p, bfd_boolean mode_3)
 {
-  unsigned long tbit;
+  uint32_t tbit;
 
   if (thumb_p)
     tbit = (inst.instruction > 0xffff) ? THUMB2_LOAD_BIT : THUMB_LOAD_BIT;
@@ -6965,7 +6973,7 @@ do_iwmmxt_wrwrwr_or_imm5 (void)
 	  case 15:
 	    {
 	      /* w...d wrd, wrn, #0 -> wor wrd, wrn, wrn.  */
-	      unsigned long wrn;
+	      uint32_t wrn;
 	      wrn = (inst.instruction >> 16) & 0xf;
 	      inst.instruction &= 0xff0fff0f;
 	      inst.instruction |= wrn;
@@ -8217,7 +8225,7 @@ do_t_ldrexd (void)
 static void
 do_t_ldst (void)
 {
-  unsigned long opcode;
+  uint32_t opcode;
   int Rn;
 
   opcode = inst.instruction;
@@ -8416,7 +8424,7 @@ do_t_mov_cmp (void)
     {
       int r0off = (inst.instruction == T_MNEM_mov
 		   || inst.instruction == T_MNEM_movs) ? 8 : 16;
-      unsigned long opcode;
+      uint32_t opcode;
       bfd_boolean narrow;
       bfd_boolean low_regs;
 
@@ -8960,6 +8968,14 @@ do_t_rbit (void)
 {
   inst.instruction |= inst.operands[0].reg << 8;
   inst.instruction |= inst.operands[1].reg << 16;
+}
+
+static void
+do_t_rd_rm_rn (void)
+{
+  inst.instruction |= inst.operands[0].reg << 8;
+  inst.instruction |= inst.operands[1].reg;
+  inst.instruction |= inst.operands[2].reg << 16;
 }
 
 static void
@@ -12789,11 +12805,9 @@ output_relax_insn (void)
   symbolS *sym;
   int offset;
 
-#ifdef OBJ_ELF
   /* The size of the instruction is unknown, so tie the debug info to the
      start of the instruction.  */
   dwarf2_emit_insn (0);
-#endif
 
   switch (inst.reloc.exp.X_op)
     {
@@ -12829,7 +12843,7 @@ output_relax_insn (void)
 
 /* Write a 32-bit thumb instruction to buf.  */
 static void
-put_thumb32_insn (char * buf, unsigned long insn)
+put_thumb32_insn (char * buf, uint32_t insn)
 {
   md_number_to_chars (buf, insn >> 16, THUMB_SIZE);
   md_number_to_chars (buf + THUMB_SIZE, insn, THUMB_SIZE);
@@ -12873,9 +12887,7 @@ output_inst (const char * str)
 		 /* HACK_GUESS */ inst.reloc.pcrel_reloc,
 		 inst.reloc.type);
 
-#ifdef OBJ_ELF
   dwarf2_emit_insn (inst.size);
-#endif
 }
 
 /* Tag values used in struct asm_opcode's tag field.  */
@@ -13210,7 +13222,7 @@ md_assemble (char *str)
 	}
       else if (inst.cond != COND_ALWAYS && opcode->tencode != do_t_branch)
 	{
-	  as_bad (_("thumb conditional instrunction not in IT block"));
+	  as_bad (_("thumb conditional instruction not in IT block"));
 	  return;
 	}
 
@@ -13388,9 +13400,7 @@ arm_frob_label (symbolS * sym)
       label_is_thumb_function_name = FALSE;
     }
 
-#ifdef NOTYET
   dwarf2_emit_label (sym);
-#endif
 }
 
 int
@@ -14079,10 +14089,10 @@ static const struct asm_opcode insns[] =
  TCE(smulwb,	12000a0, fb30f000, 3, (RRnpc, RRnpc, RRnpc),	    smul, t_simd),
  TCE(smulwt,	12000e0, fb30f010, 3, (RRnpc, RRnpc, RRnpc),	    smul, t_simd),
 
- TCE(qadd,	1000050, fa80f080, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, rd_rm_rn),
- TCE(qdadd,	1400050, fa80f090, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, rd_rm_rn),
- TCE(qsub,	1200050, fa80f0a0, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, rd_rm_rn),
- TCE(qdsub,	1600050, fa80f0b0, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, rd_rm_rn),
+ TCE(qadd,	1000050, fa80f080, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, t_rd_rm_rn),
+ TCE(qdadd,	1400050, fa80f090, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, t_rd_rm_rn),
+ TCE(qsub,	1200050, fa80f0a0, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, t_rd_rm_rn),
+ TCE(qdsub,	1600050, fa80f0b0, 3, (RRnpc, RRnpc, RRnpc),	    rd_rm_rn, t_rd_rm_rn),
 
 #undef ARM_VARIANT
 #define ARM_VARIANT &arm_ext_v5e /*  ARM Architecture 5TE.  */
@@ -14754,7 +14764,9 @@ static const struct asm_opcode insns[] =
  cCE(ftouis,	ebc0a40, 2, (RVS, RVS),	      vfp_sp_monadic),
  cCE(ftouizs,	ebc0ac0, 2, (RVS, RVS),	      vfp_sp_monadic),
  cCE(fmrx,	ef00a10, 2, (RR, RVC),	      rd_rn),
+ cCE(vmrs,	ef00a10, 2, (RR, RVC),	      rd_rn),
  cCE(fmxr,	ee00a10, 2, (RVC, RR),	      rn_rd),
+ cCE(vmsr,	ee00a10, 2, (RVC, RR),	      rn_rd),
 
   /* Memory operations.	 */
  cCE(flds,	d100a00, 2, (RVS, ADDRGLDC),  vfp_sp_ldst),
@@ -15578,8 +15590,8 @@ const relax_typeS md_relax_table[] = { {0} };
 void
 md_convert_frag (/* bfd *abfd, segT asec ATTRIBUTE_UNUSED, */ fragS *fragp)
 {
-  unsigned long insn;
-  unsigned long old_op;
+  uint32_t insn;
+  uint32_t old_op;
   char *buf;
   expressionS exp;
   fixS *fixp;
@@ -15770,7 +15782,7 @@ relax_immediate (fragS *fragp, int size, int shift)
 
 /* Get the address of a symbol during relaxation.  */
 static addressT
-relaxed_symbol_addr(fragS *fragp, long stretch)
+relaxed_symbol_addr(fragS *fragp, int32_t stretch)
 {
   fragS *sym_frag;
   addressT addr;
@@ -15803,7 +15815,7 @@ relaxed_symbol_addr(fragS *fragp, long stretch)
 /* Return the size of a relaxable adr pseudo-instruction or PC-relative
    load.  */
 static int
-relax_adr (fragS *fragp, /* HACK asection *sec, */ long stretch)
+relax_adr (fragS *fragp, /* HACK asection *sec, */ int32_t stretch)
 {
   addressT addr;
   offsetT val;
@@ -15852,7 +15864,7 @@ relax_addsub (fragS *fragp /* HACK , asection *sec */)
    size of the offset field in the narrow instruction.  */
 
 static int
-relax_branch (fragS *fragp, int nsect, int bits, long stretch)
+relax_branch (fragS *fragp, int nsect, int bits, int32_t stretch)
 {
   addressT addr;
   offsetT val;
@@ -15880,7 +15892,7 @@ relax_branch (fragS *fragp, int nsect, int bits, long stretch)
    the current size of the frag should change.  */
 
 int
-arm_relax_frag (int nsect, fragS *fragp, long stretch)
+arm_relax_frag (int nsect, fragS *fragp, int32_t stretch)
 {
   int oldsize;
   int newsize;
@@ -16083,7 +16095,7 @@ arm_init_frag (fragS * fragP)
    Thumb branches are offset by 4, and Thumb loads relative to PC
    require special handling.  */
 
-long
+int32_t
 md_pcrel_from_section (fixS * fixP, segT seg)
 {
   offsetT base = fixP->fx_where + fixP->fx_frag->fr_address;
@@ -16256,11 +16268,11 @@ validate_offset_imm (unsigned int val, int hwse)
 	by negating the second operand.	 */
 
 static int
-negate_data_op (unsigned long * instruction,
-		unsigned long	value)
+negate_data_op (uint32_t * instruction,
+		uint32_t	value)
 {
   int op, new_inst;
-  unsigned long negated, inverted;
+  uint32_t negated, inverted;
 
   negated = encode_arm_immediate (-value);
   inverted = encode_arm_immediate (~value);
@@ -16410,10 +16422,10 @@ thumb32_negate_data_op (offsetT *instruction, unsigned int value)
 }
 
 /* Read a 32-bit thumb instruction from buf.  */
-static unsigned long
+static uint32_t
 get_thumb32_insn (char * buf)
 {
-  unsigned long insn;
+  uint32_t insn;
   insn = md_chars_to_number (buf, THUMB_SIZE) << 16;
   insn |= md_chars_to_number (buf + THUMB_SIZE, THUMB_SIZE);
 
@@ -16452,7 +16464,7 @@ md_apply_fix (fixS *	fixP,
   offsetT	 value = * valP;
   offsetT	 newval;
   unsigned int	 newimm;
-  unsigned long	 temp;
+  uint32_t	 temp;
   int		 sign;
   char *	 buf = fixP->fx_where + fixP->fx_frag->fr_literal;
 
@@ -16511,8 +16523,8 @@ md_apply_fix (fixS *	fixP,
 	  && (newimm = negate_data_op (&temp, value)) == (unsigned int) FAIL)
 	{
 	  as_bad_where (fixP->fx_file, fixP->fx_line,
-			_("invalid constant (%lx) after fixup"),
-			(unsigned long) value);
+			_("invalid constant (%x) after fixup"),
+			(uint32_t) value);
 	  break;
 	}
 
@@ -16548,8 +16560,8 @@ md_apply_fix (fixS *	fixP,
 	    else
 	      {
 		as_bad_where (fixP->fx_file, fixP->fx_line,
-			      _("unable to compute ADRL instructions for PC offset of 0x%lx"),
-			      (long) value);
+			      _("unable to compute ADRL instructions for PC offset of 0x%x"),
+			      (int32_t) value);
 		break;
 	      }
 
@@ -16590,8 +16602,8 @@ md_apply_fix (fixS *	fixP,
 			  _("invalid literal constant: pool needs to be closer"));
 	  else
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("bad immediate value for offset (%ld)"),
-			  (long) value);
+			  _("bad immediate value for offset (%d)"),
+			  (int32_t) value);
 	  break;
 	}
 
@@ -16614,8 +16626,9 @@ md_apply_fix (fixS *	fixP,
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
 			  _("invalid literal constant: pool needs to be closer"));
 	  else
-	    as_bad (_("bad immediate value for 8-bit offset (%ld)"),
-		    (long) value);
+	    as_bad_where (fixP->fx_file, fixP->fx_line,
+	                  _("bad immediate value for 8-bit offset (%d)"),
+		          (int32_t) value);
 	  break;
 	}
 
@@ -16628,7 +16641,7 @@ md_apply_fix (fixS *	fixP,
     case BFD_RELOC_ARM_T32_OFFSET_U8:
       if (value < 0 || value > 1020 || value % 4 != 0)
 	as_bad_where (fixP->fx_file, fixP->fx_line,
-		      _("bad immediate value for offset (%ld)"), (long) value);
+		      _("bad immediate value for offset (%d)"), (int32_t) value);
       value /= 4;
 
       newval = md_chars_to_number (buf+2, THUMB_SIZE);
@@ -16753,7 +16766,7 @@ md_apply_fix (fixS *	fixP,
 
     case BFD_RELOC_ARM_SHIFT_IMM:
       newval = md_chars_to_number (buf, INSN_SIZE);
-      if (((unsigned long) value) > 32
+      if (((uint32_t) value) > 32
 	  || (value == 32
 	      && (((newval & 0x60) == 0) || (newval & 0x60) == 0x60)))
 	{
@@ -16824,8 +16837,8 @@ md_apply_fix (fixS *	fixP,
       if (newimm == (unsigned int)FAIL)
 	{
 	  as_bad_where (fixP->fx_file, fixP->fx_line,
-			_("invalid constant (%lx) after fixup"),
-			(unsigned long) value);
+			_("invalid constant (%x) after fixup"),
+			(uint32_t) value);
 	  break;
 	}
 
@@ -16838,7 +16851,7 @@ md_apply_fix (fixS *	fixP,
       break;
 
     case BFD_RELOC_ARM_SMC:
-      if (((unsigned long) value) > 0xffff)
+      if (((uint32_t) value) > 0xffff)
 	as_bad_where (fixP->fx_file, fixP->fx_line,
 		      _("invalid smc expression"));
       newval = md_chars_to_number (buf, INSN_SIZE);
@@ -16847,9 +16860,9 @@ md_apply_fix (fixS *	fixP,
       break;
 
     case BFD_RELOC_ARM_SWI:
-      if (fixP->tc_fix_data != 0)
+      if (*((int*)fixP->tc_fix_data) != 0)
 	{
-	  if (((unsigned long) value) > 0xff)
+	  if (((uint32_t) value) > 0xff)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
 			  _("invalid swi expression"));
 	  newval = md_chars_to_number (buf, THUMB_SIZE);
@@ -16858,7 +16871,7 @@ md_apply_fix (fixS *	fixP,
 	}
       else
 	{
-	  if (((unsigned long) value) > 0x00ffffff)
+	  if (((uint32_t) value) > 0x00ffffff)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
 			  _("invalid swi expression"));
 	  newval = md_chars_to_number (buf, INSN_SIZE);
@@ -16868,7 +16881,7 @@ md_apply_fix (fixS *	fixP,
       break;
 
     case BFD_RELOC_ARM_MULTI:
-      if (((unsigned long) value) > 0xffff)
+      if (((uint32_t) value) > 0xffff)
 	as_bad_where (fixP->fx_file, fixP->fx_line,
 		      _("invalid expression in load/store multiple"));
       newval = value | md_chars_to_number (buf, INSN_SIZE);
@@ -17222,15 +17235,15 @@ md_apply_fix (fixS *	fixP,
 	     compensated for this.  */
 	  if (value & 3)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, target not word aligned (0x%08lX)"),
-			  (((unsigned long) fixP->fx_frag->fr_address
-			    + (unsigned long) fixP->fx_where) & ~3)
-			  + (unsigned long) value);
+			  _("invalid offset, target not word aligned (0x%08x)"),
+			  (((uint32_t) fixP->fx_frag->fr_address
+			    + (uint32_t) fixP->fx_where) & ~3)
+			  + (uint32_t) value);
 
 	  if (value & ~0x3fc)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, value too big (0x%08lX)"),
-			  (long) value);
+			  _("invalid offset, value too big (0x%08x)"),
+			  (int32_t) value);
 
 	  newval |= value >> 2;
 	  break;
@@ -17238,39 +17251,39 @@ md_apply_fix (fixS *	fixP,
 	case 9: /* SP load/store.  */
 	  if (value & ~0x3fc)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, value too big (0x%08lX)"),
-			  (long) value);
+			  _("invalid offset, value too big (0x%08x)"),
+			  (int32_t) value);
 	  newval |= value >> 2;
 	  break;
 
 	case 6: /* Word load/store.  */
 	  if (value & ~0x7c)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, value too big (0x%08lX)"),
-			  (long) value);
+			  _("invalid offset, value too big (0x%08x)"),
+			  (int32_t) value);
 	  newval |= value << 4; /* 6 - 2.  */
 	  break;
 
 	case 7: /* Byte load/store.  */
 	  if (value & ~0x1f)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, value too big (0x%08lX)"),
-			  (long) value);
+			  _("invalid offset, value too big (0x%08x)"),
+			  (int32_t) value);
 	  newval |= value << 6;
 	  break;
 
 	case 8: /* Halfword load/store.	 */
 	  if (value & ~0x3e)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-			  _("invalid offset, value too big (0x%08lX)"),
-			  (long) value);
+			  _("invalid offset, value too big (0x%08x)"),
+			  (int32_t) value);
 	  newval |= value << 5; /* 6 - 1.  */
 	  break;
 
 	default:
 	  as_bad_where (fixP->fx_file, fixP->fx_line,
-			"Unable to process relocation for thumb opcode: %lx",
-			(unsigned long) newval);
+			"Unable to process relocation for thumb opcode: %x",
+			(uint32_t) newval);
 	  break;
 	}
       md_number_to_chars (buf, newval, THUMB_SIZE);
@@ -17327,8 +17340,8 @@ md_apply_fix (fixS *	fixP,
 	  {
 	    if (subtract || value & ~0x3fc)
 	      as_bad_where (fixP->fx_file, fixP->fx_line,
-			    _("invalid immediate for address calculation (value = 0x%08lX)"),
-			    (unsigned long) value);
+			    _("invalid immediate for address calculation (value = 0x%08x)"),
+			    (uint32_t) value);
 	    newval = (rs == REG_PC ? T_OPCODE_ADD_PC : T_OPCODE_ADD_SP);
 	    newval |= rd << 8;
 	    newval |= value >> 2;
@@ -17357,8 +17370,8 @@ md_apply_fix (fixS *	fixP,
       newval = md_chars_to_number (buf, THUMB_SIZE);
       if (value < 0 || value > 255)
 	as_bad_where (fixP->fx_file, fixP->fx_line,
-		      _("invalid immediate: %ld is too large"),
-		      (long) value);
+		      _("invalid immediate: %d is too large"),
+		      (int32_t) value);
       newval |= value;
       md_number_to_chars (buf, newval, THUMB_SIZE);
       break;
@@ -17369,7 +17382,7 @@ md_apply_fix (fixS *	fixP,
       temp = newval & 0xf800;
       if (value < 0 || value > 32 || (value == 32 && temp == T_OPCODE_LSL_I))
 	as_bad_where (fixP->fx_file, fixP->fx_line,
-		      _("invalid shift value: %ld"), (long) value);
+		      _("invalid shift value: %d"), (int32_t) value);
       /* Shifts of zero must be encoded as LSL.	 */
       if (value == 0)
 	newval = (newval & 0x003f) | T_OPCODE_LSL_I;
@@ -17458,8 +17471,8 @@ md_apply_fix (fixS *	fixP,
          encoded_addend = encode_arm_immediate (addend_abs);
          if (encoded_addend == (unsigned int) FAIL)
 	   as_bad_where (fixP->fx_file, fixP->fx_line,
-	                 _("the offset 0x%08lX is not representable"),
-                         (long unsigned int)addend_abs);
+	                 _("the offset 0x%08x is not representable"),
+                         (uint32_t)addend_abs);
 
          /* Extract the instruction.  */
          insn = md_chars_to_number (buf, INSN_SIZE);
@@ -17502,8 +17515,8 @@ md_apply_fix (fixS *	fixP,
              encoded in 12 bits.  */
           if (addend_abs >= 0x1000)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-	  	          _("bad offset 0x%08lX (only 12 bits available for the magnitude)"),
-                          (long unsigned int)addend_abs);
+	  	          _("bad offset 0x%08x (only 12 bits available for the magnitude)"),
+                          (uint32_t)addend_abs);
 
           /* Extract the instruction.  */
           insn = md_chars_to_number (buf, INSN_SIZE);
@@ -17545,8 +17558,8 @@ md_apply_fix (fixS *	fixP,
              encoded in 8 bits.  */
           if (addend_abs >= 0x100)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-	  	          _("bad offset 0x%08lX (only 8 bits available for the magnitude)"),
-                          (long unsigned int)addend_abs);
+	  	          _("bad offset 0x%08x (only 8 bits available for the magnitude)"),
+                          (uint32_t)addend_abs);
 
           /* Extract the instruction.  */
           insn = md_chars_to_number (buf, INSN_SIZE);
@@ -17589,13 +17602,13 @@ md_apply_fix (fixS *	fixP,
              four and, when divided by four, fits in 8 bits.  */
           if (addend_abs & 0x3)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-	  	          _("bad offset 0x%08lX (must be word-aligned)"),
-                          (long unsigned int)addend_abs);
+	  	          _("bad offset 0x%08x (must be word-aligned)"),
+                          (uint32_t)addend_abs);
 
           if ((addend_abs >> 2) > 0xff)
 	    as_bad_where (fixP->fx_file, fixP->fx_line,
-	  	          _("bad offset 0x%08lX (must be an 8-bit number of words)"),
-                          (long unsigned int)addend_abs);
+	  	          _("bad offset 0x%08x (must be an 8-bit number of words)"),
+                          (uint32_t)addend_abs);
 
           /* Extract the instruction.  */
           insn = md_chars_to_number (buf, INSN_SIZE);
@@ -17646,7 +17659,8 @@ arm_force_relocation (struct fix * fixp)
   if (fixp->fx_r_type == BFD_RELOC_ARM_PCREL_BRANCH
       || fixp->fx_r_type == BFD_RELOC_ARM_PCREL_BLX
       || fixp->fx_r_type == BFD_RELOC_THUMB_PCREL_BLX
-      || fixp->fx_r_type == BFD_RELOC_THUMB_PCREL_BRANCH23)
+      || fixp->fx_r_type == BFD_RELOC_THUMB_PCREL_BRANCH23
+      || fixp->fx_r_type == BFD_RELOC_THUMB_PCREL_BRANCH25)
     {
       if (fixp->fx_addsy != NULL)
 	{
@@ -17954,7 +17968,10 @@ md_begin (void)
 #endif NOTYET
 
   if (force_cpusubtype_ALL)
-    md_cpusubtype = CPU_SUBTYPE_ARM_ALL;
+    {
+      cpu_variant = arm_arch_full;
+      archflag_cpusubtype = CPU_SUBTYPE_ARM_ALL;
+    }
 
   switch (archflag_cpusubtype)
     {
@@ -17976,6 +17993,7 @@ md_begin (void)
 	    ARM_FEATURE (ARM_AEXT_V6ZK, FPU_VFP_V2);
 	  cpu_variant = arm_arch_v6zk_vfp_v2;
 	}
+	break;
       case CPU_SUBTYPE_ARM_V7:
 	{
 	  static const arm_feature_set arm_arch_v7_vfp_v3_plus_neon_v1 =
@@ -18093,7 +18111,7 @@ int nsect)
 	    if(validate_offset_imm(val, 0) == FAIL){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("bad immediate value for offset (%ld)", (long) val);
+		as_warn("bad immediate value for offset (%d)", (int32_t) val);
 		break;
 	    }
 

@@ -72,10 +72,10 @@
 static enum bool otool_first_ofile_map = TRUE;
 #else /* !define(OTOOL) */
 
-#if (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__))
+#if (!defined(m68k) && !defined(__i386__) && !defined(__x86_64__) && !defined(__ppc__) && !defined(__arm__))
 #define ALIGNMENT_CHECKS_ARCHIVE_64_BIT
 static enum bool archive_64_bit_align_warning = FALSE;
-#endif /* (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__)) */
+#endif /* (!defined(m68k) && !defined(__i386__) && !defined(__x86_64__) && !defined(__ppc__) && !defined(__arm__)) */
 
 #endif /* OTOOL */
 
@@ -89,7 +89,7 @@ enum check_type {
 };
 static enum bool ofile_specific_arch(
     struct ofile *ofile,
-    unsigned long narch);
+    uint32_t narch);
 static enum check_type check_fat(
     struct ofile *ofile);
 static enum check_type check_fat_object_in_archive(
@@ -100,8 +100,8 @@ static enum check_type check_archive(
 static enum check_type check_extend_format_1(
     struct ofile *ofile,
     struct ar_hdr *ar_hdr,
-    unsigned long size_left,
-    unsigned long *member_name_size);
+    uint32_t size_left,
+    uint32_t *member_name_size);
 static enum check_type check_Mach_O(
     struct ofile *ofile);
 static void swap_back_Mach_O(
@@ -111,7 +111,7 @@ static enum check_type check_dylib_module(
     struct symtab_command *st,
     struct dysymtab_command *dyst,
     char *strings,
-    unsigned long module_index);
+    uint32_t module_index);
 
 #ifndef OTOOL
 #if defined(ALIGNMENT_CHECKS) || defined(ALIGNMENT_CHECKS_ARCHIVE_64_BIT)
@@ -159,7 +159,7 @@ void
 ofile_process(
 char *name,
 struct arch_flag *arch_flags,
-unsigned long narch_flags,
+uint32_t narch_flags,
 enum bool all_archs,
 enum bool process_non_objects,
 enum bool dylib_flat,
@@ -168,7 +168,7 @@ void (*processor)(struct ofile *ofile, char *arch_name, void *cookie),
 void *cookie)
 {
     char *member_name, *p, *arch_name;
-    unsigned long len, i;
+    uint32_t len, i;
     struct ofile ofile;
     enum bool flag, hostflag, arch_found, family;
     struct arch_flag host_arch_flag;
@@ -789,7 +789,7 @@ enum bool archives_with_fat_objects)
 {
     int fd;
     struct stat stat_buf;
-    unsigned long size, magic;
+    uint32_t size, magic;
     char *addr;
 
 	magic = 0; /* to shut up the compiler warning message */
@@ -847,14 +847,14 @@ enum bool
 #endif
 ofile_map_from_memory(
 char *addr,
-unsigned long size,
+uint32_t size,
 const char *file_name,
 const struct arch_flag *arch_flag,	/* can be NULL */
 const char *object_name,		/* can be NULL */
 struct ofile *ofile,
 enum bool archives_with_fat_objects)
 {
-    unsigned long i;
+    uint32_t i;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     struct arch_flag host_arch_flag;
@@ -972,7 +972,7 @@ enum bool archives_with_fat_objects)
 		ofile->arch_flag.cpusubtype = arch_flag->cpusubtype;
 	    }
 
-	    ofile->narch = ULONG_MAX;
+	    ofile->narch = UINT_MAX;
 	    for(i = 0; i < ofile->fat_header->nfat_arch; i++){
 		if(ofile->fat_archs[i].cputype ==
 			ofile->arch_flag.cputype &&
@@ -982,7 +982,7 @@ enum bool archives_with_fat_objects)
 		    break;
 		}
 	    }
-	    if(ofile->narch == ULONG_MAX){
+	    if(ofile->narch == UINT_MAX){
 		family = FALSE;
 		family_arch_flag =
 		    get_arch_family_from_cputype(ofile->arch_flag.cputype);
@@ -990,7 +990,7 @@ enum bool archives_with_fat_objects)
 		    family = (enum bool)
 			((family_arch_flag->cpusubtype & ~CPU_SUBTYPE_MASK) ==
 			 (ofile->arch_flag.cpusubtype & ~CPU_SUBTYPE_MASK));
-		ofile->narch = ULONG_MAX;
+		ofile->narch = UINT_MAX;
 		for(i = 0; i < ofile->fat_header->nfat_arch; i++){
 		    if(ofile->fat_archs[i].cputype ==
 			    ofile->arch_flag.cputype &&
@@ -1004,7 +1004,7 @@ enum bool archives_with_fat_objects)
 		    }
 		}
 	    }
-	    if(ofile->narch == ULONG_MAX){
+	    if(ofile->narch == UINT_MAX){
 #ifdef OFI
 		ofile_unmap(ofile);
 		return(NSObjectFileImageArch);
@@ -1417,10 +1417,10 @@ static
 enum bool
 ofile_specific_arch(
 struct ofile *ofile,
-unsigned long narch)
+uint32_t narch)
 {
     char *addr;
-    unsigned long size;
+    uint32_t size;
     uint32_t magic;
     enum byte_sex host_byte_sex;
 
@@ -1610,11 +1610,11 @@ ofile_first_member(
 struct ofile *ofile)
 {
     char *addr;
-    unsigned long size, offset;
+    uint32_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     struct ar_hdr *ar_hdr;
-    unsigned long ar_name_size;
+    uint32_t ar_name_size;
 
 	/* These fields are to be filled in by this routine, clear them first */
 	ofile->member_offset = 0;
@@ -1800,6 +1800,10 @@ struct ofile *ofile)
 	    }
 #ifdef LTO_SUPPORT
 	    if(ofile->member_type == OFILE_UNKNOWN &&
+	       strncmp(ofile->member_name, SYMDEF_SORTED,
+		       sizeof(SYMDEF_SORTED) - 1) != 0 &&
+	       strncmp(ofile->member_name, SYMDEF,
+		       sizeof(SYMDEF) - 1) != 0 &&
 	       is_llvm_bitcode(ofile, ofile->member_addr, ofile->member_size) ==
 	       TRUE){
 		ofile->member_type = OFILE_LLVM_BITCODE;
@@ -1846,11 +1850,11 @@ ofile_next_member(
 struct ofile *ofile)
 {
     char *addr;
-    unsigned long size, offset;
+    uint32_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     struct ar_hdr *ar_hdr;
-    unsigned long ar_name_size;
+    uint32_t ar_name_size;
 
 	/*
 	 * Get the address and size of the archive.
@@ -2072,13 +2076,13 @@ ofile_specific_member(
 const char *member_name,
 struct ofile *ofile)
 {
-    long i;
+    int32_t i;
     char *addr;
-    unsigned long size, offset;
+    uint32_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     char *ar_name;
-    unsigned long ar_name_size;
+    uint32_t ar_name_size;
     struct ar_hdr *ar_hdr;
 
 	/* These fields are to be filled in by this routine, clear them first */
@@ -2311,7 +2315,7 @@ enum bool
 ofile_first_module(
 struct ofile *ofile)
 {
-    unsigned long i, ncmds;
+    uint32_t i, ncmds;
     struct symtab_command *st;
     struct dysymtab_command *dyst;
     struct load_command *lc;
@@ -2411,7 +2415,7 @@ enum bool
 ofile_next_module(
 struct ofile *ofile)
 {
-    unsigned long i, module_index, ncmds;
+    uint32_t i, module_index, ncmds;
     struct symtab_command *st;
     struct dysymtab_command *dyst;
     struct load_command *lc;
@@ -2504,7 +2508,7 @@ ofile_specific_module(
 const char *module_name,
 struct ofile *ofile)
 {
-    unsigned long i, ncmds;
+    uint32_t i, ncmds;
     enum bool swapped;
     enum byte_sex host_byte_sex;
     struct symtab_command *st;
@@ -2677,7 +2681,7 @@ struct ofile *ofile)
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
 
-    unsigned long i, j;
+    uint32_t i, j;
 
 	if(ofile->file_type != OFILE_FAT){
 	    error("internal error. check_fat() call and file type of: %s is "
@@ -2748,7 +2752,7 @@ enum check_type
 check_fat_object_in_archive(
 struct ofile *ofile)
 {
-    unsigned long i, j;
+    uint32_t i, j;
     uint32_t magic;
 
 	if(ofile->file_type != OFILE_ARCHIVE){
@@ -2867,14 +2871,14 @@ enum bool archives_with_fat_objects)
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
     char *addr;
-    unsigned long size, offset;
+    uint32_t size, offset;
     uint32_t magic;
     enum byte_sex host_byte_sex;
     enum bool swapped;
     struct mach_header mh;
     struct mach_header_64 mh64;
     struct ar_hdr *ar_hdr;
-    unsigned long ar_name_size;
+    uint32_t ar_name_size;
 
 	/*
 	 * Get the address and size of the archive (as well as the cputype and
@@ -3029,11 +3033,11 @@ enum check_type
 check_extend_format_1(
 struct ofile *ofile,
 struct ar_hdr *ar_hdr,
-unsigned long size_left,
-unsigned long *member_name_size)
+uint32_t size_left,
+uint32_t *member_name_size)
 {
     char *p, *endp, buf[sizeof(ar_hdr->ar_name)+1];
-    unsigned long ar_name_size;
+    uint32_t ar_name_size;
 
 	*member_name_size = 0;
 
@@ -3047,9 +3051,9 @@ unsigned long *member_name_size)
 	    return(CHECK_BAD);
 	}
 	ar_name_size = strtoul(p, &endp, 10);
-	if(ar_name_size == ULONG_MAX && errno == ERANGE){
+	if(ar_name_size == UINT_MAX && errno == ERANGE){
 	    archive_error(ofile, "malformed (size in ar_name: %.*s for "
-		"archive extend format #1 overflows unsigned long)",
+		"archive extend format #1 overflows uint32_t)",
 		(int)sizeof(ar_hdr->ar_name), ar_hdr->ar_name);
 	    return(CHECK_BAD);
 	}
@@ -3084,7 +3088,7 @@ struct ofile *ofile)
 #ifdef OTOOL
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
-    unsigned long size, i, j, ncmds, sizeofcmds, load_command_multiple;
+    uint32_t size, i, j, ncmds, sizeofcmds, load_command_multiple;
     cpu_type_t cputype;
     char *addr, *cmd_name;
     enum byte_sex host_byte_sex;
@@ -3115,12 +3119,14 @@ struct ofile *ofile)
     struct linkedit_data_command *code_sig, *split_info;
     struct prebind_cksum_command *cs;
     struct encryption_info_command *encrypt_info;
+    struct dyld_info_command *dyld_info;
     struct uuid_command *uuid;
     struct rpath_command *rpath;
     uint32_t flavor, count, nflavor;
     char *p, *state;
-    unsigned long sizeof_nlist, sizeof_dylib_module;
+    uint32_t sizeof_nlist, sizeof_dylib_module;
     char *struct_dylib_module_name, *struct_nlist_name;
+    uint64_t big_size, big_load_end;
 
 	addr = ofile->object_addr;
 	size = ofile->object_size;
@@ -3133,7 +3139,9 @@ struct ofile *ofile)
 	if(ofile->mh != NULL){
 	    if(swapped)
 		swap_mach_header(mh, host_byte_sex);
-	    if(mh->sizeofcmds + sizeof(struct mach_header) > size){
+	    big_size = mh->sizeofcmds;
+	    big_size += sizeof(struct mach_header);
+	    if(big_size > size){
 		Mach_O_error(ofile, "truncated or malformed object (load "
 			     "commands extend past the end of the file)");
 		return(CHECK_BAD);
@@ -3153,7 +3161,9 @@ struct ofile *ofile)
 	else{
 	    if(swapped)
 		swap_mach_header_64(mh64, host_byte_sex);
-	    if(mh64->sizeofcmds + sizeof(struct mach_header_64) > size){
+	    big_size = mh64->sizeofcmds;
+	    big_size += sizeof(struct mach_header_64);
+	    if(big_size > size){
 		Mach_O_error(ofile, "truncated or malformed object (load "
 			     "commands extend past the end of the file)");
 		return(CHECK_BAD);
@@ -3173,7 +3183,7 @@ struct ofile *ofile)
 	if(ofile->file_type == OFILE_FAT){
 	    if(ofile->fat_archs[ofile->narch].cputype != ofile->mh_cputype){
 		Mach_O_error(ofile, "malformed fat file (fat header "
-		    "architecture: %lu's cputype does not match "
+		    "architecture: %u's cputype does not match "
 		    "object file's mach header)", ofile->narch);
 		return(CHECK_BAD);
 	    }
@@ -3193,6 +3203,8 @@ struct ofile *ofile)
 	cs = NULL;
 	uuid = NULL;
 	encrypt_info = NULL;
+	dyld_info = NULL;
+	big_load_end = 0;
 	for(i = 0, lc = load_commands; i < ncmds; i++){
 	    l = *lc;
 	    if(swapped)
@@ -3201,19 +3213,31 @@ struct ofile *ofile)
 	     * Check load command size for a multiple of load_command_multiple.
 	     */
 	    if(l.cmdsize % load_command_multiple != 0){
-		Mach_O_error(ofile, "malformed object (load command %lu cmdsize"
-			     " not a multiple of %ld)",i,load_command_multiple);
-		return(CHECK_BAD);
+		/*
+		 * We have a hack here to allow 64-bit Mach-O core files to
+		 * have LC_THREAD commands that are only a multiple of 4 and
+		 * not 8 to be allowed since the kernel produces them.
+		 */
+		if(ofile->mh64 == NULL ||
+		   ofile->mh64->filetype != MH_CORE ||
+		   l.cmd != LC_THREAD ||
+		   l.cmdsize % 4 != 0){
+		    Mach_O_error(ofile, "malformed object (load command %u "
+				 "cmdsize not a multiple of %u)", i,
+				 load_command_multiple);
+		    return(CHECK_BAD);
+		}
 	    }
 	    /* check that load command does not extends past end of commands */
-	    if((char *)lc + l.cmdsize > (char *)load_commands + sizeofcmds){
+	    big_load_end += l.cmdsize;
+	    if(big_load_end > sizeofcmds){
 		Mach_O_error(ofile, "truncated or malformed object (load "
-			     "command %lu extends past the end of the file)",i);
+			     "command %u extends past the end of the file)",i);
 		return(CHECK_BAD);
 	    }
 	    /* check that the load command size is not zero */
 	    if(l.cmdsize == 0){
-		Mach_O_error(ofile, "malformed object (load command %lu cmdsize"
+		Mach_O_error(ofile, "malformed object (load command %u cmdsize"
 			     " is zero)", i);
 		return(CHECK_BAD);
 	    }
@@ -3222,22 +3246,26 @@ struct ofile *ofile)
 		sg = (struct segment_command *)lc;
 		if(swapped)
 		    swap_segment_command(sg, host_byte_sex);
-		if(sg->cmdsize != sizeof(struct segment_command) +
-				     sg->nsects * sizeof(struct section)){
+		big_size = sg->nsects;
+		big_size *= sizeof(struct section);
+		big_size += sizeof(struct segment_command);
+		if(sg->cmdsize != big_size){
 		    Mach_O_error(ofile, "malformed object (inconsistent "
-				 "cmdsize in LC_SEGMENT command %lu for the "
+				 "cmdsize in LC_SEGMENT command %u for the "
 				 "number of sections)", i);
 		    return(CHECK_BAD);
 		}
 		if(sg->fileoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object ("
-				 "LC_SEGMENT command %lu fileoff field "
+				 "LC_SEGMENT command %u fileoff field "
 				 "extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(sg->fileoff + sg->filesize > size){
+		big_size = sg->fileoff;
+		big_size += sg->filesize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object ("
-				 "LC_SEGMENT command %lu fileoff field "
+				 "LC_SEGMENT command %u fileoff field "
 				 "plus filesize field extends past the end of "
 				 "the file)", i);
 		    return(CHECK_BAD);
@@ -3249,31 +3277,35 @@ struct ofile *ofile)
 		for(j = 0 ; j < sg->nsects ; j++){
 		    if(s->flags != S_ZEROFILL && s->offset > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(offset field of section %lu in LC_SEGMENT "
-				"command %lu extends past the end of the file)",
+				"(offset field of section %u in LC_SEGMENT "
+				"command %u extends past the end of the file)",
 				j, i);
 			return(CHECK_BAD);
 		    }
-		    if(s->flags != S_ZEROFILL && s->offset + s->size > size){
+		    big_size = s->offset;
+		    big_size += s->size;
+		    if(s->flags != S_ZEROFILL && big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(offset field plus size field of section %lu "
-				"in LC_SEGMENT command %lu extends "
+				"(offset field plus size field of section %u "
+				"in LC_SEGMENT command %u extends "
 				"past the end of the file)", j, i);
 			return(CHECK_BAD);
 		    }
 		    if(s->reloff > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(reloff field of section %lu in LC_SEGMENT "
-				"command %lu extends past the end of the file)",
+				"(reloff field of section %u in LC_SEGMENT "
+				"command %u extends past the end of the file)",
 				j, i);
 			return(CHECK_BAD);
 		    }
-		    if(s->reloff + s->nreloc * sizeof(struct relocation_info) >
-		       size){
+		    big_size = s->nreloc;
+		    big_size *= sizeof(struct relocation_info);
+		    big_size += s->reloff;
+		    if(big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(reloff field plus nreloc field times sizeof("
-				"struct relocation_info) of section %lu in "
-				"LC_SEGMENT command %lu extends past the "
+				"struct relocation_info) of section %u in "
+				"LC_SEGMENT command %u extends past the "
 				"end of the file)", j, i);
 			return(CHECK_BAD);
 		    }
@@ -3285,22 +3317,26 @@ struct ofile *ofile)
 		sg64 = (struct segment_command_64 *)lc;
 		if(swapped)
 		    swap_segment_command_64(sg64, host_byte_sex);
-		if(sg64->cmdsize != sizeof(struct segment_command_64) +
-				     sg64->nsects * sizeof(struct section_64)){
+		big_size = sg64->nsects;
+		big_size *= sizeof(struct section_64);
+		big_size += sizeof(struct segment_command_64);
+		if(sg64->cmdsize != big_size){
 		    Mach_O_error(ofile, "malformed object (inconsistent "
-				 "cmdsize in LC_SEGMENT_64 command %lu for "
+				 "cmdsize in LC_SEGMENT_64 command %u for "
 				 "the number of sections)", i);
 		    return(CHECK_BAD);
 		}
 		if(sg64->fileoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object ("
-				 "LC_SEGMENT_64 command %lu fileoff field "
+				 "LC_SEGMENT_64 command %u fileoff field "
 				 "extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(sg64->fileoff + sg64->filesize > size){
+		big_size = sg64->fileoff;
+		big_size += sg64->filesize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object ("
-				 "LC_SEGMENT_64 command %lu fileoff field "
+				 "LC_SEGMENT_64 command %u fileoff field "
 				 "plus filesize field extends past the end of "
 				 "the file)", i);
 		    return(CHECK_BAD);
@@ -3312,32 +3348,35 @@ struct ofile *ofile)
 		for(j = 0 ; j < sg64->nsects ; j++){
 		    if(s64->flags != S_ZEROFILL && s64->offset > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(offset field of section %lu in LC_SEGMENT_64 "
-				"command %lu extends past the end of the file)",
+				"(offset field of section %u in LC_SEGMENT_64 "
+				"command %u extends past the end of the file)",
 				j, i);
 			return(CHECK_BAD);
 		    }
-		    if(s64->flags != S_ZEROFILL &&
-		       s64->offset + s64->size > size){
+		    big_size = s64->offset;
+		    big_size += s64->size;
+		    if(s64->flags != S_ZEROFILL && big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(offset field plus size field of section %lu "
-				"in LC_SEGMENT_64 command %lu extends "
+				"(offset field plus size field of section %u "
+				"in LC_SEGMENT_64 command %u extends "
 				"past the end of the file)", j, i);
 			return(CHECK_BAD);
 		    }
 		    if(s64->reloff > size){
 			Mach_O_error(ofile, "truncated or malformed object "
-				"(reloff field of section %lu in LC_SEGMENT_64 "
-				"command %lu extends past the end of the file)",
+				"(reloff field of section %u in LC_SEGMENT_64 "
+				"command %u extends past the end of the file)",
 				j, i);
 			return(CHECK_BAD);
 		    }
-		    if(s64->reloff + s64->nreloc *
-		       sizeof(struct relocation_info) > size){
+		    big_size = s64->nreloc;
+		    big_size *= sizeof(struct relocation_info);
+		    big_size += s64->reloff;
+		    if(big_size > size){
 			Mach_O_error(ofile, "truncated or malformed object "
 				"(reloff field plus nreloc field times sizeof("
-				"struct relocation_info) of section %lu in "
-				"LC_SEGMENT_64 command %lu extends past the "
+				"struct relocation_info) of section %u in "
+				"LC_SEGMENT_64 command %u extends past the "
 				"end of the file)", j, i);
 			return(CHECK_BAD);
 		    }
@@ -3356,31 +3395,36 @@ struct ofile *ofile)
 		    swap_symtab_command(st, host_byte_sex);
 		if(st->cmdsize != sizeof(struct symtab_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SYMTAB command "
-			"%lu has incorrect cmdsize)", i);
+			"%u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(st->symoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object (symoff "
-			"field of LC_SYMTAB command %lu extends past the end "
+			"field of LC_SYMTAB command %u extends past the end "
 			"of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(st->symoff + st->nsyms * sizeof_nlist > size){
+		big_size = st->nsyms;
+		big_size *= sizeof_nlist;
+		big_size += st->symoff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object (symoff "
 			"field plus nsyms field times sizeof(%s) of LC_SYMTAB "
-			"command %lu extends past the end of the file)",
+			"command %u extends past the end of the file)",
 			struct_nlist_name, i);
 		    return(CHECK_BAD);
 		}
 		if(st->stroff > size){
 		    Mach_O_error(ofile, "truncated or malformed object (stroff "
-			"field of LC_SYMTAB command %lu extends past the end "
+			"field of LC_SYMTAB command %u extends past the end "
 			"of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(st->stroff + st->strsize > size){
+		big_size = st->stroff;
+		big_size += st->strsize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object (stroff "
-			"field plus strsize field of LC_SYMTAB command %lu "
+			"field plus strsize field of LC_SYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
@@ -3397,91 +3441,103 @@ struct ofile *ofile)
 		    swap_dysymtab_command(dyst, host_byte_sex);
 		if(dyst->cmdsize != sizeof(struct dysymtab_command)){
 		    Mach_O_error(ofile, "malformed object (LC_DYSYMTAB command "
-			"%lu has incorrect cmdsize)", i);
+			"%u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->tocoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object (tocoff "
-			"field of LC_DYSYMTAB command %lu extends past the end "
+			"field of LC_DYSYMTAB command %u extends past the end "
 			"of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->tocoff +
-		   dyst->ntoc * sizeof(struct dylib_table_of_contents) > size){
+		big_size = dyst->ntoc;
+		big_size *= sizeof(struct dylib_table_of_contents);
+		big_size += dyst->tocoff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object (tocoff "
 			"field plus ntoc field times sizeof(struct dylib_table"
-			"_of_contents) of LC_DYSYMTAB command %lu extends past "
+			"_of_contents) of LC_DYSYMTAB command %u extends past "
 			"the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->modtaboff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(modtaboff field of LC_DYSYMTAB command %lu extends "
+			"(modtaboff field of LC_DYSYMTAB command %u extends "
 			"past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->modtaboff +
-		   dyst->nmodtab * sizeof_dylib_module > size){
+		big_size = dyst->nmodtab;
+		big_size *= sizeof_dylib_module;
+		big_size += dyst->modtaboff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(modtaboff field plus nmodtab field times sizeof(%s) "
-			"of LC_DYSYMTAB command %lu extends past the end of "
+			"of LC_DYSYMTAB command %u extends past the end of "
 			"the file)", struct_dylib_module_name, i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->extrefsymoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(extrefsymoff field of LC_DYSYMTAB command %lu "
+			"(extrefsymoff field of LC_DYSYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->extrefsymoff +
-		   dyst->nextrefsyms * sizeof(struct dylib_reference) > size){
+		big_size = dyst->nextrefsyms;
+		big_size *= sizeof(struct dylib_reference);
+		big_size += dyst->extrefsymoff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(extrefsymoff field plus nextrefsyms field times "
 			"sizeof(struct dylib_reference) of LC_DYSYMTAB command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->indirectsymoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(indirectsymoff field of LC_DYSYMTAB command %lu "
+			"(indirectsymoff field of LC_DYSYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->indirectsymoff +
-		   dyst->nindirectsyms * sizeof(uint32_t) > size){
+		big_size = dyst->nindirectsyms;
+		big_size *= sizeof(uint32_t);
+		big_size += dyst->indirectsymoff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(indirectsymoff field plus nindirectsyms field times "
 			"sizeof(uint32_t) of LC_DYSYMTAB command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->extreloff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(extreloff field of LC_DYSYMTAB command %lu "
+			"(extreloff field of LC_DYSYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->extreloff +
-		   dyst->nextrel * sizeof(struct relocation_info) > size){
+		big_size = dyst->nextrel;
+		big_size *= sizeof(struct relocation_info);
+		big_size += dyst->extreloff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(extreloff field plus nextrel field times "
 			"sizeof(struct relocation_info) of LC_DYSYMTAB command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(dyst->locreloff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(locreloff field of LC_DYSYMTAB command %lu "
+			"(locreloff field of LC_DYSYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(dyst->locreloff +
-		   dyst->nlocrel * sizeof(struct relocation_info) > size){
+		big_size = dyst->nlocrel;
+		big_size *= sizeof(struct relocation_info);
+		big_size += dyst->locreloff;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(locreloff field plus nlocrel field times "
 			"sizeof(struct relocation_info) of LC_DYSYMTAB command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3497,7 +3553,7 @@ struct ofile *ofile)
 		    swap_routines_command(rc, host_byte_sex);
 		if(rc->cmdsize != sizeof(struct routines_command)){
 		    Mach_O_error(ofile, "malformed object (LC_ROUTINES "
-			"command %lu has incorrect cmdsize)", i);
+			"command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3513,7 +3569,7 @@ struct ofile *ofile)
 		    swap_routines_command_64(rc64, host_byte_sex);
 		if(rc64->cmdsize != sizeof(struct routines_command_64)){
 		    Mach_O_error(ofile, "malformed object (LC_ROUTINES_64 "
-			"command %lu has incorrect cmdsize)", i);
+			"command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3529,21 +3585,23 @@ struct ofile *ofile)
 		    swap_twolevel_hints_command(hints, host_byte_sex);
 		if(hints->cmdsize != sizeof(struct twolevel_hints_command)){
 		    Mach_O_error(ofile, "malformed object (LC_TWOLEVEL_HINTS "
-			         "command %lu has incorrect cmdsize)", i);
+			         "command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(hints->offset > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(offset field of LC_TWOLEVEL_HINTS command %lu "
+			"(offset field of LC_TWOLEVEL_HINTS command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(hints->offset +
-		   hints->nhints * sizeof(struct twolevel_hint) > size){
+		big_size = hints->nhints;
+		big_size *= sizeof(struct twolevel_hint);
+		big_size += hints->offset;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(offset field plus nhints field times "
 			"sizeof(struct twolevel_hint) of LC_TWOLEVEL_HINTS "
-			" command %lu extends past the end of the file)", i);
+			" command %u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3559,19 +3617,21 @@ struct ofile *ofile)
 		    swap_linkedit_data_command(code_sig, host_byte_sex);
 		if(code_sig->cmdsize != sizeof(struct linkedit_data_command)){
 		    Mach_O_error(ofile, "malformed object (LC_CODE_SIGNATURE "
-			         "command %lu has incorrect cmdsize)", i);
+			         "command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(code_sig->dataoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field of LC_CODE_SIGNATURE command %lu "
+			"(dataoff field of LC_CODE_SIGNATURE command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(code_sig->dataoff + code_sig->datasize > size){
+		big_size = code_sig->dataoff;
+		big_size += code_sig->datasize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(dataoff field plus datasize field of "
-			"LC_CODE_SIGNATURE command %lu extends past the end of "
+			"LC_CODE_SIGNATURE command %u extends past the end of "
 			"the file)", i);
 		    return(CHECK_BAD);
 		}
@@ -3588,26 +3648,28 @@ struct ofile *ofile)
 		    swap_linkedit_data_command(split_info, host_byte_sex);
 		if(split_info->cmdsize != sizeof(struct linkedit_data_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SEGMENT_SPLIT_"
-				 "INFO command %lu has incorrect cmdsize)", i);
+				 "INFO command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(split_info->dataoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field of LC_SEGMENT_SPLIT_INFO command %lu "
+			"(dataoff field of LC_SEGMENT_SPLIT_INFO command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(split_info->dataoff + split_info->datasize > size){
+		big_size = split_info->dataoff;
+		big_size += split_info->datasize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(dataoff field plus datasize field of LC_SEGMENT_"
-			"SPLIT_INFO command %lu extends past the end of "
+			"SPLIT_INFO command %u extends past the end of "
 			"the file)", i);
 		    return(CHECK_BAD);
 		}
 		if((split_info->datasize % load_command_multiple) != 0){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(datasize field of LC_SEGMENT_SPLIT_INFO command %lu "
-			"is not a multple of %lu)", i, load_command_multiple);
+			"(datasize field of LC_SEGMENT_SPLIT_INFO command %u "
+			"is not a multple of %u)", i, load_command_multiple);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3619,23 +3681,100 @@ struct ofile *ofile)
 		if(encrypt_info->cmdsize !=
 		   sizeof(struct encryption_info_command)){
 		    Mach_O_error(ofile, "malformed object (LC_ENCRYPTION_INFO"
-				 "command %lu has incorrect cmdsize)", i);
+				 "command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(encrypt_info->cryptoff > size){
 		Mach_O_error(ofile, "truncated or malformed object (cryptoff "
-			     "field of LC_ENCRYPTION_INFO command %lu extends "
+			     "field of LC_ENCRYPTION_INFO command %u extends "
 			     "past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(encrypt_info->cryptoff + encrypt_info->cryptsize > size){
+		big_size = encrypt_info->cryptoff;
+		big_size += encrypt_info->cryptsize;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 				 "(cryptoff field plus cryptsize field of "
-				 "LC_ENCRYPTION_INFO command %lu extends past "
+				 "LC_ENCRYPTION_INFO command %u extends past "
 				 "the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
+
+	    case LC_DYLD_INFO:
+	    case LC_DYLD_INFO_ONLY:
+		dyld_info = (struct dyld_info_command *)lc;
+		if(swapped) 
+		    swap_dyld_info_command(dyld_info, host_byte_sex);
+		if(dyld_info->cmdsize !=
+		   sizeof(struct dyld_info_command)){
+		    Mach_O_error(ofile, "malformed object (LC_DYLD_INFO"
+				 "command %u has incorrect cmdsize)", i);
+		    return(CHECK_BAD);
+		}
+		if(dyld_info->rebase_off != 0 && dyld_info->rebase_off > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(rebase_off field of LC_DYLD_INFO command %u "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		    if (dyld_info->rebase_off+dyld_info->rebase_size > size){
+			Mach_O_error(ofile, "truncated or malformed object "
+			    "(rebase_off field of LC_DYLD_INFO command %u "
+			    "extends past the end of the file)", i);
+			return(CHECK_BAD);
+		    }
+		}
+		if(dyld_info->bind_off != 0 && dyld_info->bind_off > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(bind_off field of LC_DYLD_INFO command %u "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		    if (dyld_info->bind_off+dyld_info->bind_size > size){
+			Mach_O_error(ofile, "truncated or malformed object "
+			    "(bind_off field of LC_DYLD_INFO command %u "
+			    "extends past the end of the file)", i);
+			return(CHECK_BAD);
+		    }
+		}
+		if(dyld_info->weak_bind_off != 0 && dyld_info->weak_bind_off > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(weak_bind_off field of LC_DYLD_INFO command %u "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		    if (dyld_info->weak_bind_off+dyld_info->weak_bind_size > size){
+			Mach_O_error(ofile, "truncated or malformed object "
+			    "(weak_bind_off field of LC_DYLD_INFO command %u "
+			    "extends past the end of the file)", i);
+			return(CHECK_BAD);
+		    }
+		}
+		if(dyld_info->lazy_bind_off != 0 && dyld_info->lazy_bind_off > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(lazy_bind_off field of LC_DYLD_INFO command %u "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		    if (dyld_info->lazy_bind_off+dyld_info->lazy_bind_size > size){
+			Mach_O_error(ofile, "truncated or malformed object "
+			    "(lazy_bind_off field of LC_DYLD_INFO command %u "
+			    "extends past the end of the file)", i);
+			return(CHECK_BAD);
+		    }
+		}
+		if(dyld_info->export_off != 0 && dyld_info->export_off > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(export_off field of LC_DYLD_INFO command %u "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		    if (dyld_info->export_off+dyld_info->export_size > size){
+			Mach_O_error(ofile, "truncated or malformed object "
+			    "(export_off field of LC_DYLD_INFO command %u "
+			    "extends past the end of the file)", i);
+			return(CHECK_BAD);
+		    }
+		}
+		break;
+		
+
 
 	    case LC_PREBIND_CKSUM:
 		if(cs != NULL){
@@ -3648,7 +3787,7 @@ struct ofile *ofile)
 		    swap_prebind_cksum_command(cs, host_byte_sex);
 		if(cs->cmdsize != sizeof(struct prebind_cksum_command)){
 		    Mach_O_error(ofile, "malformed object (LC_PREBIND_CKSUM "
-			"command %lu has incorrect cmdsize)", i);
+			"command %u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3663,7 +3802,7 @@ struct ofile *ofile)
 		if(swapped)
 		    swap_uuid_command(uuid, host_byte_sex);
 		if(uuid->cmdsize != sizeof(struct uuid_command)){
-		    Mach_O_error(ofile, "malformed object (LC_UUID command %lu "			"has incorrect cmdsize)", i);
+		    Mach_O_error(ofile, "malformed object (LC_UUID command %u "			"has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3674,18 +3813,20 @@ struct ofile *ofile)
 		    swap_symseg_command(ss, host_byte_sex);
 		if(ss->cmdsize != sizeof(struct symseg_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SYMSEG command "
-			"%lu has incorrect cmdsize)", i);
+			"%u has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(ss->offset > size){
 		    Mach_O_error(ofile, "truncated or malformed object (offset "
-			"field of LC_SYMSEG command %lu extends past the end "
+			"field of LC_SYMSEG command %u extends past the end "
 			"of the file)", i);
 		    return(CHECK_BAD);
 		}
-		if(ss->offset + ss->size > size){
+		big_size = ss->offset;
+		big_size += ss->size;
+		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object (offset "
-			"field plus size field of LC_SYMTAB command %lu "
+			"field plus size field of LC_SYMTAB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
@@ -3697,14 +3838,14 @@ struct ofile *ofile)
 		if(swapped)
 		    swap_fvmlib_command(fl, host_byte_sex);
 		if(fl->cmdsize < sizeof(struct fvmlib_command)){
-		    Mach_O_error(ofile, "malformed object (%s command %lu has "
+		    Mach_O_error(ofile, "malformed object (%s command %u has "
 			"too small cmdsize field)", fl->cmd == LC_IDFVMLIB ? 
 			"LC_IDFVMLIB" : "LC_LOADFVMLIB", i);
 		    return(CHECK_BAD);
 		}
 		if(fl->fvmlib.name.offset >= fl->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (name."
-			"offset field of %s command %lu extends past the end "
+			"offset field of %s command %u extends past the end "
 			"of the file)", fl->cmd == LC_IDFVMLIB ? "LC_IDFVMLIB"
 			: "LC_LOADFVMLIB", i);
 		    return(CHECK_BAD);
@@ -3731,13 +3872,13 @@ check_dylib_command:
 		if(swapped)
 		    swap_dylib_command(dl, host_byte_sex);
 		if(dl->cmdsize < sizeof(struct dylib_command)){
-		    Mach_O_error(ofile, "malformed object (%s command %lu has "
+		    Mach_O_error(ofile, "malformed object (%s command %u has "
 			"too small cmdsize field)", cmd_name, i);
 		    return(CHECK_BAD);
 		}
 		if(dl->dylib.name.offset >= dl->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (name."
-			"offset field of %s command %lu extends past the end "
+			"offset field of %s command %u extends past the end "
 			"of the file)", cmd_name, i);
 		    return(CHECK_BAD);
 		}
@@ -3749,13 +3890,13 @@ check_dylib_command:
 		    swap_sub_framework_command(sub, host_byte_sex);
 		if(sub->cmdsize < sizeof(struct sub_framework_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SUB_FRAMEWORK "
-			"command %lu has too small cmdsize field)", i);
+			"command %u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(sub->umbrella.offset >= sub->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(umbrella.offset field of LC_SUB_FRAMEWORK command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3766,13 +3907,13 @@ check_dylib_command:
 		    swap_sub_umbrella_command(usub, host_byte_sex);
 		if(usub->cmdsize < sizeof(struct sub_umbrella_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SUB_UMBRELLA "
-			"command %lu has too small cmdsize field)", i);
+			"command %u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(usub->sub_umbrella.offset >= usub->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(sub_umbrella.offset field of LC_SUB_UMBRELLA command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3783,13 +3924,13 @@ check_dylib_command:
 		    swap_sub_library_command(lsub, host_byte_sex);
 		if(lsub->cmdsize < sizeof(struct sub_library_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SUB_LIBRARY "
-			"command %lu has too small cmdsize field)", i);
+			"command %u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(lsub->sub_library.offset >= lsub->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(sub_library.offset field of LC_SUB_LIBRARY command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3800,13 +3941,13 @@ check_dylib_command:
 		    swap_sub_client_command(csub, host_byte_sex);
 		if(csub->cmdsize < sizeof(struct sub_client_command)){
 		    Mach_O_error(ofile, "malformed object (LC_SUB_CLIENT "
-			"command %lu has too small cmdsize field)", i);
+			"command %u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(csub->client.offset >= csub->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(cleient.offset field of LC_SUB_CLIENT command "
-			"%lu extends past the end of the file)", i);
+			"%u extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3817,18 +3958,18 @@ check_dylib_command:
 		    swap_prebound_dylib_command(pbdylib, host_byte_sex);
 		if(pbdylib->cmdsize < sizeof(struct dylib_command)){
 		    Mach_O_error(ofile, "malformed object (LC_PREBIND_DYLIB "
-			"command %lu has too small cmdsize field)", i);
+			"command %u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(pbdylib->name.offset >= pbdylib->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (name."
-			"offset field of LC_PREBIND_DYLIB command %lu extends "
+			"offset field of LC_PREBIND_DYLIB command %u extends "
 			"past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(pbdylib->linked_modules.offset >= pbdylib->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (linked_"
-			"modules.offset field of LC_PREBIND_DYLIB command %lu "
+			"modules.offset field of LC_PREBIND_DYLIB command %u "
 			"extends past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
@@ -3840,7 +3981,7 @@ check_dylib_command:
 		if(swapped)
 		    swap_dylinker_command(dyld, host_byte_sex);
 		if(dyld->cmdsize < sizeof(struct dylinker_command)){
-		    Mach_O_error(ofile, "malformed object (%s command %lu has "
+		    Mach_O_error(ofile, "malformed object (%s command %u has "
 			"too small cmdsize field)",
 			dyld->cmd == LC_ID_DYLINKER ? 
 			"LC_ID_DYLINKER" : "LC_LOAD_DYLINKER", i);
@@ -3848,7 +3989,7 @@ check_dylib_command:
 		}
 		if(dyld->name.offset >= dyld->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (name."
-			"offset field of %s command %lu extends past the end "
+			"offset field of %s command %u extends past the end "
 			"of the file)", dyld->cmd == LC_ID_DYLINKER ?
 			"LC_ID_DYLINKER" : "LC_LOAD_DYLINKER", i);
 		    return(CHECK_BAD);
@@ -3888,7 +4029,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M68K_THREAD_STATE_REGS_COUNT for "
 				    "flavor number %u which is a M68K_THREAD_"
-				    "STATE_REGS flavor in %s command %lu)",
+				    "STATE_REGS flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -3903,7 +4044,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M68K_THREAD_STATE_68882_COUNT for "
 				    "flavor number %u which is a M68K_THREAD_"
-				    "STATE_68882 flavor in %s command %lu)",
+				    "STATE_68882 flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -3918,7 +4059,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M68K_THREAD_STATE_USER_REG_COUNT for "
 				    "flavor number %u which is a M68K_THREAD_"
-				    "STATE_USER_REG flavor in %s command %lu)",
+				    "STATE_USER_REG flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -3934,12 +4075,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -3971,7 +4112,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not PPC_THREAD_STATE_COUNT for "
 				    "flavor number %u which is a PPC_THREAD_"
-				    "STATE flavor in %s command %lu)",
+				    "STATE flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -3986,12 +4127,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4023,7 +4164,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not PPC_THREAD_STATE64_COUNT for "
 				    "flavor number %u which is a PPC_THREAD_"
-				    "STATE64 flavor in %s command %lu)",
+				    "STATE64 flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4037,12 +4178,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4077,7 +4218,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M88K_THREAD_STATE_GRF_COUNT for "
 				    "flavor number %u which is a M88K_THREAD_"
-				    "STATE_GRF flavor in %s command %lu)",
+				    "STATE_GRF flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4093,7 +4234,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M88K_THREAD_STATE_XRF_COUNT for "
 				    "flavor number %u which is a M88K_THREAD_"
-				    "STATE_XRF flavor in %s command %lu)",
+				    "STATE_XRF flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4109,7 +4250,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M88K_THREAD_STATE_USER_COUNT for "
 				    "flavor number %u which is a M88K_THREAD_"
-				    "STATE_USER flavor in %s command %lu)",
+				    "STATE_USER flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4125,7 +4266,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not M88110_THREAD_STATE_IMPL_COUNT for "
 				    "flavor number %u which is a M88110_THREAD"
-				    "_STATE_IMPL flavor in %s command %lu)",
+				    "_STATE_IMPL flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4140,12 +4281,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4179,7 +4320,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not I860_THREAD_STATE_REGS_COUNT for "
 				    "flavor number %u which is a I860_THREAD_"
-				    "STATE_REGS flavor in %s command %lu)",
+				    "STATE_REGS flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4196,12 +4337,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4251,7 +4392,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not i386_THREAD_STATE_COUNT for flavor "
 				    "number %u which is a i386_THREAD_STATE "
-				    "flavor in %s command %lu)", nflavor,
+				    "flavor in %s command %u)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4268,7 +4409,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not i386_FLOAT_STATE_COUNT for flavor "
 				    "number %u which is a i386_FLOAT_STATE "
-				    "flavor in %s command %lu)", nflavor,
+				    "flavor in %s command %u)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4283,7 +4424,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not I386_EXCEPTION_STATE_COUNT for "
 				    "flavor number %u which is a i386_"
-				    "EXCEPTION_STATE flavor in %s command %lu)",
+				    "EXCEPTION_STATE flavor in %s command %u)",
 				    nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
@@ -4303,7 +4444,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not i386_THREAD_FPSTATE_COUNT for flavor "
 				    "number %u which is a i386_THREAD_FPSTATE "
-				    "flavor in %s command %lu)", nflavor,
+				    "flavor in %s command %u)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4318,7 +4459,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not i386_THREAD_EXCEPTSTATE_COUNT for "
 				    "flavor number %u which is a i386_THREAD_"
-				    "EXCEPTSTATE flavor in %s command %lu)",
+				    "EXCEPTSTATE flavor in %s command %u)",
 				    nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
@@ -4334,7 +4475,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not i386_THREAD_CTHREADSTATE_COUNT for "
 				    "flavor number %u which is a i386_THREAD_"
-				    "CTHREADSTATE flavor in %s command %lu)",
+				    "CTHREADSTATE flavor in %s command %u)",
 				    nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
@@ -4351,12 +4492,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4388,7 +4529,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not x86_THREAD_STATE64_COUNT for "
 				    "flavor number %u which is a x86_THREAD_"
-				    "STATE64 flavor in %s command %lu)",
+				    "STATE64 flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4402,12 +4543,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4442,7 +4583,7 @@ check_dylib_command:
 				    "not HPPA_INTEGER_THREAD_STATE_COUNT for "
 				    "flavor number %u which is a "
 				    "HPPA_INTEGER_THREAD_STATE "
-				    "flavor in %s command %lu)", nflavor,
+				    "flavor in %s command %u)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4458,7 +4599,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not HPPA_FRAME_THREAD_STATE_COUNT for "
 				    "flavor number %u which is a HPPA_FRAME_"
-				    "THREAD_STATE flavor in %s command %lu)",
+				    "THREAD_STATE flavor in %s command %u)",
 				    nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
@@ -4474,7 +4615,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not HPPA_FP_THREAD_STATE_COUNT for "
 				    "flavor number %u which is a HPPA_FP_"
-				    "THREAD_STATE flavor in %s command %lu)",
+				    "THREAD_STATE flavor in %s command %u)",
 				    nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
@@ -4489,12 +4630,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4526,7 +4667,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not SPARC_THREAD_STATE_REGS_COUNT for "
 				    "flavor number %u which is a SPARC_THREAD_"
-				    "STATE_REGS flavor in %s command %lu)",
+				    "STATE_REGS flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4541,7 +4682,7 @@ check_dylib_command:
 				Mach_O_error(ofile, "malformed object (count "
 				    "not SPARC_THREAD_STATE_FPU_COUNT for "
 				    "flavor number %u which is a SPARC_THREAD_"
-				    "STATE_FPU flavor in %s command %lu)",
+				    "STATE_FPU flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4555,12 +4696,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4573,25 +4714,25 @@ check_dylib_command:
 		    nflavor = 0;
 		    p = (char *)ut + ut->cmdsize;
 		    while(state < p){
-			flavor = *((unsigned long *)state);
+			flavor = *((uint32_t *)state);
 			if(swapped){
 			    flavor = SWAP_INT(flavor);
-			    *((unsigned long *)state) = flavor;
+			    *((uint32_t *)state) = flavor;
 			}
-			state += sizeof(unsigned long);
-			count = *((unsigned long *)state);
+			state += sizeof(uint32_t);
+			count = *((uint32_t *)state);
 			if(swapped){
 			    count = SWAP_INT(count);
-			    *((unsigned long *)state) = count;
+			    *((uint32_t *)state) = count;
 			}
-			state += sizeof(unsigned long);
+			state += sizeof(uint32_t);
 			switch(flavor){
 			case ARM_THREAD_STATE:
 			    if(count != ARM_THREAD_STATE_COUNT){
 				Mach_O_error(ofile, "malformed object (count "
 				    "not ARM_THREAD_STATE_COUNT for "
 				    "flavor number %u which is a ARM_THREAD_"
-				    "STATE flavor in %s command %lu)",
+				    "STATE flavor in %s command %u)",
 				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
 				    "LC_UNIXTHREAD" : "LC_THREAD", i);
 				return(CHECK_BAD);
@@ -4605,12 +4746,12 @@ check_dylib_command:
 			    if(swapped){
 				Mach_O_error(ofile, "malformed object (unknown "
 				    "flavor for flavor number %u in %s command"
-				    " %lu can't byte swap it)", nflavor,
+				    " %u can't byte swap it)", nflavor,
 				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
 				    "LC_THREAD", i);
 				return(CHECK_BAD);
 			    }
-			    state += count * sizeof(long);
+			    state += count * sizeof(uint32_t);
 			    break;
 			}
 			nflavor++;
@@ -4620,7 +4761,7 @@ check_dylib_command:
 		if(swapped){
 		    Mach_O_error(ofile, "malformed object (unknown cputype and "
 			"cpusubtype of object and can't byte swap and check %s "
-			"command %lu)", ut->cmd == LC_UNIXTHREAD ?
+			"command %u)", ut->cmd == LC_UNIXTHREAD ?
 			"LC_UNIXTHREAD" : "LC_THREAD", i);
 		    return(CHECK_BAD);
 		}
@@ -4629,13 +4770,11 @@ check_dylib_command:
 		id = (struct ident_command *)lc;
 		if(swapped)
 		    swap_ident_command(id, host_byte_sex);
-		if((char *)id + id->cmdsize >
-		   (char *)load_commands + sizeofcmds){
-		    Mach_O_error(ofile, "truncated or malformed object (cmdsize"
-			"field of LC_IDENT command %lu extends past the end of "
-			"the load commands)", i);
-		    return(CHECK_BAD);
-		}
+		/*
+		 * Note the cmdsize field if the LC_IDENT command was checked
+		 * as part of checking all load commands cmdsize field before
+		 * the switch statement on the cmd field of the load command.
+		 */
 		break;
 	    case LC_RPATH:
 		rpath = (struct rpath_command *)lc;
@@ -4643,12 +4782,12 @@ check_dylib_command:
 		    swap_rpath_command(rpath, host_byte_sex);
 		if(rpath->cmdsize < sizeof(struct rpath_command)){
 		    Mach_O_error(ofile, "malformed object (LC_RPATH command "
-			"%lu has too small cmdsize field)", i);
+			"%u has too small cmdsize field)", i);
 		    return(CHECK_BAD);
 		}
 		if(rpath->path.offset >= rpath->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (path."
-			"offset field of LC_RPATH command %lu extends past the "
+			"offset field of LC_RPATH command %u extends past the "
 			"end of the file)", i);
 		    return(CHECK_BAD);
 		}
@@ -4657,7 +4796,7 @@ check_dylib_command:
 #ifndef OFI
 	    default:
 		Mach_O_error(ofile, "malformed object (unknown load command "
-			     "%lu)", i);
+			     "%u)", i);
 		return(CHECK_BAD);
 #endif /* !defined(OFI) */
 	    }
@@ -4666,7 +4805,7 @@ check_dylib_command:
 	    /* check that next load command does not extends past the end */
 	    if((char *)lc > (char *)load_commands + sizeofcmds){
 		Mach_O_error(ofile, "truncated or malformed object (load "
-			     "command %lu extends past the end of the file)",
+			     "command %u extends past the end of the file)",
 			     i + 1);
 		return(CHECK_BAD);
 	    }
@@ -4687,8 +4826,9 @@ check_dylib_command:
 			"the end of the symbol table)");
 		    return(CHECK_BAD);
 		}
-		if(dyst->nlocalsym != 0 &&
-		   dyst->ilocalsym + dyst->nlocalsym > st->nsyms){
+		big_size = dyst->ilocalsym;
+		big_size += dyst->nlocalsym;
+		if(dyst->nlocalsym != 0 && big_size > st->nsyms){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(ilocalsym plus nlocalsym in LC_DYSYMTAB load command "
 			"extends past the end of the symbol table)");
@@ -4702,8 +4842,9 @@ check_dylib_command:
 			"the end of the symbol table)");
 		    return(CHECK_BAD);
 		}
-		if(dyst->nextdefsym != 0 &&
-		   dyst->iextdefsym + dyst->nextdefsym > st->nsyms){
+		big_size = dyst->iextdefsym;
+		big_size += dyst->nextdefsym;
+		if(dyst->nextdefsym != 0 && big_size > st->nsyms){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(iextdefsym plus nextdefsym in LC_DYSYMTAB load "
 			"command extends past the end of the symbol table)");
@@ -4717,8 +4858,9 @@ check_dylib_command:
 			"the end of the symbol table)");
 		    return(CHECK_BAD);
 		}
-		if(dyst->nundefsym != 0 &&
-		   dyst->iundefsym + dyst->nundefsym > st->nsyms){
+		big_size = dyst->iundefsym;
+		big_size += dyst->nundefsym;
+		if(dyst->nundefsym != 0 && big_size > st->nsyms){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(iundefsym plus nundefsym in LC_DYSYMTAB load command "
 			"extends past the end of the symbol table)");
@@ -4800,12 +4942,12 @@ struct ofile *ofile,
 struct symtab_command *st,
 struct dysymtab_command *dyst,
 char *strings,
-unsigned long module_index)
+uint32_t module_index)
 {
 #ifdef OTOOL
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
-    unsigned long i;
+    uint32_t i;
     enum byte_sex host_byte_sex;
     enum bool swapped;
     struct dylib_module m;
@@ -4846,7 +4988,7 @@ unsigned long module_index)
 
 	if(module_name > st->strsize){
 	    Mach_O_error(ofile, "truncated or malformed object (module_name "
-		"of module table entry %lu past the end of the string table)",
+		"of module table entry %u past the end of the string table)",
 		module_index);
 	    return(CHECK_BAD);
 	}
@@ -4854,7 +4996,7 @@ unsigned long module_index)
 		;
 	if(i >= st->strsize){
 	    Mach_O_error(ofile, "truncated or malformed object (module_name "
-		"of module table entry %lu extends past the end of the string "
+		"of module table entry %u extends past the end of the string "
 		"table)", module_index);
 	    return(CHECK_BAD);
 	}
@@ -4862,13 +5004,13 @@ unsigned long module_index)
 	if(nextdefsym != 0){
 	    if(iextdefsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (iextdefsym "
-		    "field of module table entry %lu past the end of the "
+		    "field of module table entry %u past the end of the "
 		    "symbol table", module_index);
 		return(CHECK_BAD);
 	    }
 	    if(iextdefsym + nextdefsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (iextdefsym "
-		    "field of module table entry %lu plus nextdefsym field "
+		    "field of module table entry %u plus nextdefsym field "
 		    "extends past the end of the symbol table", module_index);
 		return(CHECK_BAD);
 	    }
@@ -4876,13 +5018,13 @@ unsigned long module_index)
 	if(nlocalsym != 0){
 	    if(ilocalsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (ilocalsym "
-		    "field of module table entry %lu past the end of the "
+		    "field of module table entry %u past the end of the "
 		    "symbol table", module_index);
 		return(CHECK_BAD);
 	    }
 	    if(ilocalsym + nlocalsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (ilocalsym "
-		    "field of module table entry %lu plus nlocalsym field "
+		    "field of module table entry %u plus nlocalsym field "
 		    "extends past the end of the symbol table", module_index);
 		return(CHECK_BAD);
 	    }
@@ -4890,13 +5032,13 @@ unsigned long module_index)
 	if(nrefsym != 0){
 	    if(irefsym > dyst->nextrefsyms){
 		Mach_O_error(ofile, "truncated or malformed object (irefsym "
-		    "field of module table entry %lu past the end of the "
+		    "field of module table entry %u past the end of the "
 		    "reference table", module_index);
 		return(CHECK_BAD);
 	    }
 	    if(irefsym + nrefsym > dyst->nextrefsyms){
 		Mach_O_error(ofile, "truncated or malformed object (irefsym "
-		    "field of module table entry %lu plus nrefsym field "
+		    "field of module table entry %u plus nrefsym field "
 		    "extends past the end of the reference table",module_index);
 		return(CHECK_BAD);
 	    }
@@ -4904,13 +5046,13 @@ unsigned long module_index)
 	if(nextrel != 0){
 	    if(iextrel > dyst->extreloff){
 		Mach_O_error(ofile, "truncated or malformed object (iextrel "
-		    "field of module table entry %lu past the end of the "
+		    "field of module table entry %u past the end of the "
 		    "external relocation enrties", module_index);
 		return(CHECK_BAD);
 	    }
 	    if(iextrel + nextrel > dyst->extreloff){
 		Mach_O_error(ofile, "truncated or malformed object (iextrel "
-		    "field of module table entry %lu plus nextrel field "
+		    "field of module table entry %u plus nextrel field "
 		    "extends past the end of the external relocation enrties",
 		    module_index);
 		return(CHECK_BAD);
@@ -4921,11 +5063,11 @@ unsigned long module_index)
 }
 
 __private_extern__
-unsigned long
+uint32_t
 size_ar_name(
 const struct ar_hdr *ar_hdr)
 {
-    long i;
+    int32_t i;
 
 	i = sizeof(ar_hdr->ar_name) - 1;
 	if(ar_hdr->ar_name[i] == ' '){

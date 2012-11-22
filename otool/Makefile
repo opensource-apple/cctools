@@ -4,7 +4,6 @@ OFLAG = -O
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
 X_CFLAGS = -fno-builtin-round
-OBJC_ABI = -fobjc-abi-version=1
 
 ifeq "macos" "$(RC_OS)"
   STATIC := $(shell if [ "$(RC_RELEASE)" = "Beaker"    ] || \
@@ -100,7 +99,7 @@ ifeq "$(EFITOOLS)" "efitools"
 endif
 HFILES = otool.h ofile_print.h m68k_disasm.h i860_disasm.h \
 	 sparc_disasm.h m88k_disasm.h i386_disasm.h ppc_disasm.h hppa_disasm.h \
-	 notify.h arm_disasm.h arm-opc.h
+	 notify.h arm_disasm.h
 OBJS = $(CFILES:.c=.o) ofile.o vers.o
 INSTALL_FILES = $(CFILES) $(HFILES) Makefile notes
 
@@ -123,16 +122,6 @@ else
 .c.o:
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file $(OFILE_DIR)/$*.d \
 		-o $(OFILE_DIR)/$*.o $<
-	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
-endif
-
-print_objc.o: print_objc.c
-ifeq "NO" "$(USE_DEPENDENCY_FILE)"
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $< -ObjC \
-		$(OBJC_ABI)
-else
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file $(OFILE_DIR)/$*.d \
-		-o $(OFILE_DIR)/$*.o $< -ObjC $(OBJC_ABI)
 	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
 endif
 

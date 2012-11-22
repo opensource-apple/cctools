@@ -24,19 +24,13 @@
 #define __private_extern__ __declspec(private_extern)
 #endif
 
-#include <sys/types.h>
+#include <stdint.h>
 #include <string.h>
-#include <stdarg.h>
-#include <mach/mach.h>
-#include <mach-o/loader.h>
 #if !(defined(KLD) && defined(__STATIC__))
-#include <sys/uio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <mach-o/dyld.h>
+#include <uuid/uuid.h>
+#else
+#include <mach-o/loader.h>
 #endif /* !(defined(KLD) && defined(__STATIC__)) */
-#include "ld.h"
-#include <stdlib.h>
 
 /*
  * uuid() is called to set the uuid[] bytes for the uuid load command.
@@ -46,61 +40,9 @@ void
 uuid(
 uint8_t *uuid)
 {
-    struct uuid_command u;
-#if !(defined(KLD) && defined(__STATIC__))
-    void (*uuid_func)(uint8_t *out);
-    NSSymbol nssymbol;
-    int fd;
-    ssize_t n;
-
-	/*
-	 * We would like to just #include <uuid/uuid.h> and but that header
-	 * file did not exist on system until Mac OS 10.4 .  So instead we
-	 * dynamically lookup uuid_generate_random() and if it is defined we
-	 * call it indirectly.
-	 */
-	if(NSIsSymbolNameDefined("_uuid_generate_random")){
-	    nssymbol = (void *)NSLookupAndBindSymbol("_uuid_generate_random");
-	    uuid_func = NSAddressOfSymbol(nssymbol);
-	    uuid_func(uuid);
-	}
-	/*
-	 * Since we don't have uuid_generate() just read bytes from /dev/urandom
-	 */
-	else{
-	    fd = open("/dev/urandom", O_RDONLY, 0);
-	    if(fd == -1){
-		system_warning("can't open: /dev/urandom to fill in uuid load "
-		    "command (using bytes of zero)");
-		memset(uuid, '\0', sizeof(u.uuid));
-	    }
-	    else{
-		n = read(fd, uuid, sizeof(u.uuid));
-		if(n != sizeof(u.uuid)){
-		    system_warning("can't read bytes from: /dev/urandom to "
-			"fill in uuid load command (using bytes of zero)");
-		    memset(uuid, '\0', sizeof(u.uuid));
-		}
-		(void)close(fd);
-	    }
-	}
-	/*
-	 * For consistency, it would be better to create an enum bool in ld.c,
-	 * like we do for the other significant environment variables.
-	 * Unfortunately, the dyld bool definitions override the stuff/bool.h
-	 * definitions, prohibiting us from doing that here.  Since this is
-	 * the only place where we need to know the setting, we'll just read
-	 * it here.
-	 */
-	if((getenv("LD_TRACE_UUID") != NULL) ||
-	   (getenv("RC_TRACE_UUID") != NULL)){
-	    unsigned int pos;
-	    ld_trace("[Logging for XBS] Binary `%s' has UUID 0x", outputfile);
-	    for (pos = 0; pos < sizeof(u.uuid); pos++)
-	      ld_trace("%02x", uuid[pos]);
-	    ld_trace("\n");
-	}
-#else /* defined(KLD) && defined(__STATIC__) */
-	memset(uuid, '\0', sizeof(u.uuid));
-#endif /* !(defined(KLD) && defined(__STATIC__)) */
+#if defined(KLD) && defined(__STATIC__)
+    memset(uuid, '\0', sizeof(struct uuid_command));
+#else 
+    uuid_generate_random((void *)uuid);
+#endif 
 }

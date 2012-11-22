@@ -110,7 +110,7 @@ get_arch_from_flag(
 char *name,
 struct arch_flag *arch_flag)
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = 0; arch_flags[i].name != NULL; i++){
 	    if(strcmp(arch_flags[i].name, name) == 0){
@@ -149,7 +149,7 @@ get_arch_name_from_types(
 cpu_type_t cputype,
 cpu_subtype_t cpusubtype)
 {
-    unsigned long i;
+    uint32_t i;
     char *p;
 
 	for(i = 0; arch_flags[i].name != NULL; i++){
@@ -179,7 +179,7 @@ const struct arch_flag *
 get_arch_family_from_cputype(
 cpu_type_t cputype)
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = 0; arch_flags[i].name != NULL; i++){
 	    if(arch_flags[i].cputype == cputype)
@@ -223,7 +223,7 @@ const struct arch_flag *flag)
  * specified cputype and cpusubtype if known.  If unknown it returns 0.
  */
 __private_extern__
-long
+int
 get_stack_direction_from_flag(
 const struct arch_flag *flag)
 {
@@ -288,7 +288,7 @@ const struct arch_flag *flag)
  * address space the common value of 64meg was chosen.
  */
 __private_extern__
-unsigned long
+uint32_t
 get_stack_size_from_flag(
 const struct arch_flag *flag)
 {
@@ -305,7 +305,7 @@ const struct arch_flag *flag)
  * get_segalign_from_flag() returns the default segment alignment (page size).
  */
 __private_extern__
-unsigned long
+uint32_t
 get_segalign_from_flag(
 const struct arch_flag *flag)
 {
@@ -339,7 +339,7 @@ const struct arch_flag *flag)
  * region size.
  */
 __private_extern__
-unsigned long
+uint32_t
 get_shared_region_size_from_flag(
 const struct arch_flag *flag)
 {

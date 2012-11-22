@@ -1,3 +1,16 @@
+Changes for the 5.26 release (the cctools-721 release):
+- Changed the Makefile and removed -force_cpusubtype_ALL from KERN.  Radar bug
+  #6233829.
+
+Changes for the 5.26 release (the cctools-705 release):
+- Ported to run on 64-bit hosts.  Radar bug #6022298.
+
+Changes for the 5.26 release (the cctools-700 release):
+- Fixed a problem with swap_relocation_info() in swap.c where it was incorrectly
+  using "long" which should be "uint32_t" in two places, the fields r_address
+  and r_value fields of the swapped_relocation_info and the
+  swapped_scattered_relocation_info structures.  Radar bug #5904383.
+
 Changes for the 5.25 release (the cctools-697 release):
 
 Changes for the 5.25 release (the cctools-696 release):

@@ -64,7 +64,7 @@ void
 get_macosx_deployment_target(
 struct macosx_deployment_target *value)
 {
-    unsigned long ten, major, minor;
+    uint32_t ten, major, minor;
     char *p, *q, *endp;
     char osversion[32];
     size_t osversion_len;
@@ -138,7 +138,7 @@ use_default:
 	value->major = major;
 	value->minor = minor;
 	value->name = allocate(32);
-	sprintf(value->name, "10.%lu.%lu", major, minor);
+	sprintf(value->name, "10.%u.%u", major, minor);
 	goto warn_if_bad_user_values;
 
 bad_system_value:

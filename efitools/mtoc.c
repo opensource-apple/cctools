@@ -1,5 +1,3 @@
-#define HACK_ARM_F_MAGIC_TO_BE_I386
-#undef HACK_TO_MATCH_TEST_CASE
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -109,16 +107,26 @@ struct subsystem_argument subsystem_arguments[] = {
 };
 
 /*
- * The value of the -section_alignment argument to layout the added PECOFF
- * sections and set into the PECOFF aouthdr.
+ * The value of the -section_alignment argument (or the -align argument) to
+ * layout the added PECOFF sections and set into the PECOFF aouthdr.
  */
 static uint32_t section_alignment = SECTIONALIGNMENT;
+
+/*
+ * The value of the -align argument to layout the PECOFF file.
+ */
+static uint32_t file_alignment = FILEALIGNMENT;
 
 /* The maximum alignment allowed to be specified, in hex */
 #define MAXALIGN		0x8000
 
 /* Static routine to help parse arguments */
-static enum bool ispoweroftwo(unsigned long x);
+static enum bool ispoweroftwo(uint32_t x);
+
+/*
+ * The string for the -d argument.
+ */
+char *debug_filename = NULL;
 
 /*
  * The string for the entry point symbol name.
@@ -154,9 +162,18 @@ static uint32_t section_names_size = 0;	/* size of the section names */
 static char *section_names = NULL;	/* pointer to section names */
 static uint32_t string_offset = 0;	/* file offset of the string table */
 
+/*
+ * These are for the .debug section that contains the -d filename information.
+ */
+static struct scnhdr *debug_scnhdr = NULL;
+static uint32_t debug_size = 0;
+static char *debug_contents = NULL;
+static struct debug_directory_entry *dde = NULL;
+static struct mtoc_debug_info *mdi = NULL;
+
 static void process_arch(
     struct arch *archs,
-    unsigned long narchs);
+    uint32_t narchs);
 static void process_32bit_arch(
     struct arch *arch);
 static void process_64bit_arch(
@@ -208,11 +225,17 @@ static int cmp_base_relocs(
 static uint32_t checksum(
     unsigned char *buf);
 
+static void create_debug(
+    struct arch *arch);
+static void set_debug_addrs_and_offsets(
+    void);
+
 /*
  * The mtoc(1) tool makes a PECOFF file from a fully linked Mach-O file
  * compiled with dynamic code gen and relocation entries saved (linked with -r).
  *
- *	mtoc [-subsystem type] input_Mach-O output_pecoff
+ *	mtoc [-subsystem type] [-section_alignment hexvalue] [-align hexvalue]
+ *	     [-d filename] input_Mach-O output_pecoff
  */
 int
 main(
@@ -224,14 +247,18 @@ char **envp)
     char *input, *output;
     struct ofile *ofile;
     struct arch *archs;
-    unsigned long narchs;
+    uint32_t narchs;
     char *endp;
+    enum bool section_alignment_specified, align_specified;
 
 	progname = argv[0];
 	host_byte_sex = get_host_byte_sex();
 
 	input = NULL;
 	output = NULL;
+
+	section_alignment_specified = FALSE;
+	align_specified = FALSE;
 
 	for(i = 1; i < argc; i++){
 	    if(strcmp(argv[i], "-subsystem") == 0){
@@ -252,6 +279,14 @@ char **envp)
 			fprintf(stderr, "%s\n", subsystem_arguments[j].name);
 		    usage();
 		}
+		i++;
+	    }
+	    else if(strcmp(argv[i], "-d") == 0){
+		if(i + 1 >= argc){
+		    warning("no argument specified for -d option");
+		    usage();
+		}
+		debug_filename = argv[i+1];
 		i++;
 	    }
 	    else if(strcmp(argv[i], "-e") == 0){
@@ -279,10 +314,37 @@ char **envp)
 		    fatal("argument to -section_alignment: %x (hex) must "
 			  "equal to or less than %x (hex)", section_alignment,
 			  (unsigned int)MAXALIGN);
-		if(section_alignment < FILEALIGNMENT)
-		    fatal("argument to -section_alignment: %x (hex) must "
-			  "greater than or equal to FileAlignment %x (hex)",
-			  section_alignment, FILEALIGNMENT);
+		section_alignment_specified = TRUE;
+		if(align_specified == TRUE &&
+		   section_alignment != file_alignment)
+		    fatal("can't specifiy a -section_alignment value %x (hex) "
+			  "different from the -align value %x (hex)",
+			  section_alignment, file_alignment);
+		i++;
+	    }
+	    else if(strcmp(argv[i], "-align") == 0){
+		if(i + 1 >= argc){
+		    warning("no argument specified for -align option");
+		    usage();
+		}
+		file_alignment = strtoul(argv[i+1], &endp, 16);
+		if(*endp != '\0')
+		    fatal("argument for -align %s not a proper hexadecimal "
+			  "number", argv[i+1]);
+		if(!ispoweroftwo(file_alignment) || file_alignment == 0)
+		    fatal("argument to -align: %x (hex) must be a non-zero "
+			  "power of two", file_alignment);
+		if(file_alignment > MAXALIGN)
+		    fatal("argument to -file_alignment: %x (hex) must "
+			  "equal to or less than %x (hex)", file_alignment,
+			  (unsigned int)MAXALIGN);
+		align_specified = TRUE;
+		if(section_alignment_specified == TRUE &&
+		   section_alignment != file_alignment)
+		    fatal("can't specifiy a -section_alignment value %x (hex) "
+			  "different from the -align value %x (hex)",
+			  section_alignment, file_alignment);
+		section_alignment = file_alignment;
 		i++;
 	    }
 	    else if(input == NULL)
@@ -340,8 +402,8 @@ usage(
 void)
 {
 	fprintf(stderr, "Usage: %s [-subsystem type] "
-		"[-section_alignment hexvalue] input_Mach-O "
-		"output_pecoff\n", progname);
+		"[-section_alignment hexvalue] [-align hexvalue] [-d filename]"
+		" input_Mach-O output_pecoff\n", progname);
 	exit(EXIT_FAILURE);
 }
 
@@ -352,7 +414,7 @@ static
 enum
 bool
 ispoweroftwo(
-unsigned long x)
+uint32_t x)
 {
 	if(x == 0)
 	    return(TRUE);
@@ -374,7 +436,7 @@ static
 void
 process_arch(
 struct arch *archs,
-unsigned long narchs)
+uint32_t narchs)
 {
 	/*
 	 * Check to see the input file is something this program can convert to
@@ -438,6 +500,13 @@ unsigned long narchs)
 	 */
 	create_base_reloc(archs);
 
+	/*
+	 * If there is a -d flag create the information that will be in .debug
+	 * section for it.
+	 */
+	if(debug_filename != NULL)
+	    create_debug(archs);
+
 	if(archs->object->mh != NULL)
 	    process_32bit_arch(archs);
 	else
@@ -454,7 +523,7 @@ void
 process_32bit_arch(
 struct arch *arch)
 {
-    uint32_t i, j, reloc_addr;
+    uint32_t i, j, reloc_addr, debug_addr;
     struct load_command *lc;
     struct segment_command *sg;
     struct thread_command *ut;
@@ -605,6 +674,13 @@ struct arch *arch)
 	nscns++;
 
 	/*
+	 * If there is a -d flag add one for the .debug section to contain
+	 * the information.
+	 */
+	if(debug_filename != NULL)
+	    nscns++;
+
+	/*
 	 * At the beginning of the COFF string table are 4 bytes that contain
 	 * the total size (in bytes) of the rest of the string table. This size
 	 * includes the size field itself, so that the value in this location
@@ -637,7 +713,7 @@ struct arch *arch)
 	 *
 	 * Note to match what objcopy(1) does the s_vsize is an unrounded value
 	 * of the size (more like the actual size) and the s_size is a value
-	 * rounded to the FILEALIGNMENT.  So the s_vsize can be smaller than
+	 * rounded to the file_alignment.  So the s_vsize can be smaller than
 	 * the s_size, as in the case of pecoff sections created from Mach-O
 	 * sections (and not segments).  This seems to volate the spec where
 	 * s_vsize can be bigger than s_size with the remaining space zero
@@ -661,7 +737,7 @@ struct arch *arch)
 		    scnhdrs[j].s_vsize = sg->vmsize;
 #endif
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -679,7 +755,7 @@ struct arch *arch)
 		    scnhdrs[j].s_vsize = sg->vmsize;
 #endif
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -726,7 +802,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".import");
 		    scnhdrs[j].s_vsize = sg->vmsize;
 		    scnhdrs[j].s_vaddr = sg->vmaddr;
-		    scnhdrs[j].s_size = round(sg->filesize, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(sg->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -743,7 +819,7 @@ struct arch *arch)
 			    continue;
 			scnhdrs[j].s_vsize = s->size;
 			scnhdrs[j].s_vaddr = s->addr;
-			scnhdrs[j].s_size = round(s->size, FILEALIGNMENT);
+			scnhdrs[j].s_size = round(s->size, file_alignment);
 			scnhdrs[j].s_relptr = 0;
 			scnhdrs[j].s_lnnoptr = 0;
 			scnhdrs[j].s_nlnno = 0;
@@ -768,7 +844,7 @@ struct arch *arch)
 	scnhdrs[j].s_vsize = reloc_size;
 	reloc_addr = round(reloc_addr, section_alignment);
 	scnhdrs[j].s_vaddr = reloc_addr;
-	scnhdrs[j].s_size = round(reloc_size, FILEALIGNMENT);
+	scnhdrs[j].s_size = round(reloc_size, file_alignment);
 	scnhdrs[j].s_relptr = 0;
 	scnhdrs[j].s_lnnoptr = 0;
 	scnhdrs[j].s_nlnno = 0;
@@ -778,6 +854,23 @@ struct arch *arch)
 	reloc_scnhdr = scnhdrs + j;
 	scn_contents[j] = reloc_contents;
 	j++;
+
+	if(debug_filename != NULL){
+	    strcpy(scnhdrs[j].s_name, ".debug");
+	    scnhdrs[j].s_vsize = debug_size;
+	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
+	    scnhdrs[j].s_vaddr = debug_addr;
+	    scnhdrs[j].s_size = round(debug_size, file_alignment);
+	    scnhdrs[j].s_relptr = 0;
+	    scnhdrs[j].s_lnnoptr = 0;
+	    scnhdrs[j].s_nlnno = 0;
+	    scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
+				 IMAGE_SCN_CNT_INITIALIZED_DATA |
+				 IMAGE_SCN_MEM_DISCARDABLE;
+	    debug_scnhdr = scnhdrs + j;
+	    scn_contents[j] = debug_contents;
+	    j++;
+	}
 
 	/*
 	 * Create the pecoff symbol and string table from this Mach-O file.
@@ -796,7 +889,7 @@ process_64bit_arch(
 struct arch *arch)
 {
     uint32_t i, j;
-    uint64_t reloc_addr;
+    uint64_t reloc_addr, debug_addr;
     struct load_command *lc;
     struct segment_command_64 *sg64;
     struct thread_command *ut;
@@ -931,7 +1024,7 @@ struct arch *arch)
 	 *
 	 * Note to match what objcopy(1) does the s_vsize is an unrounded value
 	 * of the size (more like the actual size) and the s_size is a value
-	 * rounded to the FILEALIGNMENT.  So the s_vsize can be smaller than
+	 * rounded to the file_alignment.  So the s_vsize can be smaller than
 	 * the s_size, as in the case of pecoff sections created from Mach-O
 	 * sections (and not segments).  This seems to volate the spec where
 	 * s_vsize can be bigger than s_size with the remaining space zero
@@ -952,7 +1045,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".text");
 		    scnhdrs[j].s_vsize = sg64->vmsize;
 		    scnhdrs[j].s_vaddr = sg64->vmaddr;
-		    scnhdrs[j].s_size = round(sg64->filesize, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(sg64->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -966,7 +1059,7 @@ struct arch *arch)
 		    strcpy(scnhdrs[j].s_name, ".data");
 		    scnhdrs[j].s_vsize = sg64->vmsize;
 		    scnhdrs[j].s_vaddr = sg64->vmaddr;
-		    scnhdrs[j].s_size = round(sg64->filesize, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(sg64->filesize, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -995,7 +1088,7 @@ struct arch *arch)
 		    /* NOTE zerofill sections are not handled */
 		    scnhdrs[j].s_vsize = s64->size;
 		    scnhdrs[j].s_vaddr = s64->addr;
-		    scnhdrs[j].s_size = round(s64->size, FILEALIGNMENT);
+		    scnhdrs[j].s_size = round(s64->size, file_alignment);
 		    scnhdrs[j].s_relptr = 0;
 		    scnhdrs[j].s_lnnoptr = 0;
 		    scnhdrs[j].s_nlnno = 0;
@@ -1015,7 +1108,7 @@ struct arch *arch)
 	scnhdrs[j].s_vsize = reloc_size;
 	reloc_addr = round(reloc_addr, section_alignment);
 	scnhdrs[j].s_vaddr = reloc_addr;
-	scnhdrs[j].s_size = round(reloc_size, FILEALIGNMENT);
+	scnhdrs[j].s_size = round(reloc_size, file_alignment);
 	scnhdrs[j].s_relptr = 0;
 	scnhdrs[j].s_lnnoptr = 0;
 	scnhdrs[j].s_nlnno = 0;
@@ -1027,6 +1120,25 @@ struct arch *arch)
 	reloc_scnhdr = scnhdrs + j;
 	scn_contents[j] = reloc_contents;
 	j++;
+
+	if(debug_filename != NULL){
+	    strcpy(scnhdrs[j].s_name, ".debug");
+	    scnhdrs[j].s_vsize = debug_size;
+	    debug_addr = reloc_addr + reloc_scnhdr->s_size;
+	    scnhdrs[j].s_vaddr = debug_addr;
+	    scnhdrs[j].s_size = round(debug_size, file_alignment);
+	    scnhdrs[j].s_relptr = 0;
+	    scnhdrs[j].s_lnnoptr = 0;
+	    scnhdrs[j].s_nlnno = 0;
+	    scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
+				 IMAGE_SCN_CNT_INITIALIZED_DATA |
+				 IMAGE_SCN_MEM_DISCARDABLE |
+				 IMAGE_SCN_CNT_CODE |
+				 IMAGE_SCN_MEM_EXECUTE;
+	    debug_scnhdr = scnhdrs + j;
+	    scn_contents[j] = debug_contents;
+	    j++;
+	}
 
 	/*
 	 * Create the pecoff symbol and string table from this Mach-O file.
@@ -1059,7 +1171,7 @@ struct ofile *ofile)
 	    header_size += sizeof(struct aouthdr);
 	else
 	    header_size += sizeof(struct aouthdr_64);
-	header_size = round(header_size, FILEALIGNMENT);
+	header_size = round(header_size, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	/* for some unknown reason the header size is 0x488 not 0x400 */
 	if(ofile->mh64 != NULL)
@@ -1106,7 +1218,7 @@ struct ofile *ofile)
 #ifdef HACK_TO_MATCH_TEST_CASE
 		if(ofile->mh != NULL)
 #endif
-		    offset = round(offset, FILEALIGNMENT);
+		    offset = round(offset, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 		else{
 		    /* for some unknown reason the next offset is moved up
@@ -1153,11 +1265,7 @@ struct ofile *ofile)
 	    if(ofile->mh->cputype == CPU_TYPE_I386)
 		filehdr.f_magic = IMAGE_FILE_MACHINE_I386;
 	    else
-#ifdef HACK_ARM_F_MAGIC_TO_BE_I386
-		filehdr.f_magic = IMAGE_FILE_MACHINE_I386;
-#else
 		filehdr.f_magic = IMAGE_FILE_MACHINE_ARM;
-#endif
 	}
 	else
 	    filehdr.f_magic = IMAGE_FILE_MACHINE_AMD64;
@@ -1194,16 +1302,19 @@ struct ofile *ofile)
 	    aouthdr.bsize = 0;
 	    for(i = 0; i < nscns; i++){
 		if((scnhdrs[i].s_flags & IMAGE_SCN_CNT_UNINITIALIZED_DATA) ==0){
-		    if(scnhdrs[i].s_flags & IMAGE_SCN_CNT_CODE)
+		    if(scnhdrs[i].s_flags & IMAGE_SCN_CNT_CODE){
 			aouthdr.tsize += scnhdrs[i].s_size;
-		    else
+		    }
+		    else {
 			aouthdr.dsize += scnhdrs[i].s_size;
+		    }
 		}
-		else{
-		    aouthdr.bsize += scnhdrs[i].s_vsize;
+		if(scnhdrs[i].s_vsize > scnhdrs[i].s_size){
+		    aouthdr.bsize += scnhdrs[i].s_vsize -
+				     scnhdrs[i].s_size;
 		}
 	    }
-	    aouthdr.bsize = round(aouthdr.bsize, FILEALIGNMENT);
+	    aouthdr.bsize = round(aouthdr.bsize, file_alignment);
 
 	    aouthdr.entry = entry;
 
@@ -1224,7 +1335,7 @@ struct ofile *ofile)
 
 	    aouthdr.ImageBase = 0;
 	    aouthdr.SectionAlignment = section_alignment;
-	    aouthdr.FileAlignment = FILEALIGNMENT;
+	    aouthdr.FileAlignment = file_alignment;
 	    aouthdr.MajorOperatingSystemVersion = 0;
 	    aouthdr.MinorOperatingSystemVersion = 0;
 	    aouthdr.MajorImageVersion = 0;
@@ -1252,6 +1363,11 @@ struct ofile *ofile)
 	    /* Entry 5, Base Relocation Directory [.reloc] address & size */
 	    aouthdr.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
 	    aouthdr.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    /*  Entry 6, Debug Directory [.debug] address & size */
+	    if(debug_filename != NULL){
+		aouthdr.DataDirectory[6][0] = debug_scnhdr->s_vaddr;
+		aouthdr.DataDirectory[6][1] = debug_scnhdr->s_vsize;
+	    }
 	}
 	else{
 	    aouthdr64.magic = PE32PMAGIC;
@@ -1271,7 +1387,7 @@ struct ofile *ofile)
 		    aouthdr64.bsize += scnhdrs[i].s_vsize;
 		}
 	    }
-	    aouthdr64.bsize = round(aouthdr64.bsize, FILEALIGNMENT);
+	    aouthdr64.bsize = round(aouthdr64.bsize, file_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* with the IMAGE_SCN_CNT_CODE flag set on all sections this is
 	       just a quick hack to match the PECOFF file */
@@ -1299,7 +1415,7 @@ struct ofile *ofile)
 
 	    aouthdr64.ImageBase = 0;
 	    aouthdr64.SectionAlignment = section_alignment;
-	    aouthdr64.FileAlignment = FILEALIGNMENT;
+	    aouthdr64.FileAlignment = file_alignment;
 	    aouthdr64.MajorOperatingSystemVersion = 0;
 	    aouthdr64.MinorOperatingSystemVersion = 0;
 	    aouthdr64.MajorImageVersion = 0;
@@ -1335,7 +1451,19 @@ struct ofile *ofile)
 	    /* Entry 5, Base Relocation Directory [.reloc] address & size */
 	    aouthdr64.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
 	    aouthdr64.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    /*  Entry 6, Debug Directory [.debug] address & size */
+	    if(debug_filename != NULL){
+		aouthdr64.DataDirectory[6][0] = debug_scnhdr->s_vaddr;
+		aouthdr64.DataDirectory[6][1] = debug_scnhdr->s_vsize;
+	    }
 	}
+
+	/*
+ 	 * If there is a debug directory entry set the address and offsets in
+	 * it now that the values are known.
+	 */
+	if(debug_filename != NULL)
+	    set_debug_addrs_and_offsets();
 }
 
 /*
@@ -1607,6 +1735,8 @@ struct arch *arch)
 	    swap_nlist(syms, st->nsyms, host_byte_sex);
 	found_undef = FALSE;
 	for(i = 0; i < st->nsyms; i++){
+	    if((syms[i].n_type & N_STAB) != 0)
+		continue;
 	    if((syms[i].n_type & N_TYPE) == N_UNDF){
 		if(found_undef == FALSE){
 		    error("input file: %s contains undefined symbols:",
@@ -1704,7 +1834,7 @@ struct arch *arch)
 
 	i = strsize;
 	if(swapped)
-	    i = SWAP_LONG(i);
+	    i = SWAP_INT(i);
 	memcpy(p, &i, sizeof(uint32_t));
 	p += sizeof(uint32_t);
 
@@ -1824,6 +1954,8 @@ struct arch *arch)
 	 */
 	found_undef = FALSE;
 	for(i = 0; i < st->nsyms; i++){
+	    if((syms64[i].n_type & N_STAB) != 0)
+		continue;
 	    if((syms64[i].n_type & N_TYPE) == N_UNDF){
 		if(found_undef == FALSE){
 		    error("input file: %s contains undefined symbols:",
@@ -1860,7 +1992,7 @@ struct arch *arch)
 
 	i = strsize;
 	if(swapped)
-	    i = SWAP_LONG(i);
+	    i = SWAP_INT(i);
 	memcpy(p, &i, sizeof(uint32_t));
 	p += sizeof(uint32_t);
 
@@ -2204,6 +2336,108 @@ struct base_reloc *x2)
 	    return(0);
 	/* x1->addr > x2->addr */
 	    return(1);
+}
+
+/*
+ * create_debug() is called to create the .debug section contents from
+ * the -d filename argument.
+ */
+static
+void
+create_debug(
+struct arch *arch)
+{
+    char *p;
+    uint32_t i, ncmds;
+    struct load_command *lc;
+    struct uuid_command *uuid;
+
+	/*
+	 * Allocate space for everything that will be in the .debug section:
+	 *	the debug_directory_entry struct
+	 *	the mtoc_debug_info struct
+	 *	the name of the -d filename argument null terminated.
+	 */
+	debug_size = sizeof(struct debug_directory_entry) +
+		     sizeof(struct mtoc_debug_info) +
+		     strlen(debug_filename) + 1;
+	debug_contents = allocate(debug_size);
+	memset(debug_contents, '\0', debug_size);
+	/*
+	 * Set up pointers to all the parts to be filled in.
+	 */
+	p = debug_contents;
+	dde = (struct debug_directory_entry *)p;
+	p += sizeof(struct debug_directory_entry);
+	mdi = (struct mtoc_debug_info *)p;
+	p += sizeof(struct mtoc_debug_info);
+
+	dde->Characteristics = 0;
+	dde->TimeDateStamp = time(NULL);
+	dde->MajorVersion = 0;
+	dde->MinorVersion = 0;
+	dde->Type = IMAGE_DEBUG_TYPE_CODEVIEW;
+	dde->SizeOfData = sizeof(struct mtoc_debug_info) +
+			  strlen(debug_filename) + 1;
+	/*
+	 * These two will be filled in later when address and offsets
+	 * are known.
+	 */
+	dde->AddressOfRawData = 0;
+	dde->PointerToRawData = 0;
+
+	mdi->Signature = MTOC_SIGNATURE;
+	if(arch->object->mh != NULL)
+	    ncmds = arch->object->mh->ncmds;
+	else
+	    ncmds = arch->object->mh64->ncmds;
+	lc = arch->object->load_commands;
+	for(i = 0; i < ncmds; i++){
+	    if(lc->cmd == LC_UUID){
+		uuid = (struct uuid_command *)lc;
+		mdi->uuid[0] = uuid->uuid[0];
+		mdi->uuid[1] = uuid->uuid[1];
+		mdi->uuid[2] = uuid->uuid[2];
+		mdi->uuid[3] = uuid->uuid[3];
+		mdi->uuid[4] = uuid->uuid[4];
+		mdi->uuid[5] = uuid->uuid[5];
+		mdi->uuid[6] = uuid->uuid[6];
+		mdi->uuid[7] = uuid->uuid[7];
+		mdi->uuid[8] = uuid->uuid[8];
+		mdi->uuid[9] = uuid->uuid[9];
+		mdi->uuid[10] = uuid->uuid[10];
+		mdi->uuid[11] = uuid->uuid[11];
+		mdi->uuid[12] = uuid->uuid[12];
+		mdi->uuid[13] = uuid->uuid[13];
+		mdi->uuid[14] = uuid->uuid[14];
+		mdi->uuid[15] = uuid->uuid[15];
+		break;
+	    }
+	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	}
+
+	strcpy(p, debug_filename);
+}
+
+/*
+ * set_debug_addrs_and_offsets() is called after the .debug section's address
+ * and offset has been set and this routine sets the other needed addresses
+ * and offsets in the section contents.  And swaps the section contents if
+ * needed for output.
+ */
+static
+void
+set_debug_addrs_and_offsets(
+void)
+{
+	dde->AddressOfRawData = debug_scnhdr->s_vaddr +
+				sizeof(struct debug_directory_entry);
+	dde->PointerToRawData = debug_scnhdr->s_scnptr +
+				sizeof(struct debug_directory_entry);
+	if(swapped){
+	    swap_debug_directory_entry(dde, target_byte_sex);
+	    swap_mtoc_debug_info(mdi, target_byte_sex);
+	}
 }
 
 /*

@@ -150,7 +150,7 @@ static char *executable_path = NULL;
  */
 char *seg_addr_table_name = NULL;
 struct seg_addr_table *seg_addr_table = NULL;
-unsigned long table_size = 0;
+uint32_t table_size = 0;
 /*
  * -seg_addr_table_filename option's argument, the pathame to use instead of the
  * install name.
@@ -196,29 +196,29 @@ static enum bool arch_swapped = FALSE;
 static char *arch_name = NULL;
 static struct nlist *arch_symbols = NULL;
 static struct nlist_64 *arch_symbols64 = NULL;
-static unsigned long arch_nsyms = 0;
+static uint32_t arch_nsyms = 0;
 static char *arch_strings = NULL;
-static unsigned long arch_strsize = 0;
+static uint32_t arch_strsize = 0;
 static struct dylib_table_of_contents *arch_tocs = NULL;
-static unsigned long arch_ntoc = 0;
+static uint32_t arch_ntoc = 0;
 static struct dylib_module *arch_mods = NULL;
 static struct dylib_module_64 *arch_mods64 = NULL;
-static unsigned long arch_nmodtab = 0;
+static uint32_t arch_nmodtab = 0;
 static struct dylib_reference *arch_refs = NULL;
-static unsigned long arch_nextrefsyms = 0;
+static uint32_t arch_nextrefsyms = 0;
 static struct twolevel_hint *arch_hints = NULL;
-static unsigned long arch_nhints = 0;
+static uint32_t arch_nhints = 0;
 static enum link_state arch_state = LINKED;
 
-static unsigned long arch_seg1addr = 0;
-static unsigned long arch_segs_read_write_addr = 0;
+static uint32_t arch_seg1addr = 0;
+static uint32_t arch_segs_read_write_addr = 0;
 static enum bool arch_split_segs = FALSE;
 static struct relocation_info *arch_extrelocs = NULL;
 static struct relocation_info *arch_locrelocs = NULL;
-static unsigned long arch_nextrel = 0;
-static unsigned long arch_nlocrel = 0;
+static uint32_t arch_nextrel = 0;
+static uint32_t arch_nlocrel = 0;
 static uint32_t *arch_indirect_symtab = NULL;
-static unsigned long arch_nindirectsyms = 0;
+static uint32_t arch_nindirectsyms = 0;
 
 static enum bool arch_force_flat_namespace = FALSE;
 
@@ -240,25 +240,25 @@ struct lib {
     struct routines_command *rc;
     struct nlist *symbols;
     struct nlist_64 *symbols64;
-    unsigned long nsyms;
+    uint32_t nsyms;
     char *strings;
-    unsigned long strsize;
+    uint32_t strsize;
     struct dylib_table_of_contents *tocs;
-    unsigned long ntoc;
+    uint32_t ntoc;
     struct dylib_module *mods;
     struct dylib_module_64 *mods64;
-    unsigned long nmodtab;
+    uint32_t nmodtab;
     struct dylib_reference *refs;
-    unsigned long nextrefsyms;
+    uint32_t nextrefsyms;
     enum link_state *module_states;
     enum bool LC_PREBOUND_DYLIB_found;
-    unsigned long LC_PREBOUND_DYLIB_size;
+    uint32_t LC_PREBOUND_DYLIB_size;
     /*
      * For two-level namespace images this is the array of pointers to the
      * dependent images (indexes into the libs[] array) and the count of them.
      */
-    unsigned long *dependent_images;
-    unsigned long ndependent_images;
+    uint32_t *dependent_images;
+    uint32_t ndependent_images;
     /*
      * If this is a library image which has a framework name or library name
      * then this is the part that would be the umbrella name or library name
@@ -270,20 +270,20 @@ struct lib {
      */
     char *umbrella_name;
     char *library_name;
-    unsigned long name_size;
+    uint32_t name_size;
 
     /*
      * array of pointers (indexes into the libs[] array) to sub-frameworks and
      * sub-umbrellas and count
      */
     enum bool sub_images_setup;
-    unsigned long *sub_images;
-    unsigned long nsub_images;
+    uint32_t *sub_images;
+    uint32_t nsub_images;
 
     enum bool two_level_debug_printed;
 };
 static struct lib *libs = NULL;
-static unsigned long nlibs = 0;
+static uint32_t nlibs = 0;
 
 /*
  * A fake lib struct for the arch being processed which is used if the arch
@@ -325,7 +325,7 @@ static void usage(
     void);
 static char * get_install_name(
     struct arch *archs,
-    unsigned long narchs);
+    uint32_t narchs);
 #endif /* !defined(LIBRARY_API) */
 
 static enum bool has_resource_fork(
@@ -333,10 +333,10 @@ static enum bool has_resource_fork(
 
 static void process_archs(
     struct arch *archs,
-    unsigned long narchs,
+    uint32_t narchs,
     enum bool has_resource_fork);
 
-static unsigned long get_dylib_address(
+static uint32_t get_dylib_address(
     void);
 
 static void process_arch(void);
@@ -349,7 +349,7 @@ static enum bool load_library(
     char *file_name,
     struct dylib_command *dl_load,
     enum bool time_stamps_must_match,
-    unsigned long *image_pointer);
+    uint32_t *image_pointer);
 
 static enum bool load_dependent_libraries(void);
 
@@ -376,21 +376,21 @@ static void check_symbolic_info_tables(
     char *file_name,
     struct mach_header *mh,
     struct mach_header_64 *mh64,
-    unsigned long nlibrefs,
+    uint32_t nlibrefs,
     struct symtab_command *st,
     struct dysymtab_command *dyst,
     struct nlist *symbols,
     struct nlist_64 *symbols64,
-    unsigned long nsyms,
+    uint32_t nsyms,
     char *strings,
-    unsigned long strsize,
+    uint32_t strsize,
     struct dylib_table_of_contents *tocs,
-    unsigned long ntoc,
+    uint32_t ntoc,
     struct dylib_module *mods,
     struct dylib_module_64 *mods64,
-    unsigned long nmodtab,
+    uint32_t nmodtab,
     struct dylib_reference *refs,
-    unsigned long nextrefsyms);
+    uint32_t nextrefsyms);
 
 static void check_for_dylib_override_symbols(void);
 
@@ -428,7 +428,7 @@ struct symbol_list {
     char *name;			/* name of the symbol */
     /* for two-level references then next two fields are used */
     struct nlist *symbol;	/* the symbol, NULL for flat references */
-    unsigned long ilib;		/* the library the symbol is from (index into
+    uint32_t ilib;		/* the library the symbol is from (index into
 				   the libs[] array, or ARCH_LIB) */
     struct symbol_list *prev;	/* previous in the chain */
     struct symbol_list *next;	/* next in the chain */
@@ -446,7 +446,7 @@ static struct symbol_list undefined_list = {
 static void add_to_undefined_list(
     char *name,
     struct nlist *symbol,
-    unsigned long ilib);
+    uint32_t ilib);
 
 static void link_library_module(
     enum link_state *module_state,
@@ -459,7 +459,7 @@ struct indr_loop_list {
 #define NO_INDR_LOOP ((struct indr_loop_list *)1)
 
 static struct lib *get_primary_lib(
-    unsigned long ilib,
+    uint32_t ilib,
     struct nlist *symbol);
 
 static struct lib *get_indr_lib(
@@ -476,8 +476,8 @@ static void lookup_symbol(
     struct nlist **symbol,
     enum link_state **module_state,
     struct lib **lib,
-    unsigned long *isub_image,
-    unsigned long *itoc,
+    uint32_t *isub_image,
+    uint32_t *itoc,
     struct indr_loop_list *indr_loop);
 
 static enum bool lookup_symbol_in_arch(
@@ -485,8 +485,8 @@ static enum bool lookup_symbol_in_arch(
     struct nlist **symbol,
     enum link_state **module_state,
     struct lib **lib,
-    unsigned long *isub_image,
-    unsigned long *itoc,
+    uint32_t *isub_image,
+    uint32_t *itoc,
     struct indr_loop_list *indr_loop);
 
 static enum bool lookup_symbol_in_lib(
@@ -495,8 +495,8 @@ static enum bool lookup_symbol_in_lib(
     struct nlist **symbol,
     enum link_state **module_state,
     struct lib **lib,
-    unsigned long *isub_image,
-    unsigned long *itoc,
+    uint32_t *isub_image,
+    uint32_t *itoc,
     struct indr_loop_list *indr_loop);
 
 static void build_new_symbol_table(
@@ -543,8 +543,8 @@ static void update_arm_external_relocs(
     uint32_t vmslide);
 
 static char *contents_pointer_for_vmaddr(
-    unsigned long vmaddr,
-    unsigned long size);
+    uint32_t vmaddr,
+    uint32_t size);
 
 static void update_symbol_pointers(
     uint32_t vmslide);
@@ -564,8 +564,6 @@ unsigned int reloc_type);
 static void update_load_commands(
     uint32_t vmslide);
 	
-static void update_dyld_section();
-
 static void message(
     const char *format, ...)
 #ifdef __GNUC__
@@ -583,7 +581,7 @@ uint32_t
 get_arch_long(
 void *addr)
 {
-    long l;
+    int32_t l;
 
 	memcpy(&l, addr, sizeof(uint32_t));
 	if(arch_swapped == TRUE)
@@ -657,7 +655,7 @@ static
 void
 cleanup_libs()
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = 0; i < nlibs; i++){
 	    if(libs[i].ofile != NULL)
@@ -678,7 +676,7 @@ char *envp[])
     int i;
     char *input_file, *output_file;
     struct arch *archs;
-    unsigned long narchs;
+    uint32_t narchs;
     struct stat stat_buf;
     enum bool verbose, calculate_input_prebind_cksum, write_to_stdout;
     unsigned short mode;
@@ -862,7 +860,7 @@ char *envp[])
 		    new_dylib_address = entry->seg1addr;
 		if(new_dylib_address == 0){
 		    fprintf(stderr, "%s: entry in -seg_addr_table %s for "
-			    "input file's (%s) %s %s on line %lu "
+			    "input file's (%s) %s %s on line %u "
 			    "has an address of zero\n", progname,
 			    seg_addr_table_name, input_file,
 			    seg_addr_table_filename != NULL ?
@@ -1037,7 +1035,6 @@ const char *format,
 
 #else /* defined(LIBRARY_API) */
 #include <setjmp.h>
-#include <objc/zone.h>
 #include <errno.h>
 #include <mach/mach_error.h>
 /*
@@ -1053,11 +1050,11 @@ static jmp_buf library_env;
 static char *error_message_buffer = NULL;
 #define ERROR_MESSAGE_BUFFER_SIZE 8192
 static char *last = NULL;
-static unsigned long left = 0;
+static uint32_t left = 0;
 
 static enum object_file_type_retval object_file_type_archs(
     struct arch *archs,
-    unsigned long narchs);
+    uint32_t narchs);
 
 static
 void
@@ -1214,10 +1211,10 @@ const char *program_name,
 char **error_message)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
-    unsigned long i, j, k;
+    volatile uint32_t narchs;
+    uint32_t i, j, k;
     struct ofile * volatile ofile;
-    unsigned long ndependents;
+    uint32_t ndependents;
     char **dependents, *dylib_name;
     struct load_command *lc;
     struct dylib_command *dl_load;
@@ -1248,7 +1245,7 @@ char **error_message)
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-				 (unsigned long *)&narchs, FALSE);
+				 (uint32_t *)&narchs, FALSE);
 	if(errors)
 	    goto error_return;
 
@@ -1366,8 +1363,8 @@ const char *program_name,
 char **error_message)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
-    unsigned long i, j;
+    volatile uint32_t narchs;
+    uint32_t i, j;
     volatile struct ofile *ofile;
     char *install_name, *dylib_name;
     struct load_command *lc;
@@ -1399,7 +1396,7 @@ char **error_message)
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-			 (unsigned long *)&narchs, FALSE);
+			 (uint32_t *)&narchs, FALSE);
 	if(errors)
 	    goto error_return;
 
@@ -1508,14 +1505,14 @@ const char *root_dir_arg,
 const char *output_file,
 const char *program_name,
 char **error_message,
-unsigned long slide_to_address,
+uint32_t slide_to_address,
 int only_if_needed,
 int zero_checksum,
 cpu_type_t allow_missing_architectures,
-unsigned long *throttle)
+uint32_t *throttle)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
+    volatile uint32_t narchs;
     struct ofile * volatile ofile;
     struct stat stat_buf;
     unsigned short mode;
@@ -1574,7 +1571,7 @@ unsigned long *throttle)
 	else
 	    calculate_input_prebind_cksum = TRUE;
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-			 (unsigned long *)&narchs,
+			 (uint32_t *)&narchs,
 			 calculate_input_prebind_cksum);
 	if(errors)
 	    goto error_return;
@@ -1715,12 +1712,12 @@ const char *program_name,
 char **error_message,
 int zero_checksum,
 void *inbuf,
-unsigned long inlen,
+uint32_t inlen,
 void **outbuf,
-unsigned long *outlen)
+uint32_t *outlen)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
+    volatile uint32_t narchs;
     struct ofile * volatile ofile;
     struct stat stat_buf;
     unsigned short mode;
@@ -1776,12 +1773,12 @@ unsigned long *outlen)
 		
 	    ofile = breakout_mem(inbuf, inlen, (char *)file_name,
 				 (struct arch **)&archs,
-			         (unsigned long *)&narchs,
+			         (uint32_t *)&narchs,
 				 calculate_input_prebind_cksum);
 	}
 	else
 	    ofile = breakout((char *)file_name, (struct arch **)&archs,
-			     (unsigned long *)&narchs,
+			     (uint32_t *)&narchs,
 			     calculate_input_prebind_cksum);
 	if(errors)
 	    goto error_return;
@@ -1945,11 +1942,11 @@ const char *executable_path_arg,
 const char *root_dir_arg,
 const char *program_name,
 char **error_message,
-unsigned long expected_address,
+uint32_t expected_address,
 cpu_type_t allow_missing_architectures)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
+    volatile uint32_t narchs;
     struct ofile * volatile ofile;
 
 	reset_statics();
@@ -1989,7 +1986,7 @@ cpu_type_t allow_missing_architectures)
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-			 (unsigned long *)&narchs, FALSE);
+			 (uint32_t *)&narchs, FALSE);
 	if(errors){
 	    if(retval == PREBINDING_UPTODATE)
 		retval = PREBINDING_UNKNOWN;
@@ -2045,7 +2042,7 @@ const char *program_name,
 char **error_message)
 {
     struct arch * volatile archs;
-    volatile unsigned long narchs;
+    volatile uint32_t narchs;
     struct ofile * volatile ofile;
     enum object_file_type_retval retval;
 
@@ -2066,7 +2063,7 @@ char **error_message)
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-			 (unsigned long *)&narchs, FALSE);
+			 (uint32_t *)&narchs, FALSE);
 	if(errors){
 	    retval = OFT_FILE_ERROR;
 	    goto done;
@@ -2100,9 +2097,9 @@ static
 enum object_file_type_retval
 object_file_type_archs(
 struct arch *archs,
-unsigned long narchs)
+uint32_t narchs)
 {
-    unsigned long i;
+    uint32_t i;
     struct arch *arch;
     enum bool type_determined;
     enum object_file_type_retval retval, current;
@@ -2152,14 +2149,14 @@ int
 get_prebind_cksums(
 const char *file_name,
 struct prebind_cksum_arch **cksums,
-unsigned long *ncksums,
+uint32_t *ncksums,
 const char *program_name,
 char **error_message)
 {
-    unsigned long i;
+    uint32_t i;
     struct arch * volatile archs;
     struct arch *arch;
-    volatile unsigned long narchs;
+    volatile uint32_t narchs;
     struct ofile * volatile ofile;
     int retval;
 
@@ -2181,7 +2178,7 @@ char **error_message)
 
 	/* breakout the file for processing */
 	ofile = breakout((char *)file_name, (struct arch **)&archs,
-			 (unsigned long *)&narchs, FALSE);
+			 (uint32_t *)&narchs, FALSE);
 	if(errors){
 	    retval = 1;
 	    goto done;
@@ -2238,9 +2235,9 @@ static
 char *
 get_install_name(
 struct arch *archs,
-unsigned long narchs)
+uint32_t narchs)
 {
-    unsigned long i,j;
+    uint32_t i,j;
     char *install_name;
     struct load_command *lc, *load_commands;
     struct dylib_command *dl_id;
@@ -2293,10 +2290,10 @@ static
 void
 process_archs(
 struct arch *archs,
-unsigned long narchs,
+uint32_t narchs,
 enum bool has_resource_fork)
 {
-    unsigned long i;
+    uint32_t i;
     uint32_t mh_flags;
     
 	for(i = 0; i < narchs; i++){
@@ -2423,10 +2420,16 @@ enum bool has_resource_fork)
 		}
 #ifdef LIBRARY_API
 		else if(check_if_needed == TRUE){
+		    if(arch_cant_be_missing != arch->object->mh_cputype){
+			continue;
+		    }
 		    only_if_needed_retval = REDO_PREBINDING_NOT_PREBOUND;
 		    return;
 		}
 		else if(check_only == TRUE){
+		    if(arch_cant_be_missing != arch->object->mh_cputype){
+			continue;
+		    }
 		    retval = NOT_PREBOUND;
 		    return;
 		}
@@ -2693,12 +2696,6 @@ void)
 	update_load_commands(dylib_vmslide);
 	
 	/*
-	 * rdar://problem/3751608 initialize the __dyld section contents to 
-	 * something dyld most likely won't have to change.
-	 */
-	update_dyld_section();
-
-	/*
 	 * If this is arch has MH_PREBINDABLE set, unset it and set MH_PREBOUND
 	 */
 	if((mh_flags & MH_PREBINDABLE) == MH_PREBINDABLE){
@@ -2847,11 +2844,6 @@ void)
 	 */
 	reset_self_modifying_stubs();
 
-	/*
-	 * set the (__DATA,__dyld) section contents to a canonical value.
-	 */
-	update_dyld_section();
-	
 	arch_processed = TRUE;
 
 	/*
@@ -2889,11 +2881,11 @@ void)
  * the dynamic shared library's address.
  */
 static
-unsigned long
+uint32_t
 get_dylib_address(
 void)
 {
-    unsigned long i, addr;
+    uint32_t i, addr;
     struct load_command *lc;
     struct segment_command *sg;
     uint32_t ncmds;
@@ -2930,10 +2922,10 @@ enum bool
 load_archs_libraries(
 void)
 {
-    unsigned long i, ndependent_images;
+    uint32_t i, ndependent_images;
     struct load_command *lc, *load_commands;
     struct dylib_command *dl_load, *dl_id;
-    unsigned long *dependent_images, *image_pointer;
+    uint32_t *dependent_images, *image_pointer;
     char *suffix;
     enum bool is_framework;
     uint32_t ncmds;
@@ -2983,7 +2975,7 @@ void)
 		}
 		lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	    }
-	    dependent_images = allocate(sizeof(unsigned long) *
+	    dependent_images = allocate(sizeof(uint32_t) *
 					ndependent_images);
 	    arch_lib.dependent_images = dependent_images;
 	    arch_lib.ndependent_images = ndependent_images;
@@ -3030,10 +3022,10 @@ enum bool
 load_dependent_libraries(
 void)
 {
-    unsigned long i, j, ndependent_images;
+    uint32_t i, j, ndependent_images;
     struct load_command *lc;
     struct dylib_command *dl_load;
-    unsigned long *dependent_images, *image_pointer;
+    uint32_t *dependent_images, *image_pointer;
     enum bool some_images_setup;
     uint32_t ncmds;
     
@@ -3063,7 +3055,7 @@ void)
 		    }
 		    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 		}
-		dependent_images = allocate(sizeof(unsigned long *) *
+		dependent_images = allocate(sizeof(uint32_t *) *
 					    ndependent_images);
 		libs[i].dependent_images = dependent_images;
 		libs[i].ndependent_images = ndependent_images;
@@ -3156,8 +3148,8 @@ void
 print_two_level_info(
 struct lib *lib)
 {
-    unsigned long j;
-    unsigned long *sp;
+    uint32_t j;
+    uint32_t *sp;
 
 	printf("two-level library: %s (file_name %s)",
 	       lib->dylib_name, lib->file_name);
@@ -3175,40 +3167,40 @@ struct lib *lib)
 	else
 	    printf(" library_name = NULL\n");
 
-	printf("    ndependent_images = %lu\n",
+	printf("    ndependent_images = %u\n",
 	       lib->ndependent_images);
 	sp = lib->dependent_images;
 	for(j = 0;
 	    j < lib->ndependent_images;
 	    j++){
 	    if(libs[sp[j]].umbrella_name != NULL)
-	       printf("\t[%lu] %.*s\n", j,
+	       printf("\t[%u] %.*s\n", j,
 		      (int)libs[sp[j]].name_size,
 		      libs[sp[j]].umbrella_name);
 	    else if(libs[sp[j]].library_name != NULL)
-	       printf("\t[%lu] %.*s\n", j,
+	       printf("\t[%u] %.*s\n", j,
 		      (int)libs[sp[j]].name_size,
 		      libs[sp[j]].library_name);
 	    else
-	       printf("\t[%lu] %s (file_name %s)\n", j,
+	       printf("\t[%u] %s (file_name %s)\n", j,
 		      libs[sp[j]].dylib_name,
 		      libs[sp[j]].file_name);
 	}
 
-	printf("    nsub_images = %lu\n",
+	printf("    nsub_images = %u\n",
 	       lib->nsub_images);
 	sp = lib->sub_images;
 	for(j = 0; j < lib->nsub_images; j++){
 	    if(libs[sp[j]].umbrella_name != NULL)
-	       printf("\t[%lu] %.*s\n", j,
+	       printf("\t[%u] %.*s\n", j,
 		      (int)libs[sp[j]].name_size,
 		      libs[sp[j]].umbrella_name);
 	    else if(libs[sp[j]].library_name != NULL)
-	       printf("\t[%lu] %.*s\n", j,
+	       printf("\t[%u] %.*s\n", j,
 		      (int)libs[sp[j]].name_size,
 		      libs[sp[j]].library_name);
 	    else
-	       printf("\t[%lu] %s (file_name %s)\n", j,
+	       printf("\t[%u] %s (file_name %s)\n", j,
 		      libs[sp[j]].dylib_name,
 		      libs[sp[j]].file_name);
 	}
@@ -3229,15 +3221,17 @@ struct lib *lib,
 struct mach_header *lib_mh,
 struct mach_header_64 *lib_mh64)
 {
-    unsigned long i, j, k, l, n, max_libraries;
+    uint32_t i, j, k, l, n, max_libraries;
     struct mach_header *mh;
     struct mach_header_64 *mh64;
     struct load_command *lc, *load_commands;
     struct sub_umbrella_command *usub;
     struct sub_library_command *lsub;
     struct sub_framework_command *sub;
-    unsigned long *deps;
-    char *sub_umbrella_name, *sub_library_name, *sub_framework_name;
+    struct dylib_command *dl_load;
+    uint32_t *deps;
+    char *sub_umbrella_name, *sub_library_name, *sub_framework_name,
+	 *dylib_name;
     enum bool found;
     uint32_t ncmds;
     
@@ -3306,6 +3300,23 @@ struct mach_header_64 *lib_mh64)
 		    }
 		}
 		break;
+	    case LC_REEXPORT_DYLIB:
+		dl_load = (struct dylib_command *)lc;
+		dylib_name = (char *)dl_load + dl_load->dylib.name.offset;
+		for(j = 0; j < lib->ndependent_images; j++){
+		    if(libs[deps[j]].dylib_name != NULL &&
+		       strcmp(dylib_name, libs[deps[j]].dylib_name) == 0){
+			/*
+			 * TODO: can't this logic (here and in our caller) hang
+		         * if there is a circular loop?  And is that even
+			 * possible to create?  See comments in our caller.
+			 */
+			if(libs[deps[j]].sub_images_setup == FALSE)
+			    return(FALSE);
+			max_libraries += 1 + libs[deps[j]].nsub_images;
+		    }
+		}
+		break;
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
@@ -3317,7 +3328,7 @@ struct mach_header_64 *lib_mh64)
 	 * size.
 	 */
 	max_libraries += lib->ndependent_images;
-	lib->sub_images = allocate(sizeof(unsigned long) * max_libraries);
+	lib->sub_images = allocate(sizeof(uint32_t) * max_libraries);
 	n = 0;
 
 	/*
@@ -3453,6 +3464,42 @@ struct mach_header_64 *lib_mh64)
 			}
 		    }
 		}
+		break;
+	    case LC_REEXPORT_DYLIB:
+		dl_load = (struct dylib_command *)lc;
+		dylib_name = (char *)dl_load + dl_load->dylib.name.offset;
+		for(j = 0; j < lib->ndependent_images; j++){
+		    if(libs[deps[j]].dylib_name != NULL &&
+		       strcmp(dylib_name, libs[deps[j]].dylib_name) == 0){
+
+			/* make sure this image is not already on the list */
+			found = FALSE;
+			for(l = 0; l < n; l++){
+			    if(lib->sub_images[l] == deps[j]){
+				found = TRUE;
+				break;
+			    }
+			}
+			if(found == FALSE)
+			    lib->sub_images[n++] = deps[j];
+
+			for(k = 0; k < libs[deps[j]].nsub_images; k++){
+			    /* make sure this image is not already on the list*/
+			    found = FALSE;
+			    for(l = 0; l < n; l++){
+				if(lib->sub_images[l] ==
+				   libs[deps[j]].sub_images[k]){
+				    found = TRUE;
+				    break;
+				}
+			    }
+			    if(found == FALSE)
+				lib->sub_images[n++] = 
+				    libs[deps[j]].sub_images[k];
+			}
+		    }
+		}
+		break;
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
@@ -3461,7 +3508,7 @@ struct mach_header_64 *lib_mh64)
 	 * needed for it.  Note this just gives back the pointers we don't
 	 * use when allocated from the block of preallocated pointers.
 	 */
-	lib->sub_images = reallocate(lib->sub_images, sizeof(unsigned long) *n);
+	lib->sub_images = reallocate(lib->sub_images, sizeof(uint32_t) *n);
 	lib->nsub_images = n;
 
 	lib->sub_images_setup = TRUE;
@@ -3486,9 +3533,9 @@ load_library(
 char *file_name,
 struct dylib_command *dl_load,
 enum bool time_stamps_must_match,
-unsigned long *image_pointer)
+uint32_t *image_pointer)
 {
-    unsigned long i;
+    uint32_t i;
     char *dylib_name;
     struct ofile *ofile;
     struct fat_arch *best_fat_arch;
@@ -3825,9 +3872,9 @@ void
 check_for_overlapping_segments(
 uint32_t vmslide)
 {
-    unsigned long i, j;
+    uint32_t i, j;
     struct segment *segments;
-    unsigned long nsegments;
+    uint32_t nsegments;
     struct load_command *lc;
     struct segment_command *sg;
     uint32_t ncmds;
@@ -3927,7 +3974,7 @@ void
 setup_symbolic_info(
 enum bool missing_arch)
 {
-    unsigned long i, j, nlibrefs;
+    uint32_t i, j, nlibrefs;
     enum byte_sex host_byte_sex;
     struct load_command *lc;
     uint32_t ncmds;
@@ -4253,23 +4300,23 @@ check_symbolic_info_tables(
 char *file_name,
 struct mach_header *mh,
 struct mach_header_64 *mh64,
-unsigned long nlibrefs,
+uint32_t nlibrefs,
 struct symtab_command *st,
 struct dysymtab_command *dyst,
 struct nlist *symbols,
 struct nlist_64 *symbols64,
-unsigned long nsyms,
+uint32_t nsyms,
 char *strings,
-unsigned long strsize,
+uint32_t strsize,
 struct dylib_table_of_contents *tocs,
-unsigned long ntoc,
+uint32_t ntoc,
 struct dylib_module *mods,
 struct dylib_module_64 *mods64,
-unsigned long nmodtab,
+uint32_t nmodtab,
 struct dylib_reference *refs,
-unsigned long nextrefsyms)
+uint32_t nextrefsyms)
 {
-    unsigned long i;
+    uint32_t i;
     uint32_t mh_flags, mh_filetype, n_strx, module_name, nextdefsym, iextdefsym;
     uint8_t n_type;
     uint64_t n_value;
@@ -4302,13 +4349,13 @@ unsigned long nextrefsyms)
 	    }
 	    if(n_strx > strsize){
 		error("malformed file: %s (bad string table index (%d) for "
-		      "symbol %lu) (for architecture %s)", file_name,
+		      "symbol %u) (for architecture %s)", file_name,
 		      n_strx, i, arch_name);
 		redo_exit(2);
 	    }
 	    if((n_type & N_TYPE) == N_INDR && n_value > strsize){
 		error("malformed file: %s (bad string table index (%llu) for "
-		      "N_INDR symbol %lu) (for architecture %s)", file_name,
+		      "N_INDR symbol %u) (for architecture %s)", file_name,
 		      n_value, i, arch_name);
 		redo_exit(2);
 	    }
@@ -4318,10 +4365,10 @@ unsigned long nextrefsyms)
 		if(mh_filetype == MH_DYLIB){
 		    if(GET_LIBRARY_ORDINAL(n_desc) !=
 			   SELF_LIBRARY_ORDINAL &&
-		       (unsigned long)GET_LIBRARY_ORDINAL(n_desc)
+		       (uint32_t)GET_LIBRARY_ORDINAL(n_desc)
 			   - 1 > nlibrefs){
 			error("malformed file: %s (bad LIBRARY_ORDINAL (%d) "
-			      "for symbol %lu %s) (for architecture %s)",
+			      "for symbol %u %s) (for architecture %s)",
 			      file_name, GET_LIBRARY_ORDINAL(n_desc),
 			       i, strings + n_strx, arch_name);
 			redo_exit(2);
@@ -4330,10 +4377,10 @@ unsigned long nextrefsyms)
 		else if(mh_filetype == MH_EXECUTE){
 		   if(GET_LIBRARY_ORDINAL(n_desc) ==
 			   SELF_LIBRARY_ORDINAL ||
-		      (unsigned long)GET_LIBRARY_ORDINAL(n_desc)
+		      (uint32_t)GET_LIBRARY_ORDINAL(n_desc)
 			- 1 > nlibrefs){
 			error("malformed file: %s (bad LIBRARY_ORDINAL (%d) "
-			      "for symbol %lu %s) (for architecture %s)",
+			      "for symbol %u %s) (for architecture %s)",
 			      file_name, GET_LIBRARY_ORDINAL(n_desc),
 			       i, strings + n_strx, arch_name);
 			redo_exit(2);
@@ -4346,13 +4393,13 @@ unsigned long nextrefsyms)
 	for(i = 0; i < ntoc; i++){
 	    if(tocs[i].symbol_index > nsyms){
 		error("malformed file: %s (bad symbol table index (%d) for "
-		      "table of contents entry %lu) (for architecture %s)",
+		      "table of contents entry %u) (for architecture %s)",
 		      file_name, tocs[i].symbol_index, i, arch_name);
 		redo_exit(2);
 	    }
 	    if(tocs[i].module_index > nmodtab){
 		error("malformed file: %s (bad module table index (%d) for "
-		      "table of contents entry %lu) (for architecture %s)",
+		      "table of contents entry %u) (for architecture %s)",
 		      file_name, tocs[i].module_index, i, arch_name);
 		redo_exit(2);
 	    }
@@ -4376,7 +4423,7 @@ unsigned long nextrefsyms)
 	    }
 	    if(module_name > strsize){
 		error("malformed file: %s (bad string table index (%d) for "
-		      "module_name in module table entry %lu ) (for "
+		      "module_name in module table entry %u ) (for "
 		      "architecture %s)", file_name, module_name, i,
 		      arch_name);
 		redo_exit(2);
@@ -4385,14 +4432,14 @@ unsigned long nextrefsyms)
 	       (iextdefsym < dyst->iextdefsym ||
 	        iextdefsym >= dyst->iextdefsym + dyst->nextdefsym)){
 		error("malformed file: %s (bad external symbol table index for"
-		      " for module table entry %lu) (for architecture %s)",
+		      " for module table entry %u) (for architecture %s)",
 		      file_name, i, arch_name);
 		redo_exit(2);
 	    }
 	    if(nextdefsym != 0 &&
 	       iextdefsym + nextdefsym > dyst->iextdefsym + dyst->nextdefsym){
 		error("malformed file: %s (bad number of external symbol table"
-		      " entries for module table entry %lu) (for architecture "
+		      " entries for module table entry %u) (for architecture "
 		      "%s)", file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -4402,7 +4449,7 @@ unsigned long nextrefsyms)
 	for(i = 0; i < nextrefsyms; i++){
 	    if(refs[i].isym > nsyms){
 		error("malformed file: %s (bad external symbol table index "
-		      "reference table entry %lu) (for architecture %s)",
+		      "reference table entry %u) (for architecture %s)",
 		      file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -4419,7 +4466,7 @@ void
 check_for_dylib_override_symbols(
 void)
 {
-    unsigned long i;
+    uint32_t i;
 
 	for(i = arch->object->dyst->iextdefsym;
 	    i < arch->object->dyst->iextdefsym + arch->object->dyst->nextdefsym;
@@ -4441,7 +4488,7 @@ check_dylibs_for_definition(
 char *file_name,
 char *symbol_name)
 {
-    unsigned long i;
+    uint32_t i;
     struct dylib_table_of_contents *toc;
     uint32_t mh_flags;
     
@@ -4492,7 +4539,7 @@ enum bool
 check_dylibs_for_reference(
 char *symbol_name)
 {
-    unsigned long i, j, symbol_index;
+    uint32_t i, j, symbol_index;
     struct dylib_table_of_contents *toc;
     struct nlist *symbol;
     uint32_t mh_flags;
@@ -4584,7 +4631,7 @@ void
 setup_initial_undefined_list(
 void)
 {
-    unsigned long i;
+    uint32_t i;
     uint32_t mh_flags;
     
 	for(i = arch->object->dyst->iundefsym;
@@ -4691,7 +4738,7 @@ link_library_module(
 enum link_state *module_state,
 struct lib *lib)
 {
-    unsigned long i, j, module_index, ilib;
+    uint32_t i, j, module_index, ilib;
     struct dylib_module *dylib_module;
     char *name;
     struct nlist *prev_symbol;
@@ -4845,7 +4892,7 @@ void
 add_to_undefined_list(
 char *name,
 struct nlist *symbol,
-unsigned long ilib)
+uint32_t ilib)
 {
     struct symbol_list *undefined, *new;
 
@@ -4882,7 +4929,7 @@ unsigned long ilib)
 static
 struct lib *
 get_primary_lib(
-unsigned long ilib,
+uint32_t ilib,
 struct nlist *symbol)
 {
     struct lib *lib;
@@ -4959,7 +5006,7 @@ struct lib *lib)
     struct dysymtab_command *dyst;
     struct nlist *symbols, *symbol;
     struct dylib_table_of_contents *tocs, *toc;
-    unsigned long symbol_index;
+    uint32_t symbol_index;
     struct lib *indr_lib;
     char *file_name;
     uint32_t mh_flags, mh_filetype;
@@ -5085,11 +5132,11 @@ enum bool weak, /* the symbol is allowed to be missing, weak */
 struct nlist **symbol,
 enum link_state **module_state,
 struct lib **lib,
-unsigned long *isub_image,
-unsigned long *itoc,
+uint32_t *isub_image,
+uint32_t *itoc,
 struct indr_loop_list *indr_loop)
 {
-    unsigned long i;
+    uint32_t i;
 
 	if(isub_image != NULL)
 	    *isub_image = 0;
@@ -5186,8 +5233,8 @@ char *name,
 struct nlist **symbol,
 enum link_state **module_state,
 struct lib **lib,
-unsigned long *isub_image,
-unsigned long *itoc,
+uint32_t *isub_image,
+uint32_t *itoc,
 struct indr_loop_list *indr_loop)
 {
     struct dylib_table_of_contents *toc;
@@ -5273,8 +5320,8 @@ struct lib *primary_lib,
 struct nlist **symbol,
 enum link_state **module_state,
 struct lib **lib,
-unsigned long *isub_image,
-unsigned long *itoc,
+uint32_t *isub_image,
+uint32_t *itoc,
 struct indr_loop_list *indr_loop)
 {
     struct dylib_table_of_contents *toc;
@@ -5337,8 +5384,8 @@ build_new_symbol_table(
 uint32_t vmslide,
 enum bool missing_arch)
 {
-    unsigned long i, j, sym_info_size, ihint, isub_image, itoc, objc_slide;
-    unsigned long lowest_objc_module_info_addr;
+    uint32_t i, j, sym_info_size, ihint, isub_image, itoc, objc_slide;
+    uint32_t lowest_objc_module_info_addr;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s, *s_objc;
@@ -5475,7 +5522,7 @@ enum bool missing_arch)
 	if(vmslide != 0){
 	    if(arch->object->mh != NULL){
 		if(unprebinding && arch_nmodtab != 0){
-		    lowest_objc_module_info_addr = ULONG_MAX;
+		    lowest_objc_module_info_addr = UINT_MAX;
 		    for(i = 0; i < arch_nmodtab; i++){
 			if(arch_mods[i].objc_module_info_size != 0){
 			    if(arch_mods[i].objc_module_info_addr <
@@ -5506,7 +5553,7 @@ enum bool missing_arch)
 			}
 			lc = (struct load_command *)((char *)lc + lc->cmdsize);
 		    }
-		    if(lowest_objc_module_info_addr != ULONG_MAX &&
+		    if(lowest_objc_module_info_addr != UINT_MAX &&
 		       s_objc != NULL){
 			objc_slide = s_objc->addr -
 				     lowest_objc_module_info_addr;
@@ -5681,7 +5728,7 @@ void
 setup_r_address_base(
 void)
 {
-    unsigned long i;
+    uint32_t i;
     struct load_command *lc;
     struct segment_command *sg;
     uint32_t ncmds, mh_flags;
@@ -5770,7 +5817,7 @@ void
 update_generic_local_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, r_address, r_pcrel, r_length, r_type, r_value, value;
+    uint32_t i, r_address, r_pcrel, r_length, r_type, r_value, value;
     char *p;
     enum bool no_sect;
     struct scattered_relocation_info *sreloc;
@@ -5825,7 +5872,7 @@ uint32_t vmslide)
 					    1 << r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for local relocation entry %lu)",
+		      " field for local relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -5848,7 +5895,7 @@ uint32_t vmslide)
 		       ((value & 0xffffff80) != 0xffffff80)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 1 "
+			    "(local relocation entry %u does not fit in 1 "
 			    "byte)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -5860,7 +5907,7 @@ uint32_t vmslide)
 		       ((value & 0xffff8000) != 0xffff8000)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 2 "
+			    "(local relocation entry %u does not fit in 2 "
 			    "bytes)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -5892,17 +5939,17 @@ void
 update_hppa_local_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, r_address, r_pcrel, r_length, r_value, value;
+    uint32_t i, r_address, r_pcrel, r_length, r_value, value;
     char *p;
-    unsigned long instruction, immediate;
+    uint32_t instruction, immediate;
     enum bool no_sect;
     struct scattered_relocation_info *sreloc;
     struct relocation_info *pair_reloc;
     struct scattered_relocation_info *spair_reloc;
     enum reloc_type_hppa r_type, pair_r_type;
-    unsigned long other_half;
-    unsigned long hi21, lo14;
-    unsigned long w, w1, w2;
+    uint32_t other_half;
+    uint32_t hi21, lo14;
+    uint32_t w, w1, w2;
 
 	sreloc = NULL;
 	pair_reloc = NULL;
@@ -5937,7 +5984,7 @@ uint32_t vmslide)
 	       r_type == HPPA_RELOC_BR17){
 		if(i + 1 == arch_nlocrel){
 		    error("malformed file: %s (missing pair local "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -5955,7 +6002,7 @@ uint32_t vmslide)
 		i++;
 		if(pair_r_type != HPPA_RELOC_PAIR){
 		    error("malformed file: %s (pair local relocation entry "
-			  "for entry %lu is not of r_type HPPA_RELOC_PAIR) "
+			  "for entry %u is not of r_type HPPA_RELOC_PAIR) "
 			  "(for architecture %s)", arch->file_name, i,
 			  arch_name);
 		    redo_exit(2);
@@ -5990,7 +6037,7 @@ uint32_t vmslide)
 					    1 << r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for local relocation entry %lu)",
+		      " field for local relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -6003,7 +6050,7 @@ uint32_t vmslide)
 		       ((value & 0xffffff80) != 0xffffff80)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 1 "
+			    "(local relocation entry %u does not fit in 1 "
 			    "byte)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6015,7 +6062,7 @@ uint32_t vmslide)
 		       ((value & 0xffff8000) != 0xffff8000)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 2 "
+			    "(local relocation entry %u does not fit in 2 "
 			    "bytes)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6083,7 +6130,7 @@ uint32_t vmslide)
 		    if(U_ABS(immediate) > 0x3ffff){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu displacement "
+			    "(local relocation entry %u displacement "
 			    "too large to fit)", arch->file_name, arch_name, i);
 		    }
 		    immediate >>= 2;
@@ -6094,7 +6141,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (local relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		    break;
@@ -6125,15 +6172,15 @@ void
 update_sparc_local_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, r_address, r_pcrel, r_length, r_value, value;
+    uint32_t i, r_address, r_pcrel, r_length, r_value, value;
     char *p;
-    unsigned long instruction, immediate;
+    uint32_t instruction, immediate;
     enum bool no_sect;
     struct scattered_relocation_info *sreloc;
     struct relocation_info *pair_reloc;
     struct scattered_relocation_info *spair_reloc;
     enum reloc_type_sparc r_type, pair_r_type;
-    unsigned long other_half;
+    uint32_t other_half;
 
 	sreloc = NULL;
 	pair_reloc = NULL;
@@ -6167,7 +6214,7 @@ uint32_t vmslide)
 	       r_type == SPARC_RELOC_LO10 ){
 		if(i + 1 == arch_nlocrel){
 		    error("malformed file: %s (missing pair local "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -6185,7 +6232,7 @@ uint32_t vmslide)
 		i++;
 		if(pair_r_type != SPARC_RELOC_PAIR){
 		    error("malformed file: %s (pair local relocation entry "
-			  "for entry %lu is not of r_type SPARC_RELOC_PAIR) "
+			  "for entry %u is not of r_type SPARC_RELOC_PAIR) "
 			  "(for architecture %s)", arch->file_name, i,
 			  arch_name);
 		    redo_exit(2);
@@ -6220,7 +6267,7 @@ uint32_t vmslide)
 					    1 << r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for local relocation entry %lu)",
+		      " field for local relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -6233,7 +6280,7 @@ uint32_t vmslide)
 		       ((value & 0xffffff80) != 0xffffff80)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 1 "
+			    "(local relocation entry %u does not fit in 1 "
 			    "byte)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6245,7 +6292,7 @@ uint32_t vmslide)
 		       ((value & 0xffff8000) != 0xffff8000)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 2 "
+			    "(local relocation entry %u does not fit in 2 "
 			    "bytes)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6296,7 +6343,7 @@ uint32_t vmslide)
 				    (immediate & 0xff800000) != 0x00) {
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu displacement too "
+			    "(local relocation entry %u displacement too "
 			    "large to fit)", arch->file_name, arch_name, i);
 		    }
 		    immediate >>= 2;
@@ -6318,7 +6365,7 @@ uint32_t vmslide)
 
 		default:
 		    error("malformed file: %s (local relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		    break;
@@ -6350,15 +6397,15 @@ void
 update_ppc_local_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, r_address, r_pcrel, r_length, r_value, value;
+    uint32_t i, r_address, r_pcrel, r_length, r_value, value;
     char *p;
-    unsigned long instruction, immediate;
+    uint32_t instruction, immediate;
     enum bool no_sect;
     struct scattered_relocation_info *sreloc;
     struct relocation_info *pair_reloc;
     struct scattered_relocation_info *spair_reloc;
     enum reloc_type_ppc r_type, pair_r_type;
-    unsigned long other_half;
+    uint32_t other_half;
 
 	sreloc = NULL;
 	pair_reloc = NULL;
@@ -6392,7 +6439,7 @@ uint32_t vmslide)
 	       r_type == PPC_RELOC_HA16 || r_type == PPC_RELOC_LO14){
 		if(i + 1 == arch_nlocrel){
 		    error("malformed file: %s (missing pair local "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -6410,7 +6457,7 @@ uint32_t vmslide)
 		i++;
 		if(pair_r_type != PPC_RELOC_PAIR){
 		    error("malformed file: %s (pair local relocation entry "
-			  "for entry %lu is not of r_type PPC_RELOC_PAIR) "
+			  "for entry %u is not of r_type PPC_RELOC_PAIR) "
 			  "(for architecture %s)", arch->file_name, i,
 			  arch_name);
 		    redo_exit(2);
@@ -6445,7 +6492,7 @@ uint32_t vmslide)
 				 1 << r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for local relocation entry %lu)",
+		      " field for local relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -6458,7 +6505,7 @@ uint32_t vmslide)
 		       ((value & 0xffffff80) != 0xffffff80)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 1 "
+			    "(local relocation entry %u does not fit in 1 "
 			    "byte)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6470,7 +6517,7 @@ uint32_t vmslide)
 		       ((value & 0xffff8000) != 0xffff8000)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 2 "
+			    "(local relocation entry %u does not fit in 2 "
 			    "bytes)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6534,7 +6581,7 @@ uint32_t vmslide)
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocated value "
 			    "not a multiple of 4 bytes for local relocation "
-			    "entry %lu", arch->file_name, arch_name, i);
+			    "entry %u", arch->file_name, arch_name, i);
 		    }
 		    instruction = (instruction & 0xffff0003) |
 				  (immediate & 0xfffc);
@@ -6551,13 +6598,13 @@ uint32_t vmslide)
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocated value "
 			    "not a multiple of 4 bytes for local relocation "
-			    "entry %lu", arch->file_name, arch_name, i);
+			    "entry %u", arch->file_name, arch_name, i);
 		    }
 		    if((immediate & 0xfffe0000) != 0xfffe0000 &&
 		       (immediate & 0xfffe0000) != 0x00000000){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu displacement "
+			    "(local relocation entry %u displacement "
 			    "too large to fit)", arch->file_name, arch_name, i);
 		    }
 		    instruction = (instruction & 0xffff0003) |
@@ -6574,13 +6621,13 @@ uint32_t vmslide)
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocated value "
 			    "not a multiple of 4 bytes for local relocation "
-			    "entry %lu", arch->file_name, arch_name, i);
+			    "entry %u", arch->file_name, arch_name, i);
 		    }
 		    if((immediate & 0xfe000000) != 0xfe000000 &&
 		       (immediate & 0xfe000000) != 0x00000000){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu displacement too "
+			    "(local relocation entry %u displacement too "
 			    "large to fit)", arch->file_name, arch_name, i);
 		    }
 		    instruction = (instruction & 0xfc000003) |
@@ -6589,7 +6636,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (local relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		    break;
@@ -6621,14 +6668,14 @@ void
 update_arm_local_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, r_address, r_pcrel, r_length, r_value, value;
+    uint32_t i, r_address, r_pcrel, r_length, r_value, value;
     char *p;
     enum bool no_sect;
     struct scattered_relocation_info *sreloc;
     struct relocation_info *pair_reloc;
     struct scattered_relocation_info *spair_reloc;
     enum reloc_type_arm r_type;
-    unsigned long other_half;
+    uint32_t other_half;
 
 	sreloc = NULL;
 	pair_reloc = NULL;
@@ -6683,7 +6730,7 @@ uint32_t vmslide)
 				 1 << r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for local relocation entry %lu)",
+		      " field for local relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -6696,7 +6743,7 @@ uint32_t vmslide)
 		       ((value & 0xffffff80) != 0xffffff80)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 1 "
+			    "(local relocation entry %u does not fit in 1 "
 			    "byte)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6708,7 +6755,7 @@ uint32_t vmslide)
 		       ((value & 0xffff8000) != 0xffff8000)){
 			error("prebinding can't be redone for: %s (for "
 			    "architecture %s) because of relocation overflow "
-			    "(local relocation entry %lu does not fit in 2 "
+			    "(local relocation entry %u does not fit in 2 "
 			    "bytes)", arch->file_name, arch_name, i);
 			redo_exit(2);
 		    }
@@ -6748,7 +6795,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (local relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		    break;
@@ -6810,7 +6857,7 @@ void
 update_generic_external_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, value, symbol_slide;
+    uint32_t i, value, symbol_slide;
     char *name, *p;
     struct nlist *defined_symbol, *arch_symbol;
     enum link_state *module_state;
@@ -6826,7 +6873,7 @@ uint32_t vmslide)
 	    /* check the r_symbolnum field */
 	    if(arch_extrelocs[i].r_symbolnum > arch_nsyms){
 		error("malformed file: %s (bad symbol table index for "
-		      "external relocation entry %lu) (for architecture %s)",
+		      "external relocation entry %u) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -6876,7 +6923,7 @@ uint32_t vmslide)
 					    1 << arch_extrelocs[i].r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for external relocation entry %lu)",
+		      " field for external relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -6945,7 +6992,7 @@ uint32_t vmslide)
 		break;
 	    default:
 		error("malformed file: %s (external relocation entry "
-		      "%lu has bad r_length) (for architecture %s)",
+		      "%u has bad r_length) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -6962,15 +7009,15 @@ void
 update_hppa_external_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, value, symbol_slide;
+    uint32_t i, value, symbol_slide;
     char *name, *p;
     struct nlist *defined_symbol, *arch_symbol;
     enum link_state *module_state;
     struct lib *lib;
-    unsigned long instruction, immediate;
-    unsigned long other_half;
-    unsigned long hi21, lo14;
-    unsigned long w, w1, w2;
+    uint32_t instruction, immediate;
+    uint32_t other_half;
+    uint32_t hi21, lo14;
+    uint32_t w, w1, w2;
     uint32_t mh_flags;
 
         if(arch->object->mh != NULL)
@@ -6982,7 +7029,7 @@ uint32_t vmslide)
 	    /* check the r_symbolnum field */
 	    if(arch_extrelocs[i].r_symbolnum > arch_nsyms){
 		error("malformed file: %s (bad symbol table index for "
-		      "external relocation entry %lu) (for architecture %s)",
+		      "external relocation entry %u) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -6992,13 +7039,13 @@ uint32_t vmslide)
 	       arch_extrelocs[i].r_type == HPPA_RELOC_BR17){
 		if(i + 1 == arch_nextrel){
 		    error("malformed file: %s (missing pair external "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
 		if(arch_extrelocs[i + 1].r_type != HPPA_RELOC_PAIR){
 		    error("malformed file: %s (pair external relocation entry "
-			  "for entry %lu is not of r_type HPPA_RELOC_PAIR) (for"
+			  "for entry %u is not of r_type HPPA_RELOC_PAIR) (for"
 			  " architecture %s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7048,7 +7095,7 @@ uint32_t vmslide)
 					    1 << arch_extrelocs[i].r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for external relocation entry %lu)",
+		      " field for external relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -7121,7 +7168,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has bad r_length) (for architecture %s)",
+			  "%u has bad r_length) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7231,7 +7278,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7257,13 +7304,13 @@ void
 update_sparc_external_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, value, symbol_slide;
+    uint32_t i, value, symbol_slide;
     char *name, *p;
     struct nlist *defined_symbol, *arch_symbol;
     enum link_state *module_state;
     struct lib *lib;
-    unsigned long instruction, immediate;
-    unsigned long other_half;
+    uint32_t instruction, immediate;
+    uint32_t other_half;
     uint32_t mh_flags;
 
         if(arch->object->mh != NULL)
@@ -7275,7 +7322,7 @@ uint32_t vmslide)
 	    /* check the r_symbolnum field */
 	    if(arch_extrelocs[i].r_symbolnum > arch_nsyms){
 		error("malformed file: %s (bad symbol table index for "
-		      "external relocation entry %lu) (for architecture %s)",
+		      "external relocation entry %u) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -7284,13 +7331,13 @@ uint32_t vmslide)
 	       arch_extrelocs[i].r_type == SPARC_RELOC_HI22){
 		if(i + 1 == arch_nextrel){
 		    error("malformed file: %s (missing pair external "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
 		if(arch_extrelocs[i + 1].r_type != SPARC_RELOC_PAIR){
 		    error("malformed file: %s (pair external relocation entry "
-			  "for entry %lu is not of r_type SPARC_RELOC_PAIR) "
+			  "for entry %u is not of r_type SPARC_RELOC_PAIR) "
 			  "(for architecture %s)", arch->file_name, i,
 			  arch_name);
 		    redo_exit(2);
@@ -7341,7 +7388,7 @@ uint32_t vmslide)
 					    1 << arch_extrelocs[i].r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for external relocation entry %lu)",
+		      " field for external relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -7414,7 +7461,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has bad r_length) (for architecture %s)",
+			  "%u has bad r_length) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7513,7 +7560,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has unknown r_type) (for architecture %s)",
+			  "%u has unknown r_type) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7538,13 +7585,13 @@ void
 update_ppc_external_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, value, symbol_slide;
+    uint32_t i, value, symbol_slide;
     char *name, *p;
     struct nlist *defined_symbol, *arch_symbol;
     enum link_state *module_state;
     struct lib *lib;
-    unsigned long instruction, immediate;
-    unsigned long other_half, br14_disp_sign;
+    uint32_t instruction, immediate;
+    uint32_t other_half, br14_disp_sign;
     uint32_t mh_flags;
 
         if(arch->object->mh != NULL)
@@ -7556,7 +7603,7 @@ uint32_t vmslide)
 	    /* check the r_symbolnum field */
 	    if(arch_extrelocs[i].r_symbolnum > arch_nsyms){
 		error("malformed file: %s (bad symbol table index for "
-		      "external relocation entry %lu) (for architecture %s)",
+		      "external relocation entry %u) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -7567,13 +7614,13 @@ uint32_t vmslide)
 	       arch_extrelocs[i].r_type == PPC_RELOC_LO14){
 		if(i + 1 == arch_nextrel){
 		    error("malformed file: %s (missing pair external "
-			  "relocation entry for entry %lu) (for architecture "
+			  "relocation entry for entry %u) (for architecture "
 			  "%s)", arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
 		if(arch_extrelocs[i + 1].r_type != PPC_RELOC_PAIR){
 		    error("malformed file: %s (pair external relocation entry "
-			  "for entry %lu is not of r_type PPC_RELOC_PAIR) "
+			  "for entry %u is not of r_type PPC_RELOC_PAIR) "
 			  "(for architecture %s)", arch->file_name, i,
 			  arch_name);
 		    redo_exit(2);
@@ -7623,7 +7670,7 @@ uint32_t vmslide)
 				 1 << arch_extrelocs[i].r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for external relocation entry %lu)",
+		      " field for external relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -7696,7 +7743,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has bad r_length) (for architecture %s)",
+			  "%u has bad r_length) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -7887,7 +7934,7 @@ uint32_t vmslide)
 			break;
 		    default:
 			error("malformed file: %s (external relocation entry "
-			      "%lu has unknown r_type) (for architecture %s)",
+			      "%u has unknown r_type) (for architecture %s)",
 			      arch->file_name, i, arch_name);
 			redo_exit(2);
 		    }
@@ -7914,7 +7961,7 @@ void
 update_arm_external_relocs(
 uint32_t vmslide)
 {
-    unsigned long i, value, symbol_slide;
+    uint32_t i, value, symbol_slide;
     char *name, *p;
     struct nlist *defined_symbol, *arch_symbol;
     enum link_state *module_state;
@@ -7930,7 +7977,7 @@ uint32_t vmslide)
 	    /* check the r_symbolnum field */
 	    if(arch_extrelocs[i].r_symbolnum > arch_nsyms){
 		error("malformed file: %s (bad symbol table index for "
-		      "external relocation entry %lu) (for architecture %s)",
+		      "external relocation entry %u) (for architecture %s)",
 		      arch->file_name, i, arch_name);
 		redo_exit(2);
 	    }
@@ -7978,7 +8025,7 @@ uint32_t vmslide)
 				 1 << arch_extrelocs[i].r_length);
 	    if(p == NULL){
 		error("malformed file: %s (for architecture %s) (bad r_address"
-		      " field for external relocation entry %lu)",
+		      " field for external relocation entry %u)",
 		      arch->file_name, arch_name, i);
 		redo_exit(2);
 	    }
@@ -8061,7 +8108,7 @@ uint32_t vmslide)
 		    break;
 		default:
 		    error("malformed file: %s (external relocation entry "
-			  "%lu has bad r_length) (for architecture %s)",
+			  "%u has bad r_length) (for architecture %s)",
 			  arch->file_name, i, arch_name);
 		    redo_exit(2);
 		}
@@ -8085,10 +8132,10 @@ uint32_t vmslide)
 static
 char *
 contents_pointer_for_vmaddr(
-unsigned long vmaddr,
-unsigned long size)
+uint32_t vmaddr,
+uint32_t size)
 {
-    unsigned long i, offset;
+    uint32_t i, offset;
     struct load_command *lc;
     struct segment_command *sg;
     uint32_t ncmds;
@@ -8124,7 +8171,7 @@ void
 update_symbol_pointers(
 uint32_t vmslide)
 {
-    unsigned long i, j, k, section_type, symbol_pointer;
+    uint32_t i, j, k, section_type, symbol_pointer;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s;
@@ -8167,7 +8214,7 @@ uint32_t vmslide)
 				sizeof(uint32_t));
 			    if(p == NULL){
 				error("malformed file: %s (for architecture "
-				    "%s) (1 bad indirect section (%.16s,%.16s))",
+				    "%s) (bad indirect section (%.16s,%.16s))",
 				    arch->file_name, arch_name, s->segname,
 				    s->sectname);
 				redo_exit(2);
@@ -8200,7 +8247,7 @@ uint32_t vmslide)
 			    if(arch_indirect_symtab[s->reserved1 + k] >
 			       arch_nsyms){
 				error("malformed file: %s (for architecture "
-				    "%s) (2 bad indirect symbol table entry %lu)",
+				    "%s) (bad indirect symbol table entry %u)",
 				    arch->file_name, arch_name, i);
 				redo_exit(2);
 			    }
@@ -8259,7 +8306,7 @@ void
 update_self_modifying_stubs(
 uint32_t vmslide)
 {
-    unsigned long i, j, k, section_type, displacement, symbol_slide;
+    uint32_t i, j, k, section_type, displacement, symbol_slide;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s;
@@ -8312,7 +8359,7 @@ uint32_t vmslide)
 				s->addr + (k * 5), 4);
 			    if(p == NULL){
 				error("malformed file: %s (for architecture "
-				    "%s) (3 bad indirect section (%.16s,%.16s))",
+				    "%s) (bad indirect section (%.16s,%.16s))",
 				    arch->file_name, arch_name, s->segname,
 				    s->sectname);
 				redo_exit(2);
@@ -8324,120 +8371,121 @@ uint32_t vmslide)
 			    if(arch_indirect_symtab[s->reserved1 + k] >
 			       arch_nsyms){
 				error("malformed file: %s (for architecture "
-				    "%s) (4 bad indirect symbol table entry %lu)",
-				    arch->file_name, arch_name, i);
+				      "%s) (bad indirect symbol table entry "
+				      "%u)", arch->file_name, arch_name, i);
+				    redo_exit(2);
+				}
+	    
+				/*
+				 * If the symbol this indirect symbol table
+				 * entry is refering to is not a prebound
+				 * undefined symbol then this symbol's value is
+				 * used for the displacement of the JMP.
+				 */ 
+				arch_symbol = arch_symbols +
+					 arch_indirect_symtab[s->reserved1 + k];
+				if((arch_symbol->n_type & N_TYPE) != N_PBUD){
+				    if(arch_symbol->n_sect == NO_SECT)
+					symbol_slide = 0;
+				    else
+					symbol_slide = vmslide;
+				    displacement = arch_symbol->n_value +
+					       symbol_slide -
+					       (vmslide + s->addr + (k * 5) + 5);
+				}
+				else{
+				    /*
+				     * Look up the symbol being referenced by this
+				     * indirect symbol table entry to get the
+				     * defined symbol's value to be used.
+				     */
+				    name = arch_strings + arch_symbol->n_un.n_strx;
+				    lookup_symbol(name,
+						  get_primary_lib(ARCH_LIB,
+								  arch_symbol),
+						  get_weak(arch_symbol),
+						  &defined_symbol, &module_state,
+						  &lib, NULL, NULL, NO_INDR_LOOP);
+				    displacement = defined_symbol->n_value -
+					       (vmslide + s->addr + (k * 5) + 5);
+				}
+				/*
+				 * Now set the JMP opcode and the displacement.  We
+				 * must set the opcode in case we are prebinding an
+				 * unprebound() binary that has HLT instructions
+				 * for the 5 bytes of the JMP instruction.
+				 */
+				*p = 0xE9; /* JMP rel32 */
+				set_arch_long(p + 1, displacement);
+			    }
+			}
+			s++;
+		    }
+		}
+		lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	    }
+    }
+
+    /*
+     * reset_symbol_pointers() sets lazy and non-lazy symbol pointers back to their
+     * original, pre-prebinding values.
+     */
+    static
+    void
+    reset_symbol_pointers(
+    uint32_t vmslide)
+    {
+	uint32_t i, j, k, m, section_type;
+	uint32_t symbol_pointer;
+	struct load_command *lc;
+	struct segment_command *sg;
+	struct section *s;
+	struct nlist *arch_symbol;
+	char *p;
+	struct scattered_relocation_info *sreloc;
+	uint32_t ncmds, mh_flags;
+	
+	    /*
+	     * For each symbol pointer section update the symbol pointers by
+	     * setting lazy symbol pointers to their original values, as defined
+	     * in the corresponding local relocation entry. non-lazy symbol pointers
+	     * will be set to zero, except those that are absolute or local
+	     */
+	    lc = arch->object->load_commands;
+	    if(arch->object->mh != NULL){
+		ncmds = arch->object->mh->ncmds;
+		mh_flags = arch->object->mh->flags;
+	    }
+	    else{
+		ncmds = arch->object->mh64->ncmds;
+		mh_flags = arch->object->mh64->flags;
+	    }
+	    for(i = 0; i < ncmds; i++){
+		if(lc->cmd == LC_SEGMENT){
+		    sg = (struct segment_command *)lc;
+		    s = (struct section *)
+			    ((char *)sg + sizeof(struct segment_command));
+		    for(j = 0 ; j < sg->nsects ; j++){
+			section_type = s->flags & SECTION_TYPE;
+			if(section_type == S_NON_LAZY_SYMBOL_POINTERS ||
+			   section_type == S_LAZY_SYMBOL_POINTERS){
+			    if(s->reserved1 + s->size / sizeof(uint32_t) >
+			       arch_nindirectsyms){
+				error("malformed file: %s (for architecture "
+				      "%s) (indirect symbol table entries for "
+				      "section (%.16s,%.16s) extends past the "
+				      "end of the indirect symbol table)",
+				      arch->file_name, arch_name, s->segname,
+				      s->sectname);
 				redo_exit(2);
 			    }
-	
-			    /*
-			     * If the symbol this indirect symbol table entry is
-			     * refering to is not a prebound undefined symbol
-			     * then this symbol's value is used for the
-			     * displacement of the JMP.
-			     */ 
-			    arch_symbol = arch_symbols +
-				     arch_indirect_symtab[s->reserved1 + k];
-			    if((arch_symbol->n_type & N_TYPE) != N_PBUD){
-				if(arch_symbol->n_sect == NO_SECT)
-				    symbol_slide = 0;
-				else
-				    symbol_slide = vmslide;
-				displacement = arch_symbol->n_value +
-					   symbol_slide -
-					   (vmslide + s->addr + (k * 5) + 5);
-			    }
-			    else{
-				/*
-				 * Look up the symbol being referenced by this
-				 * indirect symbol table entry to get the
-				 * defined symbol's value to be used.
-				 */
-				name = arch_strings + arch_symbol->n_un.n_strx;
-				lookup_symbol(name,
-					      get_primary_lib(ARCH_LIB,
-							      arch_symbol),
-					      get_weak(arch_symbol),
-					      &defined_symbol, &module_state,
-					      &lib, NULL, NULL, NO_INDR_LOOP);
-				displacement = defined_symbol->n_value -
-					   (vmslide + s->addr + (k * 5) + 5);
-			    }
-			    /*
-			     * Now set the JMP opcode and the displacement.  We
-			     * must set the opcode in case we are prebinding an
-			     * unprebound() binary that has HLT instructions
-			     * for the 5 bytes of the JMP instruction.
-			     */
-			    *p = 0xE9; /* JMP rel32 */
-			    set_arch_long(p + 1, displacement);
-			}
-		    }
-		    s++;
-		}
-	    }
-	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
-	}
-}
-
-/*
- * reset_symbol_pointers() sets lazy and non-lazy symbol pointers back to their
- * original, pre-prebinding values.
- */
-static
-void
-reset_symbol_pointers(
-uint32_t vmslide)
-{
-    unsigned long i, j, k, m, section_type;
-    uint32_t symbol_pointer;
-    struct load_command *lc;
-    struct segment_command *sg;
-    struct section *s;
-    struct nlist *arch_symbol;
-    char *p;
-    struct scattered_relocation_info *sreloc;
-    uint32_t ncmds, mh_flags;
-    
-	/*
-	 * For each symbol pointer section update the symbol pointers by
-	 * setting lazy symbol pointers to their original values, as defined
-	 * in the corresponding local relocation entry. non-lazy symbol pointers
-	 * will be set to zero, except those that are absolute or local
-	 */
-	lc = arch->object->load_commands;
-        if(arch->object->mh != NULL){
-            ncmds = arch->object->mh->ncmds;
-            mh_flags = arch->object->mh->flags;
-	}
-        else{
-            ncmds = arch->object->mh64->ncmds;
-            mh_flags = arch->object->mh64->flags;
-	}
-	for(i = 0; i < ncmds; i++){
-	    if(lc->cmd == LC_SEGMENT){
-		sg = (struct segment_command *)lc;
-		s = (struct section *)
-			((char *)sg + sizeof(struct segment_command));
-		for(j = 0 ; j < sg->nsects ; j++){
-		    section_type = s->flags & SECTION_TYPE;
-		    if(section_type == S_NON_LAZY_SYMBOL_POINTERS ||
-		       section_type == S_LAZY_SYMBOL_POINTERS){
-			if(s->reserved1 + s->size / sizeof(uint32_t) >
-			   arch_nindirectsyms){
-			    error("malformed file: %s (for architecture %s) "
-				  "(indirect symbol table entries for section "
-				  "(%.16s,%.16s) extends past the end of the "
-				  "indirect symbol table)", arch->file_name,
-				  arch_name, s->segname, s->sectname);
-			    redo_exit(2);
-			}
-			for(k = 0; k < s->size / sizeof(uint32_t); k++){
-			    p = contents_pointer_for_vmaddr(
-				s->addr + (k * sizeof(uint32_t)),
-				sizeof(uint32_t));
-			    if(p == NULL){
-				error("malformed file: %s (for architecture "
-				    "%s) (5 bad indirect section (%.16s,%.16s))",
+			    for(k = 0; k < s->size / sizeof(uint32_t); k++){
+				p = contents_pointer_for_vmaddr(
+				    s->addr + (k * sizeof(uint32_t)),
+				    sizeof(uint32_t));
+				if(p == NULL){
+				    error("malformed file: %s (for architecture "
+					"%s) (bad indirect section (%.16s,%.16s))",
 				    arch->file_name, arch_name, s->segname,
 				    s->sectname);
 				redo_exit(2);
@@ -8470,7 +8518,7 @@ uint32_t vmslide)
 			    if(arch_indirect_symtab[s->reserved1 + k] >
 			       arch_nsyms){
 				error("malformed file: %s (for architecture "
-				    "%s) (6 bad indirect symbol table entry %lu)",
+				    "%s) (bad indirect symbol table entry %u)",
 				    arch->file_name, arch_name, i);
 				    redo_exit(2);
 			    }
@@ -8542,7 +8590,7 @@ uint32_t vmslide)
 				    error("malformed file: %s (for " 
 					  "architecture %s) "
 					  "(no local relocation entry for lazy "
-					  "symbol pointer %lu)", 
+					  "symbol pointer %u)", 
 				    arch->file_name, arch_name, k);
 				    redo_exit(2);
 				}
@@ -8566,7 +8614,7 @@ void
 reset_self_modifying_stubs(
 void)
 {
-    unsigned long i, j, section_type;
+    uint32_t i, j, section_type;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s;
@@ -8647,7 +8695,7 @@ void
 update_load_commands(
 uint32_t vmslide)
 {
-    unsigned long i, j, k, nmodules, size, sizeofcmds, ncmds, low_fileoff;
+    uint32_t i, j, k, nmodules, size, sizeofcmds, ncmds, low_fileoff;
     struct load_command *lc1, *lc2, *new_load_commands;
     struct dylib_command *dl_load, *dl_id;
     struct prebound_dylib_command *pbdylib1, *pbdylib2;
@@ -8655,6 +8703,8 @@ uint32_t vmslide)
     struct section *s;
     char *dylib_name, *linked_modules;
     struct routines_command *rc;
+    struct uuid_command *uuid;
+    struct linkedit_data_command *code_sig;
     enum bool found, prebind_all_twolevel_modules;
     uint32_t ncmds1, ncmds2, mh_flags, mh_sizeofcmds;
     
@@ -8766,7 +8816,18 @@ uint32_t vmslide)
 		rc = (struct routines_command *)lc1;
 		rc->init_address += vmslide;
 	    }
-
+	    /*
+	     * We zero the UUID and Code Signing info for canonicalization.
+	     */
+	    else if(lc1->cmd == LC_UUID && unprebinding == TRUE){
+		uuid = (struct uuid_command *)lc1;
+		memset(uuid->uuid, '\0', sizeof(uuid->uuid));
+	    }
+	    else if(lc1->cmd == LC_CODE_SIGNATURE && unprebinding == TRUE){
+		code_sig = (struct linkedit_data_command *)lc1;
+		memset(arch->object->object_addr + code_sig->dataoff, '\0',
+			    code_sig->datasize);
+	    }
 	    if(lc1->cmd != LC_PREBOUND_DYLIB){
 		ncmds += 1;
 		sizeofcmds += lc1->cmdsize;
@@ -8970,7 +9031,7 @@ uint32_t vmslide)
 	     * segment only file).
 	     */
             if(sizeofcmds > mh_sizeofcmds){
-                low_fileoff = ULONG_MAX;
+                low_fileoff = UINT_MAX;
                 lc1 = arch->object->load_commands;
                 for(i = 0; i < ncmds1; i++){
                     if(lc1->cmd == LC_SEGMENT){
@@ -9271,7 +9332,7 @@ vmessage(
 const char *format,
 va_list ap)
 {
-    unsigned long new;
+    uint32_t new;
 
 	setup_error_message_buffer();
         /* for the __OPENSTEP__ case hope the string does not overflow */
@@ -9315,7 +9376,7 @@ struct member *member,
 const char *format,
 va_list ap)
 {
-    unsigned long new;
+    uint32_t new;
 
 	setup_error_message_buffer();
         /* for the __OPENSTEP__ case hope the string does not overflow */
@@ -9420,7 +9481,7 @@ char *format,
 	longjmp(library_env, 1);
 }
 
-__private_extern__ unsigned long errors = 0;	/* number of calls to error() */
+__private_extern__ uint32_t errors = 0;	/* number of calls to error() */
 
 /*
  * Just put the message into the error message buffer without setting errors.
@@ -9523,7 +9584,7 @@ char *format,
 __private_extern__
 void *
 allocate(
-unsigned long size)
+size_t size)
 {
     void *p;
 
@@ -9550,7 +9611,7 @@ __private_extern__
 void *
 reallocate(
 void *p,
-unsigned long size)
+size_t size)
 {
 	if(library_zone == NULL){
 	    library_zone = malloc_create_zone(vm_page_size, 1);
@@ -9575,7 +9636,7 @@ char *
 savestr(
 const char *s)
 {
-    long len;
+    uint32_t len;
     char *r;
 
 	len = strlen(s) + 1;
@@ -9599,7 +9660,7 @@ const char *args,
 {
     va_list ap;
     char *s, *p;
-    long size;
+    uint32_t size;
 
 	size = 0;
 	if(args != NULL){
@@ -9797,50 +9858,4 @@ char *filename)
 	    return(TRUE);
 
 	return(FALSE);
-}
-
-
-static unsigned long find__dyld_section_addr(const struct mach_header* mh)
-{
-    unsigned long i, j;
-    struct load_command *lc;
-    struct segment_command *sg;
-    struct section *s;
-
-    lc = (struct load_command*) ((char*)mh + sizeof(struct mach_header));
-    for(i = 0; i < mh->ncmds; i++){
-	if(lc->cmd == LC_SEGMENT){
-	    sg = (struct segment_command *)lc;
-	    s = (struct section *)
-		((char *)sg + sizeof(struct segment_command));
-	    for(j = 0 ; j < sg->nsects ; j++, s++){
-		if((strcmp(s->segname, "__DATA") == 0) &&
-		   (strcmp(s->sectname, "__dyld") == 0) && (s->size >= 8))
-		    return s->addr;
-	   }
-	}
-	lc = (struct load_command *)((char *)lc + lc->cmdsize);
-    }
-    return 0;
-}
-
-static
-void
-update_dyld_section(
-void)
-{
-    uint32_t *target__dyld;
-    uint32_t addr_target__dyld;
-
-    addr_target__dyld = find__dyld_section_addr(arch->object->mh);
-
-    if(addr_target__dyld != 0){
-	/* find __DATA,__dyld section in image being prebound */
-	target__dyld =  (uint32_t *)
-			contents_pointer_for_vmaddr(addr_target__dyld, 8);
-	if(target__dyld != NULL){
-	    set_arch_long(target__dyld + 0, 0x8fe01000);
-	    set_arch_long(target__dyld + 1, 0x8fe01008);
-	}
-    }
 }

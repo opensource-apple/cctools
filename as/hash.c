@@ -51,7 +51,7 @@ struct hash_entry {
   const char *string;
   /* Hash code.  This is the full hash code, not the index into the
      table.  */
-  unsigned long hash;
+  uint32_t hash;
   /* Pointer being stored in the hash table.  */
   PTR data;
 };
@@ -68,12 +68,12 @@ struct hash_control {
 
 #ifdef HASH_STATISTICS
   /* Statistics.  */
-  unsigned long lookups;
-  unsigned long hash_compares;
-  unsigned long string_compares;
-  unsigned long insertions;
-  unsigned long replacements;
-  unsigned long deletions;
+  uint32_t lookups;
+  uint32_t hash_compares;
+  uint32_t string_compares;
+  uint32_t insertions;
+  uint32_t replacements;
+  uint32_t deletions;
 #endif /* HASH_STATISTICS */
 };
 
@@ -129,13 +129,13 @@ static struct hash_entry *hash_lookup (struct hash_control *,
 				       const char *,
 				       size_t,
 				       struct hash_entry ***,
-				       unsigned long *);
+				       uint32_t *);
 
 static struct hash_entry *
 hash_lookup (struct hash_control *table, const char *key, size_t len,
-	     struct hash_entry ***plist, unsigned long *phash)
+	     struct hash_entry ***plist, uint32_t *phash)
 {
-  register unsigned long hash;
+  register uint32_t hash;
   size_t n;
   register unsigned int c;
   unsigned int index;
@@ -207,7 +207,7 @@ hash_insert (struct hash_control *table, const char *key, PTR value)
 {
   struct hash_entry *p;
   struct hash_entry **list;
-  unsigned long hash;
+  uint32_t hash;
 
   p = hash_lookup (table, key, strlen (key), &list, &hash);
   if (p != NULL)
@@ -237,7 +237,7 @@ hash_jam (struct hash_control *table, const char *key, PTR value)
 {
   struct hash_entry *p;
   struct hash_entry **list;
-  unsigned long hash;
+  uint32_t hash;
 
   p = hash_lookup (table, key, strlen (key), &list, &hash);
   if (p != NULL)
@@ -378,8 +378,8 @@ hash_print_statistics (FILE *f ATTRIBUTE_UNUSED,
 {
 #ifdef HASH_STATISTICS
   unsigned int i;
-  unsigned long total;
-  unsigned long empty;
+  uint32_t total;
+  uint32_t empty;
 
   fprintf (f, "%s hash statistics:\n", name);
   fprintf (f, "\t%lu lookups\n", table->lookups);

@@ -29,8 +29,8 @@ extern symbolS abs_symbol;
 extern void symbol_begin(
     void);
 extern char *fb_label_name(
-    long n,
-    long augend);
+    int32_t n,
+    int32_t augend);
 extern void
     local_colon(
     int n);
@@ -49,7 +49,8 @@ extern symbolS *symbol_create (const char *name,
 extern void symbol_assign_index(
     struct symbol *symbolP);
 extern void colon(
-    char *sym_name);
+    char *sym_name,
+    int local_colon);
 extern void symbol_table_insert(
     struct symbol *symbolP);
 extern symbolS *symbol_find_or_make(
@@ -63,7 +64,7 @@ extern symbolS *
 extern isymbolS *indirect_symbol_new(
     char *name,
     struct frag *frag,
-    unsigned long offset);
+    uint32_t offset);
 
 /* FROM line 98 */
 extern int S_IS_DEFINED (symbolS *);
@@ -83,7 +84,6 @@ extern void S_SET_THREAD_LOCAL (symbolS *);
 extern int S_IS_LOCAL (symbolS *s);
 extern fragS * symbol_get_frag (symbolS *s);
 
-
 /* FROM line tc-arm.h 104 */
 #define TC_SYMFIELD_TYPE 	unsigned int
 
@@ -98,3 +98,13 @@ void symbol_set_tc (symbolS *, TC_SYMFIELD_TYPE *);
 extern void arm_frob_label (symbolS *);
 #endif
 
+extern symbolS * symbol_temp_new(
+    segT nsect,
+    valueT value,
+    struct frag *frag);
+extern symbolS * symbol_temp_new_now(
+    void);
+extern symbolS * symbol_temp_make(
+    void);
+extern void symbol_set_value_now(
+    symbolS *sym);

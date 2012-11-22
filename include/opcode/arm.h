@@ -175,8 +175,8 @@
    everything else in the other.  */
 typedef struct
 {
-  unsigned long core;
-  unsigned long coproc;
+  uint32_t core;
+  uint32_t coproc;
 } arm_feature_set;
 
 #define ARM_CPU_HAS_FEATURE(CPU,FEAT) \

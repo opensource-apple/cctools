@@ -90,6 +90,7 @@ struct load_command *load_commands)
     struct linkedit_data_command *ld;
     struct rpath_command *rpath;
     struct encryption_info_command *ec;
+    struct dyld_info_command *dc;
     uint32_t flavor, count;
     unsigned long nflavor;
     char *p, *state, *cmd_name;
@@ -913,10 +914,10 @@ check_dylib_command:
 		    nflavor = 0;
 		    p = (char *)ut + ut->cmdsize;
 		    while(state < p){
-			flavor = *((unsigned long *)state);
-			state += sizeof(unsigned long);
-			count = *((unsigned long *)state);
-			state += sizeof(unsigned long);
+			flavor = *((uint32_t *)state);
+			state += sizeof(uint32_t);
+			count = *((uint32_t *)state);
+			state += sizeof(uint32_t);
 			switch(flavor){
 			case ARM_THREAD_STATE:
 			    if(count != ARM_THREAD_STATE_COUNT){
@@ -1048,10 +1049,21 @@ check_dylib_command:
 		break;
 
 	    case LC_ENCRYPTION_INFO:
-		ld = (struct encryption_info_command *)lc;
-		if(ld->cmdsize != sizeof(struct encryption_info_command)){
+		ec = (struct encryption_info_command *)lc;
+		if(ec->cmdsize != sizeof(struct encryption_info_command)){
 		    error("in swap_object_headers(): malformed load commands "
 			  "(LC_ENCRYPTION_INFO command %lu has incorrect "
+			  "cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
+	    case LC_DYLD_INFO:
+	    case LC_DYLD_INFO_ONLY:
+		dc = (struct dyld_info_command *)lc;
+		if(dc->cmdsize != sizeof(struct dyld_info_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_DYLD_INFO command %lu has incorrect "
 			  "cmdsize", i);
 		    return(FALSE);
 		}
@@ -1459,12 +1471,12 @@ check_dylib_command:
 		    arm_thread_state_t *cpu;
 
 		    while(state < p){
-			flavor = *((unsigned long *)state);
-			*((unsigned long *)state) = SWAP_INT(flavor);
-			state += sizeof(unsigned long);
-			count = *((unsigned long *)state);
-			*((unsigned long *)state) = SWAP_INT(count);
-			state += sizeof(unsigned long);
+			flavor = *((uint32_t *)state);
+			*((uint32_t *)state) = SWAP_INT(flavor);
+			state += sizeof(uint32_t);
+			count = *((uint32_t *)state);
+			*((uint32_t *)state) = SWAP_INT(count);
+			state += sizeof(uint32_t);
 			switch(flavor){
 			case ARM_THREAD_STATE:
 			    cpu = (arm_thread_state_t *)state;
@@ -1521,6 +1533,12 @@ check_dylib_command:
 	    case LC_ENCRYPTION_INFO:
 		ec = (struct encryption_info_command *)lc;
 		swap_encryption_command(ec, target_byte_sex);
+		break;
+		
+	    case LC_DYLD_INFO:
+	    case LC_DYLD_INFO_ONLY:
+		dc = (struct dyld_info_command *)lc;
+		swap_dyld_info_command(dc, target_byte_sex);
 		break;
 	    }
 

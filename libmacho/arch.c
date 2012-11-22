@@ -285,8 +285,8 @@ cpu_subtype_t cpusubtype,
 struct fat_arch *fat_archs,
 uint32_t nfat_archs)
 {
-    unsigned long i;
-    long lowest_family, lowest_model, lowest_index;
+    uint32_t i;
+    int32_t lowest_family, lowest_model, lowest_index;
 
 	/*
 	 * Look for the first exact match.
@@ -385,7 +385,7 @@ uint32_t nfat_archs)
 	    /* if no intel cputypes found return NULL */
 	    if(lowest_family == CPU_SUBTYPE_INTEL_FAMILY_MAX + 1)
 		return(NULL);
-	    lowest_model = LONG_MAX;
+	    lowest_model = INT_MAX;
 	    lowest_index = -1;
 	    for(i = 0; i < nfat_archs; i++){
 		if(fat_archs[i].cputype != cputype)
@@ -620,7 +620,7 @@ uint32_t nfat_archs)
 		 * highest that is less than our target.
 		 */
 		int fat_match_found = 0;
-		unsigned long best_fat_arch;
+		uint32_t best_fat_arch = 0;
 		for(i = 0; i < nfat_archs; i++){
 		    if(fat_archs[i].cputype != cputype)
 			continue;

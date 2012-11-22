@@ -25,8 +25,6 @@ else
   MKDIRS = /bin/mkdir -p
 endif
 
-MIG = $(NEXT_ROOT)/usr/bin/mig
-
 SRCROOT = .
 SYMROOT = .
 OBJROOT = .
@@ -72,10 +70,11 @@ else
   LOCLIBDIR = /usr/local/libexec
 endif
 
+DWARF = dwarf2dbg.c
 CFILES = app.c as.c atof-generic.c atof-ieee.c expr.c fixes.c flonum-const.c \
 	 flonum-copy.c flonum-mult.c frags.c hash.c hex-value.c input-file.c \
 	 input-scrub.c layout.c messages.c obstack.c read.c sections.c \
-	 symbols.c write_object.c xmalloc.c
+	 symbols.c write_object.c xmalloc.c $(DWARF)
 
 CFILES_m68k = m68k.c
 CFILES_m88k = m88k.c
@@ -90,15 +89,15 @@ HFILES = app.h as.h atof-ieee.h bignum.h expr.h fixes.h flonum.h frags.h \
 	 input-scrub.h layout.h m68k-opcode.h m88k-opcode.h ppc-opcode.h md.h \
 	 messages.h obstack.h read.h relax.h sections.h struc-symbol.h \
 	 symbols.h write_object.h xmalloc.h hppa-aux.h hppa-opcode.h \
-	 sparc-opcode.h arch64_32.h
+	 sparc-opcode.h arch64_32.h dwarf2dbg.h filenames.h
 
 CHECK_FILES = m68k-check.c m88k-check.c i860-check.c i386-check.c ppc-check.c \
 	      hppa-check.c sparc-check.c
 
 INSTALL_FILES = Makefile notes $(CFILES) $(CFILES_m68k) $(CFILES_m88k) \
 		$(CFILES_i860) $(CFILES_i386) $(CFILES_ppc) $(CFILES_hppa) \
-		$(CFILES_sparc) $(HFILES) $(CHECK_FILES) driver.c make.defs \
-		make_defs.h COPYING cctools.plist
+		$(CFILES_sparc) $(HFILES) $(CHECK_FILES) driver.c \
+		COPYING cctools.plist
 
 OBJS = $(CFILES:.c=.o) apple_version.o
 OBJS_m68k = $(CFILES_m68k:.c=.o)
@@ -324,17 +323,11 @@ driver:	driver.o apple_version.o
 		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o \
 		$(LIBSTUFF_DIR) $(LIBSTUFF)
 
-as:	$(OBJS) $(TARGET_OBJS) makeUser.o
+as:	$(OBJS) $(TARGET_OBJS)
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/as.private.o $(OBJS) $(TARGET_OBJS) \
-		makeUser.o $(LIBSTUFF_DIR) $(LIBSTUFF)
+		$(LIBSTUFF_DIR) $(LIBSTUFF)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/as $(SYMROOT)/as.private.o
-
-makeUser.c messages.c: make.h
-
-make.h makeUser.c: make.defs
-	$(MIG) $(MIG_FLAGS) $(SRCROOT)/make.defs
-	rm -f makeServer.c
 
 m68k-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../m68k-check.c

@@ -43,7 +43,7 @@ static type * var ## _pointer = NULL
 #define SETUP_VAR(var)						\
 if ( var ## _pointer == NULL) {				\
     _dyld_lookup_and_bind( STRINGIFY(_ ## var),		\
-                           (unsigned long *) & var ## _pointer, NULL);	\
+                           (uint32_t *) & var ## _pointer, NULL);	\
 }
 #define USE_VAR(var) (* var ## _pointer)
 #endif
@@ -62,7 +62,7 @@ const char *sectname)
 {
 	struct segment_command *sgp;
 	struct section *sp;
-	unsigned long i, j;
+	uint32_t i, j;
         
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
@@ -100,7 +100,7 @@ const char *sectname)
 {
 	struct segment_command_64 *sgp;
 	struct section_64 *sp;
-	unsigned long i, j;
+	uint32_t i, j;
         
 	sgp = (struct segment_command_64 *)
 	      ((char *)mhp + sizeof(struct mach_header_64));
@@ -141,7 +141,7 @@ getsectbynamefromheaderwithswap(
 {
 	struct segment_command *sgp;
 	struct section *sp;
-	unsigned long i, j;
+	uint32_t i, j;
 
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
@@ -276,7 +276,7 @@ unsigned long *size)
 	    return(NULL);
 	}
 	*size = sp->size;
-	return((char *)((unsigned long)(sp->addr)));
+	return((char *)((uintptr_t)(sp->addr)));
 }
 
 /*
@@ -300,7 +300,7 @@ unsigned long *size)
 	    return(NULL);
 	}
 	*size = sp->size;
-	return((char *)((unsigned long)(sp->addr)));
+	return((char *)((uintptr_t)(sp->addr)));
 }
 
 #ifdef __DYNAMIC__
@@ -318,7 +318,8 @@ const char *segname,
 const char *sectname,
 unsigned long *size)
 {
-    unsigned long i, n, vmaddr_slide;
+    uint32_t i, n;
+    uintptr_t vmaddr_slide;
 #ifndef __LP64__
     struct mach_header *mh;
     const struct section *s;

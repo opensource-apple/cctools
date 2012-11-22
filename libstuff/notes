@@ -5,8 +5,135 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
-Changes for the 5.26 release (the cctools-689.1 release):
+Changes for the 5.26 release (the cctools-750 release):
+- Added lto_get_nlist_64() to lto.c for use by nm(1) print information from
+  llvm bit code files.  Radar bug #6067110.
+- Updated set_lto_cputype() in lto.c for the arm target_triples.  Radar bug
+  #6654890.
+
+Changes for the 5.26 release (the cctools-748 release):
+- Fixed a bug in swap_object_headers() where it was missing a second case for
+  LC_DYLD_INFO_ONLY which caused that load command to not actually get swapped.
+  Radar bug #6591303.
+
+Changes for the 5.26 release (the cctools-733 release):
+- Changed check_Mach_O() in ofile.c to allow 64-bit Mach-O core files to have
+  LC_THREAD commands that are only a multiple of 4 and not 8 since the kernel
+  produces them. Radar bug #6379874.
+
+Changes for the 5.26 release (the cctools-730 release):
+- Changed set_lto_cputype() in lto.c to also check for "i386" as well as "i686"
+  when determining the target_triple string is for a CPU_TYPE_I386.  Radar bug
+  #6331191.
+
+Changes for the 5.26 release (the cctools-726 release):
+- Changed lto_toc_symbol() in lto.c to return 0 for symbols with the
+  LTO_SYMBOL_SCOPE_MASK bits being LTO_SYMBOL_SCOPE_INTERNAL.
+  Radar bug #6092587.
+
+Changes for the 5.26 release (the cctools-725 release):
+- Added support for new compressed LINKEDIT information. Radar bug #6232822.
+  - Implemented swap_dyld_info_command() in bytesex.c .
+  - Handle LC_DYLD_INFO in check_object() and dyld_order() in checkout.c .
+  - Check for malformed dyld_info in check_Mach_O() in ofile.c .
+  - Handle dyld_info in swap_object_headers() in swap_headers.c .
+  - Handle dyld_info in copy_new_symbol_info() in writeout.c . 
+
+Changes for the 5.26 release (the cctools-721 release):
+- Changed the Makefile and removed -force_cpusubtype_ALL from KERN.  Radar bug
+  #6233829.
+
+Changes for the 5.25 release (the cctools-718 release):
+- Added swap_debug_directory_entry() and swap_mtoc_debug_info() to
+  coff_bytesex.c.  Radar bug #6211642.
+
+Changes for the 5.26 release (the cctools-709 release):
+- Fixed the integer overflows bugs in ofile.c:
+  - In check_Mach_O() in ofile.c changed the check for inconsistent cmdsize in 
+    an LC_SEGMENT to calculate the size into a 64-bit value from the 32-bit
+    values and used a 64-bit compare so it can't overflow.  Radar bug #5749756.
+  - In check_Mach_O() in ofile.c changed the check for load command that extend
+    past the commands to calculate the end of the current load command into
+    a 64-bit value from the 32-bit value and use a 64-bit compare against the
+    sizeofcmds so it can't overflow.  Radar bug #5749890.
+  - In check_Mach_O() in ofile.c change all the remaining checks to calculate
+    the size or count into a 64-bit value from the 32-bit values and use a
+    64-bit compare so it can't overflow.  Radar bug #5750382.
+
+Changes for the 5.26 release (the cctools-708 release):
+- Changed writeout.c to use use the ar long string format for the __.SYMDEF
+  table of contents member so it will produce archive member offsets after
+  that that are 8 byte aligned.
+- Updated the #ifdef around ALIGNMENT_CHECKS_ARCHIVE_64_BIT to not do it when
+  __x86_64__ is defined.
+
+Changes for the 5.26 release (the cctools-707 release):
 - Added -I/Developer/usr/local/include to the lto.o build line in the Makefile.
+
+Changes for the 5.26 release (the cctools-705 release):
+- Ported to work on 64-bit hosts.  Radar bug #6022298.
+  - Changed the unsigned long types in coff_bytesex.c to a uint32_t types.
+  - Changed the unsigned long types in version_number.c to a uint32_t types.
+  - Changed the unsigned long types in symbol_list.c to a uint32_t types.
+  - Changed the unsigned long types in round.c to a uint32_t types.
+  - Changed the unsigned long types in reloc.c to a uint32_t types.
+  - Changed the unsigned long types in ofile.c to a uint32_t types and changed
+    the long types to int32_t types.  Except for the sizeof(long) used for
+    thread states it was changed to sizeof(uint32_t).  Also change all the %lu
+    formats to %u and one %ld to %u.  Also changed uses of ULONG_MAX to
+    UINT_MAX.
+  - Changed the unsigned long type in ofile_get_word.c to a uint32_t type and
+    changed the long type to an int32_t type.
+  - Changed the unsigned long types in macosx_deployment_target.c to uint32_t
+    types and %lu to %u in a sprintf format string.
+  - Changed the unsigned long types in lto.c to size_t types.
+  - Changed the unsigned long types in hppa.c to uint32_t types.
+  - Changed the long types in hash_string.c to int32_t types.
+  - Changed the long types in execute.c to int types.
+  - Changed the unsigned long types in seg_addr_table.c to uint32_t types and
+    changed %lu to %u in an error string formats.  Also changed uses of
+    ULONG_MAX to UINT_MAX.  And changed to use  mmap() instead of map_fd().
+  - Changed the type of errors in errors.c from an unsigned long type to a
+    uint32_t type.
+  - Changed the unsigned long types in dylib_table.c to uint32_t types and
+    changed 3 %lu to %u in an error string formats.
+  - Changed the one unsigned long type in dylib_roots.c to a uint32_t type.
+  - Changed the unsigned long type and the unsigned int type in crc32.c to
+    uint32_t types.
+  - Changed the unsigned long types in bytesex.c and get_toc_byte_sex.c to
+    uint32_t types.
+  - Changed the unsigned long types in checkout.c to uint32_t types. And changed
+    one %lu to %u in an error string format.
+  - Changed the unsigned long types in writeout.c to uint32_t types.  Except for
+    the time variables which were changed to the time_t type from unsigned long.
+    Also changed the remaining long types to int32_t types.  And changed one
+    %lu to %u in an error string format.  Also changed uses of ULONG_MAX to
+    UINT_MAX.
+  - Changed the unsigned long types in breakout.c to uint32_t types. And added
+    two (long unsigned int) casts before two printf() parameters.
+  - Changed the type that cpusubtype_findbestarch() takes in best_arch.c to a
+    uint32_t from an unsigned long.  And changed the remaining use of
+    unsigned long to uint32_t in best_arch.c .
+  - Changed the type that get_stack_size_from_flag(), get_segalign_from_flag()
+    and get_shared_region_size_from_flag() returns in arch.c to a uint32_t from
+    an unsigned long. Changed the type that get_stack_direction_from_flag()
+    returns in arch.c to an int from a long.  Changed the remaining uses of
+    unsigned long to uint32_t in arch.c .
+  - Changed the type that allocate() and reallocate() takes in allocate.c to a
+    size_t from an unsigned long.
+
+Changes for the 5.26 release (the cctools-703 release):
+- Fixed an incorrect usage of the unsigned long type that should have been
+  uint32_t in swap_object_headers() in swap_headers.c and in check_Mach_O() in
+  ofile.c used in arm threads .
+- Fixed a warning in swap_object_headers() in swap_headers.c that was using the
+  wrong pointer type in the first LC_ENCRYPTION_INFO case.
+
+Changes for the 5.26 release (the cctools-701 release):
+- Changed ofile_first_member() in ofile.c to test the archive member name for
+  "__.SYMDEF SORTED" or "__.SYMDEF" and not call is_llvm_bitcode() if the
+  member name is either of those two table of contents member names.
+  Radar bug #5919409.
 
 Changes for the 5.25 release (the cctools-698 release):
 - Added support for LLVM bitcode files.  Radar bug #5712460.

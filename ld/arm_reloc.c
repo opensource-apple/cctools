@@ -1157,6 +1157,8 @@ unsigned long reloc_index)
 				  (immediate & 0x7ff000) >> 12 |
 				  (immediate & 0xffe) << 15;
 		    break;
+		case ARM_THUMB_32BIT_BRANCH:
+		    break;
 		default:
 		    error_with_cur_obj("r_type field of relocation entry %lu "
 			"in section (%.16s,%.16s) invalid", i,

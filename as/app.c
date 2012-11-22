@@ -290,6 +290,9 @@ FILE *fp)
 		do ch= getc_unlocked(fp);
 		while(ch!='\n');
 		state=0;
+#ifdef I386
+		substate = 0;
+#endif
 		return ch;
 	}
 
@@ -404,8 +407,12 @@ FILE *fp)
 		return *out_string++;
 
 	case ':':
-		if(state!=3)
+		if(state!=3) {
 			state=0;
+#ifdef I386
+			substate = 0;
+#endif
+		}
 		return ch;
 
 	case '\n':
@@ -420,6 +427,9 @@ FILE *fp)
 	case ';':
 #endif
 		state=0;
+#ifdef I386
+		substate = 0;
+#endif
 		return ch;
 
 	default:
@@ -466,6 +476,9 @@ FILE *fp)
 				if(ch==EOF)
 					as_warn("EOF in Comment: Newline inserted");
 				state=0;
+#ifdef I386
+				substate = 0;
+#endif
 				return '\n';
 			}
 			ungetc(ch, fp);
@@ -480,6 +493,9 @@ FILE *fp)
 			if(ch==EOF)
 				as_warn("EOF in comment:  Newline inserted");
 			state=0;
+#ifdef I386
+			substate = 0;
+#endif
 			return '\n';
 
 		} else if(state==0) {
@@ -659,6 +675,9 @@ do_scrub_next_char_from_string()
 		do ch= scrub_from_string();
 		while(ch!='\n');
 		state=0;
+#ifdef I386
+		substate = 0;
+#endif
 		return ch;
 	}
 
@@ -758,8 +777,12 @@ do_scrub_next_char_from_string()
 		return *out_string++;
 
 	case ':':
-		if(state!=3)
+		if(state!=3) {
 			state=0;
+#ifdef I386
+			substate = 0;
+#endif
+		}
 		return ch;
 
 	case '\n':
@@ -774,6 +797,9 @@ do_scrub_next_char_from_string()
 	case ';':
 #endif
 		state=0;
+#ifdef I386
+		substate = 0;
+#endif
 		return ch;
 
 	default:
@@ -793,6 +819,9 @@ do_scrub_next_char_from_string()
 				if(ch==EOF)
 					as_warn("EOF in Comment: Newline inserted");
 				state=0;
+#ifdef I386
+				substate = 0;
+#endif
 				return '\n';
 			}
 			scrub_to_string(ch);
@@ -807,6 +836,9 @@ do_scrub_next_char_from_string()
 			if(ch==EOF)
 				as_warn("EOF in comment:  Newline inserted");
 			state=0;
+#ifdef I386
+	    		substate = 0;
+#endif
 			return '\n';
 
 		} else if(state==0) {

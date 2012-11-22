@@ -38,7 +38,7 @@ OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/symbol.h stuff/unix_standard_mode.h \
 	     coff/base_relocs.h coff/bytesex.h coff/ms_dos_stub.h \
 	     coff/filehdr.h coff/aouthdr.h coff/scnhdr.h coff/syment.h \
-	     $(GAS_OTHER_SRCS)
+	     coff/debug_directory.h elf/dwarf2.h $(GAS_OTHER_SRCS)
 
 ENCUMBERED_SRCS = gnu/a.out.h gnu/exec.h
 
