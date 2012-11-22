@@ -2102,6 +2102,7 @@ unsigned long options)
 
 	defined_symbol = NULL;
 	image_name = NULL;
+	defined_library_image = NULL;
 	/*
 	 * First find the dynamic library for this mach header and lookup the
 	 * the symbol_name in it if the mach header is a loaded dynamic library.
@@ -2239,16 +2240,18 @@ down:
 	 */
 	if(return_on_error == TRUE){
 	    clear_module_states_saved();
-	    if(defined_library_image->saved_module_states == NULL){
-		defined_library_image->saved_module_states =
-		    allocate(defined_library_image->nmodules *
-			     sizeof(module_state));
+	    if(defined_library_image != NULL){
+		if(defined_library_image->saved_module_states == NULL){
+		    defined_library_image->saved_module_states =
+			allocate(defined_library_image->nmodules *
+				 sizeof(module_state));
+		}
+		memcpy(defined_library_image->saved_module_states,
+		       defined_library_image->modules,
+		       defined_library_image->nmodules *
+			    sizeof(module_state));
+		defined_library_image->module_states_saved = TRUE;
 	    }
-	    memcpy(defined_library_image->saved_module_states,
-		   defined_library_image->modules,
-		   defined_library_image->nmodules *
-			sizeof(module_state));
-	    defined_library_image->module_states_saved = TRUE;
 	    if(defined_image->mh->filetype != MH_DYLIB){
 		object_image = (struct object_image *)
 				defined_image->outer_image;

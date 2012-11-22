@@ -1,3 +1,8 @@
+Changes for the 5.13 release (the cctools-492 release):
+- Added the #define NEXT_DEBUG_ADDRESS_TO_ASSIGN to <stuff/seg_addr_table.h>
+  so that seg_addr_table(1) can layout debug and profile libraries at a lower
+  address than the rest of the flat region.  Radar bug #3360593.
+
 Changes for the 5.13 release (the cctools-490 release):
 - Added the proto type for the new routine cpusubtype_execute() to the header
   file <stuff/best_arch.c> for use by the dynamic linker.  Radar bug #3387962.

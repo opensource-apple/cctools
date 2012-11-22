@@ -1,4 +1,4 @@
-.TH LD 1 "August 12, 2003" "Apple Computer, Inc."
+.TH LD 1 "September 10, 2003" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -1484,8 +1484,11 @@ is extra space left over, which is placed between the headers and the sections, 
 .B headerpad
 option specifies the minimum size of this padding, 
 which can be useful if the headers will be altered later.
-The default value is the 2 * sizeof(struct section) so the program
-/usr/bin/objcunique can always add two section headers.
+The default value is the larger of 2 * sizeof(struct section) so the program
+/usr/bin/objcunique can always add two section headers, or if the output is an
+MH_EXECUTE filetype and
+.B \-prebind
+is specified 3 times the size of the LC_PREBOUND_DYLIB load commands.
 The actual amount of pad will be as large as the amount of the first 
 segment's round-off.
 (That is, take the total size of the first segments' 

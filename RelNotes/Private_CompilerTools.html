@@ -1,9 +1,9 @@
 <HTML>
-<!--This file created 8/25/03 2:54 PM by Claris Home Page version 3.0-->
+<!--This file created 9/10/03 5:51 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=73 BOTTOM=840 LEFT=100 RIGHT=730>
+   <X-CLARIS-WINDOW TOP=72 BOTTOM=839 LEFT=95 RIGHT=725>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
@@ -12,7 +12,7 @@
 Computer, Inc. All Rights Reserved.</FONT></P>
 
 <H2>Private Mac OS X 10.3 Release Notes:<BR>
-Compiler Tools (cctools-490)</H2>
+Compiler Tools (cctools-495)</H2>
 
 <P>This file contains release notes for the 5.13 release of the
 Compiler Tools for the Mac OS X 10.3 Release. This file contains
@@ -30,6 +30,62 @@ information about the following topics:</P>
 </UL>
 
 <H2>Notes Specific to Release 5.13 (Mac OS X 10.3)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-494 for
+the 5.13 Mac OS X 10.3 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the default headerpad in ld(1) when it creates a
+   prebound executable to be 3 times instead of 6 times the size of
+   its LC_PREBOUND_DYLIB load commands so it has a better chance of
+   its prebinding being able to be redone if the dependent libaries
+   change and does not increase the size of the file as much. (Radar
+   bug #3410151).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-493 for
+the 5.13 Mac OS X 10.3 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the default headerpad in ld(1) when it creates a
+   prebound executable to be 6 times the size of its
+   LC_PREBOUND_DYLIB load commands so it has a better chance of its
+   prebinding being able to be redone if the dependent libaries
+   change. (Radar bug #3410151).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-492 for
+the 5.13 Mac OS X 10.3 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the redo_prebinding(1)(3) code that would cause
+   an error if an indirectly dependent library changed its install
+   name. (Radar bug #3408696).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-491 for
+the 5.13 Mac OS X 10.3 release) </FONT></H5>
+
+<UL>
+   <LI>Changed the seg_addr_table(1) tool to assign addresses for
+   _debug and _profile libraries addresses to start at 0x40000000
+   through lower addresses. (Radar bug #3360593).</LI>
+   
+   <LI>Fixed a bug in the seg_addr_table(1) tool where the bounds
+   checking of an assigned address would be allowed when it shouldn't
+   have been if the library entirely fit inside a reserved region.
+   (Radar bug #3359505).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-490 for
+the 5.13 Mac OS X 10.3 release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the dynamic linker in the code that implements
+   of the API NSLookupSymbolInImage() that can cause it to crash when
+   looking up a symbol in a bundle when another thread is still
+   loading that bundle. (Radar bug #3393517).</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-489 for
 the 5.13 Mac OS X 10.3 release) </FONT></H5>

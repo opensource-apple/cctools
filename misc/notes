@@ -7,6 +7,24 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.13 release (the cctools-493 release):
+- Fixed a bug in the redo_prebinding code that was incorrectly checking that an
+  executable does not have any extra LC_PREBOUND_DYLIB load commands for
+  libraries that don't exist.  This can cause an error if an indirectly
+  referenced dylib's install name changes.  This is not needed since
+  update_load_commands() will recreate the LC_PREBOUND_DYLIB load commands for
+  the indirectly referenced dynamic libraries.  Including both adding and
+  removing ones as needed to match the libraries on the system.  Radar bug
+  #3408696.
+
+Changes for the 5.13 release (the cctools-492 release):
+- Changed the seg_addr_table(1) tool to assign addresses for _debug and _profile
+  libraries addresses to start at 0x40000000 through lower addresses.  Radar
+  bug #3360593.
+- Fixed a bug in the seg_addr_table(1) tool where the bounds checking in
+  next_flat_seg1addr was not entirely correct.  The fix is two places in
+  next_flat_seg1addr() in seg_addr_table.c . Radar bug #3359505.
+
 Changes for the 5.13 release (the cctools-483 release):
 - Fixed a bug in libtool(1)'s handling of -weak_framework and -weak_library
   flags.  The code in the routine process() in libtool.c needed the same check

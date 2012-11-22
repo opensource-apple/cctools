@@ -30,6 +30,12 @@ TODO for MacOS X:
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
 
+Changes for the 5.13 release (the cctools-491 release):
+- Fixed a bug in _dyld_NSLookupSymbolInImage() in dyld_libfuncs.c on line 2242
+  where it was using defined_library_image when it could be NULL.  The fix was
+  to test the value of defined_library_image for non-NULL for the code that
+  uses it.  Radar bug #3393517.
+
 Changes for the 5.13 release (the cctools-490 release):
 - Change the call to cpusubtype_combine() in map_image() in image.c to call the
   new routine cpusubtype_execute() which correctly checks if the cpusubtype can

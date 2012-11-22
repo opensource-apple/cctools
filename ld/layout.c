@@ -986,6 +986,16 @@ layout_segments(void)
 				     (dp->pbdylib->cmdsize -
 				      sizeof(struct prebound_dylib_command));
 			}
+			/*
+			 * Since we are building this executable prebound we
+			 * want to have some header padding in case their are
+			 * more indirectly referenced dylibs that will need to
+			 * be added when redoing the prebinding.  We have found
+			 * that in the 10.2 release that 3 times the size of
+			 * the initial LC_PREBOUND_DYLIB commands seems to work
+			 * for most but not all things.
+			 */
+			headerpad += dp->pbdylib->cmdsize * 3;
 		    }
 		}
 	    }

@@ -28,6 +28,7 @@
  */
 #define NEXT_FLAT_ADDRESS_TO_ASSIGN  "<<< Next flat address to assign >>>"
 #define NEXT_SPLIT_ADDRESS_TO_ASSIGN "<<< Next split address to assign >>>"
+#define NEXT_DEBUG_ADDRESS_TO_ASSIGN "<<< Next debug address to assign >>>"
 #define FIXED_ADDRESS_AND_SIZE "<<< Fixed address and size not to assign >>>"
 
 /*

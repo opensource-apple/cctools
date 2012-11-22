@@ -23,6 +23,16 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.13 release (the cctools-495 release):
+- Changed the header pad for prebound executables to be 3 times instead of 6
+  times the size of the initial LC_PREBOUND_DYLIB commands.  This change is in
+  layout_segments() in layout.c .  Radar bug #3410151.
+
+Changes for the 5.13 release (the cctools-494 release):
+- Changed the header pad for prebound executables to include 6 times the size
+  of the initial LC_PREBOUND_DYLIB commands.  This change is in
+  layout_segments() in layout.c .  Radar bug #3410151.
+
 Changes for the 5.13 release (the cctools-490 release):
 - Fixed a bug in check_cur_obj() in pass1.c that was incorrectly causing the
   output cpusubtype to be set when linking against a dylib or a bundle_loader
