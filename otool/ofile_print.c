@@ -1659,6 +1659,7 @@ enum bool very_verbose)
     struct uuid_command uuid;
     struct linkedit_data_command ld;
     struct rpath_command rpath;
+    struct encryption_info_command encrypt;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != load_commands_byte_sex;
@@ -1996,6 +1997,16 @@ enum bool very_verbose)
 		if(swapped)
 		    swap_rpath_command(&rpath, host_byte_sex);
 		print_rpath_command(&rpath, lc);
+		break;
+
+	    case LC_ENCRYPTION_INFO:
+		memset((char *)&encrypt, '\0', sizeof(struct encryption_info_command));
+		size = left < sizeof(struct encryption_info_command) ?
+		       left : sizeof(struct encryption_info_command);
+		memcpy((char *)&encrypt, (char *)lc, size);
+		if(swapped)
+		    swap_encryption_command(&encrypt, host_byte_sex);
+		print_encryption_info_command(&encrypt, object_size);
 		break;
 
 	    default:
@@ -3094,6 +3105,35 @@ struct load_command *lc)
 	    printf("         path ?(bad offset %u)\n", rpath->path.offset);
 	}
 }
+
+/*
+ * print an LC_ENCRYPTION_INFO command.  The encryption_info_command structure
+ * specified must be aligned correctly and in the host byte sex.
+ */
+void
+print_encryption_info_command(
+struct encryption_info_command *ec,
+unsigned long object_size)
+{
+	printf("          cmd LC_ENCRYPTION_INFO\n");
+	printf("      cmdsize %u", ec->cmdsize);
+	if(ec->cmdsize < sizeof(struct encryption_info_command))
+	    printf(" Incorrect size\n");
+	else
+	    printf("\n");
+	printf(" cryptoff  %u", ec->cryptoff);
+	if(ec->cryptoff > object_size)
+	    printf(" (past end of file)\n");
+	else
+	    printf("\n");
+	printf(" cryptsize %u", ec->cryptsize);
+	if(ec->cryptsize + ec->cryptoff > object_size)
+	    printf(" (past end of file)\n");
+	else
+	    printf("\n");
+	printf(" cryptid   %u\n", ec->cryptid);
+}
+
 
 /*
  * print the thread states from an LC_THREAD or LC_UNIXTHREAD command.  The

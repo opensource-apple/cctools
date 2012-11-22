@@ -282,6 +282,10 @@ extern void print_rpath_command(
     struct rpath_command *rpath,
     struct load_command *lc);
 
+extern void print_encryption_info_command(
+    struct encryption_info_command *ec,
+    unsigned long object_size);
+
 extern void print_thread_states(
     char *begin, 
     char *end,

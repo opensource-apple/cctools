@@ -339,6 +339,10 @@ __private_extern__ void swap_rpath_command(
     struct rpath_command *rpath_cmd,
     enum byte_sex target_byte_sex);
 
+__private_extern__ void swap_encryption_command(
+    struct encryption_info_command *ec,
+    enum byte_sex target_byte_sex);
+
 __private_extern__ void swap_nlist(
     struct nlist *symbols,
     unsigned long nsymbols,

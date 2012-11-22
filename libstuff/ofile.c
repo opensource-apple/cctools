@@ -3025,6 +3025,7 @@ struct ofile *ofile)
     struct twolevel_hints_command *hints;
     struct linkedit_data_command *code_sig, *split_info;
     struct prebind_cksum_command *cs;
+    struct encryption_info_command *encrypt_info;
     struct uuid_command *uuid;
     struct rpath_command *rpath;
     uint32_t flavor, count, nflavor;
@@ -3102,6 +3103,7 @@ struct ofile *ofile)
 	split_info = NULL;
 	cs = NULL;
 	uuid = NULL;
+	encrypt_info = NULL;
 	for(i = 0, lc = load_commands; i < ncmds; i++){
 	    l = *lc;
 	    if(swapped)
@@ -3517,6 +3519,30 @@ struct ofile *ofile)
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(datasize field of LC_SEGMENT_SPLIT_INFO command %lu "
 			"is not a multple of %lu)", i, load_command_multiple);
+		    return(CHECK_BAD);
+		}
+		break;
+
+	    case LC_ENCRYPTION_INFO:
+		encrypt_info = (struct encryption_info_command *)lc;
+		if(swapped)
+		    swap_encryption_command(encrypt_info, host_byte_sex);
+		if(encrypt_info->cmdsize != sizeof(struct encryption_info_command)){
+		    Mach_O_error(ofile, "malformed object (LC_ENCRYPTION_INFO"
+				 "command %lu has incorrect cmdsize)", i);
+		    return(CHECK_BAD);
+		}
+		if(encrypt_info->cryptoff > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(cryptoff field of LC_ENCRYPTION_INFO command %lu "
+			"extends past the end of the file)", i);
+		    return(CHECK_BAD);
+		}
+		if(encrypt_info->cryptoff + encrypt_info->cryptsize > size){
+		    Mach_O_error(ofile, "truncated or malformed object "
+			"(cryptoff field plus cryptsize field of "
+			"LC_ENCRYPTION_INFO command %lu extends past "
+			"the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;

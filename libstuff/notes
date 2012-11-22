@@ -5,6 +5,12 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.25 release (the cctools-691 release):
+- Added support for the LC_ENCRYPTION_INFO load command.  Radar bug #5811994.
+  - Added swap_encryption_command() to bytesex.c .
+  - Added support for the LC_ENCRYPTION_INFO command in check_Mach_O() in
+    ofile.c and in swap_object_headers() in swap_headers.c .
+
 Changes for the 5.24 release (the cctools-667.2 release):
 - Changed get_segalign_from_flag() in arch.c so that if returns 4K for
   CPU_TYPE_POWERPC64 and CPU_TYPE_X86_64 so that the __LINKEDIT segment after

@@ -1,3 +1,8 @@
+Changes for the 5.25 release (the cctools-691 release):
+- Added encryption_info_command and LC_ENCRYPTION_INFO to <mach-o/loader.h> .
+  Radar bug #5811987
+- Added swap_encryption_command() to "stuff/bytesex.h". Radar bug #5811994.
+
 Changes for the 5.24 release (the cctools-663 release):
 - Changed <stuff/macosx_deployment_target.h> so that it now has a struct
   that contains the major, minor and name of the macosx_deployment_target.

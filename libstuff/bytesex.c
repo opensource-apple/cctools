@@ -2515,6 +2515,19 @@ enum byte_sex target_byte_sex)
 
 __private_extern__
 void
+swap_encryption_command(
+struct encryption_info_command *ec,
+enum byte_sex target_byte_sex)
+{
+	ec->cmd = SWAP_INT(ec->cmd);
+	ec->cmdsize = SWAP_INT(ec->cmdsize);
+	ec->cryptoff = SWAP_INT(ec->cryptoff);
+	ec->cryptsize = SWAP_INT(ec->cryptsize);
+	ec->cryptid = SWAP_INT(ec->cryptid);
+}
+
+__private_extern__
+void
 swap_nlist(
 struct nlist *symbols,
 unsigned long nsymbols,

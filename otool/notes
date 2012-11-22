@@ -3,6 +3,11 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.25 release (the cctools-691 release):
+- Added support for the LC_ENCRYPTION_INFO load command.  Radar bug #5811994.
+  - Added print_encryption_info_command() in ofile_print.[ch] .
+  - Added code in print_loadcmds() in ofile_print.c for LC_ENCRYPTION_INFO.
+
 Changes for the 5.25 release (the cctools-665 release):
 - Added the SSE4 instructions to the i386 disassembler.  The changes are in
   i386_disasm.c . Radar bug #4943015.

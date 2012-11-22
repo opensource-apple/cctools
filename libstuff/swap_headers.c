@@ -89,6 +89,7 @@ struct load_command *load_commands)
     struct uuid_command *uuid;
     struct linkedit_data_command *ld;
     struct rpath_command *rpath;
+    struct encryption_info_command *ec;
     uint32_t flavor, count;
     unsigned long nflavor;
     char *p, *state, *cmd_name;
@@ -1044,6 +1045,16 @@ check_dylib_command:
 		}
 		break;
 
+	    case LC_ENCRYPTION_INFO:
+		ld = (struct encryption_info_command *)lc;
+		if(ld->cmdsize != sizeof(struct encryption_info_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_ENCRYPTION_INFO command %lu has incorrect "
+			  "cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
 	    default:
 		error("in swap_object_headers(): malformed load commands "
 		      "(unknown load command %lu)", i);
@@ -1502,6 +1513,11 @@ check_dylib_command:
 	    case LC_RPATH:
 		rpath = (struct rpath_command *)lc;
 		swap_rpath_command(rpath, target_byte_sex);
+		break;
+		
+	    case LC_ENCRYPTION_INFO:
+		ec = (struct encryption_info_command *)lc;
+		swap_encryption_command(ec, target_byte_sex);
 		break;
 	    }
 

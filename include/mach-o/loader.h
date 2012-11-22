@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * Copyright (c) 1999-2008 Apple Inc.  All Rights Reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -248,6 +248,7 @@ struct load_command {
 #define	LC_SUB_LIBRARY  0x15	/* sub library */
 #define	LC_TWOLEVEL_HINTS 0x16	/* two-level namespace lookup hints */
 #define	LC_PREBIND_CKSUM  0x17	/* prebind checksum */
+#define	LC_ENCRYPTION_INFO 0x21	/* encrypted segment information */
 
 /*
  * load a dynamically linked shared library that is allowed to be missing
@@ -1106,6 +1107,21 @@ struct linkedit_data_command {
     uint32_t	dataoff;	/* file offset of data in __LINKEDIT segment */
     uint32_t	datasize;	/* file size of data in __LINKEDIT segment  */
 };
+
+
+/*
+ * The encryption_info_command contains the file offset and size of an
+ * of an encrypted segment.  
+ */
+struct encryption_info_command {
+	uint32_t	cmd;		/* LC_ENCRYPTION_INFO */
+	uint32_t	cmdsize;	/* sizeof(struct encryption_info_command) */
+	uint32_t	cryptoff;	/* file offset of encrypted range */
+	uint32_t	cryptsize;	/* file size of encrypted range */
+	uint32_t	cryptid;	/* which enryption system, 
+					0 means not-encrypted yet */
+};
+
 
 /*
  * The symseg_command contains the offset and size of the GNU style
