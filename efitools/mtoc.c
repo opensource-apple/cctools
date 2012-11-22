@@ -250,6 +250,10 @@ static void create_debug(
 static void set_debug_addrs_and_offsets(
     void);
 
+/* apple_version is created by the libstuff/Makefile */
+extern char apple_version[];
+char *version = apple_version;
+
 /*
  * The mtoc(1) tool makes a PECOFF file from a fully linked Mach-O file
  * compiled with dynamic code gen and relocation entries saved (linked with -r).

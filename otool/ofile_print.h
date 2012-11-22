@@ -289,8 +289,13 @@ extern void print_linkedit_data_command(
     uint32_t object_size);
 
 extern void print_version_min_command(
-    struct version_min_command *vd,
-    uint32_t object_size);
+    struct version_min_command *vd);
+
+extern void print_source_version_command(
+    struct source_version_command *sv);
+
+extern void print_entry_point_command(
+    struct entry_point_command *ep);
 
 extern void print_rpath_command(
     struct rpath_command *rpath,
@@ -311,9 +316,10 @@ extern void print_thread_states(
     enum byte_sex thread_states_byte_sex);
 
 extern void print_cstring_section(
+    cpu_type_t cputype,
     char *sect,
     uint32_t sect_size,
-    uint32_t sect_addr,
+    uint64_t sect_addr,
     enum bool print_addresses);
 
 extern void print_literal4_section(

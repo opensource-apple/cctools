@@ -95,7 +95,7 @@ INSTALL_FILES = Makefile notes $(CFILES) $(CFILES_m68k) $(CFILES_m88k) \
 		$(CFILES_sparc) $(CFILES_arm) $(HFILES) $(CHECK_FILES) \
 		driver.c COPYING cctools.plist
 
-OBJS = $(CFILES:.c=.o) apple_version.o
+OBJS = $(CFILES:.c=.o)
 OBJS_m68k = $(CFILES_m68k:.c=.o)
 OBJS_m88k = $(CFILES_m88k:.c=.o)
 OBJS_i860 = $(CFILES_i860:.c=.o)
@@ -341,10 +341,9 @@ aarm_test: aarm_dir
 		OFILE_DIR=. SRCROOT=.. COPTS="-DARM"
 	cd aarm_dir; $(MAKE) -f ../Makefile test
 
-driver:	driver.o apple_version.o
+driver:	driver.o
 	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/driver \
-		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o \
-		$(LIBSTUFF_DIR) $(LIBSTUFF)
+		$(OFILE_DIR)/driver.o $(LIBSTUFF_DIR) $(LIBSTUFF)
 
 as:	$(OBJS) $(TARGET_OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
@@ -387,10 +386,6 @@ test:
 	otool -X -tV $(LLVM_MC) check1.o > check2.s
 	diff check1.s check2.s > check.out
 	cmp check.o check1.o
-
-apple_version.c:
-	echo "const char apple_version[]= " \"`vers_string $(VERS_STRING_FLAGS) -f cctools`\" ";" > \
-		$(OFILE_DIR)/$@
 
 ifeq "NO" "$(USE_DEPENDENCY_FILE)"
 .c.o:

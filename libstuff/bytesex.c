@@ -2551,6 +2551,29 @@ enum byte_sex target_byte_sex)
 
 __private_extern__
 void
+swap_entry_point_command(
+struct entry_point_command *ep,
+enum byte_sex target_byte_sex)
+{
+	ep->cmd = SWAP_INT(ep->cmd);
+	ep->cmdsize = SWAP_INT(ep->cmdsize);
+	ep->entryoff = SWAP_LONG_LONG(ep->entryoff);
+	ep->stacksize = SWAP_LONG_LONG(ep->stacksize);
+}
+
+__private_extern__
+void
+swap_source_version_command(
+struct source_version_command *sv,
+enum byte_sex target_byte_sex)
+{
+	sv->cmd = SWAP_INT(sv->cmd);
+	sv->cmdsize = SWAP_INT(sv->cmdsize);
+	sv->version = SWAP_LONG_LONG(sv->version);
+}
+
+__private_extern__
+void
 swap_nlist(
 struct nlist *symbols,
 uint32_t nsymbols,

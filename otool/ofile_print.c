@@ -1781,6 +1781,8 @@ enum bool very_verbose)
     struct encryption_info_command encrypt;
     struct dyld_info_command dyld_info;
     struct version_min_command vd;
+    struct entry_point_command ep;
+    struct source_version_command sv;
     uint64_t big_load_end;
 
 	host_byte_sex = get_host_byte_sex();
@@ -2108,6 +2110,8 @@ enum bool very_verbose)
 	    case LC_CODE_SIGNATURE:
 	    case LC_SEGMENT_SPLIT_INFO:
 	    case LC_FUNCTION_STARTS:
+	    case LC_DATA_IN_CODE:
+	    case LC_DYLIB_CODE_SIGN_DRS:
 		memset((char *)&ld, '\0', sizeof(struct linkedit_data_command));
 		size = left < sizeof(struct linkedit_data_command) ?
 		       left : sizeof(struct linkedit_data_command);
@@ -2158,7 +2162,27 @@ enum bool very_verbose)
 		memcpy((char *)&vd, (char *)lc, size);
 		if(swapped)
 		    swap_version_min_command(&vd, host_byte_sex);
-		print_version_min_command(&vd, object_size);
+		print_version_min_command(&vd);
+		break;
+
+	    case LC_SOURCE_VERSION:
+		memset((char *)&sv, '\0',sizeof(struct source_version_command));
+		size = left < sizeof(struct source_version_command) ?
+		       left : sizeof(struct source_version_command);
+		memcpy((char *)&sv, (char *)lc, size);
+		if(swapped)
+		    swap_source_version_command(&sv, host_byte_sex);
+		print_source_version_command(&sv);
+		break;
+
+	    case LC_MAIN:
+		memset((char *)&ep, '\0', sizeof(struct entry_point_command));
+		size = left < sizeof(struct entry_point_command) ?
+		       left : sizeof(struct entry_point_command);
+		memcpy((char *)&ep, (char *)lc, size);
+		if(swapped)
+		    swap_entry_point_command(&ep, host_byte_sex);
+		print_entry_point_command(&ep);
 		break;
 
 	    default:
@@ -2906,11 +2930,19 @@ struct load_command *lc)
 	printf("   time stamp %u ", dl->dylib.timestamp);
 	t = dl->dylib.timestamp;
 	printf("%s", ctime(&t));
-	printf("      current version %u.%u.%u\n",
+	printf("      current version ");
+	if(dl->dylib.current_version == 0xffffffff)
+	    printf("n/a\n");
+	else
+	    printf("%u.%u.%u\n",
 	       dl->dylib.current_version >> 16,
 	       (dl->dylib.current_version >> 8) & 0xff,
 	       dl->dylib.current_version & 0xff);
-	printf("compatibility version %u.%u.%u\n",
+	printf("compatibility version ");
+	if(dl->dylib.compatibility_version == 0xffffffff)
+	    printf("n/a\n");
+	else
+	    printf("%u.%u.%u\n",
 	       dl->dylib.compatibility_version >> 16,
 	       (dl->dylib.compatibility_version >> 8) & 0xff,
 	       dl->dylib.compatibility_version & 0xff);
@@ -3283,24 +3315,28 @@ uint32_t object_size)
     uint64_t big_size;
 
 	if(ld->cmd == LC_CODE_SIGNATURE)
-	    printf("         cmd LC_CODE_SIGNATURE\n");
+	    printf("      cmd LC_CODE_SIGNATURE\n");
 	else if(ld->cmd == LC_SEGMENT_SPLIT_INFO)
-	    printf("         cmd LC_SEGMENT_SPLIT_INFO\n");
+	    printf("      cmd LC_SEGMENT_SPLIT_INFO\n");
         else if(ld->cmd == LC_FUNCTION_STARTS)
-	    printf("         cmd LC_FUNCTION_STARTS\n");
+	    printf("      cmd LC_FUNCTION_STARTS\n");
+        else if(ld->cmd == LC_DATA_IN_CODE)
+	    printf("      cmd LC_DATA_IN_CODE\n");
+        else if(ld->cmd == LC_DYLIB_CODE_SIGN_DRS)
+	    printf("      cmd LC_DYLIB_CODE_SIGN_DRS\n");
 	else
-	    printf("         cmd %u (?)\n", ld->cmd);
+	    printf("      cmd %u (?)\n", ld->cmd);
 	printf("  cmdsize %u", ld->cmdsize);
 	if(ld->cmdsize != sizeof(struct linkedit_data_command))
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf("     dataoff  %u", ld->dataoff);
+	printf("  dataoff %u", ld->dataoff);
 	if(ld->dataoff > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf("    datasize %u", ld->datasize);
+	printf(" datasize %u", ld->datasize);
 	big_size = ld->dataoff;
 	big_size += ld->datasize;
 	if(big_size > object_size)
@@ -3315,8 +3351,7 @@ uint32_t object_size)
  */
 void
 print_version_min_command(
-struct version_min_command *vd,
-uint32_t object_size)
+struct version_min_command *vd)
 {
 	if(vd->cmd == LC_VERSION_MIN_MACOSX)
 	    printf("      cmd LC_VERSION_MIN_MACOSX\n");
@@ -3338,6 +3373,68 @@ uint32_t object_size)
 	       vd->version >> 16,
 	       (vd->version >> 8) & 0xff,
 	       vd->version & 0xff);
+	if(vd->sdk == 0)
+	    printf("      sdk n/a\n");
+	else{
+	    if((vd->sdk & 0xff) == 0)
+		printf("      sdk %u.%u\n",
+		   vd->sdk >> 16,
+		   (vd->sdk >> 8) & 0xff);
+	    else
+		printf("      sdk %u.%u.%u\n",
+		   vd->sdk >> 16,
+		   (vd->sdk >> 8) & 0xff,
+		   vd->sdk & 0xff);
+	}
+}
+
+/*
+ * print a source_version_command.  The source_version_command structure
+ * specified must be aligned correctly and in the host byte sex.
+ */
+void
+print_source_version_command(
+struct source_version_command *sv)
+{
+    uint64_t a, b, c, d, e;
+
+	printf("      cmd LC_SOURCE_VERSION\n");
+	printf("  cmdsize %u", sv->cmdsize);
+	if(sv->cmdsize != sizeof(struct source_version_command))
+	    printf(" Incorrect size\n");
+	else
+	    printf("\n");
+	a = (sv->version >> 40) & 0xffffff;
+	b = (sv->version >> 30) & 0x3ff;
+	c = (sv->version >> 20) & 0x3ff;
+	d = (sv->version >> 10) & 0x3ff;
+	e = sv->version & 0x3ff;
+	if(e != 0)
+	    printf("  version %llu.%llu.%llu.%llu.%llu\n", a, b, c, d, e);
+	else if(d != 0)
+	    printf("  version %llu.%llu.%llu.%llu\n", a, b, c, d);
+	else if(c != 0)
+	    printf("  version %llu.%llu.%llu\n", a, b, c);
+	else
+	    printf("  version %llu.%llu\n", a, b);
+}
+
+/*
+ * print a entry_point_command.  The entry_point_command structure
+ * specified must be aligned correctly and in the host byte sex.
+ */
+void
+print_entry_point_command(
+struct entry_point_command *ep)
+{
+	printf("       cmd LC_MAIN\n");
+	printf("   cmdsize %u", ep->cmdsize);
+	if(ep->cmdsize < sizeof(struct entry_point_command))
+	    printf(" Incorrect size\n");
+	else
+	    printf("\n");
+	printf("  entryoff %llu\n", ep->entryoff);
+	printf(" stacksize %llu\n", ep->stacksize);
 }
 
 /*
@@ -5926,7 +6023,8 @@ enum bool verbose)
 	    if(swapped)
 		swap_relocation_info(&reloc, 1, host_byte_sex);
 	    
-	    if((reloc.r_address & R_SCATTERED) != 0){
+	    if((reloc.r_address & R_SCATTERED) != 0 &&
+	       cputype != CPU_TYPE_X86_64){
 		sr = (struct scattered_relocation_info *)&reloc; 
 		if(verbose){
 		    if((cputype == CPU_TYPE_MC680x0 &&
@@ -7081,16 +7179,21 @@ enum bool verbose)
 
 void
 print_cstring_section(
+cpu_type_t cputype,
 char *sect,
 uint32_t sect_size,
-uint32_t sect_addr,
+uint64_t sect_addr,
 enum bool print_addresses)
 {
     uint32_t i;
 
 	for(i = 0; i < sect_size ; i++){
-	    if(print_addresses == TRUE)
-		printf("%08x  ", (unsigned int)(sect_addr + i));
+	    if(print_addresses == TRUE){
+	        if(cputype & CPU_ARCH_ABI64)
+		    printf("0x%016llx  ", sect_addr + i);
+		else
+		    printf("%08x  ", (unsigned int)(sect_addr + i));
+	    }
 
 	    for( ; i < sect_size && sect[i] != '\0'; i++)
 		print_cstring_char(sect[i]);

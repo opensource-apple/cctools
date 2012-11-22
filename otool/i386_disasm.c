@@ -4002,6 +4002,10 @@ const enum bool verbose)
 	    if((*value) & 0x8000)
 		*value = *value | 0xffffffffffff0000ULL;
 	    break;
+	case 4:
+	    if((*value) & 0x80000000)
+		*value = *value | 0xffffffff00000000ULL;
+	    break;
 	}
 	if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64)
 	    *value += addr + *length;

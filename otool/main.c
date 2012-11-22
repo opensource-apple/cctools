@@ -225,7 +225,9 @@ static void print_text(
     uint32_t sizeofcmds,
     enum bool disassemble,
     enum bool verbose,
-    cpu_subtype_t cpusubtype);
+    cpu_subtype_t cpusubtype,
+    char *object_addr,
+    uint32_t object_size);
 
 static void print_argstrings(
     uint32_t magic,
@@ -237,6 +239,10 @@ static void print_argstrings(
     enum byte_sex load_commands_byte_sex,
     char *object_addr,
     uint32_t object_size);
+
+/* apple_version is created by the libstuff/Makefile */
+extern char apple_version[];
+char *version = apple_version;
 
 int
 main(
@@ -1125,7 +1131,8 @@ void *cookie) /* cookie is not used */
 		       nsorted_symbols, symbols, symbols64, nsymbols, strings,
 		       strings_size, relocs, nrelocs, indirect_symbols,
 		       nindirect_symbols, ofile->load_commands, mh_ncmds,
-		       mh_sizeofcmds, vflag, Vflag, mh_cpusubtype);
+		       mh_sizeofcmds, vflag, Vflag, mh_cpusubtype,
+		       ofile->object_addr, ofile->object_size);
 
 	    if(relocs != NULL && relocs != sect_relocs)
 		free(relocs);
@@ -1233,8 +1240,9 @@ void *cookie) /* cookie is not used */
 			       "file\n");
 			break;
 		    case S_CSTRING_LITERALS:
-			print_cstring_section(sect, sect_size, sect_addr,
-				Xflag == TRUE ? FALSE : TRUE);
+			print_cstring_section(mh_cputype, sect, sect_size,
+					      sect_addr,
+					      Xflag == TRUE ? FALSE : TRUE);
 			break;
 		    case S_4BYTE_LITERALS:
 			print_literal4_section(sect, sect_size, sect_addr,
@@ -2357,7 +2365,9 @@ uint32_t ncmds,
 uint32_t sizeofcmds,
 enum bool disassemble,
 enum bool verbose,
-cpu_subtype_t cpusubtype)
+cpu_subtype_t cpusubtype,
+char *object_addr,
+uint32_t object_size)
 {
     enum byte_sex host_byte_sex;
     enum bool swapped;
@@ -2482,7 +2492,7 @@ cpu_subtype_t cpusubtype)
 				strings, strings_size, indirect_symbols,
 				nindirect_symbols, load_commands, ncmds,
 				sizeofcmds, cpusubtype, verbose, arm_dc,
-				thumb_dc);
+				thumb_dc, object_addr, object_size);
 		else{
 		    printf("Can't disassemble unknown cputype %d\n", cputype);
 		    return;

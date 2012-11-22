@@ -3316,7 +3316,7 @@ struct ofile *ofile)
 #else /* !defined OTOOL */
     uint32_t size, i, j, ncmds, sizeofcmds, load_command_multiple, sizeofhdrs;
     cpu_type_t cputype;
-    char *addr, *cmd_name;
+    char *addr, *cmd_name, *element_name;
     enum byte_sex host_byte_sex;
     enum bool swapped;
     struct mach_header *mh;
@@ -3342,13 +3342,16 @@ struct ofile *ofile)
     struct routines_command *rc;
     struct routines_command_64 *rc64;
     struct twolevel_hints_command *hints;
-    struct linkedit_data_command *code_sig, *split_info, *func_starts;
+    struct linkedit_data_command *code_sig, *split_info, *func_starts,
+			     *data_in_code, *code_sign_drs, *linkedit_data;
     struct version_min_command *vers;
     struct prebind_cksum_command *cs;
     struct encryption_info_command *encrypt_info;
     struct dyld_info_command *dyld_info;
     struct uuid_command *uuid;
     struct rpath_command *rpath;
+    struct entry_point_command *ep;
+    struct source_version_command *sv;
     uint32_t flavor, count, nflavor;
     char *p, *state;
     uint32_t sizeof_nlist, sizeof_dylib_module;
@@ -3438,6 +3441,8 @@ struct ofile *ofile)
 	hints = NULL;
 	code_sig = NULL;
 	func_starts = NULL;
+	data_in_code = NULL;
+	code_sign_drs = NULL;
 	split_info = NULL;
 	cs = NULL;
 	uuid = NULL;
@@ -3987,129 +3992,94 @@ struct ofile *ofile)
 		    goto return_bad;
 		break;
 
-	    case LC_CODE_SIGNATURE:
-		if(l.cmdsize < sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_CODE_SIGNATURE "
-				 "cmdsize too small) in command %u", i);
-		    goto return_bad;
-		}
-		if(code_sig != NULL){
-		    Mach_O_error(ofile, "malformed object (more than one "
-			"LC_CODE_SIGNATURE command)");
-		    goto return_bad;
-		}
-		code_sig = (struct linkedit_data_command *)lc;
-		if(swapped)
-		    swap_linkedit_data_command(code_sig, host_byte_sex);
-		if(code_sig->cmdsize != sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_CODE_SIGNATURE "
-			         "command %u has incorrect cmdsize)", i);
-		    goto return_bad;
-		}
-		if(code_sig->dataoff > size){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field of LC_CODE_SIGNATURE command %u "
-			"extends past the end of the file)", i);
-		    goto return_bad;
-		}
-		big_size = code_sig->dataoff;
-		big_size += code_sig->datasize;
-		if(big_size > size){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field plus datasize field of "
-			"LC_CODE_SIGNATURE command %u extends past the end of "
-			"the file)", i);
-		    goto return_bad;
-		}
-		if(check_overlaping_element(ofile, &elements, code_sig->dataoff,
-			code_sig->datasize, "code signature data") == CHECK_BAD)
-		    goto return_bad;
-		break;
-
 	    case LC_SEGMENT_SPLIT_INFO:
-		if(l.cmdsize < sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_SEGMENT_SPLIT_"
-				 "INFO cmdsize too small) in command %u", i);
-		    goto return_bad;
-		}
+		cmd_name = "LC_SEGMENT_SPLIT_INFO";
+		element_name = "split info data";
 		if(split_info != NULL){
 		    Mach_O_error(ofile, "malformed object (more than one "
-			"LC_SEGMENT_SPLIT_INFO command)");
+			"%s command)", cmd_name);
 		    goto return_bad;
 		}
 		split_info = (struct linkedit_data_command *)lc;
-		if(swapped)
-		    swap_linkedit_data_command(split_info, host_byte_sex);
-		if(split_info->cmdsize != sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_SEGMENT_SPLIT_"
-				 "INFO command %u has incorrect cmdsize)", i);
+		goto check_linkedit_data_command;
+
+	    case LC_CODE_SIGNATURE:
+		cmd_name = "LC_CODE_SIGNATURE";
+		element_name = "code signature data";
+		if(code_sig != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"%s command)", cmd_name);
 		    goto return_bad;
 		}
-		if(split_info->dataoff > size){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field of LC_SEGMENT_SPLIT_INFO command %u "
-			"extends past the end of the file)", i);
-		    goto return_bad;
-		}
-		big_size = split_info->dataoff;
-		big_size += split_info->datasize;
-		if(big_size > size){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field plus datasize field of LC_SEGMENT_"
-			"SPLIT_INFO command %u extends past the end of "
-			"the file)", i);
-		    goto return_bad;
-		}
-		if((split_info->datasize % load_command_multiple) != 0){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(datasize field of LC_SEGMENT_SPLIT_INFO command %u "
-			"is not a multple of %u)", i, load_command_multiple);
-		    goto return_bad;
-		}
-		if(check_overlaping_element(ofile, &elements,
-			split_info->dataoff, split_info->datasize,
-			"split info data") == CHECK_BAD)
-		    goto return_bad;
-		break;
+		code_sig = (struct linkedit_data_command *)lc;
+		goto check_linkedit_data_command;
 
 	    case LC_FUNCTION_STARTS:
-		if(l.cmdsize < sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_FUNCTION_STARTS "
-				 "cmdsize too small) in command %u", i);
-		    goto return_bad;
-		}
+		cmd_name = "LC_FUNCTION_STARTS";
+		element_name = "function starts data";
 		if(func_starts != NULL){
 		    Mach_O_error(ofile, "malformed object (more than one "
-			"LC_FUNCTION_STARTS command)");
+			"%s command)", cmd_name);
 		    goto return_bad;
 		}
 		func_starts = (struct linkedit_data_command *)lc;
+		goto check_linkedit_data_command;
+
+	    case LC_DATA_IN_CODE:
+		cmd_name = "LC_DATA_IN_CODE";
+		element_name = "date in code info";
+		if(data_in_code != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"%s command)", cmd_name);
+		    goto return_bad;
+		}
+		data_in_code = (struct linkedit_data_command *)lc;
+		goto check_linkedit_data_command;
+
+	    case LC_DYLIB_CODE_SIGN_DRS:
+		cmd_name = "LC_DYLIB_CODE_SIGN_DRS";
+		element_name = "code signing RDs data";
+		if(code_sign_drs != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"%s command)", cmd_name);
+		    goto return_bad;
+		}
+		code_sign_drs = (struct linkedit_data_command *)lc;
+		goto check_linkedit_data_command;
+
+check_linkedit_data_command:
+		if(l.cmdsize < sizeof(struct linkedit_data_command)){
+		    Mach_O_error(ofile, "malformed object (%s cmdsize too "
+				 "small) in command %u", cmd_name, i);
+		    goto return_bad;
+		}
+		linkedit_data = (struct linkedit_data_command *)lc;
 		if(swapped)
-		    swap_linkedit_data_command(func_starts, host_byte_sex);
-		if(func_starts->cmdsize !=
+		    swap_linkedit_data_command(linkedit_data, host_byte_sex);
+		if(linkedit_data->cmdsize !=
 		   sizeof(struct linkedit_data_command)){
-		    Mach_O_error(ofile, "malformed object (LC_FUNCTION_STARTS "
-			         "command %u has incorrect cmdsize)", i);
+		    Mach_O_error(ofile, "malformed object (%s command %u has "
+				 "incorrect cmdsize)", cmd_name, i);
 		    goto return_bad;
 		}
-		if(func_starts->dataoff > size){
+		if(linkedit_data->dataoff > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(dataoff field of LC_FUNCTION_STARTS command %u "
-			"extends past the end of the file)", i);
+			"(dataoff field of %s command %u extends past the end "
+			"of the file)", cmd_name, i);
 		    goto return_bad;
 		}
-		big_size = func_starts->dataoff;
-		big_size += func_starts->datasize;
+		big_size = linkedit_data->dataoff;
+		big_size += linkedit_data->datasize;
 		if(big_size > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
 			"(dataoff field plus datasize field of "
-			"LC_FUNCTION_STARTS command %u extends past the end of "
-			"the file)", i);
+			"%s command %u extends past the end of "
+			"the file)", cmd_name, i);
 		    goto return_bad;
 		}
 		if(check_overlaping_element(ofile, &elements,
-			func_starts->dataoff, func_starts->datasize,
-			"function starts data") == CHECK_BAD)
+			linkedit_data->dataoff, linkedit_data->datasize,
+			element_name) == CHECK_BAD)
 		    goto return_bad;
 		break;
 
@@ -5745,6 +5715,30 @@ check_dylinker_command:
 		    goto return_bad;
 		}
 		break;
+	    case LC_MAIN:
+		if(l.cmdsize < sizeof(struct entry_point_command)){
+		    Mach_O_error(ofile, "malformed object (LC_MAIN cmdsize "
+			         "too small) in command %u", i);
+		    goto return_bad;
+		}
+		ep = (struct entry_point_command *)lc;
+		if(swapped)
+		    swap_entry_point_command(ep, host_byte_sex);
+		/*
+		 * If we really wanted we could check that the entryoff field
+		 * really is an offset into the __TEXT segment.  But since it
+		 * is not used here, we won't needlessly check it.
+		 */
+		break;
+	    case LC_SOURCE_VERSION:
+		if(l.cmdsize < sizeof(struct source_version_command)){
+		    Mach_O_error(ofile, "malformed object (LC_SOURCE_VERSION "
+				 "cmdsize too small) in command %u", i);
+		    goto return_bad;
+		}
+		sv = (struct source_version_command *)lc;
+		if(swapped)
+		    swap_source_version_command(sv, host_byte_sex);
 	    case LC_IDENT:
 		if(l.cmdsize < sizeof(struct ident_command)){
 		    Mach_O_error(ofile, "malformed object (LC_IDENT cmdsize "

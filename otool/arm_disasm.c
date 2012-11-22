@@ -170,6 +170,8 @@ struct disassemble_info { /* HACK'ed up for just what we need here */
   uint32_t sect_addr;
   LLVMDisasmContextRef arm_dc;
   LLVMDisasmContextRef thumb_dc;
+  char *object_addr;
+  uint32_t object_size;
 } dis_info;
 
 /*
@@ -211,11 +213,7 @@ void *TagBuf)
     uint32_t nrelocs, strings_size, n_strx;
     struct nlist *symbols;
 
-
 	info = (struct disassemble_info *)DisInfo;
-	if(Offset != 0 || (Size != 4 && Size != 2) || TagType != 1 ||
-	   info->verbose == FALSE)
-	    return(0);
 
 	op_info = (struct LLVMOpInfo1 *)TagBuf;
 	value = op_info->Value;
@@ -223,7 +221,10 @@ void *TagBuf)
 	memset(op_info, '\0', sizeof(struct LLVMOpInfo1));
 	op_info->Value = value;
 
-	info = (struct disassemble_info *)DisInfo;
+	if(Offset != 0 || (Size != 4 && Size != 2) || TagType != 1 ||
+	   info->verbose == FALSE)
+	    return(0);
+
 	sect_offset = Pc - info->sect_addr;
 	relocs = info->relocs;
 	nrelocs = info->nrelocs;
@@ -364,6 +365,16 @@ void *TagBuf)
 	    return(1);
 	}
 
+	/*
+	 * If we have a branch that is not an external relocation entry then
+	 * return false so the code in tryAddingSymbolicOperand() can use
+	 * SymbolLookUp() with the branch target address to look up the symbol
+	 * and possiblity add an annotation for a symbol stub.
+	 */
+	if(reloc_found && r_extern == 0 &&
+	   (r_type == ARM_RELOC_BR24 || r_type == ARM_THUMB_RELOC_BR22))
+		return(0);
+
 	offset = 0;
 	if(reloc_found){
 	    if(r_type == ARM_RELOC_HALF ||
@@ -442,25 +453,398 @@ void *TagBuf)
 }
 
 /*
- * The symbol lookup function passed to LLVMCreateDisasm().  This may be called
- * by the disassembler for such things like adding a comment for a PC plus a
- * constant offset load instruction to use a symbol name instead of a load
- * address value.  It is passed pointer to the struct disassemble_info that was
- *  passed when disassembler context is created and a value of a symbol to look
- * up.  If no symbol is found NULL is to be returned.
+ * guess_cstring_pointer() is passed the address of what might be a pointer to a
+ * literal string in a cstring section.  If that address is in a cstring section
+ * it returns a pointer to that string.  Else it returns NULL.
+ */
+static
+const char *
+guess_cstring_pointer(
+const uint32_t value,
+const uint32_t ncmds,
+const uint32_t sizeofcmds,
+const struct load_command *load_commands,
+const enum byte_sex load_commands_byte_sex,
+const char *object_addr,
+const uint32_t object_size)
+{
+    enum byte_sex host_byte_sex;
+    enum bool swapped;
+    uint32_t i, j, section_type, sect_offset, object_offset;
+    const struct load_command *lc;
+    struct load_command l;
+    struct segment_command sg;
+    struct section s;
+    char *p;
+    uint64_t big_load_end;
+    const char *name;
+
+	host_byte_sex = get_host_byte_sex();
+	swapped = host_byte_sex != load_commands_byte_sex;
+
+	lc = load_commands;
+	big_load_end = 0;
+	for(i = 0 ; i < ncmds; i++){
+	    memcpy((char *)&l, (char *)lc, sizeof(struct load_command));
+	    if(swapped)
+		swap_load_command(&l, host_byte_sex);
+	    if(l.cmdsize % sizeof(int32_t) != 0)
+		return(NULL);
+	    big_load_end += l.cmdsize;
+	    if(big_load_end > sizeofcmds)
+		return(NULL);
+	    switch(l.cmd){
+	    case LC_SEGMENT:
+		memcpy((char *)&sg, (char *)lc, sizeof(struct segment_command));
+		if(swapped)
+		    swap_segment_command(&sg, host_byte_sex);
+		p = (char *)lc + sizeof(struct segment_command);
+		for(j = 0 ; j < sg.nsects ; j++){
+		    memcpy((char *)&s, p, sizeof(struct section));
+		    p += sizeof(struct section);
+		    if(swapped)
+			swap_section(&s, 1, host_byte_sex);
+		    section_type = s.flags & SECTION_TYPE;
+		    if(section_type == S_CSTRING_LITERALS &&
+		       value >= s.addr && value < s.addr + s.size){
+			sect_offset = value - s.addr;
+			object_offset = s.offset + sect_offset;
+			if(object_offset < object_size){
+			    name = object_addr + object_offset;
+			    return(name);
+			}
+			else
+			    return(NULL);
+		    }
+		}
+		break;
+	    }
+	    if(l.cmdsize == 0){
+		return(NULL);
+	    }
+	    lc = (struct load_command *)((char *)lc + l.cmdsize);
+	    if((char *)lc > (char *)load_commands + sizeofcmds)
+		return(NULL);
+	}
+	return(NULL);
+}
+
+/*
+ * get_literal_pool_value() looks for a section difference relocation entry
+ * at the pc.  And if so returns the add_symbol's value indirectly through
+ * pointer_value and if that value has a symbol name then the name of a symbol
+ * indirectly though name.
+ */
+static
+enum bool
+get_literal_pool_value(
+bfd_vma pc,
+char const **name,
+uint32_t *pointer_value,
+struct disassemble_info *info)
+{
+    int32_t reloc_found;
+    uint32_t i, r_address, r_symbolnum, r_type, r_extern, r_length,
+	     r_value, r_scattered, pair_r_type, pair_r_value;
+    uint32_t other_half;
+    struct relocation_info *rp, *pairp;
+    struct scattered_relocation_info *srp, *spairp;
+    uint32_t n_strx;
+
+    struct relocation_info *relocs = info->relocs;
+    uint32_t nrelocs = info->nrelocs;
+    bfd_vma sect_offset = pc - info->sect_addr;
+
+	r_symbolnum = 0;
+	r_type = 0;
+	r_extern = 0;
+	r_value = 0;
+	r_scattered = 0;
+	other_half = 0;
+	pair_r_value = 0;
+	n_strx = 0;
+	r_length = 0;
+
+	reloc_found = 0;
+	for(i = 0; i < nrelocs; i++){
+	    rp = &relocs[i];
+	    if(rp->r_address & R_SCATTERED){
+		srp = (struct scattered_relocation_info *)rp;
+		r_scattered = 1;
+		r_address = srp->r_address;
+		r_extern = 0;
+		r_length = srp->r_length;
+		r_type = srp->r_type;
+		r_value = srp->r_value;
+	    }
+	    else{
+		r_scattered = 0;
+		r_address = rp->r_address;
+		r_symbolnum = rp->r_symbolnum;
+		r_extern = rp->r_extern;
+		r_length = rp->r_length;
+		r_type = rp->r_type;
+	    }
+	    if(r_type == ARM_RELOC_PAIR){
+		fprintf(stderr, "Stray ARM_RELOC_PAIR relocation entry "
+			"%u\n", i);
+		continue;
+	    }
+	    if(r_address == sect_offset){
+		if(r_type == ARM_RELOC_HALF ||
+		   r_type == ARM_RELOC_SECTDIFF ||
+		   r_type == ARM_RELOC_LOCAL_SECTDIFF ||
+		   r_type == ARM_RELOC_HALF_SECTDIFF){
+		    if(i+1 < nrelocs){
+			pairp = &rp[1];
+			if(pairp->r_address & R_SCATTERED){
+			    spairp = (struct scattered_relocation_info *)
+				     pairp;
+			    other_half = spairp->r_address & 0xffff;
+			    pair_r_type = spairp->r_type;
+			    pair_r_value = spairp->r_value;
+			}
+			else{
+			    other_half = pairp->r_address & 0xffff;
+			    pair_r_type = pairp->r_type;
+			}
+			if(pair_r_type != ARM_RELOC_PAIR){
+			    fprintf(stderr, "No ARM_RELOC_PAIR relocation "
+				    "entry after entry %u\n", i);
+			    continue;
+			}
+		    }
+		}
+		reloc_found = 1;
+		break;
+	    }
+	    if(r_type == ARM_RELOC_HALF ||
+	       r_type == ARM_RELOC_SECTDIFF ||
+	       r_type == ARM_RELOC_LOCAL_SECTDIFF ||
+	       r_type == ARM_RELOC_HALF_SECTDIFF){
+		if(i+1 < nrelocs){
+		    pairp = &rp[1];
+		    if(pairp->r_address & R_SCATTERED){
+			spairp = (struct scattered_relocation_info *)pairp;
+			pair_r_type = spairp->r_type;
+		    }
+		    else{
+			pair_r_type = pairp->r_type;
+		    }
+		    if(pair_r_type == ARM_RELOC_PAIR)
+			i++;
+		    else
+			fprintf(stderr, "No ARM_RELOC_PAIR relocation "
+				"entry after entry %u\n", i);
+		}
+	    }
+	}
+
+	if(reloc_found && r_length == 2 &&
+	   (r_type == ARM_RELOC_SECTDIFF ||
+	    r_type == ARM_RELOC_LOCAL_SECTDIFF)){
+	    *name = guess_symbol(r_value, info->sorted_symbols,
+			         info->nsorted_symbols, info->verbose);
+	    *pointer_value = r_value;
+	    return(TRUE);
+	}
+	*name = NULL;
+	*pointer_value = 0;
+	return(FALSE);
+}
+
+/*
+ * guess_literal_pointer() returns a name of a symbol or string if the value
+ * passed in is the address of a literal pointer and the literal pointer's value
+ * is and address of a symbol or cstring.  
+ */
+static
+const char *
+guess_literal_pointer(
+const uint32_t value,	  /* the value of the reference */
+const uint32_t pc,	  /* pc of the referencing instruction */
+uint64_t *reference_type, /* type returned, symbol name or string literal*/
+struct disassemble_info *info)
+{
+    uint32_t i, j, ncmds, sizeofcmds, sect_addr, object_size, pointer_value;
+    enum byte_sex object_byte_sex, host_byte_sex;
+    enum bool swapped;
+    struct load_command *load_commands, *lc, l;
+    struct segment_command sg;
+    struct section s;
+    char *object_addr, *p;
+    uint64_t big_load_end;
+    const char *name;
+
+	ncmds = info->ncmds;
+	sizeofcmds = info->sizeofcmds;
+	load_commands = info->load_commands;
+	sect_addr = info->sect_addr;
+	object_byte_sex = info->object_byte_sex;
+	object_addr = info->object_addr;
+	object_size = info->object_size;
+
+	host_byte_sex = get_host_byte_sex();
+	swapped = host_byte_sex != object_byte_sex;
+
+	lc = load_commands;
+	big_load_end = 0;
+	for(i = 0 ; i < ncmds; i++){
+	    memcpy((char *)&l, (char *)lc, sizeof(struct load_command));
+	    if(swapped)
+		swap_load_command(&l, host_byte_sex);
+	    if(l.cmdsize % sizeof(int32_t) != 0)
+		return(NULL);
+	    big_load_end += l.cmdsize;
+	    if(big_load_end > sizeofcmds)
+		return(NULL);
+	    switch(l.cmd){
+	    case LC_SEGMENT:
+		memcpy((char *)&sg, (char *)lc, sizeof(struct segment_command));
+		if(swapped)
+		    swap_segment_command(&sg, host_byte_sex);
+		p = (char *)lc + sizeof(struct segment_command);
+		for(j = 0 ; j < sg.nsects ; j++){
+		    memcpy((char *)&s, p, sizeof(struct section));
+		    p += sizeof(struct section);
+		    if(swapped)
+			swap_section(&s, 1, host_byte_sex);
+		    if(sect_addr == s.addr &&
+		       pc >= s.addr && pc < s.addr + s.size &&
+		       value >= s.addr && value + 4 <= s.addr + s.size){
+			/*
+			 * The problem here is while we can get the value in the
+			 * pool with code like this:
+			 * section_start = object_addr + s.offset;
+			 * section_offset = value - s.addr;
+			 * pool_value =
+			 *    section_start[section_offset + 3] << 24 |
+			 *    section_start[section_offset + 2] << 16 |
+			 *    section_start[section_offset + 1] << 8 |
+			 *    section_start[section_offset];
+			 * we don't know the pc value that will be added
+			 * to it. As that is done as a separate instruction like
+			 * "L1: add rx, pc, rt" where the ldr loaded up the
+			 * pool_value in rt.  The pool_value in a relocatable
+			 * object will be something like this:
+			 *    .long LC1-(L1+8)
+			 * where LC1 is the pointer_value we are interested in.
+			 * So we call get_literal_pool_value() to see if the
+			 * literal pool has a relocation entry.  If so it
+			 * returns the pointer_value and the name of a symbol
+			 * if any for that pointer_value.
+			 */
+			if(get_literal_pool_value(value, &name, &pointer_value,
+						  info) == FALSE){
+			    return(NULL);
+			}
+			/*
+			 * If the value in the literal pool is the address of a
+			 * symbol then get_literal_pool_value() will set name
+			 * to the name of the symbol.
+			 */
+			if(name != NULL){
+			    *reference_type =
+			     LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr;
+			    return(name);
+			}
+			/*
+			 * If not, next see if the pointer value is pointing to
+			 * a cstring.
+			 */
+			name = guess_cstring_pointer(pointer_value, ncmds,
+					sizeofcmds, load_commands,
+					object_byte_sex, object_addr,
+					object_size);
+			if(name != NULL){
+			    *reference_type =
+			    LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr;
+			    return(name);
+			}
+		    }
+		}
+		break;
+	    }
+	    if(l.cmdsize == 0){
+		return(NULL);
+	    }
+	    lc = (struct load_command *)((char *)lc + l.cmdsize);
+	    if((char *)lc > (char *)load_commands + sizeofcmds)
+		return(NULL);
+	}
+	return(NULL);
+}
+
+/*
+ * The symbol lookup function passed to LLVMCreateDisasm().  It looks up the
+ * SymbolValue using the info passed vis the pointer to the struct
+ * disassemble_info that was passed when disassembler context is created and
+ * returns the symbol name that matches or NULL if none.
+ *
+ * When this is called to get a symbol name for a branch target then the
+ * ReferenceType can be LLVMDisassembler_ReferenceType_In_Branch and then
+ * SymbolValue will be looked for in the indirect symbol table to determine if
+ * it is an address for a symbol stub.  If so then the symbol name for that
+ * stub is returned indirectly through ReferenceName and then ReferenceType is
+ * set to LLVMDisassembler_ReferenceType_Out_SymbolStub.
+ * 
+ * This may be called may also be called by the disassembler for such things
+ * like adding a comment for a PC plus a constant offset load instruction to use
+ * a symbol name instead of a load address value.  In this case ReferenceType
+ * can be LLVMDisassembler_ReferenceType_In_PCrel_Load and the ReferencePC is
+ * also passed.  In this case if the SymbolValue is an address in a literal
+ * pool then the referenced pointer in the literal pool is used for the returned
+ * ReferenceName and then ReferenceType.  Which may be a symbol name and
+ * LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr when the literal pool
+ * entry is the address of a symbol.  Or a pointer to a literal cstring and
+ * LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr when the literal pool
+ * entry is the address of a literal cstring.
  */
 static
 const char *
 SymbolLookUp(
 void *DisInfo,
-uint64_t SymbolValue)
+uint64_t SymbolValue,
+uint64_t *ReferenceType,
+uint64_t ReferencePC,
+const char **ReferenceName)
 {
-    struct disassemble_info *dis_info;
+    struct disassemble_info *info;
+    const char *SymbolName;
 
-	dis_info = (struct disassemble_info *)DisInfo;
-	return(guess_symbol(SymbolValue, dis_info->sorted_symbols,
-			    dis_info->nsorted_symbols, TRUE));
+	info = (struct disassemble_info *)DisInfo;
+	if(info->verbose == FALSE){
+	    *ReferenceName = NULL;
+	    *ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	    return(NULL);
+	}
+	SymbolName = guess_symbol(SymbolValue, info->sorted_symbols,
+				  info->nsorted_symbols, TRUE);
+
+	if(*ReferenceType == LLVMDisassembler_ReferenceType_In_Branch){
+	    *ReferenceName = guess_indirect_symbol(SymbolValue,
+		    info->ncmds, info->sizeofcmds, info->load_commands,
+		    info->object_byte_sex, info->indirect_symbols,
+		    info->nindirect_symbols, info->symbols, NULL,
+		    info->nsymbols, info->strings, info->strings_size);
+	    if(*ReferenceName != NULL)
+		*ReferenceType = LLVMDisassembler_ReferenceType_Out_SymbolStub;
+	    else
+		*ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	else if(*ReferenceType == LLVMDisassembler_ReferenceType_In_PCrel_Load){
+	    *ReferenceName = guess_literal_pointer(SymbolValue, ReferencePC,
+						   ReferenceType, info);
+	    if(*ReferenceName == NULL)
+		*ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	else{
+	    *ReferenceName = NULL;
+	    *ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	return(SymbolName);
 }
+
 LLVMDisasmContextRef
 create_arm_llvm_disassembler(
 void)
@@ -473,7 +857,7 @@ void)
 #else
 	    llvm_create_disasm
 #endif
-		("arm-apple-darwin10", &dis_info, 1, GetOpInfo, SymbolLookUp);
+		("armv7-apple-darwin10", &dis_info, 1, GetOpInfo, SymbolLookUp);
 	return(dc);
 }
 
@@ -1780,7 +2164,7 @@ static const struct opcode32 thumb32_opcodes[] =
   {ARM_EXT_V6T2, 0xf3af8001, 0xffffffff, "yield%c.w"},
   {ARM_EXT_V6T2, 0xf3af8002, 0xffffffff, "wfe%c.w"},
   {ARM_EXT_V6T2, 0xf3af8003, 0xffffffff, "wfi%c.w"},
-  {ARM_EXT_V6T2, 0xf3af9004, 0xffffffff, "sev%c.w"},
+  {ARM_EXT_V6T2, 0xf3af8004, 0xffffffff, "sev%c.w"},
   {ARM_EXT_V6T2, 0xf3af8000, 0xffffff00, "nop%c.w\t{%0-7d}"},
 
   {ARM_EXT_V6T2, 0xf3bf8f2f, 0xffffffff, "clrex%c"},
@@ -4781,14 +5165,26 @@ struct disassemble_info *info)
     }
     fprintf(stream, "0x%x", addr);
     if(info->verbose){
-	const char *indirect_symbol_name;
-	indirect_symbol_name = guess_indirect_symbol (addr,
-		info->ncmds, info->sizeofcmds, info->load_commands,
-		info->object_byte_sex, info->indirect_symbols,
-		info->nindirect_symbols, info->symbols, NULL,
-		info->nsymbols, info->strings, info->strings_size);
-	if(indirect_symbol_name != NULL)
-	    fprintf(stream, "\t@ symbol stub for: %s", indirect_symbol_name);
+	name = guess_indirect_symbol(addr, info->ncmds, info->sizeofcmds,
+		   info->load_commands, info->object_byte_sex,
+		   info->indirect_symbols, info->nindirect_symbols,
+		   info->symbols, NULL, info->nsymbols, info->strings,
+		   info->strings_size);
+	if(name != NULL)
+	    fprintf(stream, "\t@ symbol stub for: %s", name);
+	else{
+	    uint64_t reference_type;
+	    reference_type = LLVMDisassembler_ReferenceType_In_PCrel_Load;
+	    name = guess_literal_pointer(addr, pc, &reference_type, info);
+	    if(name != NULL){
+		fprintf(stream, " literal pool for: ");
+		if(reference_type ==
+		   LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr)
+		    fprintf(stream, "\"%s\"", name);
+		else
+		    fprintf(stream, "%s", name);
+	    }
+	}
     }
 }
 
@@ -5235,7 +5631,9 @@ uint32_t sizeofcmds,
 cpu_subtype_t cpusubtype,
 enum bool verbose,
 LLVMDisasmContextRef arm_dc,
-LLVMDisasmContextRef thumb_dc)
+LLVMDisasmContextRef thumb_dc,
+char *object_addr,
+uint32_t object_size)
 {
     uint32_t bytes_consumed, pool_value;
 
@@ -5276,6 +5674,9 @@ LLVMDisasmContextRef thumb_dc)
 
 	dis_info.arm_dc = arm_dc;
 	dis_info.thumb_dc = thumb_dc;
+
+	dis_info.object_addr = object_addr;
+	dis_info.object_size = object_size;
 
 	/*
 	 * If we have at least 4 bytes left, see if these 4 bytes are a pointer

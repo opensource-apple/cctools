@@ -2,6 +2,10 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.30 release (the cctools-816 release):
+- Changed the Makefile to install the lipo(1) and strings(1) man page for the
+  install_os_tools target.  Radar bug #10428485.
+
 Changes for the 5.27 release (the cctools-796 release):
 - Updated the -L option to otool(1) to include the share library ID.  Radar bug
   #7885069.

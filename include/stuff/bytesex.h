@@ -351,6 +351,14 @@ __private_extern__ void swap_dyld_info_command(
     struct dyld_info_command *dc, 
     enum byte_sex target_byte_sex);
 
+__private_extern__ void swap_entry_point_command(
+    struct entry_point_command *ep,
+    enum byte_sex target_byte_sex);
+
+__private_extern__ void swap_source_version_command(
+    struct source_version_command *sv,
+    enum byte_sex target_byte_sex);
+
 __private_extern__ void swap_nlist(
     struct nlist *symbols,
     uint32_t nsymbols,

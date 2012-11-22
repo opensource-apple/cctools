@@ -7,13 +7,13 @@
 |*                                                                            *|
 |*===----------------------------------------------------------------------===*|
 |*                                                                            *|
-|* This header provides public interface to a disassembler library.           *|
+|* This header provides a public interface to a disassembler library.         *|
 |* LLVM provides an implementation of this interface.                         *|
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
 #ifndef LLVM_C_DISASSEMBLER_H
-#define LLVM_C_DISASSEMBLER_H  1
+#define LLVM_C_DISASSEMBLER_H
 
 #include <stddef.h>
 
@@ -30,21 +30,18 @@ typedef void *LLVMDisasmContextRef;
  * the call back in the DisInfo parameter.  The instruction containing operand
  * is at the PC parameter.  For some instruction sets, there can be more than
  * one operand with symbolic information.  To determine the symbolic operand
- * infomation for each operand, the bytes for the specific operand in the
+ * information for each operand, the bytes for the specific operand in the
  * instruction are specified by the Offset parameter and its byte widith is the
  * size parameter.  For instructions sets with fixed widths and one symbolic
  * operand per instruction, the Offset parameter will be zero and Size parameter
  * will be the instruction width.  The information is returned in TagBuf and is 
  * Triple specific with its specific information defined by the value of
  * TagType for that Triple.  If symbolic information is returned the function
- * returns 1 else it returns 0.
+ * returns 1, otherwise it returns 0.
  */
-typedef int (*LLVMOpInfoCallback)(void *DisInfo,
-                                  uint64_t Pc,
-                                  uint64_t Offset,
-                                  uint64_t Size,
-                                  int TagType,
-                                  void *TagBuf);
+typedef int (*LLVMOpInfoCallback)(void *DisInfo, uint64_t Pc,
+                                  uint64_t Offset, uint64_t Size,
+                                  int TagType, void *TagBuf);
 
 /**
  * The initial support in LLVM MC for the most general form of a relocatable
@@ -67,9 +64,9 @@ typedef int (*LLVMOpInfoCallback)(void *DisInfo,
  * operands like "_foo@GOT", ":lower16:_foo", etc.
  */
 struct LLVMOpInfoSymbol1 {
-  uint64_t Present; /* 1 if this symbol is present */
-  const char *Name; /* symbol name if not NULL */
-  uint64_t Value;   /* symbol value if name is NULL */
+  uint64_t Present;  /* 1 if this symbol is present */
+  const char *Name;  /* symbol name if not NULL */
+  uint64_t Value;    /* symbol value if name is NULL */
 };
 struct LLVMOpInfo1 {
   struct LLVMOpInfoSymbol1 AddSymbol;
@@ -91,14 +88,38 @@ struct LLVMOpInfo1 {
 
 /**
  * The type for the symbol lookup function.  This may be called by the
- * disassembler for such things like adding a comment for a PC plus a constant
+ * disassembler for things like adding a comment for a PC plus a constant
  * offset load instruction to use a symbol name instead of a load address value.
  * It is passed the block information is saved when the disassembler context is
- * created and a value of a symbol to look up.  If no symbol is found NULL is
- * to be returned.
+ * created and the ReferenceValue to look up as a symbol.  If no symbol is found
+ * for the ReferenceValue NULL is returned.  The ReferenceType of the
+ * instruction is passed indirectly as is the PC of the instruction in
+ * ReferencePC.  If the output reference can be determined its type is returned
+ * indirectly in ReferenceType along with ReferenceName if any, or that is set
+ * to NULL.
  */
 typedef const char *(*LLVMSymbolLookupCallback)(void *DisInfo,
-                                                uint64_t SymbolValue);
+                                                uint64_t ReferenceValue,
+						uint64_t *ReferenceType,
+						uint64_t ReferencePC,
+						const char **ReferenceName);
+/**
+ * The reference types on input and output.
+ */
+/* No input reference type or no output reference type. */
+#define LLVMDisassembler_ReferenceType_InOut_None 0
+
+/* The input reference is from a branch instruction. */
+#define LLVMDisassembler_ReferenceType_In_Branch 1
+/* The input reference is from a PC relative load instruction. */
+#define LLVMDisassembler_ReferenceType_In_PCrel_Load 2
+
+/* The output reference is to as symbol stub. */
+#define LLVMDisassembler_ReferenceType_Out_SymbolStub 1
+/* The output reference is to a symbol address in a literal pool. */
+#define LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr 2
+/* The output reference is to a cstring address in a literal pool. */
+#define LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr 3
 
 #ifdef __cplusplus
 extern "C" {
@@ -106,40 +127,33 @@ extern "C" {
 
 /**
  * Create a disassembler for the TripleName.  Symbolic disassembly is supported
- * by passing a block of information in the DisInfo parameter and specifing the
- * TagType and call back functions as described above.  These can all be passed
- * as NULL.  If successfull this returns a disassembler context if not it
+ * by passing a block of information in the DisInfo parameter and specifying the
+ * TagType and callback functions as described above.  These can all be passed
+ * as NULL.  If successful, this returns a disassembler context.  If not, it
  * returns NULL.
  */
-extern LLVMDisasmContextRef
-LLVMCreateDisasm(const char *TripleName,
-                 void *DisInfo,
-                 int TagType,
-                 LLVMOpInfoCallback GetOpInfo,
-                 LLVMSymbolLookupCallback SymbolLookUp);
+LLVMDisasmContextRef LLVMCreateDisasm(const char *TripleName, void *DisInfo,
+                                      int TagType, LLVMOpInfoCallback GetOpInfo,
+                                      LLVMSymbolLookupCallback SymbolLookUp);
 
 /**
  * Dispose of a disassembler context.
  */
-extern void
-LLVMDisasmDispose(LLVMDisasmContextRef DC);
+void LLVMDisasmDispose(LLVMDisasmContextRef DC);
 
 /**
- * Disassmble a single instruction using the disassembler context specified in
- * the parameter DC.  The bytes of the instuction are specified in the parameter
- * Bytes, and contains at least BytesSize number of bytes.  The instruction is
- * at the address specified by the PC parameter.  If a valid instruction can be
- * disassembled its string is returned indirectly in OutString which whos size
- * is specified in the parameter OutStringSize.  This function returns the
- * number of bytes in the instruction or zero if there was no valid instruction.
+ * Disassemble a single instruction using the disassembler context specified in
+ * the parameter DC.  The bytes of the instruction are specified in the
+ * parameter Bytes, and contains at least BytesSize number of bytes.  The
+ * instruction is at the address specified by the PC parameter.  If a valid
+ * instruction can be disassembled, its string is returned indirectly in
+ * OutString whose size is specified in the parameter OutStringSize.  This
+ * function returns the number of bytes in the instruction or zero if there was
+ * no valid instruction.
  */
-extern size_t
-LLVMDisasmInstruction(LLVMDisasmContextRef DC,
-                      uint8_t *Bytes,
-                      uint64_t BytesSize,
-                      uint64_t Pc,
-                      char *OutString,
-                      size_t OutStringSize);
+size_t LLVMDisasmInstruction(LLVMDisasmContextRef DC, uint8_t *Bytes,
+                             uint64_t BytesSize, uint64_t Pc,
+                             char *OutString, size_t OutStringSize);
 
 #ifdef __cplusplus
 }

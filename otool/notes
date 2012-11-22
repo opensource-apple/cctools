@@ -3,6 +3,36 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.30 release (the cctools-820 release):
+- Removed the use of vers_string(1) from the Makefile. Radar bug #10596469.
+  - Added a reference to apple_version[] in main.c .
+
+Changes for the 5.30 release (the cctools-815 release):
+- Changed print_relocs() in ofile_print.c so that for CPU_TYPE_X86_64 there are
+  never any scattered relocation types.  Radar bug #10347403.
+
+Changes for the 5.30 release (the cctools-814 release):
+- Fixed a bug in displacement() in i386_disasm.c where it was missing a case
+  for value_size of 4 to sign extend the 32-bit value to a 64-bit value when the
+  sign bit is set.  Radar bug #10193562.
+- Added support for new load commands LC_MAIN, LC_DATA_IN_CODE,
+  LC_SOURCE_VERSION and LC_DYLIB_CODE_SIGN_DRS with code added to
+  ofile_print.[ch] .  Radar bug #10290817.
+
+Changes for the 5.30 release (the cctools-813 release):
+- Added support for annotations with the arm llvm-mc disassembler.  Radar bug
+  #10026561.
+
+Changes for the 5.30 release (the cctools-812 release):
+- Fix the encoding of the arm sev.w instruction.  Radar bug #10133308.
+
+Changes for the 5.30 release (the cctools-811 release):
+- Changed the Makefile setting CXX to use c++ not g++.  Radar bug #10057952.
+
+Changes for the 5.30 release (the cctools-810 release):
+- Fixed print_cstring_section() to print the address base on if the cputype is
+  64-bit or 32-bit.  Radar bug #9957089.
+
 Changes for the 5.29 release (the cctools-803 release):
 - Added printing archive member offsets when -aV is specified.  Radar bug
   #9354605.

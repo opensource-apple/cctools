@@ -1,3 +1,31 @@
+Changes for the 5.30 release (the cctools-822 release):
+- The "low risk fix to strip(1)" below in cctools-821 for Radar bug #10718585
+  breaks striping .o files with dwarf debug info.  Because the input file has
+  an "ld -r" run on it so it is not the original input file.  That change has
+  been backed out.
+
+Changes for the 5.30 release (the cctools-821 release):
+- As part of a low risk fix to strip(1) to fix bugs when stripping objects with
+  code signature data, new field checkout_sym_info_size was added in the object
+  struct in "stuff/breakout.h" .  Radar bug #10718585.
+
+Changes for the 5.30 release (the cctools-817 release):
+- Changed the type of the n_strx field in the nlist struct in <mach-o/nlist.h>
+  to be uint32_t and not int32_t.  Radar bug #10464743.
+
+Changes for the 5.30 release (the cctools-814 release):
+- Added support for new load commands LC_MAIN, LC_DATA_IN_CODE,
+  LC_SOURCE_VERSION and LC_DYLIB_CODE_SIGN_DRS
+  - Added constants and structs to <mach-o/loader.h> .
+  - Added declarations of swap_entry_point_command() and
+    swap_source_version_command() to "stuff/bytesex.h" .
+  - Added fields for data_in_code and code_sign_drs commands plus info and size
+    to struct object in "stuff/breakout.h".
+  Radar bug #10290817.
+
+Changes for the 5.30 release (the cctools-813 release):
+- Updated llvm-c/Disassembler.h for LLVMSymbolLookupCallback References.
+
 Changes for the 5.27 release (the cctools-809 release):
 - Moved the declaration of is_llvm_bitcode() from "stuff/lto.h" to
   "stuff/ofile.h".  And added is_llvm_bitcode_from_memory() to "stuff/lto.h".

@@ -212,6 +212,10 @@ static void usage(
 static struct thin_file *new_blank_dylib(
     struct arch_flag *arch);
 
+/* apple_version is created by the libstuff/Makefile */
+extern char apple_version[];
+char *version = apple_version;
+
 int
 main(
 int argc,

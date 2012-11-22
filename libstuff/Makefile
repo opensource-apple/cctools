@@ -75,7 +75,7 @@ CFILES = allocate.c errors.c arch.c execute.c bytesex.c rnd.c hppa.c \
 	  vm_flush_cache.c hash_string.c dylib_roots.c guess_short_name.c \
 	  SymLoc.c get_arch_from_host.c crc32.c macosx_deployment_target.c \
 	  symbol_list.c unix_standard_mode.c lto.c llvm.c $(COFF_BYTESEX)
-OBJS = $(CFILES:.c=.o)
+OBJS = $(CFILES:.c=.o) apple_version.o
 INSTALL_FILES = $(CFILES) Makefile notes
 
 ifeq "$(OLD_LIBKLD)" "YES"
@@ -243,6 +243,10 @@ shlib: $(OBJROOT)/shlib_obj
 
 $(PRODUCT):	$(OFILE_DIR) $(SYMROOT) $(OBJS)
 	libtool -static -o $(SYMROOT)/$(PRODUCT) $(OBJS)
+
+apple_version.c:
+	echo "const char apple_version[]=" > $(OFILE_DIR)/$@
+	echo "\"cctools-$(RC_ProjectSourceVersion)\";" >> $(OFILE_DIR)/$@
 
 ifeq "NO" "$(USE_DEPENDENCY_FILE)"
 .c.o:

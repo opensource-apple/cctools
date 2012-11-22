@@ -2772,7 +2772,7 @@ uintptr_t value)
 	    return;
 	}
 	input_line_pointer ++;
-	if((size = get_absolute_expression()) < 0){
+	if((int)(size = get_absolute_expression()) < 0){
 	    as_bad("%s size (%lld.) <0! Ignored.", directive, size);
 	    ignore_rest_of_line();
 	    return;
@@ -4908,7 +4908,7 @@ uintptr_t value)
 	    demand_empty_rest_of_line();
 	    whole_file_name = find_an_include_file(filename);
 	    if(whole_file_name != NULL &&
-	       (fp = fopen(whole_file_name, "r+"))){
+	       (fp = fopen(whole_file_name, "r"))){
 		do{
 		    the_char = getc_unlocked(fp);
 		    if (the_char != -1){

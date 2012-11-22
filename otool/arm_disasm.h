@@ -60,7 +60,9 @@ extern uint32_t arm_disassemble(
     cpu_subtype_t cpu_subtype,
     enum bool verbose,
     LLVMDisasmContextRef arm_dc,
-    LLVMDisasmContextRef thumb_dc);
+    LLVMDisasmContextRef thumb_dc,
+    char *object_addr,
+    uint32_t object_size);
 
 extern LLVMDisasmContextRef create_arm_llvm_disassembler(void);
 extern LLVMDisasmContextRef create_thumb_llvm_disassembler(void);

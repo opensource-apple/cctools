@@ -951,7 +951,7 @@ void
 md_operand (expressionS * expr)
 {
   if (in_my_get_expression)
-    expr->X_op = O_illegal;
+    expr->X_op = (segT)O_illegal;
 }
 
 /* Register parsing.  */
@@ -7379,7 +7379,7 @@ encode_thumb32_addr_mode (int i, bfd_boolean is_t, bfd_boolean is_d)
   X(yield, bf10, f3af8001),			\
   X(wfe,   bf20, f3af8002),			\
   X(wfi,   bf30, f3af8003),			\
-  X(sev,   bf40, f3af9004), /* typo, 8004? */
+  X(sev,   bf40, f3af8004),
 
 /* To catch errors in encoding functions, the codes are all offset by
    0xF800, putting them in one of the 32-bit prefix ranges, ergo undefined
@@ -8910,7 +8910,8 @@ do_t_mul (void)
   if (unified_syntax && inst.instruction == T_MNEM_mul
       && (inst.cond == COND_ALWAYS || inst.operands[0].reg > 7
           || inst.operands[1].reg > 7 || inst.operands[2].reg > 7
-          || inst.operands[0].reg != inst.operands[2].reg))
+          || (inst.operands[0].reg != inst.operands[2].reg &&
+              inst.operands[0].reg != inst.operands[1].reg)))
 
     {
       inst.instruction = THUMB_OP32 (inst.instruction);
