@@ -653,8 +653,8 @@ static const struct opcode32 neon_opcodes[] =
   {FPU_NEON_EXT_V1, 0xf3b00200, 0xffb30f10, "vpaddl%c.%7?us%18-19S2\t%12-15,22R, %0-3,5R"},
   {FPU_NEON_EXT_V1, 0xf3b00600, 0xffb30f10, "vpadal%c.%7?us%18-19S2\t%12-15,22R, %0-3,5R"},
   {FPU_NEON_EXT_V1, 0xf3b30600, 0xffb30e10, "vcvt%c.%7-8?usff%18-19Sa.%7-8?ffus%18-19Sa\t%12-15,22R, %0-3,5R"},
-  {FPU_NEON_EXT_V1, 0xf3b60600, 0xffbf0fd0, "fcvtshp%c\t%12-15,22Q, %0-3,5D"},
-  {FPU_NEON_EXT_V1, 0xf3b60700, 0xffbf0fd0, "fcvthps%c\t%12-15,22D, %0-3,5Q"},
+  {FPU_NEON_EXT_V1, 0xf3b60700, 0xffbf0fd0, "fcvtshp%c\t%12-15,22Q, %0-3,5D"},
+  {FPU_NEON_EXT_V1, 0xf3b60600, 0xffbf0fd0, "fcvthps%c\t%12-15,22D, %0-3,5Q"},
 
   /* Three registers of the same length */
   {FPU_NEON_EXT_V1, 0xf2000110, 0xffb00f10, "vand%c\t%12-15,22R, %16-19,7R, %0-3,5R"},
@@ -740,10 +740,10 @@ static const struct opcode32 neon_opcodes[] =
   {FPU_NEON_EXT_V1, 0xf3880410, 0xffb80f90, "vsri%c.8\t%12-15,22R, %0-3,5R, #%16-18e"},
   {FPU_NEON_EXT_V1, 0xf3880510, 0xffb80f90, "vsli%c.8\t%12-15,22R, %0-3,5R, #%16-18d"},
   {FPU_NEON_EXT_V1, 0xf3880610, 0xffb80f90, "vqshlu%c.s8\t%12-15,22R, %0-3,5R, #%16-18d"},
-  {FPU_NEON_EXT_V1, 0xf2900810, 0xfeb00fd0, "vqshrun%c.s32\t%12-15,22D, %0-3,5Q, #%16-19e"},
-  {FPU_NEON_EXT_V1, 0xf2900850, 0xfeb00fd0, "vqrshrun%c.s32\t%12-15,22D, %0-3,5Q, #%16-19e"},
-  {FPU_NEON_EXT_V1, 0xf2900910, 0xfeb00fd0, "vqshrn%c.%24?us32\t%12-15,22D, %0-3,5Q, #%16-19e"},
-  {FPU_NEON_EXT_V1, 0xf2900950, 0xfeb00fd0, "vqrshrn%c.%24?us32\t%12-15,22D, %0-3,5Q, #%16-19e"},
+  {FPU_NEON_EXT_V1, 0xf2800810, 0xfe800fd0, "vqshrun%c.s32\t%12-15,22D, %0-3,5Q, #%16-19e"},
+  {FPU_NEON_EXT_V1, 0xf2800850, 0xfe800fd0, "vqrshrun%c.s32\t%12-15,22D, %0-3,5Q, #%16-19e"},
+  {FPU_NEON_EXT_V1, 0xf2800910, 0xfe800fd0, "vqshrn%c.%24?us32\t%12-15,22D, %0-3,5Q, #%16-19e"},
+  {FPU_NEON_EXT_V1, 0xf2800950, 0xfe800fd0, "vqrshrn%c.%24?us32\t%12-15,22D, %0-3,5Q, #%16-19e"},
   {FPU_NEON_EXT_V1, 0xf2900a10, 0xfeb00fd0, "vshll%c.%24?us16\t%12-15,22D, %0-3,5Q, #%16-19d"},
   {FPU_NEON_EXT_V1, 0xf2880010, 0xfeb80f90, "vshr%c.%24?us8\t%12-15,22R, %0-3,5R, #%16-18e"},
   {FPU_NEON_EXT_V1, 0xf2880110, 0xfeb80f90, "vsra%c.%24?us8\t%12-15,22R, %0-3,5R, #%16-18e"},
@@ -1130,12 +1130,12 @@ static const struct opcode32 arm_opcodes[] =
   {ARM_EXT_V1, 0x01a00060, 0x0def0060, "ror%20's%c\t%12-15r, %q"},
   {ARM_EXT_V1, 0x01c00000, 0x0de00000, "bic%20's%c\t%12-15r, %16-19r, %o"},
   {ARM_EXT_V1, 0x01e00000, 0x0de00000, "mvn%20's%c\t%12-15r, %o"},
-  {ARM_EXT_V1, 0x052d0004, 0x0fff0fff, "push%c\t{%12-15r}\t\t; (str%c %12-15r, %a)"},
+  {ARM_EXT_V1, 0x052d0004, 0x0fff0fff, "push%c\t{%12-15r}\t\t@ (str%c %12-15r, %a)"},
   {ARM_EXT_V1, 0x04000000, 0x0e100000, "str%22'b%t%c\t%12-15r, %a"},
   {ARM_EXT_V1, 0x06000000, 0x0e100ff0, "str%22'b%t%c\t%12-15r, %a"},
   {ARM_EXT_V1, 0x04000000, 0x0c100010, "str%22'b%t%c\t%12-15r, %a"},
   {ARM_EXT_V1, 0x06000010, 0x0e000010, "undefined"},
-  {ARM_EXT_V1, 0x049d0004, 0x0fff0fff, "pop%c\t{%12-15r}\t\t; (ldr%c %12-15r, %a)"},
+  {ARM_EXT_V1, 0x049d0004, 0x0fff0fff, "pop%c\t{%12-15r}\t\t@ (ldr%c %12-15r, %a)"},
   {ARM_EXT_V1, 0x04100000, 0x0c100000, "ldr%22'b%t%c\t%12-15r, %a"},
   {ARM_EXT_V1, 0x092d0000, 0x0fff0000, "push%c\t%m"},
   {ARM_EXT_V1, 0x08800000, 0x0ff00000, "stm%c\t%16-19r%21'!, %m%22'^"},
@@ -1165,7 +1165,7 @@ static const struct opcode32 arm_opcodes[] =
    %c			print the condition code
    %C			print the condition code, or "s" if not conditional
    %x			print warning if conditional an not at end of IT block"
-   %X			print "\t; unpredictable <IT:code>" if conditional
+   %X			print "\t@ unpredictable <IT:code>" if conditional
    %I			print IT instruction suffix and operands
    %<bitfield>r		print bitfield as an ARM register
    %<bitfield>Rc	print bitfield as an ARM register and follow it with
@@ -1330,7 +1330,7 @@ static const struct opcode16 thumb_opcodes[] =
        %P		print address for pli instruction.
        %c		print the condition code
        %x		print warning if conditional an not at end of IT block"
-       %X		print "\t; unpredictable <IT:code>" if conditional
+       %X		print "\t@ unpredictable <IT:code>" if conditional
 
        %<bitfield>d	print bitfield in decimal
        %<bitfield>W	print bitfield*4 in decimal
@@ -1845,7 +1845,7 @@ print_insn_coprocessor (bfd_vma pc, struct disassemble_info *info, int32_t given
 			func (stream, "]");
 			if (rn == 15)
 			  {
-			    func (stream, "\t; ");
+			    func (stream, "\t@ ");
                             /* FIXME: Unsure if info->bytes_per_chunk is the
                                right thing to use here.  */
 			    info->print_address_func (pc, offset + pc
@@ -2253,7 +2253,7 @@ print_arm_address (bfd_vma pc, struct disassemble_info *info, int32_t given)
 	  offset = pc + 8;
 	}
 
-      func (stream, "\t; ");
+      func (stream, "\t@ ");
       info->print_address_func (pc, offset, info);
     }
   else
@@ -2612,11 +2612,11 @@ print_insn_neon (struct disassemble_info *info, int32_t given, bfd_boolean thumb
                         switch (size)
                           {
                           case 8:
-			    func (stream, "#%ld\t; 0x%.2lx", value, value);
+			    func (stream, "#%ld\t@ 0x%.2lx", value, value);
                             break;
                           
                           case 16:
-                            func (stream, "#%ld\t; 0x%.4lx", value, value);
+                            func (stream, "#%ld\t@ 0x%.4lx", value, value);
                             break;
 
                           case 32:
@@ -2652,11 +2652,11 @@ print_insn_neon (struct disassemble_info *info, int32_t given, bfd_boolean thumb
 				    fvalue = f;
 				}
 #endif /* NOTYET */
-                                func (stream, "#%.7g\t; 0x%.8lx", fvalue,
+                                func (stream, "#%.7g\t@ 0x%.8lx", fvalue,
                                       value);
                               }
                             else
-                              func (stream, "#%ld\t; 0x%.8lx",
+                              func (stream, "#%ld\t@ 0x%.8lx",
 				(int32_t) ((value & 0x80000000)
 					? value | ~0xffffffffl : value), value);
                             break;
@@ -2840,7 +2840,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			  if ((given & 0x00800000) == 0)
 			    offset = -offset;
 
-			  func (stream, "[pc, #%d]\t; ", offset);
+			  func (stream, "[pc, #%d]\t@ ", offset);
 			  info->print_address_func (pc, offset + pc + 8, info);
 			}
 		      else
@@ -2939,7 +2939,7 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			  int immed = (given & 0xff);
 			  immed = (((immed << (32 - rotate))
 				    | (immed >> rotate)) & 0xffffffff);
-			  func (stream, "#%d\t; 0x%x", immed, immed);
+			  func (stream, "#%d\t@ 0x%x", immed, immed);
 			}
 		      else
 			arm_decode_shift (given, func, stream, 1);
@@ -3068,9 +3068,9 @@ print_insn_arm (bfd_vma pc, struct disassemble_info *info, int32_t given)
 			    /* Some SWI instructions have special
 			       meanings.  */
 			    if ((given & 0x0fffffff) == 0x0FF00000)
-			      func (stream, "\t; IMB");
+			      func (stream, "\t@ IMB");
 			    else if ((given & 0x0fffffff) == 0x0FF00001)
-			      func (stream, "\t; IMBRange");
+			      func (stream, "\t@ IMBRange");
 			    break;
 			  case 'X':
 			    func (stream, "%01lx", value & 0xf);
@@ -3198,12 +3198,12 @@ print_insn_thumb16 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 
 	      case 'x':
 		if (ifthen_next_state)
-		  func (stream, "\t; unpredictable branch in IT block\n");
+		  func (stream, "\t@ unpredictable branch in IT block\n");
 		break;
 
 	      case 'X':
 		if (ifthen_state)
-		  func (stream, "\t; unpredictable <IT:%s>",
+		  func (stream, "\t@ unpredictable <IT:%s>",
 			arm_conditional[IFTHEN_COND]);
 		break;
 
@@ -3466,12 +3466,12 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 
 	      case 'x':
 		if (ifthen_next_state)
-		  func (stream, "\t; unpredictable branch in IT block\n");
+		  func (stream, "\t@ unpredictable branch in IT block\n");
 		break;
 
 	      case 'X':
 		if (ifthen_state)
-		  func (stream, "\t; unpredictable <IT:%s>",
+		  func (stream, "\t@ unpredictable <IT:%s>",
 			arm_conditional[IFTHEN_COND]);
 		break;
 
@@ -3481,7 +3481,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		  imm12 |= (given & 0x000000ffu);
 		  imm12 |= (given & 0x00007000u) >> 4;
 		  imm12 |= (given & 0x04000000u) >> 15;
-		  func (stream, "#%u\t; 0x%x", imm12, imm12);
+		  func (stream, "#%u\t@ 0x%x", imm12, imm12);
 		}
 		break;
 
@@ -3504,7 +3504,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 		      imm8 = (bits & 0x07f) | 0x80;
 		      imm  = (((imm8 << (32 - mod)) | (imm8 >> mod)) & 0xffffffff);
 		    }
-		  func (stream, "#%u\t; 0x%x", imm, imm);
+		  func (stream, "#%u\t@ 0x%x", imm, imm);
 		}
 		break;
 		  
@@ -3637,7 +3637,7 @@ print_insn_thumb32 (bfd_vma pc, struct disassemble_info *info, int32_t given)
 
 		  if (Rn == 15)
 		    {
-		      func (stream, "\t; ");
+		      func (stream, "\t@ ");
 		      info->print_address_func(pc, ((pc+4) & ~3) +offset, info);
 		    }
 		}
@@ -4168,7 +4168,8 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
 	given = (b[3]) | (b[2] << 8) | (b[1] << 16) | (b[0] << 24);
 
       /* Print the raw data, too. */
-      info->fprintf_func (info->stream, "%08x\t", (unsigned int) given);
+      if(!Xflag)
+        info->fprintf_func (info->stream, "%08x\t", (unsigned int) given);
     }
   else
     {
@@ -4201,14 +4202,18 @@ print_insn (bfd_vma pc, struct disassemble_info *info, bfd_boolean little)
 		given = (b[1]) | (b[0] << 8) | (given << 16);
 
 	      /* Print the raw data, too. */
-	      info->fprintf_func (info->stream, "%08x\t", (unsigned int) given);
+	      if(!Xflag)
+	        info->fprintf_func (info->stream, "%08x\t",
+				    (unsigned int) given);
 
 	      printer = print_insn_thumb32;
 	      size = 4;
 	    }
 	  else
 	    /* Print the raw data, too. */
-	    info->fprintf_func (info->stream, "    %04x\t",(unsigned int)given);
+	    if(!Xflag)
+	      info->fprintf_func (info->stream, "    %04x\t",
+				  (unsigned int)given);
 	}
 
       if (ifthen_address != pc)
@@ -4312,7 +4317,7 @@ struct disassemble_info *info)
 		info->nindirect_symbols, info->symbols, NULL,
 		info->nsymbols, info->strings, info->strings_size);
 	if(indirect_symbol_name != NULL)
-	    fprintf(stream, "\t; symbol stub for: %s", indirect_symbol_name);
+	    fprintf(stream, "\t@ symbol stub for: %s", indirect_symbol_name);
     }
 }
 
@@ -4351,7 +4356,7 @@ struct disassemble_info *info)
 	r_length = 0;
 
 	if(info->verbose == FALSE){
-	    fprintf(stream, "#%u\t; 0x%x", value, value);
+	    fprintf(stream, "#%u\t@ 0x%x", value, value);
 	    return;
 	}
 	reloc_found = 0;

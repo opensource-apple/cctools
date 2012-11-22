@@ -5,6 +5,10 @@ Add flags for:
 Add support for:
 - Remove empty __IMPORT segment
 
+Changes for the 5.29 release (the cctools-800 release):
+- Added support for rewriting UUID of generated file with command line flag -u.
+  Radar bug #8946107.
+
 Changes for the 5.28 release (the cctools-795 release):
 - Added added more subsystem types to mtoc(1).  Radar bug #8492168.
 

@@ -98,7 +98,7 @@ HFILES = app.h as.h atof-ieee.h bignum.h expr.h fixes.h flonum.h frags.h \
 	 sparc-opcode.h arch64_32.h dwarf2dbg.h filenames.h arm_reloc.h
 
 CHECK_FILES = m68k-check.c m88k-check.c i860-check.c i386-check.c ppc-check.c \
-	      hppa-check.c sparc-check.c
+	      hppa-check.c sparc-check.c arm-check.c
 
 INSTALL_FILES = Makefile notes $(CFILES) $(CFILES_m68k) $(CFILES_m88k) \
 		$(CFILES_i860) $(CFILES_i386) $(CFILES_ppc) $(CFILES_hppa) \
@@ -346,6 +346,11 @@ aarm_build:	$(OBJROOT)/aarm_dir
 		RC_CFLAGS="$(RC_CFLAGS)" DEP_DIR=aarm_dir;		\
 	fi
 
+aarm_test: aarm_dir
+	cd aarm_dir; $(MAKE) -f ../Makefile arm-check VPATH=.. \
+		OFILE_DIR=. SRCROOT=.. COPTS="-DARM"
+	cd aarm_dir; $(MAKE) -f ../Makefile test
+
 driver:	driver.o apple_version.o
 	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/driver \
 		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o \
@@ -380,6 +385,9 @@ hppa-check:
 
 sparc-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../sparc-check.c
+
+arm-check:
+	$(CC) $(COPTS) $(CFLAGS) -o check ../arm-check.c
 
 test:
 	./check $(LLVM_MC) > check.s
@@ -438,12 +446,12 @@ xcommon_install:
 	$(MKDIRS) $(DSTROOT)/usr/local/OpenSourceLicenses/
 	install -c -s -m 444 $(SRCROOT)/COPYING \
 		$(DSTROOT)/usr/local/OpenSourceLicenses/cctools.txt
-	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/ppc
 	install -c -s -m 555 $(SYMROOT)/appc_dir/as \
-		$(DSTROOT)$(LIBDIR)/ppc/as
-	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc64
+		$(DSTROOT)$(LOCLIBDIR)/ppc/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/ppc64
 	install -c -s -m 555 $(SYMROOT)/appc64_dir/as \
-		$(DSTROOT)$(LIBDIR)/ppc64/as
+		$(DSTROOT)$(LOCLIBDIR)/ppc64/as
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/m68k
 	install -c -s -m 555 $(SYMROOT)/a68_dir/as \
 		$(DSTROOT)$(LOCLIBDIR)/m68k/as

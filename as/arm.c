@@ -1,3 +1,5 @@
+#ifndef INSNS_TABLE_ONLY
+
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -184,6 +186,8 @@ static arm_feature_set cpu_variant /* HACK */ = ARM_FEATURE (ARM_AEXT_V4T, FPU_F
 static arm_feature_set arm_arch_used;
 static arm_feature_set thumb_arch_used;
 
+#endif /* INSNS_TABLE_ONLY */
+
 /* Constants for known architecture features.  */
 static const arm_feature_set fpu_arch_vfp_v1 = FPU_ARCH_VFP_V1;
 static const arm_feature_set fpu_arch_vfp_v2 = FPU_ARCH_VFP_V2;
@@ -243,6 +247,8 @@ static const arm_feature_set fpu_neon_ext_v1 = ARM_FEATURE (0, FPU_NEON_EXT_V1);
 static const arm_feature_set fpu_vfp_v3_or_neon_ext =
   ARM_FEATURE (0, FPU_NEON_EXT_V1 | FPU_VFP_EXT_V3);
 
+#ifndef INSNS_TABLE_ONLY
+
 /* Prefix characters that indicate the start of an immediate
    value.  */
 #define is_immediate_prefix(C) ((C) == '#' || (C) == '$')
@@ -295,7 +301,11 @@ struct neon_type_el
   unsigned size;
 };
 
+#endif /* INSNS_TABLE_ONLY */
+
 #define NEON_MAX_TYPE_ELS 4
+
+#ifndef INSNS_TABLE_ONLY
 
 struct neon_type
 {
@@ -516,6 +526,8 @@ const char *const reg_expected_msgs[] =
    take 2:  */
 #define INSN_SIZE	4
 
+#endif /* INSNS_TABLE_ONLY */
+
 struct asm_opcode
 {
   /* Basic string to match.  */
@@ -543,6 +555,8 @@ struct asm_opcode
   /* Function to call to encode instruction in Thumb format.  */
   void (* tencode) (void);
 };
+
+#ifndef INSNS_TABLE_ONLY
 
 /* Defines for various bits that we will want to toggle.  */
 #define INST_IMMEDIATE	0x02000000
@@ -4295,6 +4309,8 @@ parse_neon_mov (char **str, int *which_operand)
   return FAIL;
 }
 
+#endif /* INSNS_TABLE_ONLY */
+
 /* Matcher codes for parse_operands.  */
 enum operand_parse_code
 {
@@ -4415,6 +4431,8 @@ enum operand_parse_code
 
   OP_FIRST_OPTIONAL = OP_oI7b
 };
+
+#ifndef INSNS_TABLE_ONLY
 
 /* Generic instruction operand parser.	This does no encoding and no
    semantic validation; it merely squirrels values away in the inst
@@ -7276,6 +7294,8 @@ encode_thumb32_addr_mode (int i, bfd_boolean is_t, bfd_boolean is_d)
     inst.error = _("instruction does not accept unindexed addressing");
 }
 
+#endif /* INSNS_TABLE_ONLY */
+
 /* Table of Thumb instructions which exist in both 16- and 32-bit
    encodings (the latter only in post-V6T2 cores).  The index is the
    value used in the insns table below.  When there is more than one
@@ -7380,6 +7400,8 @@ static const unsigned int thumb_op32[] = { T16_32_TAB };
 #undef X
 #undef T16_32_TAB
 
+#ifndef INSNS_TABLE_ONLY
+
 /* Thumb instruction encoders, in alphabetical order.  */
 
 /* ADDW or SUBW.  */
@@ -7449,6 +7471,8 @@ do_t_add_sub (void)
 		{
 		  inst.instruction = THUMB_OP16(opcode);
 		  inst.instruction |= (Rd << 4) | Rs;
+	  	  inst.instruction |= (inst.operands[1].present
+				       ? 0x0100 : 0x0000);
 		  inst.reloc.type = BFD_RELOC_ARM_THUMB_ADD;
 		  if (inst.size_req != 2)
 		    inst.relax = opcode;
@@ -7557,6 +7581,8 @@ do_t_add_sub (void)
 	  inst.instruction = (inst.instruction == T_MNEM_add
 			      ? 0x0000 : 0x8000);
 	  inst.instruction |= (Rd << 4) | Rs;
+	  inst.instruction |= (inst.operands[1].present
+			       ? 0x0100 : 0x0000);
 	  inst.reloc.type = BFD_RELOC_ARM_THUMB_ADD;
 	  return;
 	}
@@ -8762,7 +8788,8 @@ do_t_mvn_tst (void)
 	narrow = FALSE;
       else if (inst.instruction == T_MNEM_cmn)
 	narrow = TRUE;
-      else if (THUMB_SETS_FLAGS (inst.instruction))
+      else if (THUMB_SETS_FLAGS (inst.instruction)
+               && (inst.cond == COND_ALWAYS || inst.instruction != T_MNEM_tst))
 	narrow = (current_it_mask == 0);
       else
 	narrow = (current_it_mask != 0);
@@ -8879,8 +8906,12 @@ do_t_mul (void)
   if (!inst.operands[2].present)
     inst.operands[2].reg = inst.operands[0].reg;
 
-  /* There is no 32-bit MULS and no 16-bit MUL. */
-  if (unified_syntax && inst.instruction == T_MNEM_mul)
+  /* There is no 32-bit MULS and no unconditional 16-bit MUL. */
+  if (unified_syntax && inst.instruction == T_MNEM_mul
+      && (inst.cond == COND_ALWAYS || inst.operands[0].reg > 7
+          || inst.operands[1].reg > 7 || inst.operands[2].reg > 7
+          || inst.operands[0].reg != inst.operands[2].reg))
+
     {
       inst.instruction = THUMB_OP32 (inst.instruction);
       inst.instruction |= inst.operands[0].reg << 8;
@@ -9482,6 +9513,8 @@ do_t_usat16 (void)
   inst.instruction |= inst.operands[2].reg << 16;
 }
 
+#endif /* INSNS_TABLE_ONLY */
+
 /* Neon instruction encoder helpers.  */
   
 /* Encodings for the different types for various Neon opcodes.  */
@@ -9672,6 +9705,8 @@ enum neon_shape_class
 
 #define X(N, L, C) SC_##C
 
+#ifndef INSNS_TABLE_ONLY
+
 static enum neon_shape_class neon_shape_class[] =
 {
   NEON_SHAPE_DEF
@@ -9723,6 +9758,8 @@ static struct neon_shape_info neon_shape_tab[] =
 #undef S2
 #undef S3
 #undef S4
+
+#endif /* INSNS_TABLE_ONLY */
 
 /* Bit masks used in type checking given instructions.
   'N_EQK' means the type must be the same as (or based on in some way) the key
@@ -9779,6 +9816,8 @@ enum neon_type_mask
 /* Pass this as the first type argument to neon_check_type to ignore types
    altogether.  */
 #define N_IGNORE_TYPE (N_KEY | N_EQK)
+
+#ifndef INSNS_TABLE_ONLY
 
 /* Select a "shape" for the current instruction (describing register types or
    sizes) from a list of alternatives. Return NS_NULL if the current instruction
@@ -13083,6 +13122,8 @@ output_inst (const char * str)
   dwarf2_emit_insn (inst.size);
 }
 
+#endif /* INSNS_TABLE_ONLY */
+
 /* Tag values used in struct asm_opcode's tag field.  */
 enum opcode_tag
 {
@@ -13116,6 +13157,8 @@ enum opcode_tag
 			   (tag - OT_odd_infix_0).  These are not accepted
 			   in unified mode.  */
 };
+
+#ifndef INSNS_TABLE_ONLY
 
 /* Subroutine of md_assemble, responsible for looking up the primary
    opcode from the mnemonic the user wrote.  STR points to the
@@ -13882,6 +13925,8 @@ static struct asm_barrier_opt barrier_opt_names[] =
   { "osh",  0x3 },
   { "oshst",0x2 }
 };
+
+#endif /* INSNS_TABLE_ONLY */
 
 /* Table of ARM-format instructions.	*/
 
@@ -15042,8 +15087,8 @@ static const struct asm_opcode insns[] =
  cCE(ftosizd,	ebd0bc0, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
  cCE(ftouid,	ebc0b40, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
  cCE(ftouizd,	ebc0bc0, 2, (RVS, RVD),	      vfp_sp_dp_cvt),
- cCE(fcvtshp,	0b60600, 2, (RNQ, RVD),	      vfp_sp_hp_cvt),
- cCE(fcvthps,	0b60700, 2, (RVD, RNQ),	      vfp_hp_sp_cvt),
+ cCE(fcvtshp,	0b60700, 2, (RNQ, RVD),	      vfp_sp_hp_cvt),
+ cCE(fcvthps,	0b60600, 2, (RVD, RNQ),	      vfp_hp_sp_cvt),
  cCE(fcvttshp,	eb30ac0, 2, (RVS, RVS),	      vfp_t_sp_hp_cvt),
  cCE(fcvtbshp,	eb30a40, 2, (RVS, RVS),	      vfp_b_sp_hp_cvt),
  cCE(fcvtthps,	eb20ac0, 2, (RVS, RVS),	      vfp_t_hp_sp_cvt),
@@ -15748,6 +15793,9 @@ static const struct asm_opcode insns[] =
 #undef OPS6
 #undef do_0
 
+
+#ifndef INSNS_TABLE_ONLY
+
 /* MD interface: bits in the object file.  */
 
 /* Turn an integer of n bytes (in val) into a stream of bytes appropriate
@@ -16747,7 +16795,7 @@ md_apply_fix (fixS *	fixP,
 	  && (newimm = negate_data_op (&temp, value)) == (unsigned int) FAIL)
 	{
 	  as_bad_where (fixP->fx_file, fixP->fx_line,
-			_("invalid constant (%x) after fixup"),
+			_("invalid constant (0x%x) after fixup"),
 			(uint32_t) value);
 	  break;
 	}
@@ -17061,7 +17109,7 @@ md_apply_fix (fixS *	fixP,
       if (newimm == (unsigned int)FAIL)
 	{
 	  as_bad_where (fixP->fx_file, fixP->fx_line,
-			_("invalid constant (%x) after fixup"),
+			_("invalid constant (0x%x) after fixup"),
 			(uint32_t) value);
 	  break;
 	}
@@ -17526,6 +17574,7 @@ md_apply_fix (fixS *	fixP,
 	 instruction field:
 
 	   0x8000  SUB
+	   0x0100  second operand was present in assembly code
 	   0x00F0  Rd
 	   0x000F  Rs
       */
@@ -17534,6 +17583,7 @@ md_apply_fix (fixS *	fixP,
 	int rd = (newval >> 4) & 0xf;
 	int rs = newval & 0xf;
 	int subtract = !!(newval & 0x8000);
+	int two_operand = !!(newval & 0x0100);
 
 	/* Check for HI regs, only very restricted cases allowed:
 	   Adjusting SP, and using PC or SP to get an address.	*/
@@ -17570,7 +17620,7 @@ md_apply_fix (fixS *	fixP,
 	    newval |= rd << 8;
 	    newval |= value >> 2;
 	  }
-	else if (rs == rd)
+	else if ((rs == rd) && (!two_operand || (value & ~0x7)))
 	  {
 	    if (value & ~0xff)
 	      as_bad_where (fixP->fx_file, fixP->fx_line,
@@ -18378,3 +18428,4 @@ int nsect)
 	  }
 	}
 }
+#endif /* INSNS_TABLE_ONLY */

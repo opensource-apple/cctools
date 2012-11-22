@@ -214,8 +214,10 @@ struct nlist_64 {
  * determined by the static link editor.  Which library an undefined symbol is
  * bound to is recorded by the static linker in the high 8 bits of the n_desc
  * field using the SET_LIBRARY_ORDINAL macro below.  The ordinal recorded
- * references the libraries listed in the Mach-O's LC_LOAD_DYLIB load commands
- * in the order they appear in the headers.   The library ordinals start from 1.
+ * references the libraries listed in the Mach-O's LC_LOAD_DYLIB,
+ * LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB, LC_LOAD_UPWARD_DYLIB, and
+ * LC_LAZY_LOAD_DYLIB, etc. load commands in the order they appear in the
+ * headers.   The library ordinals start from 1.
  * For a dynamic library that is built as a two-level namespace image the
  * undefined references from module defined in another use the same nlist struct
  * an in that case SELF_LIBRARY_ORDINAL is used as the library ordinal.  For

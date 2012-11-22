@@ -288,6 +288,8 @@ struct load_command {
 #define LC_VERSION_MIN_MACOSX 0x24   /* build for MacOSX min OS version */
 #define LC_VERSION_MIN_IPHONEOS 0x25 /* build for iPhoneOS min OS version */
 #define LC_FUNCTION_STARTS 0x26 /* compressed table of function start addresses */
+#define LC_DYLD_ENVIRONMENT 0x27 /* string for dyld to treat
+				    like environment variable */
 
 /*
  * A variable length string in a load command is represented by an lc_str
@@ -737,9 +739,12 @@ struct prebound_dylib_command {
  * the name of the dynamic linker (LC_LOAD_DYLINKER).  And a dynamic linker
  * contains a dylinker_command to identify the dynamic linker (LC_ID_DYLINKER).
  * A file can have at most one of these.
+ * This struct is also used for the LC_DYLD_ENVIRONMENT load command and
+ * contains string for dyld to treat like environment variable.
  */
 struct dylinker_command {
-	uint32_t	cmd;		/* LC_ID_DYLINKER or LC_LOAD_DYLINKER */
+	uint32_t	cmd;		/* LC_ID_DYLINKER, LC_LOAD_DYLINKER or
+					   LC_DYLD_ENVIRONMENT */
 	uint32_t	cmdsize;	/* includes pathname string */
 	union lc_str    name;		/* dynamic linker's path name */
 };

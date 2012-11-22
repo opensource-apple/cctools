@@ -87,7 +87,11 @@ static char *Mem8_table[] = { "0x88888888", NULL };
 static char *Mem16_table[] = { "0x1616", NULL };
 static char *Mem32_table[] = { "0x32323232", NULL };
 */
+#ifdef ARCH64
+static char *BaseIndex_table[] = { "0xdeadbeef(%rbx,%rcx,8)", NULL };
+#else
 static char *BaseIndex_table[] = { "0xdeadbeef(%ebx,%ecx,8)", NULL };
+#endif
 static char *InOutPortReg_table[] = { "%dx", NULL };
 static char *ShiftCount_table[] = { "%cl", NULL };
 static char *Control_table[] = { "%cr0", NULL };

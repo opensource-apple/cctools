@@ -443,6 +443,7 @@ static void s_secure_log_unique(uintptr_t value);
 static void s_secure_log_reset(uintptr_t value);
 static void s_inlineasm(uintptr_t value);
 static void s_leb128(uintptr_t sign);
+static void s_incbin(uintptr_t value);
 
 #ifdef PPC
 /*
@@ -526,6 +527,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "machine",	s_machine,	0	},
   { "inlineasmstart",	s_inlineasm,	1	},
   { "inlineasmend",	s_inlineasm,	0	},
+  { "incbin",	s_incbin,	0	},
   { NULL }	/* end sentinel */
 };
 
@@ -4882,6 +4884,40 @@ uintptr_t value)
 	    }
 	}
 	demand_empty_rest_of_line();
+}
+
+/*
+ * s_incbin() implements the pseudo op:
+ *	.incbin "filename"
+ */
+static
+void
+s_incbin(
+uintptr_t value)
+{
+    char *filename, *whole_file_name, *p;
+    int length;
+    FILE *fp;
+    int the_char;
+
+	/* Some assemblers tolerate immediately following '"' */
+	if((filename = demand_copy_string( & length ) )) {
+	    demand_empty_rest_of_line();
+	    whole_file_name = find_an_include_file(filename);
+	    if(whole_file_name != NULL &&
+	       (fp = fopen(whole_file_name, "r+"))){
+		do{
+		    the_char = getc_unlocked(fp);
+		    if (the_char != -1){
+	    		p = frag_more(1);
+			*p = the_char;
+		    }
+		}while(the_char != -1);
+		fclose(fp);
+		return;
+	    }
+	    as_fatal("Couldn't find the .incbin file: \"%s\"", filename);
+	}
 }
 
 #ifdef SPARC

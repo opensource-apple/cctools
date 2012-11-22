@@ -5,6 +5,19 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.28 release (the cctools-799 release):
+- Changed is_llvm_bitcode() in lto.c to check for a filesize of zero and just
+  return since the libLTO API's will crash it handed a empty file.  Radar bug
+  #8628314.
+
+Changes for the 5.28 release (the cctools-798 release):
+- Changed is_llvm_bitcode() in lto.c to first call
+  lto_module_is_object_file_in_memory().  Radar bug #8628314.
+
+Changes for the 5.28 release (the cctools-797 release):
+- Added support for LC_DYLD_ENVIRONMENT in swap_headers.c and ofile.c .
+  Radar bug #8653976.
+
 Changes for the 5.28 release (the cctools-795 release):
 - Fixed symbol_string_at_end() to allow for a the codesign data at the end of
   the file before the string table.  Radar bug #8308587.
@@ -287,6 +300,12 @@ Changes for the 5.25 release (the cctools-698 release):
       ofile .  They also clear the new lto* fields in the ofile.
 
 Changes for the 5.25 release (the cctools-697 release):
+- Changed the sources so the armv7 stuff is not in the open source version.
+  Radar bug #5844124.
+  - Changed the Makefile to add the OPEN macro as -D__OPEN_SOURCE__ and added it
+    to the CFLAGS.
+  - Added #ifndef __OPEN_SOURCE__ to arch.c and best_arch.c to bracket armv7
+    references.
 
 Changes for the 5.25 release (the cctools-696 release):
 - Changed the Makefile to use -iwithsysroot as part of the KERN flags.
@@ -312,6 +331,7 @@ Changes for the 5.25 release (the cctools-679.4 and cctools-686 releases):
 Changes for the 5.25 release (the cctools-682 release):
 - Changed get_macosx_deployment_target() in macosx_deployment_target.c under the
   label bad_system_value to use 10.6 as the highest know shipping version.
+- Updated the logic in cpusubtype_combine() in best_arch.c to include armv7.
 
 Changes for the 5.25 release (the cctools-681 release):
 - Removed all __OPEN_SOURCE__ references in: Makefile, notes, arch.c,
@@ -319,6 +339,8 @@ Changes for the 5.25 release (the cctools-681 release):
   swap_headers.c .
 
 Changes for the 5.25 release (the cctools-680 release):
+- Added support for ARMv7. Radar bug #5490815.
+  - Added "arm7" to arch_flags[] in arch.c .
 
 Changes for the 5.25 release (the cctools-678 release):
 - Added swap_ms_dos_stub(), swap_filehdr(), swap_aouthdr(), swap_scnhdr() and

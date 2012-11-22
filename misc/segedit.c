@@ -628,6 +628,7 @@ replace_sections(void)
 	    case LC_ID_DYLIB:
 	    case LC_LOAD_DYLINKER:
 	    case LC_ID_DYLINKER:
+	    case LC_DYLD_ENVIRONMENT:
 		break;
 	    default:
 		error("unknown load command %u (result maybe bad)", i);

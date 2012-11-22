@@ -3089,7 +3089,16 @@ enum bool llvm_mc)
 	case OA:
 	    if((cputype & CPU_ARCH_ABI64) == CPU_ARCH_ABI64){
 		value0_size = OPSIZE(addr16, LONGOPERAND, 1);
-		strcpy(mnemonic, "movabsl");
+		if(opcode1 == 0xa && opcode2 == 0x0)
+		    strcpy(mnemonic, "movabsb");
+		else if(opcode1 == 0xa && opcode2 == 0x1){
+		    if(rex != 0)
+			strcpy(mnemonic, "movabsq");
+		    else if(data16 == TRUE)
+			strcpy(mnemonic, "movabsw");
+		    else
+			strcpy(mnemonic, "movabsl");
+		}
 	    }
 	    else
 		value0_size = OPSIZE(addr16, LONGOPERAND, 0);
@@ -3105,7 +3114,16 @@ enum bool llvm_mc)
 	case AO:
 	    if((cputype & CPU_ARCH_ABI64) == CPU_ARCH_ABI64){
 		value0_size = OPSIZE(addr16, LONGOPERAND, 1);
-		strcpy(mnemonic, "movabsl");
+		if(opcode1 == 0xa && opcode2 == 0x2)
+		    strcpy(mnemonic, "movabsb");
+		else if(opcode1 == 0xa && opcode2 == 0x3){
+		    if(rex != 0)
+			strcpy(mnemonic, "movabsq");
+		    else if(data16 == TRUE)
+			strcpy(mnemonic, "movabsw");
+		    else
+			strcpy(mnemonic, "movabsl");
+		}
 	    }
 	    else
 		value0_size = OPSIZE(addr16, LONGOPERAND, 0);
@@ -4010,6 +4028,8 @@ const enum bool verbose)
 	else if(*symsub != NULL){
 	    *value = offset;
 	}
+	if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64)
+	    *value = *value & 0x00000000ffffffffULL;
 }
 
 /*

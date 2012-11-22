@@ -1,21 +1,21 @@
 <HTML>
-<!--This file created 9/8/10 1:22 PM by Claris Home Page version 3.0-->
+<!--This file created 2/7/11 2:02 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=88 BOTTOM=1082 LEFT=263 RIGHT=843>
+   <X-CLARIS-WINDOW TOP=62 BOTTOM=966 LEFT=685 RIGHT=1265>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 3.2.3 Developer Release Copyright
-2010 by Apple, Inc. All Rights Reserved.</FONT></P>
+<P><FONT SIZE="-1">Mac OS X Xcode 4.1 Developer Release Copyright
+2011 by Apple, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 3.2.3 Developer Release:<BR>
-Compiler Tools (cctools-795)</H2>
+<H2>Private Mac OS X Xcode 4.1 Developer Release:<BR>
+Compiler Tools (cctools-800)</H2>
 
-<P>This file contains release notes for the 5.28 release of the
-Compiler Tools for the Mac OS X Xcode 3.2.3 Developer Release. This
+<P>This file contains release notes for the 5.29 release of the
+Compiler Tools for the Mac OS X Xcode 4.1 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -27,39 +27,138 @@ file contains information about the following topics:</P>
    on)&nbsp;</LI>
 </UL>
 
+<H2>Notes Specific to Release 5.29 (Mac OS X Xcode 4.1 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-799 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the .incbin directive to the assembler. Radar bug
+   #8945167.</LI>
+   
+   <LI>Changed mtoc(1) to add support for rewriting UUID of generated
+   file with command line flag. Radar bug #8946107</LI>
+   
+   <LI>Updated the comments in &lt;mach-o/nlist.h&gt; about
+   GET_LIBRARY_ORDINAL. Radar bug #8723078.</LI>
+   
+   <LI>Remove cctools support for PowerPC. Radar bug #8828970.</LI>
+</UL>
+
 <H2>Notes Specific to Release 5.28 (Mac OS X Xcode 3.2.3 Developer
 Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-798 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a problem the handling of empty file that are being
+   tested as bit code files. Radar bug #8628314.</LI>
+   
+   <LI>Changed the encoding of the arm thumb1 adds instruction to use
+   the preferred encoding. Radar bug #8756030.</LI>
+   
+   <LI>Fixed the handling of the arm thumb2 tst instruction
+   mishandled to correctly be allowed in IT blocks when allowed.
+   Radar bug #8783763.</LI>
+   
+   <LI>Changed the assembler when assembling with -g to not put out
+   dwarf line tables for sections other than the .text section. Radar
+   bug #8792738.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-797 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the handling of llvm bit code files in hope of making
+   it more robust in dealing with malformed IR in the file. Radar bug
+   #8628314.</LI>
+   
+   <LI>Changed the way the project build its C++ file to use the
+   correct compiler from the platform. Radar #8684965.</LI>
+   
+   <LI>Fixed the arm mulle.w instruction encoding to match llvm-mc.
+   Radar bug #8755919.</LI>
+   
+   <LI>Fixed a confusing error message in the arm assembler for out
+   of range ADR.w operand. Radar bug #8772178.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-796 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in as(1) when -g was used on files without symbols
+   in the .text section that could casue dsymutil(1) to crash. Radar
+   bug #8154276.</LI>
+   
+   <LI>Added support for the LC_DYLD_ENVIRONMENT load command. Radar
+   bug #8653976.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-795 for
+the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Added the -arch option to pagestuff(1). Radar bug
+   #8379048.</LI>
+   
+   <LI>Fixed otool(1)'s disassmbly of 32-bit intel displacements to
+   not show more than 32-bits. Radar bug #8454529.</LI>
+   
+   <LI>Added the OpenSourceURL key to cctools.plist to fix the
+   verification errors. Radar bug #8569655.</LI>
+   
+   <LI>Fixed otool(1) arm disassembler to disassemble vqshrn.s64 and
+   friends. Radar bug #8597212.</LI>
+   
+   <LI>Changed strings(1) and added checks to better protect against
+   crashes if it is handed a malformed file. Radar bug #8599283.</LI>
+   
+   <LI>Updated otool(1)'s man page for the -L option to include that
+   it also prints the shared library ID. Radar bug #7885069.</LI>
+   
+   <LI>Changed the Intel 64-bit assembler to allow 32-bit relocable
+   immediates expression of the subtraction of two symbols. Radar bug
+   #7081262.</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-794 for
 the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
 
 <UL>
-   <LI>Fixed cft_insert(1) so it will allow an LC_FUNCTION_STARTS load command
-   in the binary it operates on.  Radar bug #8490836.</LI>
+   <LI>Fixed cft_insert(1) so it will allow an LC_FUNCTION_STARTS
+   load command in the binary it operates on. Radar bug
+   #8490836.</LI>
    
-   <LI>Added more subsystem types to mtoc(1).  Radar bug #8492168.</LI>
-
-   <LI>Fixed codesign_allocate() so it can resign a the mach_kernel.
+   <LI>Added more subsystem types to mtoc(1). Radar bug
+   #8492168.</LI>
+   
+   <LI>Fixed codesign_allocate(1) so it can resign a the mach_kernel.
    Radar bug #8308587.</LI>
-
-   <LI>Fixed otool(1) correctly disassemble the intel movslq instruction when
-   the source is %r13d.  Radar bug #8325388.</LI>
-
-   <LI>Added a check to the assembler so it will correctly detect an error
-   when trying to encode a scattered relocation entry that overflows the 24-bit
-   section offset field.  Radar bug #8348673.</LI>
+   
+   <LI>Fixed otool(1) correctly disassemble the intel movslq
+   instruction when the source is %r13d. Radar bug #8325388.</LI>
+   
+   <LI>Added a check to the assembler so it will correctly detect an
+   error when trying to encode a scattered relocation entry that
+   overflows the 24-bit section offset field. Radar bug
+   #8348673.</LI>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-793 for
 the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
 
 <UL>
-   <LI>Fixed another bug in as(1) with -g and producing dwarf debugging
-   information for assembly source files.  Which was missing the NULL DIE
-   terminating the Compile Unit DIE's.  Radar bug #8453745.</LI>
+   <LI>Fixed another bug in as(1) with -g and producing dwarf
+   debugging information for assembly source files. Which was missing
+   the NULL DIE terminating the Compile Unit DIE's. Radar bug
+   #8453745.</LI>
    
-   <LI>Added MH_NO_HEAP_EXECUTION to <mach-o/loader.h> and support for
-   printing the flag in otool(1).  Radar bug #8457105.</LI>
+   <LI>Added MH_NO_HEAP_EXECUTION to and support for printing the
+   flag in otool(1). Radar bug #8457105.</LI>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-792 for
@@ -67,11 +166,12 @@ the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed bugs in as(1) with -g and producing dwarf debugging
-   information for assembly source files.  Radar bugs #8387908 and
+   information for assembly source files. Radar bugs #8387908 and
    #8425965.</LI>
    
-   <LI>Fixed a bug in nm(1) with the -m option that incorrectly showed
-   some undefined symbols as [symbol resolver]. Radar bug #8429570.</LI>
+   <LI>Fixed a bug in nm(1) with the -m option that incorrectly
+   showed some undefined symbols as &#91;symbol resolver&#93;. Radar
+   bug #8429570.</LI>
 </UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-791 for

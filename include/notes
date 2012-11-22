@@ -1,3 +1,10 @@
+Changes for the 5.27 release (the cctools-800 release):
+- Updated comment in <mach-o/loader.h> before GET_LIBRARY_ORDINAL to include
+  other dynamic library load commands.  Radar bug #8723078.
+
+Changes for the 5.27 release (the cctools-797 release):
+- Added LC_DYLD_ENVIRONMENT to <mach-o/loader.h> .  Radar bug #8653976.
+
 Changes for the 5.27 release (the cctools-794 release):
 - Added MH_NO_HEAP_EXECUTION to <mach-o/loader.h> .  Radar bug #8457105.
 

@@ -404,30 +404,11 @@ char *filename)
 
 #ifdef NeXT_MOD	/* .include feature */
 /* DJA -- added for .include pseudo op support */
-void
-read_an_include_file(
+char *
+find_an_include_file(
 char *no_path_name)
 {
-  char		      			* buffer;
-  char		      			* last_buffer_limit;
-  char	   	      			* last_buffer_start;
-  int					  last_doing_include;
-  FILE	  	      			* last_f_in;
-  char	  	      			* last_file_name;
-  char		      			* last_input_line_pointer;
-  char	   	      			* last_logical_input_file;
-  line_numberT				  last_logical_input_line;
-  int	 				  last_partial_size;
-  char	  	      			* last_partial_where;
-  char	 	      			* last_physical_input_file;
-  line_numberT				  last_physical_input_line;
-  char	 				  last_save_source [AFTER_SIZE];
-  int					  last_buffer_length;
-#if 0
-  char					* last_save_buffer;
-#endif
   char					  name_buffer [MAXPATHLEN];
-  scrub_context_data			  scrub_context;
   register struct directory_stack	* the_path_pointer;
   register char				* whole_file_name;
 
@@ -483,9 +464,42 @@ char *no_path_name)
 	  the_path_pointer++;
 	}
       as_fatal ("Couldn't find the include file: \"%s\"", no_path_name);
-      return;
+      return (NULL);
     }
 found:
+  return (whole_file_name);
+}
+
+void
+read_an_include_file(
+char *no_path_name)
+{
+  char		      			* buffer;
+  char		      			* last_buffer_limit;
+  char	   	      			* last_buffer_start;
+  int					  last_doing_include;
+  FILE	  	      			* last_f_in;
+  char	  	      			* last_file_name;
+  char		      			* last_input_line_pointer;
+  char	   	      			* last_logical_input_file;
+  line_numberT				  last_logical_input_line;
+  int	 				  last_partial_size;
+  char	  	      			* last_partial_where;
+  char	 	      			* last_physical_input_file;
+  line_numberT				  last_physical_input_line;
+  char	 				  last_save_source [AFTER_SIZE];
+  int					  last_buffer_length;
+#if 0
+  char					* last_save_buffer;
+#endif
+  scrub_context_data			  scrub_context;
+  register char				* whole_file_name;
+
+ /*
+  * figure out what directory the file name is in.
+  */
+  whole_file_name = find_an_include_file (no_path_name);
+
  /*
   * save a copy of the file state for a recursive call to read a file
   */

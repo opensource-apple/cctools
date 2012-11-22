@@ -8,6 +8,7 @@ X_CFLAGS =
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  CXX = $(shell xcrun -find -sdk $(SDKROOT) g++)
 endif
 ifeq "clang" "$(notdir $(CC))"
   CFLAGS = $(OFLAG) $(LTO) $(TRIE) -g -Wall -Wno-format-nonliteral \

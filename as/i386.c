@@ -4045,6 +4045,27 @@ output_imm (insn_start_frag, insn_start_off)
 			 i.op[n].imms->X_subtract_symbol,
 			 i.op[n].imms->X_add_number, 0, 0, 0);
 #else
+#ifdef NeXT_MOD
+	      /*
+	       * For the x86_64 architecure on Mac OS X it is possible to
+	       * encode a signed 32-bit expression of the form:
+	       *	"add_symbol - subtract_symbol + number" 
+	       * using two relocation entries pointing at the same 32-bits.
+	       * The first one has to be a X86_64_RELOC_SUBTRACTOR then must
+	       * be followed by a X86_64_RELOC_UNSIGNED.
+	       */
+              if(size == 4 && sign == 1 &&
+		 i.reloc[n] == NO_RELOC &&
+		 i.op[n].imms->X_add_symbol != NULL &&
+		 i.op[n].imms->X_subtract_symbol != NULL){
+		  fix_new (frag_now, p - frag_now->fr_literal, size,
+		           i.op[n].imms->X_add_symbol,
+			   i.op[n].imms->X_subtract_symbol,
+		           i.op[n].imms->X_add_number, 0, 0,
+			   X86_64_RELOC_UNSIGNED);
+		  return;
+	      }
+#endif /* NeXT_MOD */
 	      reloc_type = reloc (size, 0, sign, i.reloc[n]);
 
 #ifndef NeXT_MOD

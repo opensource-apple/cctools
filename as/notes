@@ -25,6 +25,65 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.29 release (the cctools-800 release):
+- Fixed the arm VCVT (between half-precision and single-precision) instructions
+  encodings.  Had the op bit inverted in the table.  It should have been:
+    VCVT<c><q>.F32.F16 <Qd>, <Dm> Encoded as op = 1 (aka fcvtshp)
+    VCVT<c><q>.F16.F32 <Dd>, <Qm> Encoded as op = 0 (aka fcvthps)
+  Radar bug #8951023.
+- Added the .incbin directive.  Radar bug #8945167.
+- Changed the Makefile to install the ppc and ppc64 assembler in LOCLIBDIR.
+  Radar bug #8828970.
+
+Changes for the 5.28 release (the cctools-799 release):
+- Found another path that -g was not checking to produce dwarf line table
+  entries only for the text section.  That was in dwarf2_emit_insn() in
+  dwarf2dbg.c.  Radar bug #8792738.
+- Fixed the mishanding of the thumb2 tst instruction.  Changed do_t_mvn_tst()
+  in arm.c.  Normally, the versions of the instructions that set condition flags
+  aren't allowed inside IT blocks, so it's checking that.  TST<c>, however, is
+  allowed and isn't accounted for.  Radar bug #8783763.
+- Changed the arm assembler for ADD/SUB (immediate, Thumb) to correctly follow
+  the manual's note about these instructions:
+    encoding T1 is to be preferred if Rd is specified, and T2 is preferred if
+    it is not.
+  To do this do_t_add_sub() sets the unused 0x0100 in inst.instruction when
+  using BFD_RELOC_ARM_THUMB_ADD to communicate to md_apply_fix() that two
+  operands were present in assembly code.  Then md_apply_fix() uses this bit
+  and checks the size of the immediate to see if the 3-bit immediate form can
+  be uses as it should be preferred in that case.  Radar bug #8756030.
+
+Changes for the 5.28 release (the cctools-798 release):
+- Changed to error messages in arm.c which were:
+    "invalid constant (%x) after fixup"
+  to have 0x in front of the hex value.  Radar bug #8772178.
+- Changed do_t_mul() in arm.c .  The problem is that the assembler didn't take
+  into account that the "mul" mnemonic (w/o the 's' suffix) is valid for the
+  16-bit wide encoding when in an IT block.  Radar bug #8755919.
+- Added support for make aarm_test .
+  - Added a arm-check.c that currently only does arm ALU instructions can set
+    the condition codes.
+  - Added #ifndef INSNS_TABLE_ONLY to arm.c so that can be #defined and included
+    in arm-check.c .
+  - Made the needed changes in the Makefile to add support for aarm_test .
+
+Changes for the 5.28 release (the cctools-797 release):
+- Changed the code that was adding the NULL DIE terminating the Compile Unit
+  DIE's when producing dwarf debuging info for assembly files to not be
+  conditional on if dwarf2_subprograms_info != NULL.  The change is at the end
+  of out_debug_info() in dwarf2dbg.c . Radar bug #8441990 and #8443177.
+
+Changes for the 5.28 release (the cctools-796 release):
+- Changed the x86-64 assembler to allow immediate expressions of the form:
+    movq $(xxx-L$y),%rax
+  by changing output_imm() to look for 4 byte signed 32-bit expression and use
+  the same trick in output_disp() to call fix_new() so it will use two
+  relocation entries pointing at the same 32-bits.  Radar bug #7081262.
+- Added the OpenSourceURL key to the cctools.plist file as:
+    <key>OpenSourceURL</key>
+    <string>http://ftp.gnu.org/gnu/binutils/binutils-1.38.1.tar.gz</string>
+  Radar bug #8569655.
+
 Changes for the 5.28 release (the cctools-795 release):
 - Added checks or overlowing the 24-bits of the r_address relocation entry in
   fix_to_relocation_entries() in write_object.c  .  Radar bug #8348673.

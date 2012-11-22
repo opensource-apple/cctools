@@ -136,6 +136,16 @@ static enum bool ispoweroftwo(uint32_t x);
 char *debug_filename = NULL;
 
 /*
+ * The string for the -u argument.
+ */
+char *debug_uuid = NULL;
+
+/*
+ * Format specifier for scanf() to convert UUID to individual bytes
+ */
+#define UUID_FORMAT_STRING "%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+
+/*
  * The string for the entry point symbol name.
  */
 char *entry_point = NULL;
@@ -231,6 +241,9 @@ static int cmp_base_relocs(
     struct base_reloc *x2);
 static uint32_t checksum(
     unsigned char *buf);
+static void string_to_uuid(
+    char *string,
+    uint8_t *uuid);
 
 static void create_debug(
     struct arch *arch);
@@ -302,6 +315,17 @@ char **envp)
 		    usage();
 		}
 		entry_point = argv[i+1];
+		i++;
+	    }
+	    else if(strcmp(argv[i], "-u") == 0){
+		if(i + 1 >= argc){
+		    warning("no argument specified for -u option");
+		    usage();
+		}
+		if(debug_filename == NULL) {
+		    fatal("-u option requires -d option");
+		}
+		debug_uuid = argv[i+1];
 		i++;
 	    }
 	    else if(strcmp(argv[i], "-section_alignment") == 0){
@@ -409,8 +433,8 @@ usage(
 void)
 {
 	fprintf(stderr, "Usage: %s [-subsystem type] "
-		"[-section_alignment hexvalue] [-align hexvalue] [-d filename]"
-		" input_Mach-O output_pecoff\n", progname);
+		"[-section_alignment hexvalue] [-align hexvalue] [-d debug_filename] "
+		"[-u debug_guid] input_Mach-O output_pecoff\n", progname);
 	exit(EXIT_FAILURE);
 }
 
@@ -2431,6 +2455,9 @@ struct arch *arch)
 	for(i = 0; i < ncmds; i++){
 	    if(lc->cmd == LC_UUID){
 		uuid = (struct uuid_command *)lc;
+		if (debug_uuid != NULL) {
+		    string_to_uuid (debug_uuid, uuid->uuid);
+		}
 		mdi->uuid[0] = uuid->uuid[0];
 		mdi->uuid[1] = uuid->uuid[1];
 		mdi->uuid[2] = uuid->uuid[2];
@@ -2498,4 +2525,31 @@ unsigned char *buf)
 	    t = 0xffff & (t + (t >> 0x10));
 	}
 	return(0xffff & (t + (t >> 0x10)));
+}
+
+/*
+ * string_to_uuid() creates a 128-bit uuid from a well-formatted UUID string
+ * (i.e. aabbccdd-eeff-gghh-iijj-kkllmmnnoopp)
+ */
+static
+void
+string_to_uuid(
+char *string,
+uint8_t *uuid)
+{
+    uint8_t count;
+
+	/*
+	* scanned bytewise to ensure correct endianness of fields
+	*/
+	count = sscanf (string, UUID_FORMAT_STRING,
+	&uuid[3], &uuid[2], &uuid[1], &uuid[0],
+	&uuid[5], &uuid[4],
+	&uuid[7], &uuid[6],
+	&uuid[8], &uuid[9], &uuid[10], &uuid[11],
+	&uuid[12], &uuid[13], &uuid[14], &uuid[15]);
+
+	if (count != 16) {
+	    fatal ("invalid UUID specified for -u option");
+	}
 }

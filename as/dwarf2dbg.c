@@ -454,7 +454,7 @@ dwarf2_emit_insn (int size)
       if (debug_type != DEBUG_DWARF2)
 	loc_directive_seen = FALSE;
     }
-  else if (debug_type != DEBUG_DWARF2)
+  else if (debug_type != DEBUG_DWARF2 || frchain_now->frch_nsect != text_nsect)
     return;
   else
     dwarf2_where (&loc);
@@ -2050,8 +2050,7 @@ struct frchain *ranges_section)
   }
 
   /* Add the NULL DIE terminating the Compile Unit DIE's.  */
-  if (dwarf2_subprograms_info != NULL)
-    out_byte (0);
+  out_byte (0);
 
   symbol_set_value_now (info_end);
 }

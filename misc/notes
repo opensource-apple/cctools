@@ -9,6 +9,20 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.28 release (the cctools-798 release):
+- Added this line to the Makefile:
+    CXX = $(shell xcrun -find -sdk $(SDKROOT) g++)
+  so that it uses the appropriate tool to link device-side code.  Radar bug
+  #8684965.
+
+Changes for the 5.28 release (the cctools-797 release):
+- Added support for LC_DYLD_ENVIRONMENT in segedit.c .  Radar bug #8653976.
+
+Changes for the 5.28 release (the cctools-796 release):
+- Added checks in strings(1) to better protect against crashes if it is handed
+  a malformed file.  Radar bug #8599283.
+- Added the -arch option to pagestuff(1).  Radar bug #8379048.
+
 Changes for the 5.28 release (the cctools-795 release):
 - Changed ctf_insert(1) to allow the LC_FUNCTION_STARTS load command.  The
   change was in ctf_insert() in ctf_insert.c to remove the test for

@@ -3,6 +3,28 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.29 release (the cctools-800 release):
+- Fixed the arm VCVT (between half-precision and single-precision) instructions
+  encodings.  Had the op bit inverted in the table.  It should have been:
+    VCVT<c><q>.F32.F16 <Qd>, <Dm> Encoded as op = 1 (aka fcvtshp)
+    VCVT<c><q>.F16.F32 <Dd>, <Qm> Encoded as op = 0 (aka fcvthps)
+  Radar bug #8951023.
+
+Changes for the 5.28 release (the cctools-798 release):
+- Changed arm_disasm.c to use the arm assembly comment character '@' instead of
+  the intel comment character ';' so the output of otool(1) can be assembled.
+
+Changes for the 5.28 release (the cctools-797 release):
+- Added support for LC_DYLD_ENVIRONMENT in ofile_print.c . Radar bug #8653976.
+
+Changes for the 5.28 release (the cctools-796 release):
+- Fixed the arm disassembly of vq{r}shr{u}n instructions.  The masks should have
+  not included the 0x00300000 as those were part of the imm6 feild and not part
+  of the opcode.  Radar bug# 8597212.
+- Fixed the i386 (32-bit) disassembly of displacement to not have more than
+  32-bits.  Radar bug #8454529.
+- Fixed the movabs disassembly to print the correct suffix.
+
 Changes for the 5.28 release (the cctools-795 release):
 - Fixed the disassemble of the first operand in the specific case for i386 of
   the "move doubleword to quadword with sign-extension" that was broken with

@@ -1964,6 +1964,7 @@ enum bool very_verbose)
 
 	    case LC_ID_DYLINKER:
 	    case LC_LOAD_DYLINKER:
+	    case LC_DYLD_ENVIRONMENT:
 		memset((char *)&dyld, '\0', sizeof(struct dylinker_command));
 		size = left < sizeof(struct dylinker_command) ?
 		       left : sizeof(struct dylinker_command);
@@ -3063,8 +3064,9 @@ enum bool verbose)
 }
 
 /*
- * print an LC_ID_DYLINKER or LC_LOAD_DYLINKER command.  The dylinker_command
- * structure specified must be aligned correctly and in the host byte sex.
+ * print an LC_ID_DYLINKER, LC_LOAD_DYLINKER or LC_DYLD_ENVIRONMENT command.
+ * The dylinker_command structure specified must be aligned correctly and in the
+ * host byte sex.
  */
 void
 print_dylinker_command(
@@ -3075,8 +3077,12 @@ struct load_command *lc)
 
 	if(dyld->cmd == LC_ID_DYLINKER)
 	    printf("          cmd LC_ID_DYLINKER\n");
-	else
+	else if(dyld->cmd == LC_LOAD_DYLINKER)
 	    printf("          cmd LC_LOAD_DYLINKER\n");
+	else if(dyld->cmd == LC_DYLD_ENVIRONMENT)
+	    printf("          cmd LC_DYLD_ENVIRONMENT\n");
+	else
+	    printf("          cmd ?(%u)\n", dyld->cmd);
 	printf("      cmdsize %u", dyld->cmdsize);
 	if(dyld->cmdsize < sizeof(struct dylinker_command))
 	    printf(" Incorrect size\n");

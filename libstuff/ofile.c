@@ -4392,12 +4392,18 @@ check_dylib_command:
 		break;
 
 	    case LC_ID_DYLINKER:
+		cmd_name = "LC_ID_DYLINKER";
+		goto check_dylinker_command;
 	    case LC_LOAD_DYLINKER:
+		cmd_name = "LC_LOAD_DYLINKER";
+		goto check_dylinker_command;
+	    case LC_DYLD_ENVIRONMENT:
+		cmd_name = "LC_DYLD_ENVIRONMENT";
+		goto check_dylinker_command;
+check_dylinker_command:
 		if(l.cmdsize < sizeof(struct dylinker_command)){
 		    Mach_O_error(ofile, "malformed object (%s cmdsize "
-			         "too small) in command %u", l.cmd ==
-				 LC_ID_DYLINKER ? "LC_ID_DYLINKER" :
-				 "LC_LOAD_DYLINKER", i);
+			         "too small) in command %u", cmd_name, i);
 		    goto return_bad;
 		}
 		dyld = (struct dylinker_command *)lc;
@@ -4405,16 +4411,13 @@ check_dylib_command:
 		    swap_dylinker_command(dyld, host_byte_sex);
 		if(dyld->cmdsize < sizeof(struct dylinker_command)){
 		    Mach_O_error(ofile, "malformed object (%s command %u has "
-			"too small cmdsize field)",
-			dyld->cmd == LC_ID_DYLINKER ? 
-			"LC_ID_DYLINKER" : "LC_LOAD_DYLINKER", i);
+			"too small cmdsize field)", cmd_name, i);
 		    goto return_bad;
 		}
 		if(dyld->name.offset >= dyld->cmdsize){
 		    Mach_O_error(ofile, "truncated or malformed object (name."
 			"offset field of %s command %u extends past the end "
-			"of the file)", dyld->cmd == LC_ID_DYLINKER ?
-			"LC_ID_DYLINKER" : "LC_LOAD_DYLINKER", i);
+			"of the file)", cmd_name, i);
 		    goto return_bad;
 		}
 		break;

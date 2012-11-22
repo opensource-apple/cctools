@@ -339,21 +339,27 @@ check_dylib_command:
 		break;
 
 	    case LC_ID_DYLINKER:
+		cmd_name = "LC_ID_DYLINKER";
+		goto check_dylinker_command;
 	    case LC_LOAD_DYLINKER:
+		cmd_name = "LC_LOAD_DYLINKER";
+		goto check_dylinker_command;
+	    case LC_DYLD_ENVIRONMENT:
+		cmd_name = "LC_DYLD_ENVIRONMENT";
+		goto check_dylinker_command;
+check_dylinker_command:
 		dyld = (struct dylinker_command *)lc;
 		if(dyld->cmdsize < sizeof(struct dylinker_command)){
 		    error("in swap_object_headers(): malformed load commands "
 			  "(%s command %lu has too small cmdsize field)",
-			  dyld->cmd == LC_ID_DYLINKER ? "LC_ID_DYLINKER" :
-			  "LC_LOAD_DYLINKER", i);
+			  cmd_name, i);
 		    return(FALSE);
 		}
 		if(dyld->name.offset >= dyld->cmdsize){
 		    error("in swap_object_headers(): truncated or malformed "
 			  "load commands (name.offset field of %s command %lu "
 			  "extends past the end of all load commands)",
-			  dyld->cmd == LC_ID_DYLINKER ? "LC_ID_DYLINKER" :
-			  "LC_LOAD_DYLINKER", i);
+			  cmd_name, i);
 		    return(FALSE);
 		}
 		break;
@@ -1208,6 +1214,7 @@ check_dylib_command:
 
 	    case LC_ID_DYLINKER:
 	    case LC_LOAD_DYLINKER:
+	    case LC_DYLD_ENVIRONMENT:
 		dyld = (struct dylinker_command *)lc;
 		swap_dylinker_command(dyld, target_byte_sex);
 		break;
