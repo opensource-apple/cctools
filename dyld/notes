@@ -30,6 +30,10 @@ TODO for MacOS X:
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
 
+Changes for the 5.25 release (the cctools-677 release):
+- Changed the Makefile to not use -Wno-long-double and -no-cpp-precomp .
+  Radar bug #5563553.
+
 Changes for the 5.18 release (the cctools-583 release):
 - Changed the Makefile so that when RC_XBS is set to YES then the compiler
   options -MD and -dependency-file as well as the md(1) program are not used.

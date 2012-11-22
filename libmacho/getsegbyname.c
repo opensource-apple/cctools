@@ -25,11 +25,7 @@
 #ifndef __OPENSTEP__
 
 #ifndef RLD
-#ifdef __LP64__
-extern struct mach_header_64 *_NSGetMachExecuteHeader(void);
-#else /* !defined(__LP64__) */
 #include <crt_externs.h>
-#endif /* !defined(__LP64__) */
 #endif /* !defined(RLD) */
 
 #else /* defined(__OPENSTEP__) */

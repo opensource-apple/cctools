@@ -36,14 +36,6 @@ else
    SEG1ADDR = $(MACOSX_10_1_SEG1ADDR)
 endif
 
-ifeq "macos" "$(RC_OS)"
-  X_CFLAGS := $(shell if [ "$(RC_RELEASE)" != "Beaker" ] &&    \
-			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
-			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
-			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp ; \
-	     fi; )
-endif
 ifeq "mwccppc" "$(notdir $(CC))"
   CFLAGS = $(DEBUG) $(OFLAG) -dynamic -g -DDYLD_BUILD \
 	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT)

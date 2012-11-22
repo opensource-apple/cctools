@@ -662,20 +662,20 @@ cpu_subtype_t cpusubtype2)
 	     * V6         ALL      V6      --      V6     ALL
 	     * ALL        ALL     ALL     ALL     ALL     ALL
 	     */
-	    if(cpusubtype1 == CPU_SUBTYPE_ARM_ALL)
+	    if((cpusubtype1 & ~CPU_SUBTYPE_MASK) == CPU_SUBTYPE_ARM_ALL)
 		return(cpusubtype2);
-	    if(cpusubtype2 == CPU_SUBTYPE_ARM_ALL)
+	    if((cpusubtype2 & ~CPU_SUBTYPE_MASK) == CPU_SUBTYPE_ARM_ALL)
 		return(cpusubtype1);
-	    switch(cpusubtype1){
+	    switch((cpusubtype1 & ~CPU_SUBTYPE_MASK)){
 		case CPU_SUBTYPE_ARM_V6:
-		    switch(cpusubtype2){
+		    switch((cpusubtype2 & ~CPU_SUBTYPE_MASK)){
 			case CPU_SUBTYPE_ARM_XSCALE:
 			    return((cpu_subtype_t)-1);
 			default:
 			    return(CPU_SUBTYPE_ARM_V6);
 		    }
 		case CPU_SUBTYPE_ARM_XSCALE:
-		    switch(cpusubtype2){
+		    switch((cpusubtype2 & ~CPU_SUBTYPE_MASK)){
 			case CPU_SUBTYPE_ARM_V6:
 			case CPU_SUBTYPE_ARM_V5TEJ:
 			    return((cpu_subtype_t)-1);
@@ -683,7 +683,7 @@ cpu_subtype_t cpusubtype2)
 			    return(CPU_SUBTYPE_ARM_XSCALE);
 		    }
 		case CPU_SUBTYPE_ARM_V5TEJ:
-		    switch(cpusubtype2){
+		    switch((cpusubtype2 & ~CPU_SUBTYPE_MASK)){
 			case CPU_SUBTYPE_ARM_XSCALE:
 			    return((cpu_subtype_t)-1);
 			case CPU_SUBTYPE_ARM_V6:
@@ -692,7 +692,7 @@ cpu_subtype_t cpusubtype2)
 			    return(CPU_SUBTYPE_ARM_V5TEJ);
 		    }
 		case CPU_SUBTYPE_ARM_V4T:
-		    return(cpusubtype2);
+		    return((cpusubtype2 & ~CPU_SUBTYPE_MASK));
 		default:
 		    return((cpu_subtype_t)-1);
 	    }

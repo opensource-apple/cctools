@@ -23,6 +23,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "obstack.h"
 #include "frags.h"
 #include "messages.h"
+#include "input-scrub.h"
 
 struct obstack frags = { 0 };	/* All, and only, frags live here. */
 
@@ -195,6 +196,9 @@ char *opcode)
 {
     register char  *retval;
 
+#ifdef ARM
+    as_file_and_line (&frag_now->fr_file, &frag_now->fr_line);
+#endif /* ARM */
     frag_grow (max_chars);
     retval = obstack_next_free (&frags);
     obstack_blank_fast (&frags, max_chars);
@@ -205,6 +209,9 @@ char *opcode)
     frag_now->fr_offset = offset;
     frag_now->fr_opcode = opcode;
     frag_new (max_chars);
+#ifdef ARM
+    as_file_and_line (&frag_now->fr_file, &frag_now->fr_line);
+#endif /* ARM */
     return (retval);
 }				/* frag_var() */
 

@@ -12,13 +12,108 @@ Changes for the 5.25 release (the cctools-693 release):
     a 64-bit, pointer, name or value was used to used a 32-bit version.
   - In print_objc2_32bit.c removed the reserved field from the class_ro_t
     as it is a 64-bit only padding field.
+- Made a change in print_indirect_symbols() in ofile_print.c so it does not get
+  spurious error about a load command extending past the end of the load
+  commands.  Radar bug #5728302.
+- Made a change in print_indirect_symbols() in ofile_print.c to print ABSOLUTE
+  for cputype CPU_TYPE_I386 and S_SYMBOL_STUBS sections marked with just
+  INDIRECT_SYMBOL_ABS.  Radar bug #5829053.
 
 Changes for the 5.25 release (the cctools-691 release):
 - Added support for the LC_ENCRYPTION_INFO load command.  Radar bug #5811994.
   - Added print_encryption_info_command() in ofile_print.[ch] .
   - Added code in print_loadcmds() in ofile_print.c for LC_ENCRYPTION_INFO.
 
-Changes for the 5.25 release (the cctools-665 release):
+Changes for the 5.25 release (the cctools-690 release):
+- Changed the Makefile to added -DEFI_SUPPORT if EFITOOLS is not via the top
+  level Makefile.  And #ifdef'ed EFI_SUPPORT the call to
+  print_coff_reloc_section() in main.c .Radar bug #5826370.
+
+Changes for the 5.25 release (the cctools-688 release):
+- Maded changes for the new LC_LAZY_LOAD_DYLIB load command. Radar bug #5760930.
+  - Added an test for the S_LAZY_DYLIB_SYMBOL_POINTERS section type in
+    processor() in main.c .
+  - In ofile_print.c these changes were made:
+    - print_loadcmds() had a case for LC_LAZY_LOAD_DYLIB added.
+    - print_loadcmds() had a case for LC_LAZY_LOAD_DYLIB added and a test of
+      LC_LAZY_LOAD_DYLIB to print the string "LC_LAZY_LOAD_DYLIB".
+    - print_section() had a test for S_LAZY_DYLIB_SYMBOL_POINTERS to print that
+      as a string and a test for printing "(index into indirect symbol table)"
+      after the reserved1 field.
+    - print_dylib_command() had a test for LC_LAZY_LOAD_DYLIB to print that as
+      a string.
+    - print_indirect_symbols() had a test for the S_NON_LAZY_SYMBOL_POINTERS
+      section type added.
+    - print_hints() had a case for LC_LAZY_LOAD_DYLIB added.
+    - guess_indirect_symbol() had a test for the S_NON_LAZY_SYMBOL_POINTERS
+      section type added in two places.
+
+Changes for the 5.25 release (the cctools-683 release):
+- Changed the Makefile to use OBJC_ABI for -fobjc-abi-version=1 since this is
+  not supported on Tiger.
+
+Changes for the 5.25 release (the cctools-682 release):
+- Added -fobjc-abi-version=1 to the Makefile rule for building print_objc.o
+  Since we're trying to get the objective-C 1.0 definitions and not the 2.0
+  definitions, this avoids problems with platforms where 2.0 is the default.
+  Radar bug #5725807.
+
+Changes for the 5.25 release (the cctools-681 release):
+- Removed all __OPEN_SOURCE__ references in Makefile, notes, arm_disasm.c,
+  main.c, ofile_print.c and otool.h .
+- Fixed a bug in disassembly for the i386 SSE4.1 instruction insertps
+  where it had the second parameter as a general register not a xmm register.
+  The change was in i386_disam.c in the table entry for insertps to use
+  SSE4i not SSE4ifm.  Radar bug #5650346.
+
+Changes for the 5.25 release (the cctools-677 release):
+- Changed the Makefile to not use -Wno-long-double and -no-cpp-precomp .
+  Radar bug #5563553.
+
+Changes for the 5.25 release (the cctools-676 release):
+- Added printing S_DTRACE_DOF section type to print_section() in ofile_print.c.
+- Fixed a problem with not all the i386 bad opcode bytes being printed.  The
+  fix was at the end of i386_disassemble() in i386_disasm.c for printing the
+  bad opcode byte to loop through all the length bytes it tried to disassemble
+  before it ran into the bad opcode.  Radar bug #4760658.
+- Fixed a problem with warning message being printed for zero length sections
+  appearing at the end of object files that should have not been printed.  The
+  test in get_sect_info() in main.c was testing for >= and not > against the
+  object size.  Radar bug #4455994.
+- Fixed the problems with x86_64 disassembly in printing the displacements or
+  their target symbols.  The problem was the code in displacement() in
+  i386_disasm.c did not take into account that instructions with and without
+  relocation entries are assembled differently than all other Mach-O files.
+  For x86_64 if it has a relocation entry the then displacement is an offset
+  even if the symbol is defined.  If not the displacement plus the pc is the
+  target address.  As part of the fix for this the addr and sect_addr needed
+  to be passed as 64-bit value to i386_disassemble() and displacement().  Then
+  the fix in displacement() was to construct a 64-bit target guess_addr if there
+  was no relocation entry found for the x86_64 case.  Radar bug #5122861.
+- Added support to print the PECOFF base relocation table. Radar bug #5218665.
+  - The new routine print_coff_reloc_section() was added to the files
+    coff_print.[ch].
+  - Added code in main.c to test for the (__RELOC,__reloc) section being
+    passed as the -s arguments and call print_coff_reloc_section().
+  - The routine get_sect_info() was made extern in main.c and added to
+    ofile_print.h so it could be called by print_coff_reloc_section().
+- Fixed a bug in print_label() where the addr argument was a unsigned long not
+  a uint64_t.  Changes in ofile_print.[ch] and print_objc.c. Radar bug #5186450.
+
+Changes for the 5.25 release (the cctools-675 release):
+- Changed print_indirect_symbols() so it would not crash if given a malformed
+  object file that had a segment command with a very large number of sections.
+  The fix was to add some size checking calculating the expected size in a
+  64 bit value compare that to see if it too large.  Radar bug #5405675.
+
+Changes for the 5.25 release (the cctools-673 release):
+- Changed the sources so the arm stuff is not in the open source version.
+  Radar bug #5326431.
+  - Changed the Makefile to #ifndef __OPEN_SOURCE__ out the arm files
+  - Added #ifndef __OPEN_SOURCE__ to the following files to bracket arm code:
+    main.c, ofile_print.c, otool.h and arm_disasm.c .
+
+Changes for the 5.24 release (the cctools-665 release):
 - Added the SSE4 instructions to the i386 disassembler.  The changes are in
   i386_disasm.c . Radar bug #4943015.
 

@@ -344,6 +344,7 @@ static const struct macros ppc_macros[] = {
     { "mfear\n",   "mfspr $0,282\n"},
     { "mtear\n",   "mtspr 282,$0\n"},
     { "mfpvr\n",   "mfspr $0,287\n"},
+    { "mtvrsave\n","mtspr 256,$0\n"},
     { "mtibatu\n", "mtspr 528+2*($0),$1\n"},
     { "mfibatu\n", "mfspr $0,528+2*($1)\n"},
     { "mtibatl\n", "mtspr 529+2*($0),$1\n"},
@@ -900,6 +901,23 @@ char *op)
 	}
 #endif /* ALLOW_INVALID_FORMS */
 
+	/*
+	 * If the -g flag is present generate a line number stab for the
+	 * instruction.
+	 * 
+	 * See the detailed comments about stabs in read_a_source_file() for a
+	 * description of what is going on here.
+	 */
+	if(flagseen['g'] && frchain_now->frch_nsect == text_nsect){
+	    (void)symbol_new(
+		  "",
+		  68 /* N_SLINE */,
+		  text_nsect,
+		  logical_input_line /* n_desc, line number */,
+		  obstack_next_free(&frags) - frag_now->fr_literal,
+		  frag_now);
+	}
+
 	/* grow the current frag and plop in the opcode */
 	thisfrag = frag_more(4);
 	md_number_to_chars(thisfrag, insn.opcode, 4);
@@ -986,23 +1004,6 @@ char *op)
 		    break;
 		}
 	    }
-	}
-
-	/*
-	 * If the -g flag is present generate a line number stab for the
-	 * instruction.
-	 * 
-	 * See the detailed comments about stabs in read_a_source_file() for a
-	 * description of what is going on here.
-	 */
-	if(flagseen['g'] && frchain_now->frch_nsect == text_nsect){
-	    (void)symbol_new(
-		  "",
-		  68 /* N_SLINE */,
-		  text_nsect,
-		  logical_input_line /* n_desc, line number */,
-		  obstack_next_free(&frags) - frag_now->fr_literal,
-		  frag_now);
 	}
 
 	/*

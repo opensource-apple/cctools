@@ -113,6 +113,7 @@ static enum bool Aflag_specified = FALSE;
  */
 __private_extern__ struct arch_flag arch_flag =
 #if defined(KLD) && defined(__STATIC__)
+
 #ifdef __ppc__
     { "ppc",    CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL };
 #elif __i386__
@@ -122,6 +123,7 @@ __private_extern__ struct arch_flag arch_flag =
 #else
 #error "unsupported architecture for static KLD"
 #endif
+
 #else /* !(defined(KLD) && defined(__STATIC__)) */
     { 0 };
 #endif /* defined(KLD) && defined(__STATIC__) */
@@ -2479,12 +2481,13 @@ unknown_flag:
 	if(macosx_deployment_target.major >= 4){
 	    if(filetype != MH_DYLIB){
 		/* 
-		 * If this is arm* or xscale, we want to prebind executables too, not just
-		 * dylibs and frameworks. 
+		 * If this is arm* or xscale, we want to prebind executables
+		 * too, not just dylibs and frameworks. 
 		 */
 		if (!((arch_flag.name != NULL) && 
 		      ((strncmp(arch_flag.name, "arm", 3) == 0) ||
-		       (strcmp(arch_flag.name, "xscale") == 0)))) {
+		       (strcmp(arch_flag.name, "xscale") == 0))))
+		{
 		    if(prebinding_via_LD_PREBIND == FALSE &&
 		       prebinding_flag_specified == TRUE &&
 		       prebinding == TRUE){

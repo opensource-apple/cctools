@@ -67,25 +67,35 @@ arm_force_relocation (struct fix * fixp);
   (0)
 #endif
 
+extern int arm_relax_frag (int nsect, fragS *fragp, long stretch);
+
 #endif /* ARM */
 
 /* FROM write.c line 96 */
 #ifndef	MD_PCREL_FROM_SECTION
-#define MD_PCREL_FROM_SECTION(FIX, SEC) md_pcrel_from (FIX)
+extern long md_pcrel_from_section(fixS * fixP);
+#define MD_PCREL_FROM_SECTION(FIX, SEC) md_pcrel_from_section (FIX)
 #endif
 
 static void fixup_section(
     fixS *fixP,
     int nsect);
+static int is_assembly_time_constant_subtraction_expression(
+    symbolS *add_symbolP,
+    int add_symbol_nsect,
+    symbolS *sub_symbolP,
+    int sub_symbol_nsect);
 static void relax_section(
     struct frag *section_frag_root,
     int nsect);
 static relax_addressT relax_align(
     relax_addressT address,
     long alignment);
+#ifndef ARM
 static int is_down_range(
     struct frag *f1,
     struct frag *f2);
+#endif /* !defined(ARM) */
 
 /*
  * layout_addresses() is called after all the assembly code has been read and
@@ -491,10 +501,41 @@ int nsect)
 		    value += add_symbolP->sy_value - sub_symbolP->sy_value;
 #endif
 		    sub_symbol_nsect = sub_symbolP->sy_other;
+		    /*
+		     * If we have the special assembly time constant expression
+		     * of the difference of two symbols defined in the same
+		     * section then divided by exactly 2 adjust the value and
+		     * make sure these symbols will produce an assembly time
+		     * constant.
+		     */
+		    if(fixP->fx_sectdiff_divide_by_two == 1){
+			value = value / 2;
+			if(is_assembly_time_constant_subtraction_expression(
+				add_symbolP, add_symbol_nsect,
+				sub_symbolP, sub_symbol_nsect) == TRUE){
+			    fixP->fx_addsy = NULL; /* no relocation entry */
+			    goto down;
+			}
+			else{
+			    layout_line = fixP->line;
+			    layout_file = fixP->file;
+			    as_warn("section difference divide by two "
+				    "expression, \"%s\" minus \"%s\" divide by "
+				    "2 will not produce an assembly time "
+				    "constant", add_symbolP->sy_name,
+				    sub_symbolP->sy_name);
+			}
+		    }
 		    if(is_end_section_address(add_symbol_nsect,
 					      add_symbolP->sy_value) ||
 		       is_end_section_address(sub_symbol_nsect,
 					      sub_symbolP->sy_value)){
+			if(is_assembly_time_constant_subtraction_expression(
+				add_symbolP, add_symbol_nsect,
+				sub_symbolP, sub_symbol_nsect) == TRUE){
+			    fixP->fx_addsy = NULL; /* no relocation entry */
+			    goto down;
+			}
 			layout_line = fixP->line;
 			layout_file = fixP->file;
 			as_warn("section difference relocatable subtraction "
@@ -568,7 +609,7 @@ int nsect)
 		    value += add_symbolP->sy_value;
 #ifdef ARM
 		    /* FROM write.c line 2667 */
-		    value -= where + fragP->fr_address;
+		    value -= MD_PCREL_FROM_SECTION (fixP, nsect);
 #else
 		    value -= size + where + fragP->fr_address;
 #endif
@@ -702,6 +743,117 @@ down:
 	}
 }
 
+/*
+ * is_assembly_time_constant_subtraction_expression() is passed the symbols and
+ * section numbers of a subtraction expression invloving symbols both defined in
+ * some section.  If the subtraction expression is an assembly time constant
+ * value then this returns 1 (TRUE) else this returns 0 (FALSE).
+ *
+ * Since the static link editor can break apart a section this routine can only
+ * return TRUE when it is known for sure these symbols will not be moved apart
+ * from each other.  So this is an assembly time constant subtraction expression
+ * if the following are all true:
+ * - the expression's symbols are assembly temporary symbols (starting with 'L')
+ * - assembly temporary symbol are not being saved (no -L flag)
+ * - the two symbols are in the same section
+ * - the section is a regular section or coalesced section (non-literal section)
+ * - there are no non-assembly temporary symbols defined between two symbols of
+ *   the expression.  For example if the assembly code is:
+ *	L1: nop
+ *	foo: nop
+ *	L2: nop
+ *   the expression is L1-L2 is not an assembly time constant because the block
+ *   of code after foo (including the address of L2) could be link edited away
+ *   from the block of code with L1.
+ */
+static
+int
+is_assembly_time_constant_subtraction_expression(
+symbolS *add_symbolP,
+int add_symbol_nsect,
+symbolS *sub_symbolP,
+int sub_symbol_nsect)
+{
+    struct frchain *frchainP;
+    uint32_t section_type;
+    symbolS *prev_symbol;
+    int non_assembly_temporary_symbol;
+
+	/* see if both symbols are assembly temporary symbols */
+	if(add_symbolP->sy_name == NULL || add_symbolP->sy_name[0] != 'L' ||
+	   sub_symbolP->sy_name == NULL || sub_symbolP->sy_name[0] != 'L')
+	    return(0);
+
+	/* make sure we are not saving assembly temporary symbols */
+	if(flagseen[(int)'L'])
+	    return(0);
+
+	/* make sure the two symbols are in the same section */
+	if(add_symbol_nsect != sub_symbol_nsect)
+	    return(0);
+
+	/* make sure the section is a regular or coalesced section */
+	for(frchainP = frchain_root; frchainP; frchainP = frchainP->frch_next){
+	    if(frchainP->frch_nsect == add_symbol_nsect){
+		section_type = frchainP->frch_section.flags & SECTION_TYPE;
+		if(section_type == S_REGULAR || section_type == S_COALESCED)
+		    break;
+		else
+		    return(0);
+	    }
+	}
+
+	/*
+	 * See if we can find the chain of symbols from the add_symbolP through
+	 * its previous symbols to the sub_symbolP.  And check for non assembler
+	 * temporary symbols along that chain.
+	 */
+	non_assembly_temporary_symbol = 0;
+	for(prev_symbol = add_symbolP->sy_prev_by_index;
+	    prev_symbol != NULL;
+	    prev_symbol = prev_symbol->sy_prev_by_index){
+	    if((prev_symbol->sy_type & N_SECT) == N_SECT &&
+	       (prev_symbol->sy_type & N_STAB) == 0 &&
+		prev_symbol->sy_other == add_symbol_nsect){
+		if(prev_symbol == sub_symbolP){
+		    if(non_assembly_temporary_symbol == 0)
+			return(1);
+		    else
+			return(0);
+		}
+		if(prev_symbol->sy_name != NULL &&
+		   prev_symbol->sy_name[0] != 'L')
+		    non_assembly_temporary_symbol = 1;
+	    }
+	}
+
+	/*
+	 * Couldn't find the chain above, so now try we can find the chain of
+	 * symbols from the sub_symbolP through its previous symbols to the
+	 * add_symbolP.  And check for non assembler temporary symbols along
+	 * that chain.
+	 */
+	non_assembly_temporary_symbol = 0;
+	for(prev_symbol = sub_symbolP->sy_prev_by_index;
+	    prev_symbol != NULL;
+	    prev_symbol = prev_symbol->sy_prev_by_index){
+	    if((prev_symbol->sy_type & N_SECT) == N_SECT &&
+	       (prev_symbol->sy_type & N_STAB) == 0 &&
+		prev_symbol->sy_other == sub_symbol_nsect){
+		if(prev_symbol == add_symbolP){
+		    if(non_assembly_temporary_symbol == 0)
+			return(1);
+		    else
+			return(0);
+		}
+		if(prev_symbol->sy_name != NULL &&
+		   prev_symbol->sy_name[0] != 'L')
+		    non_assembly_temporary_symbol = 1;
+	    }
+	}
+
+	return(0);
+}
 
 /*
  * relax_section() here we set the fr_address values in the frags.
@@ -729,10 +881,13 @@ int nsect)
 		       another shrank.  If a branch instruction
 		       doesn't fit anymore, we need another pass */
 
+#ifndef ARM
     const relax_typeS *this_type;
     const relax_typeS *start_type;
     relax_substateT next_state;
     relax_substateT this_state;
+    long aim;
+#endif /* !defined(ARM) */
 
     long growth;
     unsigned long was_address;
@@ -740,7 +895,6 @@ int nsect)
     symbolS *symbolP;
     long target;
     long after;
-    long aim;
     unsigned long oldoff, newoff;
 
 	growth = 0;
@@ -855,6 +1009,9 @@ int nsect)
 		    break;
 
 		case rs_machine_dependent:
+#ifdef ARM
+		    growth = arm_relax_frag(nsect, fragP, stretch);
+#else /* !defined(ARM) */
 		    this_state = fragP->fr_subtype;
 		    this_type = md_relax_table + this_state;
 		    start_type = this_type;
@@ -906,6 +1063,7 @@ int nsect)
 		    }
 		    if((growth = this_type->rlx_length -start_type->rlx_length))
 			  fragP->fr_subtype = this_state;
+#endif /* !defined(ARM) */
 		    break;
 
 		  default:
@@ -944,6 +1102,7 @@ long alignment)		/* Alignment (binary). */
 	return(new_address - address);
 }
 
+#ifndef ARM
 /*
  * is_down_range() is used in relax_section() to determine it one fragment is
  * after another to know if it will also be moved if the first is moved.
@@ -961,3 +1120,4 @@ struct frag *f2)
 	}
 	return(0);
 }
+#endif /* !defined(ARM) */

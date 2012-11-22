@@ -217,8 +217,7 @@ char **envp)
 		    break;
 
 		case 'v':
-		    fprintf(stderr,"Apple Computer, Inc. version "
-			    "%s, ", apple_version);
+		    fprintf(stderr,"Apple Inc version %s, ", apple_version);
 		    fprintf(stderr, version_string);
 		    if(*arg && strcmp(arg,"ersion"))
 			as_fatal("Unknown -v option ignored");

@@ -502,8 +502,35 @@ extern void print_objc_runtime_setup_section(
     unsigned long object_size,
     enum bool verbose);
 
+extern void print_coff_reloc_section(
+    struct load_command *load_commands,
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    uint32_t filetype,
+    enum byte_sex object_byte_sex,
+    char *object_addr,
+    unsigned long object_size,
+    enum bool verbose);
+
 extern void print_label(
-    unsigned long addr,
+    uint64_t addr,
     enum bool colon_and_newline,
     struct symbol *sorted_symbols,
     unsigned long nsorted_symbols);
+
+extern enum bool get_sect_info(
+    char *segname,
+    char *sectname,
+    struct load_command *load_commands,
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    uint32_t filetype,
+    enum byte_sex load_commands_byte_sex,
+    char *object_addr,
+    unsigned long object_size,
+    char **sect_pointer,
+    uint64_t *sect_size,
+    uint64_t *sect_addr,
+    struct relocation_info **sect_relocs,
+    unsigned long *sect_nrelocs,
+    unsigned long *sect_flags);

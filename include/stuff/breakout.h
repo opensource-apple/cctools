@@ -198,6 +198,14 @@ struct object {
     unsigned long output_nmodtab;
     struct dylib_reference *output_refs;
     unsigned long output_nextrefsyms;
+
+    /*
+     * For strip(1) to strip DWARF debug info it must run ld -r on the original
+     * object contents and overwrite it with that output.  That output is mapped
+     * by this ofile struct and is cleaned up when strip is done with the arch
+     * that contains this object.
+     */
+    struct ofile *ld_r_ofile;
 };
 
 __private_extern__ struct ofile * breakout(

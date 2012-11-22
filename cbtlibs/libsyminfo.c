@@ -698,11 +698,8 @@ void *cookie)
 	    for(j = 0; j < ncmds; j++){
 		char *p;
 		if(lc->cmd == LC_SUB_UMBRELLA || lc->cmd == LC_SUB_LIBRARY){
-		    struct sub_umbrella_command usub;
-		    memset((char *)&usub, '\0',
-			    sizeof(struct sub_umbrella_command));
-		    memcpy((char *)&usub, (char *)lc, lc->cmdsize);
-		    p = (char *)lc + usub.sub_umbrella.offset;
+		    struct sub_umbrella_command *usub = (struct sub_umbrella_command *)lc;
+		    p = (char *)lc + usub->sub_umbrella.offset;
 		    self->dependencies->subUmbrellas =
 			reallocate(self->dependencies->subUmbrellas,
 		    (self->dependencies->nSubUmbrellas+1)*
@@ -713,11 +710,8 @@ void *cookie)
 		    self->dependencies->nSubUmbrellas++;
 		}
 		else if(lc->cmd == LC_SUB_FRAMEWORK){ 
-		    struct sub_framework_command subFramework;
-		    memset((char *)&subFramework,'\0',
-		    sizeof(struct sub_framework_command));
-		    memcpy((char *)&subFramework,(char *)lc,lc->cmdsize);
-		    p = (char *)lc + subFramework.umbrella.offset;
+		    struct sub_framework_command *subFramework = (struct sub_framework_command *)lc;
+		    p = (char *)lc + subFramework->umbrella.offset;
 		    self->dependencies-> subFrameworks =
 			    reallocate(self->dependencies->subFrameworks,
 		    		       (self->dependencies->nSubFrameworks+1) *
@@ -744,7 +738,7 @@ void *cookie)
 	}
 	
 	/* Free the memory that was malloced in this function */
-	for(i = 0; i < nlibnames; i++)
+	for(i = 0; i < process_flags.nlibs; i++)
 	    free(process_flags.lib_names[i]);
 	if(process_flags.lib_names)
 	    free(process_flags.lib_names);

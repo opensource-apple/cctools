@@ -2645,8 +2645,8 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 	     * contains the reference type (lazy or non-lazy).
 	     */
 	    merged_symbol->nlist.n_value = symbols[j].n_value;
-        if(symbols[j].n_desc & N_ARM_THUMB_DEF)
-            merged_symbol->nlist.n_value |= 1;
+	    if(symbols[j].n_desc & N_ARM_THUMB_DEF)
+		merged_symbol->nlist.n_value |= 1;
 	    merged_symbol->definition_object = cur_obj;
 	    merged_symbol->defined_in_dylib = TRUE;
 	    merged_symbol->definition_library = dynamic_library;

@@ -511,6 +511,7 @@ void *cookie)
 	    else if((mh_flags & MH_TWOLEVEL) == MH_TWOLEVEL &&
 		    (lc->cmd == LC_LOAD_DYLIB ||
 		     lc->cmd == LC_LOAD_WEAK_DYLIB ||
+		     lc->cmd == LC_LAZY_LOAD_DYLIB ||
 		     lc->cmd == LC_REEXPORT_DYLIB)){
 		process_flags.nlibs++;
 	    }
@@ -603,6 +604,7 @@ void *cookie)
 	    for (i = 0; i < ncmds; i++){
 		if(lc->cmd == LC_LOAD_DYLIB ||
 		   lc->cmd == LC_LOAD_WEAK_DYLIB ||
+		   lc->cmd == LC_LAZY_LOAD_DYLIB ||
 		   lc->cmd == LC_REEXPORT_DYLIB){
 		    dl = (struct dylib_command *)lc;
 		    process_flags.lib_names[j] =

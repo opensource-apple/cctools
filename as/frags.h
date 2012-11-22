@@ -55,6 +55,15 @@ struct frag			/* a code fragment */
     relax_stateT fr_type;	/* What state is my tail in? */
     relax_substateT fr_subtype;	/* Used to index in to md_relax_table for */
 				/*  fr_type == rs_machine_dependent frags. */
+#ifdef ARM
+    /* Where the frag was created, or where it became a variant frag.  */
+    char *fr_file;
+    unsigned int fr_line;
+    /* Flipped each relax pass so we can easily determine whether
+       fr_address has been adjusted.  */
+    unsigned int relax_marker:1,
+		 pad:31;
+#endif /* ARM */
     char fr_literal[1];		/* Chars begin here. */
 				/* One day we will compile fr_literal[0]. */
 };

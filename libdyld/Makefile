@@ -1,14 +1,7 @@
 RC_OS = macos
 PROFILING = -DDYLD_PROFILING
 OFLAG = -O
-ifeq "macos" "$(RC_OS)"
-  X_CFLAGS := $(shell if [ "$(RC_RELEASE)" != "Beaker" ] &&    \
-			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
-			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
-			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp -fno-builtin-round; \
-	     fi; )
-endif
+X_CFLAGS = -fno-builtin-round
 MIG = $(NEXT_ROOT)/usr/bin/mig
 ifneq "mwccppc" "$(notdir $(CC))"
   MIG_FLAGS = $(PROFILING)

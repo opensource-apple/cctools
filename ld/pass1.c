@@ -4634,7 +4634,8 @@ enum bool bundle_loader)
 		       section_type != S_SYMBOL_STUBS &&
 		       section_type != S_COALESCED &&
 		       section_type != S_MOD_INIT_FUNC_POINTERS &&
-		       section_type != S_MOD_TERM_FUNC_POINTERS){
+		       section_type != S_MOD_TERM_FUNC_POINTERS &&
+		       section_type != S_DTRACE_DOF){
 			error_with_cur_obj("unknown flags (type) of section %lu"
 					   " (%.16s,%.16s) in load command %lu",
 					   j, s->segname, s->sectname, i);
@@ -5712,7 +5713,8 @@ unsigned long strsize)
 		       section_type != S_SYMBOL_STUBS &&
 		       section_type != S_COALESCED &&
 		       section_type != S_MOD_INIT_FUNC_POINTERS &&
-		       section_type != S_MOD_TERM_FUNC_POINTERS){
+		       section_type != S_MOD_TERM_FUNC_POINTERS &&
+		       section_type != S_DTRACE_DOF){
 			error_with_cur_obj("unknown flags (type) of section %lu"
 					   " (%.16s,%.16s) in load command %lu",
 					   j, s->segname, s->sectname, i);

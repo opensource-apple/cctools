@@ -913,7 +913,7 @@ create_fat(void)
 	    }
 	}
 	for(i = 0; i < nthin_files; i++){
-	    if(extract_family_flag == FALSE)
+	    if(extract_family_flag == FALSE || nthin_files > 1)
 		if(lseek(fd, thin_files[i].fat_arch.offset, L_SET) == -1)
 		    system_fatal("can't lseek in output file: %s", output_file);
 	    if(write(fd, thin_files[i].addr, thin_files[i].fat_arch.size)

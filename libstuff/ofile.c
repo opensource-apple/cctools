@@ -54,6 +54,8 @@
 #include "stuff/bool.h"
 #ifdef OFI
 #include <mach-o/dyld.h>
+#else
+#include "stuff/lto.h"
 #endif
 #include "stuff/bytesex.h"
 #include "stuff/arch.h"
@@ -69,10 +71,12 @@
 #include "ofile_print.h"
 static enum bool otool_first_ofile_map = TRUE;
 #else /* !define(OTOOL) */
+
 #if (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__))
 #define ALIGNMENT_CHECKS_ARCHIVE_64_BIT
 static enum bool archive_64_bit_align_warning = FALSE;
 #endif /* (!defined(m68k) && !defined(__i386__) && !defined(__ppc__) && !defined(__arm__)) */
+
 #endif /* OTOOL */
 
 /* <mach/loader.h> */
@@ -204,21 +208,19 @@ void *cookie)
 	     * specified and process only those.
 	     */
 	    if(all_archs == FALSE && narch_flags != 0){
-
-		family = FALSE;
-		if(narch_flags == 1){
+		for(i = 0; i < narch_flags; i++){
+		    if(ofile_first_arch(&ofile) == FALSE){
+			ofile_unmap(&ofile);
+			return;
+		    }
+		    arch_found = FALSE;
+		    family = FALSE;
 		    family_arch_flag =
-			get_arch_family_from_cputype(arch_flags[0].cputype);
+			get_arch_family_from_cputype(arch_flags[i].cputype);
 		    if(family_arch_flag != NULL)
 			family = (enum bool)
 			  ((family_arch_flag->cpusubtype & ~CPU_SUBTYPE_MASK) ==
-			   (arch_flags[0].cpusubtype & ~CPU_SUBTYPE_MASK));
-		}
-
-		for(i = 0; i < narch_flags; i++){
-		    if(ofile_first_arch(&ofile) == FALSE)
-			return;
-		    arch_found = FALSE;
+			   (arch_flags[i].cpusubtype & ~CPU_SUBTYPE_MASK));
 		    if(narch_flags != 1)
 			arch_name = ofile.arch_flag.name;
 		    else
@@ -349,6 +351,7 @@ void *cookie)
 			error("file: %s does not contain architecture: %s",
 			      ofile.file_name, arch_flags[i].name);
 		}
+		ofile_unmap(&ofile);
 		return;
 	    }
 
@@ -373,8 +376,10 @@ void *cookie)
 		ofile_unmap(&ofile);
 		if(ofile_map(name, NULL, NULL, &ofile, FALSE) == FALSE)
 		    return;
-		if(ofile_first_arch(&ofile) == FALSE)
+		if(ofile_first_arch(&ofile) == FALSE){
+		    ofile_unmap(&ofile);
 		    return;
+		}
 		do{
 		    if(ofile.arch_flag.cputype ==
 			    host_arch_flag.cputype &&
@@ -473,8 +478,10 @@ void *cookie)
 			    swap_back_Mach_O(&ofile);
 		    }
 		}while(hostflag == FALSE && ofile_next_arch(&ofile) == TRUE);
-		if(hostflag == TRUE)
+		if(hostflag == TRUE){
+		    ofile_unmap(&ofile);
 		    return;
+		}
 	    }
 
 	    /*
@@ -485,8 +492,10 @@ void *cookie)
 	    ofile_unmap(&ofile);
 	    if(ofile_map(name, NULL, NULL, &ofile, FALSE) == FALSE)
 		return;
-	    if(ofile_first_arch(&ofile) == FALSE)
+	    if(ofile_first_arch(&ofile) == FALSE){
+		ofile_unmap(&ofile);
 		return;
+	    }
 	    do{
 		if(ofile.arch_type == OFILE_ARCHIVE){
 		    if(member_name != NULL){
@@ -596,8 +605,10 @@ void *cookie)
 			      ofile.file_name, arch_flags[i].name);
 		    }
 		}
-		if(arch_found == FALSE)
+		if(arch_found == FALSE){
+		    ofile_unmap(&ofile);
 		    return;
+		}
 	    }
 	    if(member_name != NULL){
 		if(ofile_specific_member(member_name, &ofile) == TRUE)
@@ -694,8 +705,10 @@ void *cookie)
 			      ofile.file_name, arch_flags[i].name);
 		    }
 		}
-		if(arch_found == FALSE)
+		if(arch_found == FALSE){
+		    ofile_unmap(&ofile);
 		    return;
+		}
 	    }
 	    if(ofile.mh_filetype == MH_DYLIB ||
 	       ofile.mh_filetype == MH_DYLIB_STUB){
@@ -737,6 +750,7 @@ void *cookie)
 	    else
 		error("file: %s is not an object file", name);
 	}
+	ofile_unmap(&ofile);
 }
 #endif /* !defined(OFI) */
 
@@ -1271,7 +1285,33 @@ enum bool archives_with_fat_objects)
 #ifndef OTOOL
 unknown:
 #endif
-	    ofile->file_type = OFILE_UNKNOWN;
+#ifndef OFI
+#ifdef LTO_SUPPORT
+	    if(is_llvm_bitcode(ofile, ofile->file_addr, ofile->file_size) ==
+	       TRUE){
+		ofile->file_type = OFILE_LLVM_BITCODE;
+		if(arch_flag != NULL){
+		    if(arch_flag->cputype != ofile->lto_cputype &&
+		       (arch_flag->cpusubtype & ~CPU_SUBTYPE_MASK) !=
+		       (ofile->lto_cpusubtype & ~CPU_SUBTYPE_MASK)){
+			error("llvm bitcode file: %s does not match specified "
+			      "arch_flag: %s passed to ofile_map()",
+			      ofile->file_name, arch_flag->name);
+			goto cleanup;
+		    }
+		}
+		if(object_name != NULL){
+		    error("file: %s is not an archive (object_name to "
+			  "ofile_map() can't be specified to be other than "
+			  "NULL)", ofile->file_name);
+		    goto cleanup;
+		}
+		goto success;
+	    }
+	    else
+#endif /* LTO_SUPPORT */
+#endif /* OFI */
+		ofile->file_type = OFILE_UNKNOWN;
 	    if(arch_flag != NULL){
 #ifdef OFI
 		ofile_unmap(ofile);
@@ -1590,6 +1630,13 @@ struct ofile *ofile)
 	ofile->mh = NULL;
 	ofile->mh64 = NULL;
 	ofile->load_commands = NULL;
+#ifdef LTO_SUPPORT
+	/*
+	 * Note: it is up to the caller if they want to call free_lto() on this
+	 * when iterating through the members of an archive. 
+	 */
+	ofile->lto = NULL;
+#endif /* LTO_SUPPORT */
 
 	/*
 	 * Get the address and size of the archive.
@@ -1751,6 +1798,15 @@ struct ofile *ofile)
 		if(check_Mach_O(ofile) == CHECK_BAD)
 		    goto cleanup;
 	    }
+#ifdef LTO_SUPPORT
+	    if(ofile->member_type == OFILE_UNKNOWN &&
+	       is_llvm_bitcode(ofile, ofile->member_addr, ofile->member_size) ==
+	       TRUE){
+		ofile->member_type = OFILE_LLVM_BITCODE;
+		ofile->object_addr = ofile->member_addr;
+		ofile->object_size = ofile->member_size;
+	    }
+#endif /* LTO_SUPPORT */
 	}
 	return(TRUE);
 
@@ -1771,6 +1827,11 @@ cleanup:
 	ofile->mh = NULL;
 	ofile->mh64 = NULL;
 	ofile->load_commands = NULL;
+#ifdef LTO_SUPPORT
+	ofile->lto = NULL;
+	ofile->lto_cputype = 0;
+	ofile->lto_cpusubtype = 0;
+#endif /* LTO_SUPPORT */
 	return(FALSE);
 }
 
@@ -1962,6 +2023,15 @@ struct ofile *ofile)
 		if(check_Mach_O(ofile) == CHECK_BAD)
 		    goto cleanup;
 	    }
+#ifdef LTO_SUPPORT
+	    if(ofile->member_type == OFILE_UNKNOWN &&
+	       is_llvm_bitcode(ofile, ofile->member_addr, ofile->member_size) ==
+	       TRUE){
+		ofile->member_type = OFILE_LLVM_BITCODE;
+		ofile->object_addr = ofile->member_addr;
+		ofile->object_size = ofile->member_size;
+	    }
+#endif /* LTO_SUPPORT */
 	}
 	return(TRUE);
 
@@ -1983,6 +2053,11 @@ cleanup:
 	ofile->mh = NULL;
 	ofile->mh64 = NULL;
 	ofile->load_commands = NULL;
+#ifdef LTO_SUPPORT
+	ofile->lto = NULL;
+	ofile->lto_cputype = 0;
+	ofile->lto_cpusubtype = 0;
+#endif /* LTO_SUPPORT */
 	return(FALSE);
 }
 
@@ -2186,6 +2261,15 @@ struct ofile *ofile)
 			    goto cleanup;
 		    }
 		}
+#ifdef LTO_SUPPORT
+		if(ofile->member_type == OFILE_UNKNOWN &&
+		   is_llvm_bitcode(ofile, ofile->member_addr,
+				   ofile->member_size) == TRUE){
+		    ofile->member_type = OFILE_LLVM_BITCODE;
+		    ofile->object_addr = ofile->member_addr;
+		    ofile->object_size = ofile->member_size;
+		}
+#endif /* LTO_SUPPORT */
 		return(TRUE);
 	    }
 	    offset += round(strtoul(ar_hdr->ar_size, NULL, 10),
@@ -2210,6 +2294,11 @@ cleanup:
 	ofile->mh = NULL;
 	ofile->mh64 = NULL;
 	ofile->load_commands = NULL;
+#ifdef LTO_SUPPORT
+	ofile->lto = NULL;
+	ofile->lto_cputype = 0;
+	ofile->lto_cpusubtype = 0;
+#endif /* LTO_SUPPORT */
 	return(FALSE);
 }
 
@@ -3525,24 +3614,25 @@ struct ofile *ofile)
 
 	    case LC_ENCRYPTION_INFO:
 		encrypt_info = (struct encryption_info_command *)lc;
-		if(swapped)
+		if(swapped) 
 		    swap_encryption_command(encrypt_info, host_byte_sex);
-		if(encrypt_info->cmdsize != sizeof(struct encryption_info_command)){
+		if(encrypt_info->cmdsize !=
+		   sizeof(struct encryption_info_command)){
 		    Mach_O_error(ofile, "malformed object (LC_ENCRYPTION_INFO"
 				 "command %lu has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		if(encrypt_info->cryptoff > size){
-		    Mach_O_error(ofile, "truncated or malformed object "
-			"(cryptoff field of LC_ENCRYPTION_INFO command %lu "
-			"extends past the end of the file)", i);
+		Mach_O_error(ofile, "truncated or malformed object (cryptoff "
+			     "field of LC_ENCRYPTION_INFO command %lu extends "
+			     "past the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		if(encrypt_info->cryptoff + encrypt_info->cryptsize > size){
 		    Mach_O_error(ofile, "truncated or malformed object "
-			"(cryptoff field plus cryptsize field of "
-			"LC_ENCRYPTION_INFO command %lu extends past "
-			"the end of the file)", i);
+				 "(cryptoff field plus cryptsize field of "
+				 "LC_ENCRYPTION_INFO command %lu extends past "
+				 "the end of the file)", i);
 		    return(CHECK_BAD);
 		}
 		break;
@@ -3632,6 +3722,9 @@ struct ofile *ofile)
 		goto check_dylib_command;
 	    case LC_REEXPORT_DYLIB:
 		cmd_name = "LC_REEXPORT_DYLIB";
+		goto check_dylib_command;
+	    case LC_LAZY_LOAD_DYLIB:
+		cmd_name = "LC_LAZY_LOAD_DYLIB";
 		goto check_dylib_command;
 check_dylib_command:
 		dl = (struct dylib_command *)lc;
@@ -4482,13 +4575,13 @@ check_dylib_command:
 		    while(state < p){
 			flavor = *((unsigned long *)state);
 			if(swapped){
-			    flavor = SWAP_LONG(flavor);
+			    flavor = SWAP_INT(flavor);
 			    *((unsigned long *)state) = flavor;
 			}
 			state += sizeof(unsigned long);
 			count = *((unsigned long *)state);
 			if(swapped){
-			    count = SWAP_LONG(count);
+			    count = SWAP_INT(count);
 			    *((unsigned long *)state) = count;
 			}
 			state += sizeof(unsigned long);

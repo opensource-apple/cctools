@@ -25,10 +25,10 @@ LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
 
 # Note that OTHER_SRCS do NOT get installed
 GAS_OTHER_SRCS = stuff/bytesex.h stuff/bool.h stuff/round.h stuff/errors.h \
-		 stuff/openstep_mach.h opcode/arm.h
+		 stuff/openstep_mach.h
 OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/allocate.h stuff/arch.h stuff/execute.h \
-	     stuff/ofile.h \
+	     stuff/ofile.h stuff/lto.h \
 	     stuff/hash_string.h stuff/breakout.h stuff/best_arch.h \
 	     stuff/hppa.h stuff/reloc.h stuff/vm_flush_cache.h \
 	     stuff/print.h stuff/version_number.h stuff/crc32.h sys/gmon.h \
@@ -36,6 +36,8 @@ OTHER_SRCS = notes gnu/symseg.h \
 	     stuff/SymLoc.h stuff/dylib_roots.h stuff/guess_short_name.h \
 	     stuff/macosx_deployment_target.h stuff/symbol_list.h \
 	     stuff/symbol.h stuff/unix_standard_mode.h \
+	     coff/base_relocs.h coff/bytesex.h coff/ms_dos_stub.h \
+	     coff/filehdr.h coff/aouthdr.h coff/scnhdr.h coff/syment.h \
 	     $(GAS_OTHER_SRCS)
 
 ENCUMBERED_SRCS = gnu/a.out.h gnu/exec.h
@@ -52,6 +54,7 @@ GAS_MISSING_SRCS = mach/m68k/thread_status.h \
 		   mach/sparc/thread_status.h \
 		   architecture/sparc/reg.h \
 		   mach/arm/thread_status.h
+
 MISSING_SRCS = mach/machine.h \
 	       architecture/i386/fpu.h architecture/i386/frame.h \
 	       standalone/libsa.h \
@@ -109,7 +112,7 @@ nextstep_install: common_install
 common_install:
 	cd mach-o; \
 	    install -c -m 444 ${IFLAGS} arch.h ldsyms.h reloc.h \
-	    nlist.h stab.h loader.h fat.h swap.h getsect.h 	\
+	    stab.h loader.h fat.h swap.h getsect.h nlist.h \
 	    ranlib.h ${DSTROOT}${$(RC_OS)_INCDIR}/mach-o
 	if [ $(OLD_DYLD_STUFF) ];				\
 	then							\

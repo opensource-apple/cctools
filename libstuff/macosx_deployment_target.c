@@ -146,10 +146,10 @@ bad_system_value:
 	 * As a last resort we set the default to the highest known shipping
 	 * system to date.
 	 */
-	value->major = 5;
+	value->major = 6;
 	value->minor = 0;
-	value->name = allocate(strlen("10.5") + 1);
-	strcpy(value->name, "10.5");
+	value->name = allocate(strlen("10.6") + 1);
+	strcpy(value->name, "10.6");
 	warning("unknown value returned by sysctl() for kern.osrelease: %s "
 		"ignored (using %s)", osversion, value->name);
 	/* fall through to also warn about a possble bad user value */

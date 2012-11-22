@@ -431,13 +431,18 @@ unsigned long narchs)
 	for(i = 0; i < narchs; i++){
 	    if(archs[i].type == OFILE_ARCHIVE){
 		for(j = 0; j < archs[i].nmembers; j++){
-		    if(archs[i].members[j].type == OFILE_Mach_O)
+		    if(archs[i].members[j].type == OFILE_Mach_O){
+			if(archs[i].members[j].object->ld_r_ofile != NULL)
+			   ofile_unmap(archs[i].members[j].object->ld_r_ofile);
 			free(archs[i].members[j].object);
+		    }
 		}
 		if(archs[i].nmembers > 0 && archs[i].members != NULL)
 		    free(archs[i].members);
 	    }
 	    else if(archs[i].type == OFILE_Mach_O){
+		if(archs[i].object->ld_r_ofile != NULL)
+		    ofile_unmap(archs[i].object->ld_r_ofile);
 		free(archs[i].object);
 	    }
 	}

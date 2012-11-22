@@ -21,17 +21,20 @@ MAN5 = Mach-O.5 a.out.5 ranlib.5 stab.5
 MANL = cmpshlib.1 indr.1 mkshlib.1 checksyms.1 seg_addr_table.1 \
        check_dylib.1
 
+EFI1 = mtoc.1
+
 DYLD_MANL3 = NSObjectFileImage_priv.3
 MANL3 = libsyminfo.3 redo_prebinding.3
 
 INSTALL_FILES = Makefile $(COMMON_MAN1) $(OTHER_MAN1) $(MAN3) $(MAN5) $(MANL) \
-		$(MANL3) $(DYLD_MAN1) $(DYLD_MAN3) $(DYLD_MANL3) notes
+		$(MANL3) $(DYLD_MAN1) $(DYLD_MAN3) $(DYLD_MANL3) $(EFI1) notes
 
 MANDIR = /usr/share/man
 LOCMANDIR = /usr/local/man
+EFIMANDIR = /usr/local/efi/share/man
 DSTDIRS = $(DSTROOT)$(MANDIR)/man1 $(DSTROOT)$(MANDIR)/man3 \
 	  $(DSTROOT)$(MANDIR)/man5 $(DSTROOT)$(LOCMANDIR)/man1 \
-	  $(DSTROOT)$(LOCMANDIR)/man3
+	  $(DSTROOT)$(LOCMANDIR)/man3 $(DSTROOT)$(EFIMANDIR)/man1
 
 install: $(DSTDIRS) $(COMMON_MAN1) $(OTHER_MAN1) $(MAN3) $(MAN5) $(MANL) \
 	 $(RC_OS) $(MANL3)
@@ -48,6 +51,7 @@ install: $(DSTDIRS) $(COMMON_MAN1) $(OTHER_MAN1) $(MAN3) $(MAN5) $(MANL) \
 	install -c -m 444 $(MAN5) $(DSTROOT)$(MANDIR)/man5
 	install -c -m 444 $(MANL) $(DSTROOT)$(LOCMANDIR)/man1
 	install -c -m 444 $(MANL3) $(DSTROOT)$(LOCMANDIR)/man3
+	install -c -m 444 $(EFI1) $(DSTROOT)$(EFIMANDIR)/man1
 	if [ $(OLD_DYLD_STUFF) ];					\
 	then								\
 	    install -c -m 444 $(DYLD_MANL3) $(DSTROOT)$(LOCMANDIR)/man3;\

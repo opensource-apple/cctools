@@ -163,11 +163,11 @@ static void displacement(
     unsigned long *value,
     const unsigned long value_size,
     const char *sect,
-    unsigned long sect_addr,
+    uint64_t sect_addr,
     unsigned long *length,
     unsigned long *left,
     const cpu_type_t cputype,
-    const unsigned long addr,
+    const uint64_t addr,
     const struct relocation_info *sorted_relocs,
     const unsigned long nsorted_relocs,
     const struct nlist *symbols,
@@ -704,7 +704,7 @@ static const struct instable op0F3A[112] = {
 		INVALID,	INVALID,
 /*  [1C]  */	INVALID,	INVALID,
 		INVALID,	INVALID,
-/*  [20]  */	{"pinsrb",TERM,SSE4ifm,0},	{"insertps",TERM,SSE4ifm,0},
+/*  [20]  */	{"pinsrb",TERM,SSE4ifm,0},	{"insertps",TERM,SSE4i,0},
 		{"pinsr",TERM,SSE4ifm,0},	INVALID,
 /*  [24]  */	INVALID,	INVALID,
 		INVALID,	INVALID,
@@ -1500,8 +1500,8 @@ unsigned long
 i386_disassemble(
 char *sect,
 unsigned long left,
-unsigned long addr,
-unsigned long sect_addr,
+uint64_t addr,
+uint64_t sect_addr,
 enum byte_sex object_byte_sex,
 struct relocation_info *sorted_relocs,
 unsigned long nsorted_relocs,
@@ -1530,7 +1530,7 @@ enum bool verbose)
     char result0[MAX_RESULT], result1[MAX_RESULT];
     const char *indirect_symbol_name;
 
-    unsigned long length;
+    unsigned long i, length;
     unsigned char byte;
        unsigned char opcode_suffix;
     /* nibbles (4 bits) of the opcode */
@@ -3404,7 +3404,10 @@ enum bool verbose)
 	case PREFIX:
 	case UNKNOWN:
 	default:
-	    printf(".byte 0x%02x #bad opcode\n", (unsigned int)byte);
+	    printf(".byte 0x%02x", 0xff & sect[0]);
+	    for(i = 1; i < length; i++)
+		printf(", 0x%02x", 0xff & sect[i]);
+	    printf(" #bad opcode\n");
 	    return(length);
 	} /* end switch */
 }
@@ -3651,12 +3654,12 @@ unsigned long *value,
 const unsigned long value_size,
 
 const char *sect,
-unsigned long sect_addr,
+uint64_t sect_addr,
 unsigned long *length,
 unsigned long *left,
 
 const cpu_type_t cputype,
-const unsigned long addr,
+const uint64_t addr,
 const struct relocation_info *sorted_relocs,
 const unsigned long nsorted_relocs,
 const struct nlist *symbols,
@@ -3671,6 +3674,7 @@ const enum bool verbose)
 {
     unsigned long sect_offset;
 	unsigned long long offset;
+	uint64_t guess_addr;
 
 	sect_offset = addr + *length - sect_addr;
 	*value = get_value(value_size, sect, length, left);
@@ -3686,11 +3690,25 @@ const enum bool verbose)
 	}
 	if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64)
 	    *value += addr + *length;
+
 	GET_SYMBOL(symadd, symsub, &offset, sect_offset, *value);
 	if(*symadd == NULL){
-	    *symadd = GUESS_SYMBOL(*value);
-	    if(*symadd != NULL)
-		*value = 0;
+	    if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64){
+		*symadd = GUESS_SYMBOL(*value);
+		if(*symadd != NULL)
+		    *value = 0;
+	    }
+	    else{
+		guess_addr = *value;
+		if((*value) & 0x80000000)
+		    guess_addr |= 0xffffffff00000000ULL;
+		guess_addr += addr + *length;
+		*symadd = GUESS_SYMBOL(guess_addr);
+		if(*symadd != NULL)
+		    *value = 0;
+		else
+		    *value += addr + *length;
+	    }
 	}
 	else if(*symsub != NULL){
 	    *value = offset;

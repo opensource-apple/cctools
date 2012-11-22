@@ -1037,7 +1037,7 @@ const char *format,
 
 #else /* defined(LIBRARY_API) */
 #include <setjmp.h>
-#include <malloc/malloc.h>
+#include <objc/zone.h>
 #include <errno.h>
 #include <mach/mach_error.h>
 /*
@@ -8230,11 +8230,11 @@ uint32_t vmslide)
 					  get_weak(arch_symbol),
 					  &defined_symbol, &module_state,
 					  &lib, NULL, NULL, NO_INDR_LOOP);
-				/*
-				 * If this is an ARM Thumb symbol, we need to set the low bit of
-				 * the symbol pointer so the hardware knows the function is
-				 * Thumb.
-				 */
+			    /*
+			     * If this is an ARM Thumb symbol, we need to set
+			     * the low bit of the symbol pointer so the hardware
+			     * knows the function is Thumb.
+			     */
 			    if (arch->object->mh_cputype == CPU_TYPE_ARM &&
 			        (defined_symbol->n_desc & N_ARM_THUMB_DEF) != 0)
 			        set_arch_long(p, defined_symbol->n_value | 1L);
@@ -8817,7 +8817,8 @@ uint32_t vmslide)
 	    return;
 
 	/*
-	 * An executable targeting 10.4 or later doesn't need LC_PREBOUND_DYLIB load commands
+	 * An executable targeting 10.4 or later doesn't need LC_PREBOUND_DYLIB
+	 * load commands.
 	 */
 	if(unprebinding == FALSE){
 	    struct macosx_deployment_target deployment_version;
@@ -9833,7 +9834,7 @@ void)
 
     addr_target__dyld = find__dyld_section_addr(arch->object->mh);
 
-    if(addr_target__dyld != 0 && arch->object->mh_cputype != CPU_TYPE_ARM){
+    if(addr_target__dyld != 0){
 	/* find __DATA,__dyld section in image being prebound */
 	target__dyld =  (uint32_t *)
 			contents_pointer_for_vmaddr(addr_target__dyld, 8);

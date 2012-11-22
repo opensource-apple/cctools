@@ -210,7 +210,7 @@ const struct arch_flag *flag)
       flag->cputype == CPU_TYPE_VEO)
         return BIG_ENDIAN_BYTE_SEX;
     else if(flag->cputype == CPU_TYPE_I386 ||
-            flag->cputype == CPU_TYPE_ARM)
+	    flag->cputype == CPU_TYPE_ARM)
         return LITTLE_ENDIAN_BYTE_SEX;
     else
         return UNKNOWN_BYTE_SEX;

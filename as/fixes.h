@@ -49,7 +49,12 @@ struct fix {
 
   /* FROM write.h line 82 */
   /* Has this relocation already been applied?  */
-  unsigned fx_done : 1;
+  unsigned fx_done : 1,
+
+  /* Non-zero if we have the special assembly time constant expression
+     of the difference of two symbols defined in the same section then divided
+     by exactly 2. */
+           fx_sectdiff_divide_by_two : 1;
 
   /* FROM write.h line 133 */
   /* This field is sort of misnamed.  It appears to be a sort of random

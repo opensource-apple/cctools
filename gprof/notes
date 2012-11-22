@@ -3,6 +3,10 @@ TODO:
   stuff).
 - Add multi-arch support for findcalls() and make work better (use disasm).
 
+Changes for the 5.25 release (the cctools-677 release):
+- Changed the Makefile to not use -Wno-long-double and -no-cpp-precomp .
+  Radar bug #5563553.
+
 Changes for the 5.24 release (the cctools-653 release):
 - Maded changes to deal with dyld shared cache.  Radar bug #4960162.
   - Added the image_header field to the dyld_image struct in gprof.h .

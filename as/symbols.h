@@ -28,9 +28,9 @@ extern symbolS abs_symbol;
 
 extern void symbol_begin(
     void);
-extern char *local_label_name(
-    int n,
-    int augend);
+extern char *fb_label_name(
+    long n,
+    long augend);
 extern void
     local_colon(
     int n);
@@ -80,6 +80,9 @@ extern void S_SET_NAME (symbolS *, const char *);
 extern void S_CLEAR_EXTERNAL (symbolS *);
 extern void S_SET_WEAK (symbolS *);
 extern void S_SET_THREAD_LOCAL (symbolS *);
+extern int S_IS_LOCAL (symbolS *s);
+extern fragS * symbol_get_frag (symbolS *s);
+
 
 /* FROM line tc-arm.h 104 */
 #define TC_SYMFIELD_TYPE 	unsigned int

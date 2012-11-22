@@ -2106,19 +2106,19 @@ enum bool verbose)
 
 	switch (cpusubtype){
 	    case CPU_SUBTYPE_ARM_V6:
-		dis_info.cpu_insn_set_mask = ARM_ARCH_V6ZK | FPU_ARCH_VFP_V2;
+		dis_info.cpu_insn_set_mask = ARM_AEXT_V6ZK | FPU_VFP_V2;
 		break;
 	    case CPU_SUBTYPE_ARM_V5TEJ:
-		dis_info.cpu_insn_set_mask = ARM_ARCH_V5TEJ;
+		dis_info.cpu_insn_set_mask = ARM_AEXT_V5TEJ;
 		break;
 	    case CPU_SUBTYPE_ARM_XSCALE:
-		dis_info.cpu_insn_set_mask = ARM_ARCH_XSCALE;
+		dis_info.cpu_insn_set_mask = ARM_AEXT_V5TE | ARM_CEXT_XSCALE;
 		break;
 	    case CPU_SUBTYPE_ARM_ALL:
-		dis_info.cpu_insn_set_mask = ARM_ARCH_V6ZK | ARM_CEXT_XSCALE | FPU_ARCH_VFP_V2;
+		dis_info.cpu_insn_set_mask = ARM_AEXT_V6ZK | ARM_CEXT_XSCALE | FPU_VFP_V2;
 		break;
 	    default:
-		dis_info.cpu_insn_set_mask = ARM_ARCH_V4T;
+		dis_info.cpu_insn_set_mask = ARM_AEXT_V4T;
 		break;
 	}
 

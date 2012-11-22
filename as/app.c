@@ -70,6 +70,7 @@ void)
 	memset(lex, '\0', sizeof(lex));		/* Trust NOBODY! */
 	lex [' ']		|= LEX_IS_WHITESPACE;
 	lex ['\t']		|= LEX_IS_WHITESPACE;
+	lex ['\r']		|= LEX_IS_WHITESPACE;
 	for (p =symbol_chars;*p;++p)
 		lex [(int)*p] |= LEX_IS_SYMBOL_COMPONENT;
 	lex ['\n']		|= LEX_IS_LINE_SEPERATOR;

@@ -1485,7 +1485,7 @@ enum bool verbose)
 	printf("         next 0x%08x\n",
 	       (unsigned int)protocol_list.next);
 	print_indent(indent);
-	printf("        count %ld\n",
+	printf("        count %d\n",
 	       protocol_list.count);
 	
 	for(i = 0; i < (unsigned long)protocol_list.count; i++){

@@ -137,6 +137,46 @@ char **envp)
 		    i += 2;
 		}
 	    }
+	    else if(strcmp(argv[i], "-A") == 0){
+		if(i + 3 == argc){
+		    error("missing argument(s) to: %s option", argv[i]);
+		    usage();
+		}
+		else{
+		    arch_signs = reallocate(arch_signs,
+			    (narch_signs + 1) * sizeof(struct arch_sign));
+
+		    arch_signs[narch_signs].arch_flag.cputype = 
+			strtoul(argv[i+1], &endp, 0);
+		    if(*endp != '\0')
+			fatal("cputype for '-A %s %s %s' not a proper number",
+			      argv[i+1], argv[i+2], argv[i+3]);
+
+		    arch_signs[narch_signs].arch_flag.cpusubtype = 
+			strtoul(argv[i+2], &endp, 0);
+		    if(*endp != '\0')
+			fatal("cpusubtype for '-A %s %s %s' not a proper "
+			      "number", argv[i+1], argv[i+2], argv[i+3]);
+
+		    arch_signs[narch_signs].arch_flag.name = 
+			get_arch_name_from_types(
+			    arch_signs[narch_signs].arch_flag.cputype,
+			    arch_signs[narch_signs].arch_flag.cpusubtype);
+
+		    arch_signs[narch_signs].datasize =
+			strtoul(argv[i+3], &endp, 0);
+		    if(*endp != '\0')
+			fatal("size for '-A %s %s %s' not a proper number",
+			      argv[i+1], argv[i+2], argv[i+3]);
+		    if((arch_signs[narch_signs].datasize % 16) != 0)
+			fatal("size for '-A %s %s %s' not a multiple of 16",
+			      argv[i+1], argv[i+2], argv[i+3]);
+
+		    arch_signs[narch_signs].found = FALSE;
+		    narch_signs++;
+		    i += 3;
+		}
+	    }
 	    else{
 		error("unknown flag: %s", argv[i]);
 		usage();
@@ -176,7 +216,8 @@ void
 usage(
 void)
 {
-	fprintf(stderr, "Usage: %s -i input [-a <arch> <size>]... -o output\n",
+	fprintf(stderr, "Usage: %s -i input [-a <arch> <size>]... "
+		"[-A <cputype> <cpusubtype> <size>]... -o output\n",
 		progname);
 	exit(EXIT_FAILURE);
 }

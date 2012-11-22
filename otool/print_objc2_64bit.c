@@ -343,8 +343,7 @@ static void print_class_t(
 
 static void print_class_ro_t(
     uint64_t p,
-    struct info *info,
-    enum bool *is_meta_class);
+    struct info *info);
 
 static void print_layout_map(
     uint64_t p,
@@ -571,7 +570,6 @@ struct info *info)
     unsigned long offset, left;
     struct section_info_64 *s;
     const char *name;
-    enum bool is_meta_class;
 
 	r = get_pointer_64(p, &offset, &left, &s,
 			   info->sections, info->nsections);
@@ -619,21 +617,14 @@ struct info *info)
 	else
 	    printf("\n");
 	printf("          data 0x%llx (struct class_ro_t *)\n", c.data);
-	print_class_ro_t(c.data, info, &is_meta_class);
-
-	if(! is_meta_class)
-	    {
-		printf("Meta Class\n");
-		print_class_t(c.isa, info);
-	    }
+	print_class_ro_t(c.data, info);
 }
 
 static
 void
 print_class_ro_t(
 uint64_t p,
-struct info *info,
-enum bool *is_meta_class)
+struct info *info)
 {
     struct class_ro_t cro;
     void *r;
@@ -689,8 +680,6 @@ enum bool *is_meta_class)
 	printf("           baseProperties 0x%llx\n", cro.baseProperties);
 	if(cro.baseProperties != 0)
 	    print_objc_property_list(cro.baseProperties, info);
-	if (is_meta_class)
-	    *is_meta_class = (cro.flags & RO_META) ? TRUE : FALSE;
 }
 
 static

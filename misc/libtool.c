@@ -46,6 +46,10 @@
 #include "stuff/allocate.h"
 #include "stuff/execute.h"
 #include "stuff/version_number.h"
+#include "stuff/unix_standard_mode.h"
+#ifdef LTO_SUPPORT
+#include "stuff/lto.h"
+#endif /* LTO_SUPPORT */
 
 #include "make.h"
 #include <mach/mach_init.h>
@@ -185,6 +189,9 @@ struct member {
     struct symtab_command *st;	    /* the symbol table command */
     struct section **sections;	    /* array of section structs for 32-bit */
     struct section_64 **sections64; /* array of section structs for 64-bit */
+#ifdef LTO_SUPPORT
+    void *lto;			    /* lto module */
+#endif /* LTO_SUPPORT */
 
     /* the name of the member in the output */
     char         *member_name;	    /* the member name */
@@ -1043,7 +1050,6 @@ char **envp)
 		strcat(p, standard_dirs[i]);
 		standard_dirs[i] = p;
 	    }
-	    /*
 	    for(i = 0; i < cmd_flags.nLdirs ; i++){
 		if(cmd_flags.Ldirs[i][1] != 'L')
 		    continue;
@@ -1060,7 +1066,6 @@ char **envp)
 		    }
 		}
 	    }
-	    */
 	}
 
 	/* check the command line arguments for correctness */
@@ -1397,6 +1402,9 @@ void)
 			}
 			else if(ofiles[i].mh != NULL ||
 			        ofiles[i].mh64 != NULL ||
+#ifdef LTO_SUPPORT
+			        ofiles[i].lto != NULL ||
+#endif /* LTO_SUPPORT */
 				cmd_flags.ranlib == TRUE){
 			    add_member(ofiles + i);
 			}
@@ -1417,6 +1425,15 @@ void)
 		}
 		add_member(ofiles + i);
 	    }
+#ifdef LTO_SUPPORT
+	    else if(ofiles[i].file_type == OFILE_LLVM_BITCODE){
+		if(cmd_flags.ranlib == TRUE){
+		    error("file: %s is not an archive", cmd_flags.files[i]);
+		    continue;
+		}
+		add_member(ofiles + i);
+	    }
+#endif /* LTO_SUPPORT */
 	    else{ /* ofiles[i].file_type == OFILE_UNKNOWN */
 		if(cmd_flags.ranlib == TRUE){
 		    error("file: %s is not an archive", cmd_flags.files[i]);
@@ -1657,6 +1674,10 @@ struct ofile *ofile)
 	 */
 	if(ofile->mh != NULL || ofile->mh64 != NULL)
 	    size = round(ofile->object_size, 8);
+#ifdef LTO_SUPPORT
+	else if(ofile->lto != NULL && ofile->file_type == OFILE_LLVM_BITCODE)
+	    size = round(ofile->file_size, 8);
+#endif /* LTO_SUPPORT */
 	else
 	    size = round(ofile->member_size, 8);
 
@@ -1716,6 +1737,22 @@ struct ofile *ofile)
 		    break;
 	    }
 	}
+#ifdef LTO_SUPPORT
+	else if(ofile->lto != NULL){
+	    /*
+	     * If -arch_only is specified then only add this file if it matches
+	     * the architecture specified.
+	     */
+	    if(cmd_flags.arch_only_flag.name != NULL &&
+	       cmd_flags.arch_only_flag.cputype != ofile->lto_cputype)
+		return;
+
+	    for( ; i < narchs; i++){
+		if(archs[i].arch_flag.cputype == ofile->lto_cputype)
+		    break;
+	    }
+	}
+#endif /* LTO_SUPPORT */
 	if(narchs == 1 && archs[0].arch_flag.cputype == 0){
 	    i = 0;
 	}
@@ -1729,6 +1766,14 @@ struct ofile *ofile)
 		if(family_arch_flag != NULL)
 		    archs[narchs].arch_flag = *family_arch_flag;
 	    }
+#ifdef LTO_SUPPORT
+	    else if(ofile->lto != NULL){
+		family_arch_flag =
+			get_arch_family_from_cputype(ofile->lto_cputype);
+		if(family_arch_flag != NULL)
+		    archs[narchs].arch_flag = *family_arch_flag;
+	    }
+#endif /* LTO_SUPPORT */
 	    else
 		archs[narchs].arch_flag.name = "unknown";
 	    narchs++;
@@ -1756,6 +1801,25 @@ struct ofile *ofile)
                     arch->arch_flag.cpusubtype = ofile->mh_cpusubtype;
 	    }
 	}
+#ifdef LTO_SUPPORT
+	if(arch->arch_flag.cputype == 0 &&
+	   (ofile->lto != NULL)){
+	    family_arch_flag = get_arch_family_from_cputype(ofile->lto_cputype);
+	    if(family_arch_flag != NULL){
+		arch->arch_flag = *family_arch_flag;
+	    }
+            else{
+                arch->arch_flag.name =
+                    savestr("cputype 1234567890 cpusubtype 1234567890");
+                if(arch->arch_flag.name != NULL)
+                    sprintf(arch->arch_flag.name, "cputype %u cpusubtype %u",
+                            ofile->lto_cputype, ofile->lto_cpusubtype &
+			    ~CPU_SUBTYPE_MASK);
+                    arch->arch_flag.cputype = ofile->lto_cputype;
+                    arch->arch_flag.cpusubtype = ofile->lto_cpusubtype;
+	    }
+	}
+#endif /* LTO_SUPPORT */
 
 	/* create a member in this arch type for this member */
 	arch->members = reallocate(arch->members, sizeof(struct member) *
@@ -1945,9 +2009,24 @@ struct ofile *ofile)
 	    member->mh64 = ofile->mh64;
 	    member->load_commands = ofile->load_commands;
 	}
+#ifdef LTO_SUPPORT
+	else if(ofile->file_type == OFILE_LLVM_BITCODE){
+	    member->object_addr = ofile->file_addr;
+	    member->object_size = ofile->file_size;
+	    member->lto = ofile->lto;
+	    member->object_byte_sex = get_byte_sex_from_flag(&arch->arch_flag);
+	}
+#endif /* LTO_SUPPORT */
 	else{
 	    member->object_addr = ofile->member_addr;
 	    member->object_size = ofile->member_size;
+#ifdef LTO_SUPPORT
+	    if(ofile->lto != NULL){
+		member->lto = ofile->lto;
+		member->object_byte_sex = get_byte_sex_from_flag(
+							&arch->arch_flag);
+	    }
+#endif /* LTO_SUPPORT */
 	}
 }
 
@@ -2090,8 +2169,16 @@ char *output)
 	 * Create the output file.  The unlink() is done to handle the problem
 	 * when the outputfile is not writable but the directory allows the
 	 * file to be removed (since the file may not be there the return code
-	 * of the unlink() is ignored).
+	 * of the unlink() is ignored).  But if this is ranlib(1) and we are
+	 * running in UNIX standard mode and the file is not writeable don't
+	 * do the unlink() just print and error message.
 	 */
+	if(cmd_flags.ranlib == TRUE &&
+	   get_unix_standard_mode() == TRUE &&
+	   access(output, W_OK) == -1){
+	    system_error("file: %s is not writable", output);
+	    return;
+	}
 	(void)unlink(output);
 	if((fd = open(output, O_WRONLY | O_CREAT | O_TRUNC, 0666)) == -1){
 	    system_error("can't create output file: %s", output);
@@ -3006,6 +3093,9 @@ char *output)
     struct section *section;
     struct section_64 *section64;
     uint8_t n_type, n_sect;
+#ifdef LTO_SUPPORT
+    uint32_t nsyms;
+#endif /* LTO_SUPPORT */
 
 	symbols = NULL;
 	symbols64 = NULL;
@@ -3129,6 +3219,18 @@ char *output)
 		else
 		    warn_member(arch, member, "has no symbols");
 	    }
+#ifdef LTO_SUPPORT
+	    else if(member->lto != NULL){
+		nsyms = lto_get_nsyms(member->lto);
+		for(i = 0; i < nsyms; i++){
+		    if(lto_toc_symbol(member->lto, i, cmd_flags.c) == TRUE){
+			arch->toc_nranlibs++;
+			arch->toc_strsize +=
+			    strlen(lto_symbol_name(member->lto, i)) + 1;
+		    }
+		}
+	    }
+#endif /* LTO_SUPPORT */
 	    else{
 		if(cmd_flags.ranlib == FALSE){
 		    warn_member(arch, member, "is not an object file");
@@ -3202,6 +3304,22 @@ char *output)
 		    }
 		}
 	    }
+#ifdef LTO_SUPPORT
+	    else if(member->lto != NULL){
+		nsyms = lto_get_nsyms(member->lto);
+		for(j = 0; j < nsyms; j++){
+		    if(lto_toc_symbol(member->lto, j, cmd_flags.c) == TRUE){
+			strcpy(arch->toc_strings + s,
+			       lto_symbol_name(member->lto, j));
+			arch->toc_ranlibs[r].ran_un.ran_name =
+						    arch->toc_strings + s;
+			arch->toc_ranlibs[r].ran_off = i + 1;
+			r++;
+			s += strlen(lto_symbol_name(member->lto, j)) + 1;
+		    }
+		}
+	    }
+#endif /* LTO_SUPPORT */
 	}
 
 	/*

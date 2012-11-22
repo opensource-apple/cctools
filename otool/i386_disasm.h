@@ -29,8 +29,8 @@
 extern unsigned long i386_disassemble(
     char *sect,
     unsigned long left,
-    unsigned long addr,
-    unsigned long sect_addr,
+    uint64_t addr,
+    uint64_t sect_addr,
     enum byte_sex object_byte_sex,
     struct relocation_info *sorted_relocs,
     unsigned long nsorted_relocs,

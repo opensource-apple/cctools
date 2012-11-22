@@ -9,6 +9,134 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.25 release (the cctools-698 release):
+- Added support for LLVM bitcode files to libtool(1).  Radar bug #5712460.
+  It was added undef the ifdef LTO_SUPPORT and can be disabled by setting the
+  LTO Makefile macro to nothing instead of its default -DLTO_SUPPORT .
+  - Changed the Makefile and added the LTO macro defined to -DLTO_SUPPORT to
+    enable LLVM bitcode file support.
+  - Added support for LLVM bitcode files to libtool.c :
+    - Added the lto field to the member struct.
+    - Changed process():
+      - To check the ofile->lto field for archives and if not NULL also call
+        add_member().
+      - Added a check for the ofile's file_type being OFILE_LLVM_BITCODE and so
+	call add_member().  Added error if the program is ranlib(1).
+    - Changed add_member():
+      - to set the size of OFILE_LLVM_BITCODE files.
+      - added checks when ofile->lto is not NULL and when -arch_only is
+        specified and the arch does not match to return
+      - added code when ofile->lto is not NULL and to select the matching
+        archs[] if any.
+      - added code when ofile->lto is not NULL to set the archs[].arch_flag of
+	a newly allocated archs[]
+      - added code when ofile->lto is not NULL to set the arch->arch_flag of
+	and existing arch if not set.
+      - added code when file->file_type is OFILE_LLVM_BITCODE to set the
+	member fields.
+      - added code when ofile->lto is not NULL to copy the lto field to the
+	member struct and set the object_byte_sex field.
+    - Changed make_table_of_contents():
+      - Added code when member->lto != NULL to count the toc symbols from
+	the lto module then add them to the table of contents.
+
+Changes for the 5.25 release (the cctools-694 release):
+- Fixed a bug in strip(1) where it was crashing when stripping an MH_PRELOAD
+  filetype because the code is dereferencing a pointer to the dynamic symbol
+  table in get_starting_syminfo_offset() in strip.c.  The fix was to test
+  object->dyst for not being NULL before using it.  Radar bug #5834516.
+
+Changes for the 5.25 release (the cctools-692 release):
+- Updated strip(1) to support binaries that use lazy dylibs. Radar bug #5828589.
+
+Changes for the 5.25 release (the cctools-688 release):
+- Maded changes for the new LC_LAZY_LOAD_DYLIB load command. Radar bug #5760930.
+  - Added case labels for LC_LAZY_LOAD_DYLIB in update_load_commands() in
+    install_name_tool.c in two places.
+  - Added testing for LC_LAZY_LOAD_DYLIB in lc->cmd in two places in nm() in
+    nm.c .
+
+Changes for the 5.25 release (the cctools-681 release):
+- Removed all __OPEN_SOURCE__ references in Makefile, notes, lipo.c, nm.c,
+  redo_prebinding.c and strip.c .
+- Added the -A option to codesign_allocate(1) to accept numeric architecture
+  specifications.  Radar bug #5681427.
+- Changed codesign_allocate to be a member of com.apple.tool.codesign_allocate .
+  This is done by adding the new Info.plist file into the binary as part of the
+  (__TEXT,__info_plist) section with a -sectcreate option on the link line
+  in the Makefile.  Radar bug #5681503.
+
+Changes for the 5.25 release (the cctools-679.1 release):
+- Because of the bugs in ld(1), 5675774 and 5658046, the change to strip 
+  dwarf for 5343015 has to be backed out.  The change is to simply #ifdef
+  NOTDEF the test of has_dwarf and the call to make_ld_r_object() in
+  strip_symtab().  Radar bug #5660086.
+
+Changes for the 5.25 release (the cctools-679 release):
+- Fixed a problem with the change made for Radar bug #5008421 where it would
+  crash if doing a full strip on a file without a dynamic symbol table.
+  The new code in strip_object() to account for the input symbolic info
+  size needed to test that the dynamic symbol table pointer load command was
+  not NULL.  Radar bug #5588769.
+
+Changes for the 5.25 release (the cctools-677 release):
+- Changed the Makefile to not use -Wno-long-double and -no-cpp-precomp .
+  Radar bug #5563553.
+
+Changes for the 5.25 release (the cctools-676 release):
+- Changed it so ranlib(1) would not overwrite a file that is not writable when
+  running in UNIX standard conformance mode (the default).  The change was to
+  libtool.c in create_library() to add a check before it calls unlink(2).
+  Radar bug #4242330.
+- Added -fno-builtin-trunc to the Makefile to removed a warning when compiling
+  libtool.c .
+- Fixed a problem in lipo(1)'s -extract_family when used on a fat file with
+  multiple cpusubtypes.  The fix was in an if() statement in create_fat() at the
+  end where the if() before the seek() needed to also check nthin_files > 1 or
+  extract_family_flag == FALSE.  Radar bug #4695968.
+- Fixed the spelling of 'malformed' in redo_prebinding error messages.
+  Radar bug #5188349.
+
+Changes for the 5.25 release (the cctools-675 release):
+- Fixed strip(1) to correctly do a full symbol strip and set the offsets to the
+  indirect symbol table and local relocation enties.  The changes were to factor
+  out finding the starting offset of the symbolic info from strip_object() into
+  a new routine get_starting_syminfo_offset() and fixed the code in
+  strip_object() for the full symbol strip case to correctly account for the
+  symbolic info size and set the output offset to the local relocation enties
+  and indirect symbol table.  Radar bug #5008421.
+- Changed strip(1) to strip DWARF debugging info from object files.  Radar bug
+  #5343015.
+  - Added a new routine make_ld_r_object() that is passed the info for the
+    current object file, writes that to a temporary file, runs "ld -r" plus the
+    specified stripping option creating a second temporary file, reads that file
+    in and replaces the object file contents with that and resets the variables
+    pointing to the symbol, string and indirect tables.  The new ld_r_ofile
+    field in the struct object from "stuff/breakout.h" is set in
+    make_ld_r_object() so later free_archs() can call ofile_unmap() on it.
+  - Changed strip_symtab() to see if the current object is an MH_OBJECT filetype
+    and -S or -x is specified and the object has DWARF debugging sections to
+    strip and if so calls the new routine make_ld_r_object().
+  - Moved the local variables from strip_object for the symbol, string and
+    indirect tables to file level statics so that the can be reset by the new
+    routine make_ld_r_object().  And removed them as parameters to
+    strip_symtab().
+  - Changed the call to breakout() in strip_file() to save its ofile struct
+    pointer return value so ofile_unmap() can later be called to clean up the
+    space for the mapped object.
+- Changed redo_prebinding to not put LC_PREBOUND_DYLIB commands in prebound
+  images if MACOSX_DEPLOYMENT_TARGET is 10.4 or later.  The change was in
+  update_load_commands() in redo_prebinding.c to test that if it is not
+  not unprebinding and the target greater than 10.4 it returns before finishing
+  up and updateing the LC_PREBOUND_DYLIB commands.
+
+Changes for the 5.25 release (the cctools-673 release):
+- Changed the sources so the arm stuff is not in the open source version.
+  Radar bug #5326431.
+  - Changed the Makefile to build with -D__OPEN_SOURCE__ with $(OPEN)
+  - Added #ifndef __OPEN_SOURCE__ to the following files to bracket arm code:
+    lipo.c, nm.c, redo_prebinding.c and strip.c
+
 Changes for the 5.25 release (the cctools-667.3 release):
 - Changed codesign_allocate(1) to never update the LC_ID_DYLIB timestamp.
   The change is in process() in codesign_allocate.c to set the

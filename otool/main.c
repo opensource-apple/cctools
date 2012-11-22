@@ -178,23 +178,6 @@ static int rel_compare(
     struct relocation_info *rel1,
     struct relocation_info *rel2);
 
-static enum bool get_sect_info(
-    char *segname,
-    char *sectname,
-    struct load_command *load_commands,
-    uint32_t ncmds,
-    uint32_t sizeofcmds,
-    uint32_t filetype,
-    enum byte_sex load_commands_byte_sex,
-    char *object_addr,
-    unsigned long object_size,
-    char **sect_pointer,
-    uint64_t *sect_size,
-    uint64_t *sect_addr,
-    struct relocation_info **sect_relocs,
-    unsigned long *sect_nrelocs,
-    unsigned long *sect_flags);
-
 static void get_linked_reloc_info(
     struct load_command *load_commands,
     uint32_t ncmds,
@@ -839,6 +822,7 @@ void *cookie) /* cookie is not used */
 	    if(mh_filetype == MH_DYLIB_STUB &&
 	       ((sect_flags & SECTION_TYPE) == S_NON_LAZY_SYMBOL_POINTERS ||
 	        (sect_flags & SECTION_TYPE) == S_LAZY_SYMBOL_POINTERS ||
+		(sect_flags & SECTION_TYPE) == S_LAZY_DYLIB_SYMBOL_POINTERS ||
 	        (sect_flags & SECTION_TYPE) == S_SYMBOL_STUBS))
 		sect_size = 0;
 	}
@@ -1181,6 +1165,14 @@ void *cookie) /* cookie is not used */
 		   mh_sizeofcmds, ofile->object_byte_sex, ofile->object_addr,
 		   ofile->object_size, vflag);
 	    }
+#ifdef EFI_SUPPORT
+	    else if(strcmp(segname, "__RELOC") == 0 &&
+	       strcmp(sectname, "__reloc") == 0 && vflag == TRUE){
+		print_coff_reloc_section(ofile->load_commands, mh_ncmds,
+		   mh_sizeofcmds, mh_filetype, ofile->object_byte_sex,
+		   ofile->object_addr, ofile->object_size, vflag);
+	    }
+#endif
 	    else if(get_sect_info(segname, sectname, ofile->load_commands,
 		mh_ncmds, mh_sizeofcmds, mh_filetype, ofile->object_byte_sex,
 		addr, size, &sect, &sect_size, &sect_addr,
@@ -1956,7 +1948,6 @@ struct relocation_info *rel2)
 	    return(1);
 }
 
-static
 enum bool
 get_sect_info(
 char *segname,				/* input */
@@ -2116,7 +2107,7 @@ unsigned long *sect_flags)
 		*sect_size = s.size;
 	    }
 	    else{
-		if(s.offset >= object_size){
+		if(s.offset > object_size){
 		    printf("section offset for section (%.16s,%.16s) is past "
 			   "end of file\n", s.segname, s.sectname);
 		}
@@ -2157,7 +2148,7 @@ unsigned long *sect_flags)
 		*sect_size = s64.size;
 	    }
 	    else{
-		if(s64.offset >= object_size){
+		if(s64.offset > object_size){
 		    printf("section offset for section (%.16s,%.16s) is past "
 			   "end of file\n", s64.segname, s64.sectname);
 		}

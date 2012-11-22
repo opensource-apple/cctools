@@ -1,5 +1,5 @@
-#ifndef	_MACH_ARM_THREAD_STATUS_H_
-#define _MACH_ARM_THREAD_STATUS_H_
+#ifndef	_ARM_THREAD_STATUS_H_
+#define _ARM_THREAD_STATUS_H_
 
 #define ARM_THREAD_STATE        1
 
@@ -26,4 +26,4 @@ typedef struct arm_thread_state {
 #define ARM_THREAD_STATE_COUNT \
    (sizeof(struct arm_thread_state) / sizeof(int))
 
-#endif /* _MACH_ARM_THREAD_STATUS_H_ */
+#endif /* _ARM_THREAD_STATUS_H_ */

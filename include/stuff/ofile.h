@@ -45,6 +45,10 @@ enum ofile_type {
     OFILE_FAT,
     OFILE_ARCHIVE,
     OFILE_Mach_O
+#ifdef LTO_SUPPORT
+    ,
+    OFILE_LLVM_BITCODE
+#endif /* LTO_SUPPORT */
 };
 
 /*
@@ -76,7 +80,7 @@ struct ofile {
     unsigned long member_name_size; /* size of the member name */
     enum ofile_type member_type;    /* the type of file for this member */
     cpu_type_t archive_cputype;	    /* if the archive contains objects then */
-    cpu_subtype_t		    /*  these two fields reflect the object */
+    cpu_subtype_t		    /*  these two fields reflect the objects */
 	archive_cpusubtype;	    /*  at are in the archive. */
 
     /* If this structure is currently referencing a dynamic library module 
@@ -106,6 +110,15 @@ struct ofile {
     cpu_type_t mh_cputype;	    /* cpu specifier */
     cpu_subtype_t mh_cpusubtype;    /* machine specifier */
     uint32_t mh_filetype;	    /* type of file */
+
+#ifdef LTO_SUPPORT
+    /* If this structure is currently referencing an llvm bitcode file these are
+       valid and filled in. */
+    void *lto;			    /* really the opaque struct LTOModule * */
+    /* these are translated from the lto's target_triple */
+    cpu_type_t lto_cputype;	    /* cpu specifier */
+    cpu_subtype_t lto_cpusubtype;   /* machine specifier */
+#endif /* LTO_SUPPORT */
 };
 
 __private_extern__ void ofile_process(

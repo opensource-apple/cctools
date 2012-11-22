@@ -1,20 +1,14 @@
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -O
+LTO = -DLTO_SUPPORT
 RC_OS = macos
-ifeq "macos" "$(RC_OS)"
-  X_CFLAGS := $(shell if [ "$(RC_RELEASE)" != "Beaker" ] &&    \
-			 [ "$(RC_RELEASE)" != "Bunsen" ] &&    \
-			 [ "$(RC_RELEASE)" != "Gonzo"  ] &&    \
-			 [ "$(RC_RELEASE)" != "Kodiak" ]; then \
-	     echo -Wno-long-double -no-cpp-precomp -fno-builtin-round ; \
-	     fi; )
-endif
+X_CFLAGS = -fno-builtin-round -fno-builtin-trunc
 
 ifeq "mwccppc" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) -g \
+  CFLAGS = $(OFLAG) $(LTO) -g \
 	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
 else
-  CFLAGS = $(OFLAG) -g -Wall $(X_CFLAGS) \
+  CFLAGS = $(OFLAG) $(LTO) -g -Wall $(X_CFLAGS) \
 	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
 endif
 
@@ -55,7 +49,7 @@ ifeq "nextstep" "$(RC_OS)"
 endif
 DEFS = make.defs make_defs.h
 INSTALL_FILES = $(CFILES1) $(CFILES2) $(CFILES3) $(DEFS) Makefile \
-		notes
+		notes Info.plist
 
 
 PROGS = lipo.NEW size.NEW strings.NEW nm.NEW \
@@ -219,6 +213,7 @@ codesign_allocate.NEW: codesign_allocate.o vers.o
 		-o $(OBJROOT)/codesign_allocate.private.o \
 		$(OFILE_DIR)/codesign_allocate.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/codesign_allocate.NEW \
+		-sectcreate __TEXT __info_plist Info.plist \
 		$(OFILE_DIR)/codesign_allocate.private.o
 
 check_hints.NEW: check_hints.o vers.o

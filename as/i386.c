@@ -1582,7 +1582,9 @@ md_assemble (line)
   if (i.imm_operands)
     optimize_imm ();
 
-  if (i.disp_operands)
+  /* Don't optimize displacement for movabs since it only takes 64bit
+     displacement.  */
+  if (i.disp_operands && strcmp (mnemonic, "movabs") != 0)
     optimize_disp ();
 
   /* Next, we find a template that matches the given insn,
@@ -2286,37 +2288,51 @@ optimize_disp ()
   int op;
 
   for (op = i.operands; --op >= 0;)
-    if ((i.types[op] & Disp) && i.op[op].disps->X_op == O_constant)
+    if (i.types[op] & Disp)
       {
-	offsetT disp = i.op[op].disps->X_add_number;
+	if (i.op[op].disps->X_op == O_constant)
+	  {
+	    offsetT disp = i.op[op].disps->X_add_number;
 
-	if (i.types[op] & Disp16)
-	  {
-	    /* We know this operand is at most 16 bits, so
-	       convert to a signed 16 bit number before trying
-	       to see whether it will fit in an even smaller
-	       size.  */
-
-	    disp = (((disp & 0xffff) ^ 0x8000) - 0x8000);
+	    if ((i.types[op] & Disp16)
+		&& (disp & ~(offsetT) 0xffff) == 0)
+	      {
+		/* If this operand is at most 16 bits, convert
+		   to a signed 16 bit number and don't use 64bit
+		   displacement.  */
+		disp = (((disp & 0xffff) ^ 0x8000) - 0x8000);
+		i.types[op] &= ~Disp64;
+	      }
+	    if ((i.types[op] & Disp32)
+		&& (disp & ~(((offsetT) 2 << 31) - 1)) == 0)
+	      {
+		/* If this operand is at most 32 bits, convert
+		   to a signed 32 bit number and don't use 64bit
+		   displacement.  */
+		disp &= (((offsetT) 2 << 31) - 1);
+		disp = (disp ^ ((offsetT) 1 << 31)) - ((addressT) 1 << 31);
+		i.types[op] &= ~Disp64;
+	      }
+	    if (!disp && (i.types[op] & BaseIndex))
+	      {
+		i.types[op] &= ~Disp;
+		i.op[op].disps = 0;
+		i.disp_operands--;
+	      }
+	    else if (flag_code == CODE_64BIT)
+	      {
+		if (fits_in_signed_long (disp))
+		  i.types[op] |= Disp32S;
+		if (fits_in_unsigned_long (disp))
+		  i.types[op] |= Disp32;
+	      }
+	    if ((i.types[op] & (Disp32 | Disp32S | Disp16))
+		&& fits_in_signed_byte (disp))
+	      i.types[op] |= Disp8;
 	  }
-	else if (i.types[op] & Disp32)
-	  {
-	    /* We know this operand is at most 32 bits, so convert to a
-	       signed 32 bit number before trying to see whether it will
-	       fit in an even smaller size.  */
-	    disp &= (((offsetT) 2 << 31) - 1);
-	    disp = (disp ^ ((offsetT) 1 << 31)) - ((addressT) 1 << 31);
-	  }
-	if (flag_code == CODE_64BIT)
-	  {
-	    if (fits_in_signed_long (disp))
-	      i.types[op] |= Disp32S;
-	    if (fits_in_unsigned_long (disp))
-	      i.types[op] |= Disp32;
-	  }
-	if ((i.types[op] & (Disp32 | Disp32S | Disp16))
-	    && fits_in_signed_byte (disp))
-	  i.types[op] |= Disp8;
+	else
+	  /* We only support 64bit displacement on constants.  */
+	  i.types[op] &= ~Disp64;
       }
 }
 
@@ -2983,12 +2999,45 @@ process_operands ()
      is converted into xor %reg, %reg.  */
   if (i.tm.opcode_modifier & regKludge)
     {
-      unsigned int first_reg_op = (i.types[0] & Reg) ? 0 : 1;
-      /* Pretend we saw the extra register operand.  */
-      assert (i.op[first_reg_op + 1].regs == 0);
-      i.op[first_reg_op + 1].regs = i.op[first_reg_op].regs;
-      i.types[first_reg_op + 1] = i.types[first_reg_op];
-      i.reg_operands = 2;
+	if (i.tm.cpu_flags & CpuSSE4)
+	{
+	   /* The first operand in instruction blendvpd, blendvps and
+	      pblendvb in SSE4.1 is implicit and must be xmm0.  */
+	   assert (i.operands == 3
+		   && i.reg_operands >= 2
+		   && i.types[0] == RegXMM);
+	   if (i.op[0].regs->reg_num != 0)
+	     {
+	       if (intel_syntax)
+		 as_bad (_("the last operand of `%s' must be `%sxmm0'"),
+			 i.tm.name, "%");
+	       else
+		 as_bad (_("the first operand of `%s' must be `%sxmm0'"),
+			 i.tm.name, "%");
+	       return 0;
+	     }
+	   i.op[0] = i.op[1];
+	   i.op[1] = i.op[2];
+	   i.types[0] = i.types[1];
+	   i.types[1] = i.types[2];
+	   i.operands--;
+	   i.reg_operands--;
+
+	   /* We need to adjust fields in i.tm since they are used by
+	      build_modrm_byte.  */
+	   i.tm.operand_types [0] = i.tm.operand_types [1];
+	   i.tm.operand_types [1] = i.tm.operand_types [2];
+	   i.tm.operands--;
+	 }
+       else
+	 {
+	   unsigned int first_reg_op = (i.types[0] & Reg) ? 0 : 1;
+	   /* Pretend we saw the extra register operand.  */
+	   assert (i.op[first_reg_op + 1].regs == 0);
+	   i.op[first_reg_op + 1].regs = i.op[first_reg_op].regs;
+	   i.types[first_reg_op + 1] = i.types[first_reg_op];
+	   i.reg_operands = 2;
+	 }
     }
 
   if (i.tm.opcode_modifier & ShortForm)
@@ -6002,14 +6051,18 @@ x86_64_fixup_symbol(fixS *fix, int nsect, symbolS **sym)
 	 * does not start with 'L', is not a stab, and is in the same
 	 * section.
 	 *
-	 * Local labels in sections with fixed-size data, fixups in DWARF
-	 * debug sections, and local labels with no previous symbol in
-	 * their section are an exception to this rule.  We emit
+	 * Local labels in sections with fixed-size data and fixups in DWARF
+	 * debug sections are an exception to this rule.  We emit
 	 * non-external relocations for those, but the offset is the
 	 * RIP-relative offset, which is calculated from the end of the
 	 * instruction.  We assume that the fixP ends at the end of the
 	 * instruction.  We only make this adjustment for PC-relative
 	 * fixups.
+	 *
+	 * Local labels with no previous symbol in their section the symbol and
+	 * offset are left unchanged (even for PC-relative fixups).  So the
+	 * relocation will be done by our caller with the local symbol and no
+	 * relocation entry will be emitted.
 	 */
 	symbolS *prev_symbol;
 	long offset = 0;
@@ -6034,6 +6087,17 @@ x86_64_fixup_symbol(fixS *fix, int nsect, symbolS **sym)
 			}
 			else if (fix->fx_pcrel)
 			{
+			     /*
+			      * There is no previous symbol that is a non-local
+			      * symbol and this fix up is pc relative.  If this
+			      * symbol is defined in a section and the fix up is
+			      * for the same section, don't change the offset
+			      * becase the relocation must be done with the
+			      * local symbol to be correct.  And in this case no
+			      * relocation entry will need to be created.
+			      */
+			     if(((*sym)->sy_nlist.n_type & N_TYPE) == N_SECT &&
+				(*sym)->sy_nlist.n_sect != nsect)
 				offset -= md_pcrel_from(fix);
 			}
 		}

@@ -921,7 +921,7 @@ layout_segments(void)
 	    }
 	    else{
 		segs_read_write_addr = segs_read_only_addr + 
-		                       get_shared_region_size_from_flag(&arch_flag);
+				   get_shared_region_size_from_flag(&arch_flag);
 	    }
 	}
 	first_msg = merged_segments;
@@ -1177,8 +1177,9 @@ layout_segments(void)
 	 * Create the uuid load command.
 	 */
 #ifndef KLD
-	if(output_uuid_info.suppress != TRUE && (output_uuid_info.emit == TRUE ||
-	   arch_flag.cputype == CPU_TYPE_ARM)){
+	if(output_uuid_info.suppress != TRUE &&
+	   (output_uuid_info.emit == TRUE ||
+	    arch_flag.cputype == CPU_TYPE_ARM)){
 	    output_uuid_info.uuid_command.cmd = LC_UUID;
 	    output_uuid_info.uuid_command.cmdsize = sizeof(struct uuid_command);
 	    uuid(&(output_uuid_info.uuid_command.uuid[0]));

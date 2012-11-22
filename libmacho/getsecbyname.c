@@ -28,13 +28,7 @@
 #include <mach-o/dyld.h> /* defines _dyld_lookup_and_bind() */
 #endif /* defined(__DYNAMIC__) */
 #ifndef __OPENSTEP__
-
-#ifdef __LP64__
-extern struct mach_header_64 *_NSGetMachExecuteHeader(void);
-#else /* !defined(__LP64__) */
 #include <crt_externs.h>
-#endif /* !defined(__LP64__) */
-
 #else /* defined(__OPENSTEP__) */
 
 #if !defined(__DYNAMIC__)

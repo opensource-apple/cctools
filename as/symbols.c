@@ -19,6 +19,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "as.h"
 #include "hash.h"
 #include "obstack.h"		/* For "symbols.h" */
@@ -69,15 +70,10 @@ symbolS	abs_symbol = { {{0}} };
 
 typedef short unsigned int local_label_countT;
 
-static local_label_countT local_label_counter[10];
-
-static				/* Returned to caller, then copied. */
-  char symbol_name_build[12];	/* used for created names ("4f") */
-
-static long int symbol_count = 0;	/* The number of symbols we've declared. */
-
 static void make_stab_for_symbol(
     symbolS *symbolP);
+
+static void fb_label_init(void);
 
 
 void
@@ -89,56 +85,226 @@ void)
   sy_hash = hash_new();
   memset((char *)(&abs_symbol), '\0', sizeof(abs_symbol));
   abs_symbol.sy_type = N_ABS;	/* Can't initialise a union. Sigh. */
-  memset((char *)(local_label_counter), '\0', sizeof(local_label_counter) );
+  fb_label_init ();
 }
 
-/*
- *			local_label_name()
- *
- * Caller must copy returned name: we re-use the area for the next name.
- */
-char *				/* Return local label name. */
-local_label_name(
-int n,		/* we just saw "n:", "nf" or "nb" : n a digit */
-int augend)	/* 0 for nb, 1 for n:, nf */
-{
-  register char *	p;
-  register char *	q;
-  char symbol_name_temporary[10]; /* build up a number, BACKWARDS */
 
-  know( n >= 0 );
-  know( augend == 0 || augend == 1 );
+/* Somebody else's idea of local labels. They are made by "n:" where n
+   is any decimal digit. Refer to them with
+    "nb" for previous (backward) n:
+   or "nf" for next (forward) n:.
+
+   We do a little better and let n be any number, not just a single digit, but
+   since the other guy's assembler only does ten, we treat the first ten
+   specially.
+
+   Like someone else's assembler, we have one set of local label counters for
+   entire assembly, not one set per (sub)segment like in most assemblers. This
+   implies that one can refer to a label in another segment, and indeed some
+   crufty compilers have done just that.
+
+   Since there could be a LOT of these things, treat them as a sparse
+   array.  */
+
+#define LOCAL_LABEL_CHAR	'\002'
+#define FB_LABEL_SPECIAL (10)
+
+static long fb_low_counter[FB_LABEL_SPECIAL];
+static long *fb_labels;
+static long *fb_label_instances;
+static long fb_label_count;
+static long fb_label_max;
+
+/* This must be more than FB_LABEL_SPECIAL.  */
+#define FB_LABEL_BUMP_BY (FB_LABEL_SPECIAL + 6)
+
+static void
+fb_label_init (void)
+{
+  memset ((void *) fb_low_counter, '\0', sizeof (fb_low_counter));
+}
+
+/* Add one to the instance number of this fb label.  */
+
+void
+fb_label_instance_inc (long label)
+{
+  long *i;
+
+  if (label < FB_LABEL_SPECIAL)
+    {
+      ++fb_low_counter[label];
+      return;
+    }
+
+  if (fb_labels != NULL)
+    {
+      for (i = fb_labels + FB_LABEL_SPECIAL;
+	   i < fb_labels + fb_label_count; ++i)
+	{
+	  if (*i == label)
+	    {
+	      ++fb_label_instances[i - fb_labels];
+	      return;
+	    }			/* if we find it  */
+	}			/* for each existing label  */
+    }
+
+  /* If we get to here, we don't have label listed yet.  */
+
+  if (fb_labels == NULL)
+    {
+      fb_labels = (long *) xmalloc (FB_LABEL_BUMP_BY * sizeof (long));
+      fb_label_instances = (long *) xmalloc (FB_LABEL_BUMP_BY * sizeof (long));
+      fb_label_max = FB_LABEL_BUMP_BY;
+      fb_label_count = FB_LABEL_SPECIAL;
+
+    }
+  else if (fb_label_count == fb_label_max)
+    {
+      fb_label_max += FB_LABEL_BUMP_BY;
+      fb_labels = (long *) xrealloc ((char *) fb_labels,
+				     fb_label_max * sizeof (long));
+      fb_label_instances = (long *) xrealloc ((char *) fb_label_instances,
+					      fb_label_max * sizeof (long));
+    }				/* if we needed to grow  */
+
+  fb_labels[fb_label_count] = label;
+  fb_label_instances[fb_label_count] = 1;
+  ++fb_label_count;
+}
+
+static long
+fb_label_instance (long label)
+{
+  long *i;
+
+  if (label < FB_LABEL_SPECIAL)
+    {
+      return (fb_low_counter[label]);
+    }
+
+  if (fb_labels != NULL)
+    {
+      for (i = fb_labels + FB_LABEL_SPECIAL;
+	   i < fb_labels + fb_label_count; ++i)
+	{
+	  if (*i == label)
+	    {
+	      return (fb_label_instances[i - fb_labels]);
+	    }			/* if we find it  */
+	}			/* for each existing label  */
+    }
+
+  /* We didn't find the label, so this must be a reference to the
+     first instance.  */
+  return 0;
+}
+
+/* Caller must copy returned name: we re-use the area for the next name.
+
+   The mth occurence of label n: is turned into the symbol "Ln^Bm"
+   where n is the label number and m is the instance number. "L" makes
+   it a label discarded unless debugging and "^B"('\2') ensures no
+   ordinary symbol SHOULD get the same name as a local label
+   symbol. The first "4:" is "L4^B1" - the m numbers begin at 1. */
+
+char *				/* Return local label name.  */
+fb_label_name (long n,	/* We just saw "n:", "nf" or "nb" : n a number.  */
+	       long augend	/* 0 for nb, 1 for n:, nf.  */)
+{
+  long i;
+  /* Returned to caller, then copied.  Used for created names ("4f").  */
+  static char symbol_name_build[24];
+  register char *p;
+  register char *q;
+  char symbol_name_temporary[20];	/* Build up a number, BACKWARDS.  */
+
+  know (n >= 0);
+#ifdef TC_MMIX
+  know ((unsigned long) augend <= 2 /* See mmix_fb_label.  */);
+#else
+  know ((unsigned long) augend <= 1);
+#endif
   p = symbol_name_build;
-  * p ++ = 'L';
-  * p ++ = n + '0';		/* Make into ASCII */
-  * p ++ = 1;			/* ^A */
-  n = local_label_counter [ n ] + augend;
-				/* version number of this local label */
-  /*
-   * Next code just does sprintf( {}, "%d", n);
-   * It is more elegant to do the next part recursively, but a procedure
-   * call for each digit emitted is considered too costly.
-   */
+#ifdef LOCAL_LABEL_PREFIX
+  *p++ = LOCAL_LABEL_PREFIX;
+#endif
+  *p++ = 'L';
+
+  /* Next code just does sprintf( {}, "%d", n);  */
+  /* Label number.  */
   q = symbol_name_temporary;
-  for (*q++=0; n; q++)		/* emits NOTHING if n starts as 0 */
+  for (*q++ = 0, i = n; i; ++q)
     {
-      know(n>0);		/* We expect n > 0 always */
-      *q = n % 10 + '0';
-      n /= 10;
+      *q = i % 10 + '0';
+      i /= 10;
     }
-  while (( * p ++ = * -- q ))
+  while ((*p = *--q) != '\0')
+    ++p;
+
+  *p++ = LOCAL_LABEL_CHAR;		/* ^B  */
+
+  /* Instance number.  */
+  q = symbol_name_temporary;
+  for (*q++ = 0, i = fb_label_instance (n) + augend; i; ++q)
     {
+      *q = i % 10 + '0';
+      i /= 10;
     }
-  /* The label, as a '\0' ended string, starts at symbol_name_build. */
+  while ((*p++ = *--q) != '\0');;
+
+  /* The label, as a '\0' ended string, starts at symbol_name_build.  */
   return (symbol_name_build);
+}
+
+/* Decode name that may have been generated by foo_label_name() above.
+   If the name wasn't generated by foo_label_name(), then return it
+   unaltered.  This is used for error messages.  */
+
+char *
+decode_local_label_name (char *s)
+{
+  char *p;
+  char *symbol_decode;
+  int label_number;
+  int instance_number;
+  char *type;
+  const char *message_format;
+  int index = 0;
+
+#ifdef LOCAL_LABEL_PREFIX
+  if (s[index] == LOCAL_LABEL_PREFIX)
+    ++index;
+#endif
+
+  if (s[index] != 'L')
+    return s;
+
+  for (label_number = 0, p = s + index + 1; isdigit (*p); ++p)
+    label_number = (10 * label_number) + *p - '0';
+
+  if (*p == LOCAL_LABEL_CHAR)
+    type = "fb";
+  else
+    return s;
+
+  for (instance_number = 0, p++; isdigit (*p); ++p)
+    instance_number = (10 * instance_number) + *p - '0';
+
+  message_format = _("\"%d\" (instance number %d of a %s label)");
+  symbol_decode = obstack_alloc (&notes, strlen (message_format) + 30);
+  sprintf (symbol_decode, message_format, label_number, instance_number, type);
+
+  return symbol_decode;
 }
 
 void
 local_colon(
 int n)	/* just saw "n:" */
 {
-  local_label_counter [n] ++;
-  colon (local_label_name (n, 0));
+  fb_label_instance_inc (n);
+  colon (fb_label_name (n, 0));
 }
 
 /*
@@ -275,7 +441,8 @@ char *sym_name) /* symbol name, as a cannonical string */
 	     /* bug #50416 -O causes this not to work for:
 	     && ((symbolP->sy_desc) & (~REFERENCE_TYPE)) == 0
 	     */
-	     && (temp & (~(REFERENCE_TYPE | N_WEAK_REF | N_WEAK_DEF | N_ARM_THUMB_DEF |
+	     && (temp & (~(REFERENCE_TYPE | N_WEAK_REF | N_WEAK_DEF |
+			   N_ARM_THUMB_DEF |
 			   N_NO_DEAD_STRIP | REFERENCED_DYNAMICALLY))) == 0
 	     && symbolP -> sy_value == 0)
 	    {
@@ -614,5 +781,26 @@ symbol_set_tc (symbolS *s, TC_SYMFIELD_TYPE *o)
 }
 
 #endif /* TC_SYMFIELD_TYPE */
+
+int
+S_IS_LOCAL (symbolS *s)
+{
+    const char *name;
+
+	name = S_GET_NAME (s);
+	if(name == NULL)
+	    return(1);
+
+	if(name[0] == 'L' && flagseen['L'] == FALSE)
+	    return(1);
+	else
+	    return(0);
+}
+
+fragS *
+symbol_get_frag (symbolS *s)
+{
+	return(s->sy_frag);
+}
 
 /* end: symbols.c */

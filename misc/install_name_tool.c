@@ -482,6 +482,7 @@ unsigned long *header_size)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LAZY_LOAD_DYLIB:
 		dl_load1 = (struct dylib_command *)lc1;
 		dylib_name1 = (char *)dl_load1 + dl_load1->dylib.name.offset;
 		for(j = 0; j < nchanges; j++){
@@ -600,6 +601,7 @@ unsigned long *header_size)
 	    case LC_LOAD_DYLIB:
 	    case LC_LOAD_WEAK_DYLIB:
 	    case LC_REEXPORT_DYLIB:
+	    case LC_LAZY_LOAD_DYLIB:
 		dl_load1 = (struct dylib_command *)lc1;
 		dylib_name1 = (char *)dl_load1 + dl_load1->dylib.name.offset;
 		for(j = 0; j < nchanges; j++){

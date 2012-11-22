@@ -1,0 +1,38 @@
+TODO:
+Add flags for:
+  -debug
+  -no_dos_header
+Add support for:
+- Remove empty __IMPORT segment
+
+Changes for the 5.25 release (the cctools-688 release):
+- Fixed a problem in mtoc(1) selection of the address for the .reloc PECOFF
+  section.  To work around the unified linker incorrectly producing a LINKEDIT
+  segment the code in process_32bit_arch() and process_64bit_arch() needed to
+  ingore this segment when selecting the address.
+
+Changes for the 5.25 release (the cctools-687 release):
+- Added 64-bit checking for undefined symbols. 
+
+Changes for the 5.25 release (the cctools-686 release):
+- Added the "-section_alignment <hex_value>" option.  This should be passed the
+  same value as passed to the linker in the -segalign value when creating the
+  Mach-O file. This value is used to layout the added .reloc section and set
+  into the PECOFF aouthdr.
+- Added a check to make sure the headers are not mapped on top of its sections. 
+  If it does you get an error message saying the Mach-O needed to be relinked
+  and the -seg1addr value to use.
+- Added alternate names for the subsystem arguments.
+- Added checking for undefined symbols (32-bit only).
+
+Changes for the 5.25 release (the cctools-685 release):
+- Updated mtoc(1) to deal with MH_EXECUTE file types and MH_PIE flag.
+
+Changes for the 5.25 release (the cctools-681 release):
+- Added the new mtoc(1) program to the cctools project.  Radar bug #5536661.
+  - The -e entry_point is a temporary hack until 64-bit files are produced
+    with MH_PRELOAD and have an entry point in the thread command.
+- The makerelocs(1) program in here is not installed as it would overwrite the
+  existing one in the efitools project.  But this one could replace it but the
+  new mtoc(1) program includes that and makes it obsolete.  But is useful to
+  test with.
