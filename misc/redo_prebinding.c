@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -3012,8 +3011,11 @@ unsigned long *image_pointer)
 		 * this is not the one that can't be missing.
 		 */
 		if(arch_cant_be_missing != 0 &&
-		   arch_cant_be_missing != arch_flag.cputype)
+		   arch_cant_be_missing != arch_flag.cputype){
+		    if(already_loaded == FALSE)
+			ofile_unmap(ofile);
 		    return(FALSE);
+		}
 		error("dynamic shared library file: %s does not contain an "
 		      "architecture that can be used with %s (architecture %s)",
 		      dylib_name, file_name, arch_name);
@@ -3058,8 +3060,11 @@ unsigned long *image_pointer)
 		 * this is not the one that can't be missing.
 		 */
 		if(arch_cant_be_missing != 0 &&
-		   arch_cant_be_missing != arch_flag.cputype)
+		   arch_cant_be_missing != arch_flag.cputype){
+		    if(already_loaded == FALSE)
+			ofile_unmap(ofile);
 		    return(FALSE);
+		}
 		error("dynamic shared library: %s has the wrong CPU type for: "
 		      "%s (architecture %s)", dylib_name, file_name,
 		      arch_name);
@@ -3072,8 +3077,11 @@ unsigned long *image_pointer)
 		 * this is not the one that can't be missing.
 		 */
 		if(arch_cant_be_missing != 0 &&
-		   arch_cant_be_missing != arch_flag.cputype)
+		   arch_cant_be_missing != arch_flag.cputype){
+		    if(already_loaded == FALSE)
+			ofile_unmap(ofile);
 		    return(FALSE);
+		}
 		error("dynamic shared library: %s has the wrong CPU subtype "
 		      "for: %s (architecture %s)", dylib_name, file_name,
 		      arch_name);
@@ -3111,8 +3119,11 @@ good:
 			 * see if this is not the one that can't be missing.
 			 */
 			if(arch_cant_be_missing != 0 &&
-			   arch_cant_be_missing != arch_flag.cputype)
+			   arch_cant_be_missing != arch_flag.cputype){
+			    if(already_loaded == FALSE)
+				ofile_unmap(ofile);
 			    return(FALSE);
+			}
 			redo_prebinding_needed = TRUE;
 #endif
 			if(time_stamps_must_match == TRUE){

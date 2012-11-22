@@ -1,4 +1,4 @@
-.TH LD 1 "April 2, 2003" "Apple Computer, Inc."
+.TH LD 1 "April 17, 2003" "Apple Computer, Inc."
 .SH NAME
 ld \- Mach object file link editor
 .SH SYNOPSIS
@@ -623,6 +623,22 @@ is of the form
 then that file is searched for in the same places, but without prepending
 `lib' or appending `.a' or `.dylib' to the filename.
 .TP
+.BI \-weak-l x
+The is the same as the
+.BI \-l x
+but forces the library and all references to it to be marked as weak imports.
+Care must be taken when using this as the use of the non-weak symbol references
+in an object file may cause the program to crash when the symbol or library is
+not present at execution time.
+.TP 
+.BI \-weak_library " file_name_path_to_library"
+This is the same as listing a file name path to a library on the link line
+except that it but forces the library and all references to it to be marked as
+weak imports.
+Care must be taken when using this as the use of the non-weak symbol references
+in an object file may cause the program to crash when the symbol or library is
+not present at execution time.
+.TP
 .BI \-L dir
 Add
 .I dir
@@ -633,6 +649,24 @@ are searched before the standard directories.
 .TP
 .B \-Z
 Do not search the standard directories when searching for libraries.
+.TP
+.B \-search_paths_first
+By default when the
+.B \-dynamic
+flag is in effect, the
+.BI \-l x
+and
+.BI \-weak-l x
+options first search for a file of the form
+.RI `lib x .dylib'
+in each directory in the library search path, then a file of the form
+.RI `lib x .a'
+is searched for in the library search paths.
+This option changes it so that in each path
+.RI `lib x .dylib'
+is searched for then
+.RI `lib x .a'
+before the next path in the library search path is searched.
 .TP 
 .BI "\-framework " name[,suffix]
 Specifies a framework to link against. Frameworks are dynamic shared libraries,
@@ -642,6 +676,14 @@ differently. When this option is specified,
 searches for framework `\fIname\fR.framework/\fIname\fR'
 first in any directories
 specified with the 
+.TP
+.BI "\-weak_framework " name[,suffix]
+The is the same as the
+.BI "\-framework " name[,suffix]
+but forces the framework and all references to it to be marked as weak imports.
+Care must be taken when using this as the use of the non-weak symbol references
+in an object file may cause the program to crash when the symbol or framework is
+not present at execution time.
 .B \-F
 option, then in the standard framework directories 
 .BR /Library/Frameworks ,

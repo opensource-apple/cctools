@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -244,6 +243,53 @@ enum bool launching_with_prebound_libraries)
 	}while(q != NULL);
 
 	clear_being_linked_list(FALSE);
+}
+
+/*
+ * resolve_external_relocations_in_object_image() preforms the external
+ * relocations for just the one specified object image.
+ */
+void
+resolve_external_relocations_in_object_image(
+struct object_image *object_image)
+{
+    enum link_state link_state;
+    struct segment_command *linkedit_segment;
+    struct symtab_command *st;
+    struct dysymtab_command *dyst;
+    struct relocation_info *relocs;
+    struct nlist *symbols;
+    char *strings;
+
+	linkedit_segment = object_image->image.linkedit_segment;
+	st = object_image->image.st;
+	dyst = object_image->image.dyst;
+	relocs = (struct relocation_info *)
+	    (object_image->image.vmaddr_slide +
+		linkedit_segment->vmaddr +
+		dyst->extreloff -
+		linkedit_segment->fileoff);
+	symbols = (struct nlist *)
+	    (object_image->image.vmaddr_slide +
+		linkedit_segment->vmaddr +
+		st->symoff -
+		linkedit_segment->fileoff);
+	strings = (char *)
+	    (object_image->image.vmaddr_slide +
+		linkedit_segment->vmaddr +
+		st->stroff -
+		linkedit_segment->fileoff);
+
+	link_state = 
+	    external_relocation(
+		&(object_image->image),
+		relocs,
+		dyst->nextrel,
+		symbols,
+		strings,
+		NULL, /* library_name */
+		object_image->image.name);
+	SET_LINK_STATE(object_image->module, link_state);
 }
 
 /*

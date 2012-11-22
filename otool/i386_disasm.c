@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -289,8 +288,9 @@ static void modrm_byte(
 #define SSE2	62	/* SSE2 instruction with possible 3rd opcode byte */
 #define SSE2i	63	/* SSE2 instruction with 8 bit immediate */
 #define SSE2i1	64	/* SSE2 with one operand and 8 bit immediate */
-#define SSE2tm	65	/* SSE3 with dest to memory */
-#define PFCH	66	/* prefetch instructions */
+#define SSE2tm	65	/* SSE2 with dest to memory */
+#define SSE2tfm	66	/* SSE2 with dest to memory or memory to dest */
+#define PFCH	67	/* prefetch instructions */
 #define SFEN	68	/* sfence & clflush */
 #define Mnol	69	/* no 'l' suffix, fildl & fistpl */
 
@@ -555,7 +555,7 @@ static const struct instable op0F[16][16] = {
 /*  [78]  */	INVALID,		INVALID,
 		INVALID,		INVALID,
 /*  [7C]  */	INVALID,		INVALID,
-		{"mov",TERM,SSE2tm,0},	{"mov",TERM,SSE2tm,0} },
+		{"mov",TERM,SSE2tfm,0},	{"mov",TERM,SSE2tm,0} },
 /*  [80]  */ {  {"jo",TERM,D,1},	{"jno",TERM,D,1},
 		{"jb",TERM,D,1},	{"jae",TERM,D,1},
 /*  [84]  */	{"je",TERM,D,1},	{"jne",TERM,D,1},
@@ -599,7 +599,7 @@ static const struct instable op0F[16][16] = {
 /*  [D0]  */ {  INVALID,		{"psrlw",TERM,SSE2,0},
 		{"psrld",TERM,SSE2,0},	{"psrlq",TERM,SSE2,0},
 /*  [D4]  */	{"paddq",TERM,SSE2,0},	{"pmullw",TERM,SSE2,0},
-		{"mov",TERM,SSE2,0},	{"pmovmskb",TERM,SSE2,0},
+		{"mov",TERM,SSE2tm,0},	{"pmovmskb",TERM,SSE2,0},
 /*  [D8]  */	{"psubusb",TERM,SSE2,0},{"psubusw",TERM,SSE2,0},
 		{"pminub",TERM,SSE2,0},	{"pand",TERM,SSE2,0},
 /*  [DC]  */	{"paddusb",TERM,SSE2,0},{"paddusw",TERM,SSE2,0},
@@ -1140,7 +1140,8 @@ enum bool verbose)
 	    if(dp->adr_mode == SSE2 ||
 	       dp->adr_mode == SSE2i ||
 	       dp->adr_mode == SSE2i1 ||
-	       dp->adr_mode == SSE2tm){
+	       dp->adr_mode == SSE2tm ||
+	       dp->adr_mode == SSE2tfm){
 		prefix_dp = NULL;
 	    }
 	    else{
@@ -1346,6 +1347,57 @@ enum bool verbose)
 			  "\n");
 	    return(length);
 
+	/* SSE2 instructions with further prefix decoding dest to memory or
+	   memory to dest depending on the opcode */
+	case SSE2tfm:
+	    data16 = FALSE;
+	    if(got_modrm_byte == FALSE){
+		got_modrm_byte = TRUE;
+		byte = get_value(sizeof(char), sect, &length, &left);
+		modrm_byte(&mode, &reg, &r_m, byte);
+	    }
+	    switch(opcode4 << 4 | opcode5){
+	    case 0x7e: /* movq & movd */
+		if(prefix_byte == 0x66){
+		    /* movd from xmm to r/m32 */
+		    printf("%sd\t%%xmm%lu,", mnemonic, reg);
+		    wbit = LONGOPERAND;
+		    GET_OPERAND(&symadd0, &symsub0, &value0, &value0_size,
+				result0);
+		    print_operand(seg, symadd0, symsub0, value0, value0_size,
+				  result0, "\n");
+		}
+		else if(prefix_byte == 0xf0){
+		    /* movq from mm to mm/m64 */
+		    printf("%sd\t%%mm%lu,", mnemonic, reg);
+		    mmx = TRUE;
+		    GET_OPERAND(&symadd1, &symsub1, &value1, &value1_size,
+				result1);
+		    print_operand(seg, symadd1, symsub1, value1, value1_size,
+				  result1, "\n");
+		}
+		else if(prefix_byte == 0xf3){
+		    /* movq from xmm2/mem64 to xmm1 */
+		    printf("%sq\t", mnemonic);
+		    sse2 = TRUE;
+		    GET_OPERAND(&symadd0, &symsub0, &value0, &value0_size,
+				result0);
+		    print_operand(seg, symadd0, symsub0, value0, value0_size,
+				  result0, ",");
+		    printf("%%xmm%lu\n", reg);
+		}
+		else{ /* no prefix_byte */
+		    /* movd from mm to r/m32 */
+		    printf("%sd\t%%mm%lu,", mnemonic, reg);
+		    wbit = LONGOPERAND;
+		    GET_OPERAND(&symadd1, &symsub1, &value1, &value1_size,
+				result1);
+		    print_operand(seg, symadd1, symsub1, value1, value1_size,
+				  result1, "\n");
+		}
+	    }
+	    return(length);
+
 	/* SSE2 instructions with further prefix decoding dest to memory */
 	case SSE2tm:
 	    data16 = FALSE;
@@ -1382,19 +1434,10 @@ enum bool verbose)
 		else /* no prefix_byte */
 		    printf("%sps\t", mnemonic);
 		break;
-	    case 0x7e: /* movd & movq */
+	    case 0xd6: /* movq */
 		if(prefix_byte == 0x66){
-		    printf("%sd\t", mnemonic);
-		    wbit = LONGOPERAND;
-		}
-		else if(prefix_byte == 0xf3){
-		    printf("%sq\t", mnemonic);
 		    sse2 = TRUE;
-		}
-		else{ /* no prefix_byte */
-		    sprintf(result0, "%%mm%lu", reg);
-		    printf("%sd\t", mnemonic);
-		    mmx = TRUE;
+		    printf("%sq\t", mnemonic);
 		}
 		break;
 	    case 0x7f: /* movdqa, movdqu, movq */
@@ -1705,12 +1748,8 @@ enum bool verbose)
 		    mmx = TRUE;
 		}
 		break;
-	    case 0xd6: /* movq, movdq2q & movq2dq */
-		if(prefix_byte == 0x66){
-		    sse2 = TRUE;
-		    printf("%sq\t", mnemonic);
-		}
-		else if(prefix_byte == 0xf2){
+	    case 0xd6: /* movdq2q & movq2dq */
+		if(prefix_byte == 0xf2){
 		    sprintf(result1, "%%mm%lu", reg);
 		    printf("%sdq2q\t", mnemonic);
 		    sse2 = TRUE;

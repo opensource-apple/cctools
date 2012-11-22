@@ -30,6 +30,157 @@ TODO for MacOS X:
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
 
+Changes for the 5.12 release (the cctools-478 release):
+- Fixed a problem that was causing things to be doublely relocated.  The problem
+  was that a module can be in the REGISTERING state but not fully bound.  Then
+  when the code in resolve_undefineds() is finds a symbol on the undefined list
+  from this module that is to be fully bound it wants to call
+  link_library_module() to get the module fully bound (all of its references
+  resolved).  When doing so the logic to change the link_state of the module
+  cause it to be set back to BEING_LINKED.  Thus resulting in it being relocated
+  again.  The change was to the logic in link_library_module() to test to a set
+  of states before changing the state.  Radar bug #3274768.
+
+Changes for the 5.12 release (the cctools-477 release):
+- Added stub functions for __fpclassifyd(), for ppc, and __fpclassify() for i386
+  to the end of dyld_init.c to allow dyld to link with just libc.a given the new
+  code in __ldtoa().  Radar bug #3271830.
+
+Changes for the 5.12 release (the cctools-471 release):
+- Fixed a bug in dyld's code for printing missing symbols if it has the
+  new DYNAMIC_LOOKUP_ORDINAL ordinal for twolevel_namespace.  The fix is in
+  check_and_report_undefineds() in errors.c .  Radar bug #3246167.
+- Changed which undefined symbol the undefined handler is given in the case that
+  private option LINK_OPTION_RELOC_JUST_THIS_MODULE is be used so that it gets
+  last symbol on the undefined list instead of the first.  Radar bug #3243939.
+  - Changed check_and_report_undefineds() in errors.c and errors.h to take an
+    new boolean parameter invoke_user_handler_with_last_undefined and if this
+    is TRUE the handler is passed the last symbol on the undefined list instead
+    of the first.
+  - Changed the last calls to check_and_report_undefineds() in
+    link_in_need_modules() in symbols.c to pass the new boolean parameter
+    invoke_user_handler_with_last_undefined based on the logic of the code and
+    reloc_just_this_object_image not being NULL.
+  - Changed the other callers of check_and_report_undefineds() to pass FALSE as
+    new boolean parameter invoke_user_handler_with_last_undefined in debug.c,
+    dyld_libfuncs.c, and images.c .
+- Fixed a bug where all_twolevel_modules_prebound was getting set to FALSE when
+  an MH_BUNDLE is loaded that references a dylib and it should have been set to
+  FALSE since MH_BUNDLE's are not prebound.  This effects the optimization used
+  by zero link with the private option LINK_OPTION_RELOC_JUST_THIS_MODULE.
+  Radar bug #3243961.
+  - Changed validate_library() in images.c to take a new boolean parameter
+    reference_from_dylib and only set all_twolevel_modules_prebound to FALSE
+    when reference_from_dylib is TRUE.
+  - Change the two callers of validate_library(), is_library_loaded_by_name()
+    and is_library_loaded_by_stat() in images.c and images.h to also take a
+    new boolean parameter reference_from_dylib and pass that to
+    validate_library().
+  - Changed load_library_image() in images.c and images.h to take a new boolean
+    parameter reference_from_dylib and pass this to is_library_loaded_by_name()
+    and is_library_loaded_by_stat().
+  - Changed the calls to is_library_loaded_by_name() and
+    is_library_loaded_by_stat() in _dyld_NSAddImage() in dyld_libfuncs.c to pass
+    FALSE as the new reference_from_dylib parameter.
+  - Changed the calls to load_library_image() in _dyld_NSAddLibrary(),
+    _dyld_NSAddLibraryWithSearching() and _dyld_NSAddImage() in
+    dyld_libfuncs.c to pass FALSE as the new reference_from_dylib parameter.
+  - Changed the call to load_library_image() in load_executable_image() in
+    images.c for calls needed when DYLD_INSERT_LIBRARIES is set to pass FALSE
+    as the new reference_from_dylib parameter.
+  - Changed the call to load_library_image() in load_images_libraries() in
+    images.c to pass "mh->filetype == MH_DYLIB" as the new reference_from_dylib
+    parameter.
+  - Changed map_library_image() in images.c to take a new boolean parameter
+    reference_from_dylib and only set all_twolevel_modules_prebound to FALSE
+    when reference_from_dylib is TRUE.
+  - Changed the two calls to map_library_image() in load_library_image() to pass
+    the reference_from_dylib parameter. 
+- Fixed two warnings in trace_with_string() in trace.c where after the variable
+  namelen was changed back to a signed value there were two comparisons with
+  signed values that needed casts.
+
+Changes for the 5.12 release (the cctools-470 release):
+- Added a new private option to NSLinkModule() used by ZeroLink to improve the
+  performance by avoid spending time filling in the indirect symbol pointers for
+  anything but the new image.  Radar bug #3235113.
+  - Added the new private option LINK_OPTION_RELOC_JUST_THIS_MODULE to be used
+    with _dyld_link_module() in dyld_libfuncs.c .  This is for ZeroLink only
+    and not in <mach-o/dyld.h> so the bit value is the highest unused bit not
+    then next lowest unused bit.
+  - Changed _dyld_link_module() in dyld_libfuncs.c to set the new variable
+    reloc_just_this_object_image to object_image if the option
+    LINK_OPTION_RELOC_JUST_THIS_MODULE is specified and the option
+    LINK_OPTION_RETURN_ON_ERROR is not specified and
+    all_twolevel_modules_prebound is TRUE.  Else it is set to NULL.  This is
+    what is then passed as the new parameter reloc_just_this_object_image to
+    link_in_need_modules().
+  - Changed link_in_need_modules() in symbols.c and symbols.h to take the new
+    parameter reloc_just_this_object_image which can be NULL or a pointer to an
+    object image that is the only image to be relocated.  Changed the existing
+    calls to pass this as NULL in dyld_init.c, dyld_libfuncs.c and symbols.c .
+  - Changed link_in_need_modules() in symbols.c to test the value of the 
+    new parameter reloc_just_this_object_image and if non-NULL calls the new
+    routines resolve_non_lazy_symbol_pointers_in_object_image() and
+    resolve_external_reolcations_in_object_image() instead of 
+    relocate_modules_being_linked().
+  - Added the new routine resolve_non_lazy_symbol_pointers_in_object_image()
+    to symbols.c that walks the indirect symbol table and relocates all
+    non-lazy pointers.  This does not use the being linked list which is what
+    relocate_symbol_pointers_in_object_image() does.
+  - Added the new routine resolve_external_relocations_in_object_image() to
+    reloc.c and reloc.h which sets up and calls external_relocation() for the
+    specified object_image and then and sets the new link_state.
+- Changed the code to not gdb_dyld_state_changed() in two cases. The first case
+  is when an undefined handler is used (used by ZeroLink) then this is now only
+  called when the recursion has terminated.  The second case is when
+  NSAddImage() or NSAddLibrary() is called on a library that is already loaded
+  it is no longer called.  Radar bug #3233782.
+  - Added the variable undefined_handler_recursion_level to errors.c and
+    errors.h that is incremented and decremented in
+    check_and_report_undefineds() around the call to user_undefined_handler().
+    At the end of _dyld_link_module() in dyld_libfuncs.c the call to
+    gdb_dyld_state_changed() was made conditional based on the value of
+    undefined_handler_recursion_level being less than or equal to 1.
+  - Added a new pointer to a boolean parameter, already_loaded, to
+    load_library_image() in images.c and images.h .  In load_library_image() 
+    code was added to set already_loaded if it was passed as non-NULL to TRUE
+    if the library was loaded else FALSE.
+  - The calls to load_library_image() in _dyld_NSAddLibrary() and
+    _dyld_NSAddImage() in dyld_libfuncs.c were change to pass the address of
+    a new boolean as the parameter already_loaded.  Then at the end of these
+    routines the call to gdb_dyld_state_changed() was made conditional based on
+    already_loaded being FALSE.
+  - The calls to load_library_image() in load_images_libraries() in images.c
+    and _dyld_NSAddLibraryWithSearching() in dyld_libfuncs.c were changed to
+    pass the new already_loaded parameter as NULL.
+
+Changes for the 5.12 release (the cctools-469 release):
+- Fixed a bug in trace_with_string() in trace.c where the variable namelen was
+  changed back to a signed value.  It was used in a loop where the value was
+  being decremented and being unsigned caused a crash.  Radar bug #3231985.
+- Picked up the changes for the private ZeroLink call backs to speed up locating
+  symbol definitions.  Radar bug #3229077.
+  - Added the _dyld_install_link_edit_symbol_handlers() routine to
+    dyld_libfuncs.c and an entry for it in the dyld_funcs[] array.  It takes
+    two function pointers that are stored in the new global variables
+    object_image_register and object_image_locator declared in symbols.c with
+    their types declared in symbols.h .
+  - In _dyld_link_module() in dyld_libfuncs.c after map_bundle_image() is called
+    a test of object_image_register is done and then called if not NULL passing
+    it the object_image and the moduleName passed to _dyld_link_module().
+  - In lookup_symbol() in symbol.c after the two-level loopup before the flat
+    lookup is started a test of object_image_locator is done.  If not NULL then
+    it is called with the symbol_name to aid in the lookup.  And using its
+    return value the flat lookup is done, no lookup is done or a lookup in a
+    specific object file image is done.
+- Fixed a bug in inline strcmp in inline_strcmp.h where the input specifiers
+  need to be removed.  This:
+           /* inputs: */   : "1" (s1) , "2" (s2)
+  was changed to this:
+           /* inputs: */   :
+  Radar bug #3225099.
+
 Changes for the 5.12 release (the cctools-466 release):
 - Made the changes to support dynamic flat namespace lookups in two-level
   namespace images for undefined symbols with the new DYNAMIC_LOOKUP_ORDINAL

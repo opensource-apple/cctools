@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -88,6 +87,13 @@ enum nsymbol_blocks { NSYMBOL_BLOCKS = 45 };
  */
 extern struct symbol_block symbol_blocks[NSYMBOL_BLOCKS];
 static unsigned long symbol_blocks_used = 0;
+
+/* 
+ * The private ZeroLink call back routines registered with
+ * _dyld_install_link_edit_symbol_handlers() .
+ */
+object_image_register_proc object_image_register = NULL;
+object_image_locator_proc object_image_locator = NULL;
 
 static void initialize_symbol_block(
     struct symbol_block *symbol_block);
@@ -1712,13 +1718,21 @@ add_undefineds:
 	 */
 	link_state = GET_LINK_STATE(*module);
 	if(bind_now == FALSE){
-	    if(link_state != LINKED && link_state != FULLY_LINKED)
+	    if(link_state != RELOCATED &&
+	       link_state != REGISTERING &&
+	       link_state != INITIALIZING &&
+	       link_state != LINKED &&
+	       link_state != FULLY_LINKED)
 		SET_LINK_STATE(*module, BEING_LINKED);
 	}
-	else{
-	    if(link_state != LINKED && link_state != FULLY_LINKED)
+	else{ /* bind_now == TRUE */
+	    if(link_state != RELOCATED &&
+	       link_state != REGISTERING &&
+	       link_state != INITIALIZING &&
+	       link_state != LINKED &&
+	       link_state != FULLY_LINKED)
 		SET_LINK_STATE(*module, BEING_LINKED);
-	    else
+	    else if(link_state == LINKED)
 		SET_LINK_STATE(*module, FULLY_LINKED);
 	}
 
@@ -2438,6 +2452,7 @@ struct indr_loop_list *indr_loop)
     struct library_images *q;
     struct library_image *outer_library_image;
     struct object_image *outer_object_image;
+    struct object_image *object_image_found;
     
         DYLD_TRACE_SYMBOLS_NAMED_START(DYLD_TRACE_lookup_symbol, symbol_name);
 	/*
@@ -2616,6 +2631,44 @@ weak_library_symbol:
 	    }
             DYLD_TRACE_SYMBOLS_END(DYLD_TRACE_lookup_symbol);
 	    return;
+	}
+
+	/*
+	 * The symbol lookup is not two-level, so we are about to start the flat
+	 * lookup sequentially searching every bundle and library.  To speed
+	 * this up in the ZeroLink case, there may be a callback installed
+	 * which uses a hash table to directly find which bundle contains the
+	 * symbol definition.
+	 */
+	if(object_image_locator != NULL){
+	    /*
+	     * Callback returns:
+	     *	 -1 if the symbol is defined in a yet unlinked bundle 
+	     *	NULL if the symbol is unknonwn
+	     *	object_image pointer otherwise
+	     */
+	    release_lock();
+	    object_image_found = (*object_image_locator)(symbol_name);
+	    set_lock();
+
+	    if(object_image_found != NULL){
+		if(object_image_found == (struct object_image *)(-1)){
+		    /*
+		     * Stop looking we know it won't be found (until ZeroLink
+		     * loads another bundle).
+		     */
+		    return;
+		}
+		/* We know which image it is in, so search that image only */
+		if(lookup_symbol_in_object_image(symbol_name,
+			&(object_image_found->image),
+			&(object_image_found->module),
+			defined_symbol, defined_module, defined_image,
+			defined_library_image, indr_loop) == TRUE){
+		    DYLD_TRACE_SYMBOLS_END(DYLD_TRACE_lookup_symbol);
+		    return;
+		}
+	    }
 	}
 
 	/*
@@ -3831,6 +3884,110 @@ struct image *image)
 }
 
 /*
+ * resolve_non_lazy_symbol_pointers_in_object_image() walks through the indirect
+ * symbol table entries of non-lazy sections and sets all non-lazy pointers.
+ */
+static
+void
+resolve_non_lazy_symbol_pointers_in_object_image(
+struct object_image *object_image)
+{
+    unsigned long i, j, k, section_type, size, vmaddr_slide, reserved1, addr;
+    struct load_command *lc;
+    struct segment_command *sg;
+    struct section *s;
+    struct segment_command *linkedit_segment;
+    struct symtab_command *st;
+    struct dysymtab_command *dyst;
+    struct nlist *symbols, *symbol;
+    unsigned long *indirect_symtab;
+
+    char *symbol_name, *strings;
+    unsigned long symbol_index, indirect_symtab_count;
+    unsigned long value;
+    struct nlist *defined_symbol;
+    module_state *defined_module;
+    struct image *defined_image;
+    struct library_image *defined_library_image;
+
+	linkedit_segment = object_image->image.linkedit_segment;
+	st = object_image->image.st;
+	dyst = object_image->image.dyst;
+	/*
+	 * Object images could be loaded that do not have the proper
+	 * link edit information.
+	 */
+	if(linkedit_segment == NULL || st == NULL || dyst == NULL)
+	    return;
+
+	symbols = (struct nlist *)
+	    (object_image->image.vmaddr_slide +
+	     linkedit_segment->vmaddr +
+	     st->symoff -
+	     linkedit_segment->fileoff);
+	strings = (char *)
+	    (object_image->image.vmaddr_slide +
+	     linkedit_segment->vmaddr +
+	     st->stroff -
+	     linkedit_segment->fileoff);
+	indirect_symtab = (unsigned long *)
+	    (object_image->image.vmaddr_slide +
+	     linkedit_segment->vmaddr +
+	     dyst->indirectsymoff -
+	     linkedit_segment->fileoff);
+	indirect_symtab_count = dyst->nindirectsyms;
+	/*
+	 * Walk the headers looking for non-lazy symbol pointer sections.  
+	 * Then for each section walk the indirect table entries and set the
+	 * the symbol pointer to the symbol's value.
+	 */
+	lc = (struct load_command *)((char *)object_image->image.mh +
+				     sizeof(struct mach_header));
+        vmaddr_slide = object_image->image.vmaddr_slide;
+	for(i = 0; i < object_image->image.mh->ncmds; i++){
+	    switch(lc->cmd){
+	    case LC_SEGMENT:
+		sg = (struct segment_command *)lc;
+		s = (struct section *)
+		    ((char *)sg + sizeof(struct segment_command));
+		for(j = 0 ; j < sg->nsects ; j++){
+		    size = s->size;
+		    reserved1 = s->reserved1;
+		    addr = s->addr;
+		    section_type = s->flags & SECTION_TYPE;
+		    if(section_type == S_NON_LAZY_SYMBOL_POINTERS){
+			for(k = 0; k < size / sizeof(unsigned long); k++){
+			    symbol_index = indirect_symtab[reserved1 + k];
+			    /*
+			     * INDIRECT_SYMBOL_ABS and INDIRECT_SYMBOL_LOCAL
+			     * are handled in
+			     * relocate_symbol_pointers_for_defined_externs()
+			     * if the object image gets slid.
+			     */
+			    if(symbol_index == INDIRECT_SYMBOL_ABS ||
+			       symbol_index == INDIRECT_SYMBOL_LOCAL)
+				continue;
+			    symbol = symbols + symbol_index;
+			    symbol_name = strings + symbol->n_un.n_strx;
+			    lookup_symbol(symbol_name, NULL, NULL,
+				get_weak(symbol), &defined_symbol,
+				&defined_module, &defined_image,
+				&defined_library_image, NULL);
+			    value = defined_symbol->n_value;
+			    if((defined_symbol->n_type & N_TYPE) != N_ABS)
+				value += defined_image->vmaddr_slide;
+			    *((unsigned long *)(vmaddr_slide + addr +
+						(k * sizeof(long)))) = value;
+			}
+		    }
+		    s++;
+		}
+	    }
+	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+	}
+}
+
+/*
  * relocate_symbol_pointers_in_library_image() looks up each symbol that is on
  * the being_linked list and if the library references the symbol cause any
  * symbol pointers in the image to be set to the value of the defined symbol.
@@ -4462,7 +4619,7 @@ unsigned long lazy_symbol_pointer_address)
 				executable_bind_at_load, /* bind_now */
 				FALSE, /* bind_fully */
 				FALSE /* launching_with_prebound_libraries */);
-			link_in_need_modules(FALSE, FALSE);
+			link_in_need_modules(FALSE, FALSE, NULL);
 		    }
 		    value = symbol->n_value;
 		    if((symbol->n_type & N_TYPE) != N_ABS)
@@ -4538,7 +4695,7 @@ unsigned long lazy_symbol_pointer_address)
 	else
 	    flat_reference = TRUE;
 	add_to_undefined_list(symbol_name, symbol, image, FALSE,flat_reference);
-	link_in_need_modules(FALSE, FALSE);
+	link_in_need_modules(FALSE, FALSE, NULL);
 
 	/*
 	 * Now that all the needed module are linked in there can't be any
@@ -4617,7 +4774,7 @@ enum bool change_symbol_pointers)
 	 * undefined list and link in the needed modules.
 	 */
 	add_to_undefined_list(symbol_name, NULL, NULL, FALSE, TRUE);
-	link_in_need_modules(FALSE, FALSE);
+	link_in_need_modules(FALSE, FALSE, NULL);
 
 	/*
 	 * Now that all the needed modules are linked in there can't be any
@@ -4646,7 +4803,8 @@ enum bool change_symbol_pointers)
  * that got linked in, checking for and reporting of undefined symbols and
  * module initialization routines to be called.  bind_now is TRUE only when
  * fully binding an image, the normal case when lazy binding is to occur it
- * is FALSE.
+ * is FALSE.  If reloc_just_this_object_image is not NULL then only that
+ * object file image is relocated.
  *
  * Before being called the lock for the dyld data structures must be set and
  * either:
@@ -4662,7 +4820,8 @@ enum bool change_symbol_pointers)
 enum bool
 link_in_need_modules(
 enum bool bind_now,
-enum bool release_lock_flag)
+enum bool release_lock_flag,
+struct object_image *reloc_just_this_object_image)
 {
     enum bool tried_to_use_prebinding_post_launch;
 
@@ -4693,13 +4852,21 @@ enum bool release_lock_flag)
 	 * 	back out dependent libraries
 	 */
 	if(return_on_error == TRUE &&
-	   check_and_report_undefineds() == FALSE){
+	   check_and_report_undefineds(FALSE) == FALSE){
 	    clear_state_changes_to_the_modules();
 	    clear_being_linked_list(TRUE);
 	    clear_undefined_list(TRUE);
 	    unload_remove_on_error_libraries();
             DYLD_TRACE_SYMBOLS_END(DYLD_TRACE_link_in_need_modules);
 	    return(FALSE);
+	}
+	/*
+	 * If we are relocating just one object image check for any non-lazy
+	 * symbols that are still undefined so the undefined handler gets
+	 * involed to fix them.
+	 */
+	else if(reloc_just_this_object_image != NULL){
+	    check_and_report_undefineds(TRUE);
 	}
 
 	/*
@@ -4720,7 +4887,8 @@ enum bool release_lock_flag)
 	 * Now do all the relocation of modules being linked to that resolved
 	 * undefined symbols.
 	 */
-	relocate_modules_being_linked(FALSE);
+	if(reloc_just_this_object_image == NULL){
+	    relocate_modules_being_linked(FALSE);
 	    /*
 	     * TODO: for return on error: if relocation fails:
 	     * back out state changes to added library modules
@@ -4728,11 +4896,18 @@ enum bool release_lock_flag)
 	     * back out symbols added to undefined list
 	     * back out dependent libraries
 	     */
+	}
+	else{
+	    resolve_non_lazy_symbol_pointers_in_object_image(
+		reloc_just_this_object_image);
+	    resolve_external_relocations_in_object_image(
+		reloc_just_this_object_image);
+	}
 
 	/*
 	 * Now check and report any non-lazy symbols that are still undefined.
 	 */
-	check_and_report_undefineds();
+	check_and_report_undefineds(reloc_just_this_object_image != NULL);
 
 	/*
 	 * If return_on_error is set clear remove_on_error for libraries now

@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -72,6 +71,9 @@
 #include "sets.h"
 
 #ifndef RLD
+/* TRUE if -search_paths_first was specified */
+__private_extern__ enum bool search_paths_first = FALSE;
+
 /* the user specified directories to search for -lx names, and the number
    of them */
 __private_extern__ char **search_dirs = NULL;
@@ -157,6 +159,15 @@ static void search_for_framework(
     char *name,
     char **file_name,
     int *fd);
+static void search_paths_for_lname(
+    const char *lname_argument,
+    char **file_name,
+    int *fd);
+static void search_path_for_lname(
+    const char *dir,
+    const char *lname_argument,
+    char **file_name,
+    int *fd);
 #endif /* !defined(RLD) */
 
 static void pass1_fat(
@@ -165,7 +176,8 @@ static void pass1_fat(
     unsigned long file_size,
     enum bool base_name,
     enum bool dylib_only,
-    enum bool bundle_loader);
+    enum bool bundle_loader,
+    enum bool force_weak);
 
 static void pass1_archive(
     char *file_name,
@@ -173,7 +185,8 @@ static void pass1_archive(
     unsigned long file_size,
     enum bool base_name,
     enum bool from_fat_file,
-    enum bool bundle_loader);
+    enum bool bundle_loader,
+    enum bool force_weak);
 
 static enum bool check_archive_arch(
     char *file_name,
@@ -193,7 +206,8 @@ static void pass1_object(
     enum bool base_name,
     enum bool from_fat_file,
     enum bool dylib_only,
-    enum bool bundle_loader);
+    enum bool bundle_loader,
+    enum bool force_weak);
 
 #ifndef RLD
 static void load_init_dylib_module(
@@ -296,7 +310,8 @@ char *name,
 enum bool lname,
 enum bool base_name,
 enum bool framework_name,
-enum bool bundle_loader)
+enum bool bundle_loader,
+enum bool force_weak)
 {
     int fd;
     char *file_name;
@@ -336,10 +351,19 @@ enum bool bundle_loader)
 	    }
 	    else{
 		if(dynamic == TRUE){
-		    p = mkstr("lib", &name[2], ".dylib", NULL);
-		    search_for_file(p, &file_name, &fd);
+		    if(search_paths_first == TRUE){
+			search_paths_for_lname(&name[2], &file_name, &fd);
+		    }
+		    else{
+			p = mkstr("lib", &name[2], ".dylib", NULL);
+			search_for_file(p, &file_name, &fd);
+			if(fd == -1){
+			    p = mkstr("lib", &name[2], ".a", NULL);
+			    search_for_file(p, &file_name, &fd);
+			}
+		    }
 		}
-		if(fd == -1){
+		else{
 		    p = mkstr("lib", &name[2], ".a", NULL);
 		    search_for_file(p, &file_name, &fd);
 		}
@@ -445,15 +469,15 @@ enum bool bundle_loader)
 	    new_archive_or_fat(file_name, file_addr, file_size);
 #endif /* RLD */
 	    pass1_fat(file_name, file_addr, file_size, base_name, FALSE,
-		      bundle_loader);
+		      bundle_loader, force_weak);
 	}
 	else if(file_size >= SARMAG && strncmp(file_addr, ARMAG, SARMAG) == 0){
 	    pass1_archive(file_name, file_addr, file_size, base_name, FALSE,
-			  bundle_loader);
+			  bundle_loader, force_weak);
 	}
 	else{
 	    pass1_object(file_name, file_addr, file_size, base_name, FALSE,
-			 FALSE, bundle_loader);
+			 FALSE, bundle_loader, force_weak);
 	}
 #ifdef VM_SYNC_DEACTIVATE
 	vm_msync(mach_task_self(), (vm_address_t)file_addr,
@@ -525,6 +549,65 @@ int *fd)
 	    }
 	}
 }
+
+/*
+ * search_paths_for_lname() takes the argument to a -lx option and and trys to
+ * open a file with the name libx.dylib or libx.a.  This routine is only used
+ * when the -search_paths_first option is specified and -dynamic is in effect.
+ * And looks for a file name ending in .dylib then .a in each directory before
+ * looking in the next directory.  The list of the -L search directories and in
+ * the standard directories are searched in that order.  If this is sucessful
+ * it returns a pointer to the file name indirectly through file_name and the
+ * open file descriptor indirectly through fd.
+ */
+static
+void
+search_paths_for_lname(
+const char *lname_argument,
+char **file_name,
+int *fd)
+{
+    unsigned long i;
+
+	*fd = -1;
+	for(i = 0; i < nsearch_dirs ; i++){
+	    search_path_for_lname(search_dirs[i], lname_argument, file_name,fd);
+	    if(*fd != -1)
+		return;
+	}
+	for(i = 0; standard_dirs[i] != NULL ; i++){
+	    search_path_for_lname(standard_dirs[i],lname_argument,file_name,fd);
+	    if(*fd != -1)
+		return;
+	}
+}
+
+/*
+ * search_path_for_lname() takes the argument to a -lx option and and trys to
+ * open a file with the name libx.dylib then libx.a in the specified directory
+ * name.  This routine is only used when the -search_paths_first option is
+ * specified and -dynamic is in effect.  If this is sucessful it returns a
+ * pointer to the file name indirectly through file_name and the open file
+ * descriptor indirectly through fd.
+ */
+static
+void
+search_path_for_lname(
+const char *dir,
+const char *lname_argument,
+char **file_name,
+int *fd)
+{
+	*file_name = mkstr(dir, "/", "lib", lname_argument, ".dylib", NULL);
+	if((*fd = open(*file_name, O_RDONLY)) != -1)
+	    return;
+	free(*file_name);
+
+	*file_name = mkstr(dir, "/", "lib", lname_argument, ".a", NULL);
+	if((*fd = open(*file_name, O_RDONLY)) != -1)
+	    return;
+	free(*file_name);
+}
 #endif /* !defined(RLD) */
 
 #ifndef RLD
@@ -550,7 +633,8 @@ char *file_addr,
 unsigned long file_size,
 enum bool base_name,
 enum bool dylib_only,
-enum bool bundle_loader)
+enum bool bundle_loader,
+enum bool force_weak)
 {
     struct fat_header *fat_header;
 #ifdef __LITTLE_ENDIAN__
@@ -672,11 +756,11 @@ enum bool bundle_loader)
 		    goto pass1_fat_return;
 		}
 		pass1_archive(file_name, arch_addr, arch_size,
-			      base_name, TRUE, bundle_loader);
+			      base_name, TRUE, bundle_loader, force_weak);
 	    }
 	    else{
 		pass1_object(file_name, arch_addr, arch_size, base_name, TRUE,
-			     dylib_only, bundle_loader);
+			     dylib_only, bundle_loader, force_weak);
 	    }
 	    goto pass1_fat_return;
 	}
@@ -698,11 +782,11 @@ enum bool bundle_loader)
 		    goto pass1_fat_return;
 		}
 		pass1_archive(file_name, arch_addr, arch_size, base_name, TRUE,
-			      bundle_loader);
+			      bundle_loader, force_weak);
 	    }
 	    else{
 		pass1_object(file_name, arch_addr, arch_size, base_name, TRUE,
-			     dylib_only, bundle_loader);
+			     dylib_only, bundle_loader, force_weak);
 	    }
 	    goto pass1_fat_return;
 	}
@@ -730,11 +814,11 @@ enum bool bundle_loader)
 		    goto pass1_fat_return;
 		}
 		pass1_archive(file_name, arch_addr, arch_size,
-			      base_name, TRUE, bundle_loader);
+			      base_name, TRUE, bundle_loader, force_weak);
 	    }
 	    else{
 		pass1_object(file_name, arch_addr, arch_size, base_name, TRUE,
-			     dylib_only, bundle_loader);
+			     dylib_only, bundle_loader, force_weak);
 	    }
 	    goto pass1_fat_return;
 	}
@@ -868,7 +952,8 @@ char *file_addr,
 unsigned long file_size,
 enum bool base_name,
 enum bool from_fat_file,
-enum bool bundle_loader)
+enum bool bundle_loader,
+enum bool force_weak)
 {
     unsigned long i, j, offset;
 #ifndef RLD
@@ -1154,7 +1239,7 @@ down:
 		    print_obj_name(cur_obj);
 		    print("loaded because of -all_load flag\n");
 		}
-		merge(FALSE, FALSE);
+		merge(FALSE, FALSE, force_weak);
 		length = round(ar_size + ar_name_size, sizeof(short));
 		offset = (offset - ar_name_size) + length;
 	    }
@@ -1384,7 +1469,7 @@ down:
 		    print("loaded because of -ObjC flag to get symbol: %s\n", 
 			  bsearch_strings + ranlibs[i].ran_un.ran_strx);
 		}
-		merge(FALSE, FALSE);
+		merge(FALSE, FALSE, force_weak);
 	    }
 	    free(loaded_offsets);
 	}
@@ -1516,7 +1601,7 @@ down:
 			       undefined->merged_symbol->nlist.n_un.n_name);
 		    }
 
-		    merge(FALSE, FALSE);
+		    merge(FALSE, FALSE, force_weak);
 
 		    /* make sure this symbol got defined */
 		    if(errors == 0 && 
@@ -1614,7 +1699,7 @@ down:
 				       merged_symbol->nlist.n_un.n_name);
 			    }
 
-			    merge(FALSE, FALSE);
+			    merge(FALSE, FALSE, force_weak);
 
 			    /* make sure this symbol got defined */
 			    if(errors == 0 &&
@@ -1830,7 +1915,8 @@ unsigned long file_size,
 enum bool base_name,
 enum bool from_fat_file,
 enum bool dylib_only,
-enum bool bundle_loader)
+enum bool bundle_loader,
+enum bool force_weak)
 {
 #ifdef __MWERKS__
     enum bool dummy;
@@ -1856,7 +1942,7 @@ enum bool bundle_loader)
 	    base_obj = cur_obj;
 #endif /* !defined(RLD) */
 
-	merge(dylib_only, bundle_loader);
+	merge(dylib_only, bundle_loader, force_weak);
 
 #ifndef RLD
 	/*
@@ -2628,7 +2714,7 @@ undefined_twolevel_reference:
 				   undefined->merged_symbol->nlist.n_un.n_name);
 			}
 
-			merge(FALSE, FALSE);
+			merge(FALSE, FALSE, FALSE);
 
 			/* make sure this symbol got defined */
 			if(errors == 0 && 
@@ -2701,7 +2787,7 @@ undefined_twolevel_reference:
 				   undefined->merged_symbol->nlist.n_un.n_name);
 			    }
 
-			    merge(FALSE, FALSE);
+			    merge(FALSE, FALSE, FALSE);
 
 			    /* make sure this symbol got defined */
 			    if(errors == 0 && 
@@ -3477,11 +3563,12 @@ struct dynamic_library *p)
 	if(fat_header->magic == SWAP_LONG(FAT_MAGIC))
 #endif /* __LITTLE_ENDIAN__ */
 	{
-	    pass1_fat(file_name, file_addr, file_size, FALSE, TRUE, FALSE);
+	    pass1_fat(file_name, file_addr, file_size, FALSE, TRUE, FALSE,
+		      FALSE);
 	}
 	else{
 	    pass1_object(file_name, file_addr, file_size, FALSE, FALSE, TRUE,
-			 FALSE);
+			 FALSE, FALSE);
 	}
 	if(errors)
 	    return(FALSE);
@@ -3813,7 +3900,8 @@ __private_extern__
 void
 merge(
 enum bool dylib_only,
-enum bool bundle_loader)
+enum bool bundle_loader,
+enum bool force_weak)
 {
     unsigned long previous_errors;
 
@@ -3870,7 +3958,7 @@ enum bool bundle_loader)
 	/* if this object has any dynamic shared library stuff merge it */
 	if(cur_obj->dylib_stuff){
 #ifndef RLD
-	    merge_dylibs();
+	    merge_dylibs(force_weak);
 	    if(errors)
 		goto merge_return;
 	    if(cur_obj->dylib)

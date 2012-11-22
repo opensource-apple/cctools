@@ -41,7 +41,7 @@ static enum static_branch_prediction static_branch_prediction =
     STATIC_BRANCH_PREDICTION_Y_BIT;
 
 /* relocation type for internal assembler use only for LIKELY_{,NOT_}TAKEN */
-#define PPC_RELOC_BR14_predicted (127)
+#define PPC_RELOC_BR14_predicted (0x10 | PPC_RELOC_BR14)
 enum branch_prediction {
     BRANCH_PREDICTION_NONE,
     BRANCH_PREDICTION_LIKELY_TAKEN,
@@ -917,7 +917,8 @@ char *op)
 	if(format->cpus != 0 && !force_cpusubtype_ALL){
 	    if(no_ppc601 == 1 && format->cpus == CPU601)
 		as_warning("not allowed 601 instruction \"%s\"", format->name);
-	    if((format->cpus & IMPL64) == IMPL64){
+	    if((format->cpus & IMPL64) == IMPL64 &&
+	        archflag_cpusubtype != CPU_SUBTYPE_POWERPC_970){
 		as_bad("instruction is only for 64-bit implementations (not "
 		       "allowed without -force_cpusubtype_ALL option)");
 	    }
@@ -2270,11 +2271,17 @@ int nsect)
 	case PPC_RELOC_BR14_predicted:
 	    if(fixP->fx_pcrel)
 		val += 4;
-	    if((val & 0xffff8000) && ((val & 0xffff8000) != 0xffff8000))
+	    if((val & 0xffff8000) && ((val & 0xffff8000) != 0xffff8000)){
+		layout_file = fixP->file;
+		layout_line = fixP->line;
 		as_warn("Fixup of %ld too large for field width of 16 bits",
                         val);
-	    if((val & 0x3) != 0)
+	    }
+	    if((val & 0x3) != 0){
+		layout_file = fixP->file;
+		layout_line = fixP->line;
 		as_warn("Fixup of %ld is not to a 4 byte address", val);
+	    }
 	    /*
 	     * Note PPC_RELOC_BR14 are only used with bc, "branch conditional"
 	     * instructions.  The Y_BIT was previously set assuming the
@@ -2304,19 +2311,22 @@ int nsect)
 	    }
 	    buf[2] = val >> 8;
 	    buf[3] |= val & 0xfc;
-	    /* change any PPC_RELOC_BR14_predicted back to PPC_RELOC_BR14
-	       before it is used to create a relocation entry. */
-	    fixP->fx_r_type = PPC_RELOC_BR14;
 	    break;
 
 	case PPC_RELOC_BR24:
 	    if(fixP->fx_pcrel)
 		val += 4;
-	    if((val & 0xfc000000) && ((val & 0xfc000000) != 0xfc000000))
+	    if((val & 0xfc000000) && ((val & 0xfc000000) != 0xfc000000)){
+		layout_file = fixP->file;
+		layout_line = fixP->line;
 		as_warn("Fixup of %ld too large for field width of 26 bits",
                         val);
-	    if((val & 0x3) != 0)
+	    }
+	    if((val & 0x3) != 0){
+		layout_file = fixP->file;
+		layout_line = fixP->line;
 		as_warn("Fixup of %ld is not to a 4 byte address", val);
+	    }
 	    buf[0] |= (val >> 24) & 0x03;
 	    buf[1] = val >> 16;
 	    buf[2] = val >> 8;
@@ -2328,6 +2338,8 @@ int nsect)
 	    break;
 
 	default:
+	    layout_file = fixP->file;
+	    layout_line = fixP->line;
 	    as_warn("Bad relocation type");
 	    break;
 	}

@@ -25,6 +25,57 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.12 release (the cctools-475 release):
+- Fixed ppc-check.c to not produce illegal operands.
+
+Changes for the 5.12 release (the cctools-472 release):
+- Fixed a bug in the movq SSE2 instruction opcodes.  The opcodes for register
+  to memory and memory to register were switch.  The old ones were:
+   {"movq", 2, 0x660fd6, _, RR|Modrm, {xmm|m64, xmm, 0},"O"},
+   {"movq", 2, 0xf30f7e, _, RR|Modrm, {xmm, xmm|m64, 0},"O"},
+  The corrected ones were:
+   {"movq", 2, 0x660fd6, _, RR|Modrm, {xmm, xmm|m64, 0},"O"},
+   {"movq", 2, 0xf30f7e, _, RR|Modrm, {xmm|m64, xmm, 0},"O"},
+  Radar bug #3250086.
+
+Changes for the 5.12 release (the cctools-469 release):
+- Fixed the handling of the .p2align directive to correctly allow the fill value
+  (the second argument) to be omitted by using two commas after the required
+  alignment. This is used by the compiler to get the alignment to be filled with
+  no-op instructions when appropriate.  The change in in s_align() in read.c .
+  Radar bug #3227897.
+
+Changes for the 5.12 release (the cctools-468 release):
+- Changed the setting of the r_length field of PPC_RELOC_BR14_predicted to 3
+  instead of 4 to tell the static link editor this is a Y-bit predicted branch.
+  Radar bug #3223045.
+  - Changed PPC_RELOC_BR14_predicted in ppc.c to be PPC_RELOC_BR14 or'ed with a
+    bit out of the 4-bit range of r_type in a relocation entry.  So when it
+    later gets assigned to r_type it has the right value and gets carried thru
+    to the code that creates the relocation entries.
+  - Changed a few error messages in md_number_to_imm() in ppc.c and one in
+    fix_to_relocation_entries() in write_object.c dealing with fix stuctures to
+    set the the layout_file and layout_line variables from the file and line
+    fields of the fix stucture to produce error messages that contain the
+    correct file and line number.
+  - Changed fix_to_relocation_entries() in write_object.c to set the r_length to
+    3 for PPC_RELOC_BR14_predicted relocation types.
+
+Changes for the 5.12 release (the cctools-467 release):
+- Changed the handing of mismatching section attributes so they do not cause an
+  error but are simply or in with the previous attributes.  The change is in
+  section_new() in sections.c . Radar bug #3218644.
+- Added support for the PPC_RELOC_LO14_SECTDIFF relocation type used with
+  double word load/store instructions. Radar bug #3218027.
+  - Changed the error message in fix_to_relocation_entries() in write_object.c
+    where it gets a fix struct with a non-zero fx_subsy and has a relocation
+    entry it does not have a matching SECTDIFF type.  Now the error causes the
+    file and line number to be printed and includes "Internal error".
+  - Changed fix_to_relocation_entries() in write_object.c and added a if case
+    for PPC_RELOC_LO14 to set the sectdiff to PPC_RELOC_LO14_SECTDIFF.  And
+    later in there set sri.r_address the same as the PPC_RELOC_LO16_SECTDIFF
+    case with the high part of the address.
+
 Changes for the 5.12 release (the cctools-465 release):
 - Added the following directives:
     .p2align[wl] align, [fill[, max_bytes_to_fill]]

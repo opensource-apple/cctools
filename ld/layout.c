@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -1307,51 +1306,54 @@ layout_segments(void)
 
 #ifdef RLD
 	/*
-	 * For rld() the output format is MH_OBJECT and only the contents of the
-	 * segment (the entire vmsize not just the filesize) without headers is
-	 * allocated and the address the segment is linked to is the address of
-	 * this memory.
+	 * For rld() the output format is MH_OBJECT and the contents of the
+	 * first segment (the entire vmsize not just the filesize), if it exists,
+	 * plus headers are allocated and the address the segment is linked to 
+	 * is the address of this memory.
 	 */
 	output_size = 0;
-	if(first_msg != NULL){
 #ifndef SA_RLD
-	    kern_return_t r;
+	kern_return_t r;
 #endif
-	    unsigned long allocate_size;
+	unsigned long allocate_size;
 
-	    headers_size = round(headers_size, max_align);
-	    output_size = headers_size + first_msg->sg.vmsize;
-	    allocate_size = output_size;
-	    if(strip_level != STRIP_ALL)
-		allocate_size += output_symtab_info.symtab_command.nsyms *
-				 sizeof(struct nlist) +
-				 output_symtab_info.symtab_command.strsize;
+	headers_size = round(headers_size, max_align);
+	output_size = headers_size;
+	if(first_msg != NULL)
+	    output_size += first_msg->sg.vmsize;
+	allocate_size = output_size;
+	if(strip_level != STRIP_ALL)
+	    allocate_size += output_symtab_info.symtab_command.nsyms *
+				sizeof(struct nlist) +
+				output_symtab_info.symtab_command.strsize;
 
 #ifdef SA_RLD
-	    if(allocate_size > sa_rld_output_size)
-		fatal("not enough memory for output of size %lu (memory "
-		      "available %lu)", allocate_size, sa_rld_output_size);
-	    output_addr = sa_rld_output_addr;
+	if(allocate_size > sa_rld_output_size)
+	    fatal("not enough memory for output of size %lu (memory "
+		    "available %lu)", allocate_size, sa_rld_output_size);
+	output_addr = sa_rld_output_addr;
 #else /* !defined(SA_RLD) */
-	    if((r = vm_allocate(mach_task_self(), (vm_address_t *)&output_addr,
-				allocate_size, TRUE)) != KERN_SUCCESS)
-		mach_fatal(r, "can't vm_allocate() memory for output of size "
-			   "%lu", allocate_size);
-	    /*
-	     * The default initial protection for vm_allocate()'ed memory
-	     * may not include VM_PROT_EXECUTE so we need to raise the
-	     * the protection to VM_PROT_ALL which include this.
-	     */
-	    if((r = vm_protect(mach_task_self(), (vm_address_t)output_addr,
-		allocate_size, FALSE, VM_PROT_ALL)) != KERN_SUCCESS)
-		mach_fatal(r, "can't set vm_protection on memory for output");
+	if((r = vm_allocate(mach_task_self(), (vm_address_t *)&output_addr,
+			    allocate_size, TRUE)) != KERN_SUCCESS)
+	    mach_fatal(r, "can't vm_allocate() memory for output of size "
+			"%lu", allocate_size);
+	/*
+	    * The default initial protection for vm_allocate()'ed memory
+	    * may not include VM_PROT_EXECUTE so we need to raise the
+	    * the protection to VM_PROT_ALL which include this.
+	    */
+	if((r = vm_protect(mach_task_self(), (vm_address_t)output_addr,
+	    allocate_size, FALSE, VM_PROT_ALL)) != KERN_SUCCESS)
+	    mach_fatal(r, "can't set vm_protection on memory for output");
 #endif /* defined(SA_RLD) */
 #ifdef RLD_VM_ALLOC_DEBUG
-	    print("rld() vm_allocate: addr = 0x%0x size = 0x%x\n",
-		  (unsigned int)output_addr, (unsigned int)allocate_size);
+	print("rld() vm_allocate: addr = 0x%0x size = 0x%x\n",
+		(unsigned int)output_addr, (unsigned int)allocate_size);
 #endif /* RLD_VM_ALLOC_DEBUG */
-	    sets[cur_set].output_addr = output_addr;
-	    sets[cur_set].output_size = output_size;
+	sets[cur_set].output_addr = output_addr;
+	sets[cur_set].output_size = output_size;
+
+	if(first_msg != NULL){
 	    if(address_func != NULL){
 	        if(RLD_DEBUG_OUTPUT_FILENAME_flag)
 		    first_msg->sg.vmaddr =

@@ -34,6 +34,7 @@
 #include "sections.h"
 #include "messages.h"
 #include "xmalloc.h"
+#include "input-scrub.h"
 #ifdef I860
 #define RELOC_SECTDIFF	I860_RELOC_SECTDIFF
 #define RELOC_PAIR	I860_RELOC_PAIR
@@ -45,6 +46,7 @@
 #ifdef PPC
 #define RELOC_SECTDIFF	PPC_RELOC_SECTDIFF
 #define RELOC_PAIR	PPC_RELOC_PAIR
+#define PPC_RELOC_BR14_predicted (0x10 | PPC_RELOC_BR14)
 #endif
 #ifdef HPPA
 #define RELOC_SECTDIFF	HPPA_RELOC_SECTDIFF
@@ -965,9 +967,16 @@ struct relocation_info *riP)
 		riP->r_length = 1;
 		break;
 	    case 4:
+#ifdef PPC
+		if(fixP->fx_r_type == PPC_RELOC_BR14_predicted)
+		    riP->r_length = 3;
+		else
+#endif
 		riP->r_length = 2;
 		break;
 	    default:
+		layout_file = fixP->file;
+		layout_line = fixP->line;
 		as_fatal("Bad fx_size (0x%x) in fix_to_relocation_info()\n",
 			 fixP->fx_size);
 	}
@@ -1012,6 +1021,8 @@ struct relocation_info *riP)
 		    sectdiff = PPC_RELOC_LO16_SECTDIFF;
 		else if(fixP->fx_r_type == PPC_RELOC_HA16)
 		    sectdiff = PPC_RELOC_HA16_SECTDIFF;
+		else if(fixP->fx_r_type == PPC_RELOC_LO14)
+		    sectdiff = PPC_RELOC_LO14_SECTDIFF;
 		else
 #endif
 #ifdef HPPA
@@ -1029,9 +1040,13 @@ struct relocation_info *riP)
 		else
 #endif
 		{
-		    if(fixP->fx_r_type != 0)
-			as_fatal("incorrect fx_r_type (%u) for fx_subsy != 0 "
-				 "in fix_to_relocation_info()",fixP->fx_r_type);
+		    if(fixP->fx_r_type != 0){
+			layout_file = fixP->file;
+			layout_line = fixP->line;
+			as_fatal("Internal error: incorrect fx_r_type (%u) for "
+				 "fx_subsy != 0 in fix_to_relocation_info()",
+				 fixP->fx_r_type);
+		    }
 		    sectdiff = RELOC_SECTDIFF;
 		}
 		memset(&sri, '\0',sizeof(struct scattered_relocation_info));
@@ -1055,7 +1070,8 @@ struct relocation_info *riP)
 				     fixP->fx_subsy->sy_value
 				     + fixP->fx_offset) & 0xffff;
 		}
-		else if(sectdiff == PPC_RELOC_LO16_SECTDIFF){
+		else if(sectdiff == PPC_RELOC_LO16_SECTDIFF ||
+			sectdiff == PPC_RELOC_LO14_SECTDIFF){
 		    sri.r_address = ((symbolP->sy_value -
 				      fixP->fx_subsy->sy_value +
 				      fixP->fx_offset) >> 16) & 0xffff;

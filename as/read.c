@@ -1531,8 +1531,10 @@ int fill_size)
 	max_bytes_to_fill = 0;
 	if(*input_line_pointer == ','){
 	    input_line_pointer ++;
-	    temp_fill = get_absolute_expression ();
-	    fill_specified = 1;
+	    if(*input_line_pointer != ','){
+		temp_fill = get_absolute_expression ();
+		fill_specified = 1;
+	    }
 	    if(*input_line_pointer == ','){
 		input_line_pointer ++;
 		max_bytes_to_fill = get_absolute_expression ();

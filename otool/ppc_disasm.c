@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -117,7 +116,10 @@ static void a_form(
 
 static unsigned long bc(
     const char *name,
-    unsigned long opcode);
+    unsigned long opcode,
+    unsigned long sect_offset,
+    struct relocation_info *relocs,
+    unsigned long nrelocs);
 
 static void trap(
     const char *name,
@@ -139,8 +141,13 @@ static void print_immediate(
     unsigned long strings_size,
     enum bool verbose);
 
-static unsigned long get_reloc(
+static unsigned long get_reloc_r_type(
     unsigned long pc,
+    struct relocation_info *relocs,
+    unsigned long nrelocs);
+
+static unsigned long get_reloc_r_length(
+    unsigned long sect_offset,
     struct relocation_info *relocs,
     unsigned long nrelocs);
 
@@ -277,7 +284,7 @@ enum bool verbose)
 	    break;
 	case 0x48000000:
 	    if((opcode & 0xfc000003) == 0x48000001 && 
-	       get_reloc(sect_offset, relocs, nrelocs) == PPC_RELOC_JBSR){
+	       get_reloc_r_type(sect_offset,relocs, nrelocs) == PPC_RELOC_JBSR){
 		printf("jbsr\t");
 		jbsr = TRUE;
 	    }
@@ -315,7 +322,7 @@ enum bool verbose)
 	    }
 	    break;
 	case 0x40000000:
-	    if(bc("", opcode) == 0)
+	    if(bc("", opcode, sect_offset, relocs, nrelocs) == 0)
 		printf("\t");
 	    else
 		printf(",");
@@ -1185,9 +1192,9 @@ enum bool verbose)
 	    case 0x000007ec:
 		if((opcode & 0x00200000) == 0x00200000){
 		    if(RA(opcode) == 0)
-			printf("dcbz128\t0,r%lu\n", RB(opcode));
+			printf("dcbzl\t0,r%lu\n", RB(opcode));
 		    else
-			printf("dcbz128\tr%lu,r%lu\n", RA(opcode), RB(opcode));
+			printf("dcbzl\tr%lu,r%lu\n", RA(opcode), RB(opcode));
 		}
 		else{
 		    if(RA(opcode) == 0)
@@ -1515,14 +1522,14 @@ enum bool verbose)
 		printf("mcrf\tcr%lu,cr%lu\n", BF(opcode), BFA(opcode));
 		break;
 	    case 0x00000020:
-		(void)bc("lr", opcode);
+		(void)bc("lr", opcode, sect_offset, relocs, nrelocs);
 		printf("\n");
 		break;
 	    case 0x00000024:
 		printf("rfid\n");
 		break;
 	    case 0x00000420:
-		(void)bc("ctr", opcode);
+		(void)bc("ctr", opcode, sect_offset, relocs, nrelocs);
 		printf("\n");
 		break;
 	    case 0x00000202:
@@ -2522,22 +2529,49 @@ static
 unsigned long
 bc(
 const char *name,
-unsigned long opcode)
+unsigned long opcode,
+unsigned long sect_offset,
+struct relocation_info *relocs,
+unsigned long nrelocs)
 {
     char *prediction;
     const char *a;
     unsigned long operands;
-    enum bool branch_to_register;
+    enum bool branch_to_register, predicted;
 
 	operands = 0;
 	prediction = "";
+	/*
+	 * For branch conditional instructions that use the Y-bit that were
+	 * predicted the r_length is set to 3 instead of 2.  So to correctly
+	 * print the prediction, we have to search for a reloc of and look at
+	 * the r_length.  If there is a reloc at this pc, and if the r_length
+	 * is 3 it then we know it was a predicted branch and we will always
+	 * print the prediction based on the Y-bit, the sign of the displacement
+	 * or the opcode (in the case of bclrX and bcctrX instructions).
+	 */
+	if(get_reloc_r_length(sect_offset, relocs, nrelocs) == 3)
+	    predicted = TRUE;
+	else
+	    predicted = FALSE;
 	/* branch conditional (to displacment) */
 	if((opcode & 0xfc000000) == 0x40000000){
 	    branch_to_register = FALSE;
 	    a = aa[(opcode >> 1) & 0x1];
 	    if(Y_BIT(opcode) == 0){
-		/* the Y-bit is zero so don't print prediction */
-		prediction = "";
+		/*
+		 * the Y-bit is zero so don't print prediction unless there was
+		 * a reloc that said this was a predicted branch.
+		 */
+		if(predicted == TRUE){
+		    if((opcode & 0x00008000) != 0)
+			prediction = "+";
+		    else
+			prediction = "-";
+		}
+		else{
+		    prediction = "";
+		}
 	    }
 	    else{
 		if((opcode & 0x00008000) != 0)
@@ -2550,11 +2584,23 @@ unsigned long opcode)
 	    /* branch conditional (to link or count register) */
 	    branch_to_register = TRUE;
 	    a = "";
-	    if(Y_BIT(opcode) == 0)
+	    if(Y_BIT(opcode) == 0){
 		/* the Y-bit is zero so don't print prediction */
 		prediction = "";
-	    else
+		/*
+		 * the Y-bit is zero so don't print prediction unless there was
+		 * a reloc that said this was a predicted branch.
+		 */
+		if(predicted == TRUE){
+		    prediction = "-";
+		}
+		else{
+		    prediction = "";
+		}
+	    }
+	    else{
 		prediction = "+";
+	    }
 	}
 	if(Zflag == TRUE){
 	    if(branch_to_register == TRUE){
@@ -3093,6 +3139,7 @@ enum bool verbose)
 		       r_type == PPC_RELOC_SECTDIFF ||
 		       r_type == PPC_RELOC_HI16_SECTDIFF ||
 		       r_type == PPC_RELOC_LO16_SECTDIFF ||
+		       r_type == PPC_RELOC_LO14_SECTDIFF ||
 		       r_type == PPC_RELOC_HA16_SECTDIFF ||
 		       r_type == PPC_RELOC_LO14 ||
 		       r_type == PPC_RELOC_JBSR){
@@ -3131,6 +3178,7 @@ enum bool verbose)
 		   r_type == PPC_RELOC_SECTDIFF ||
 		   r_type == PPC_RELOC_HI16_SECTDIFF ||
 		   r_type == PPC_RELOC_LO16_SECTDIFF ||
+		   r_type == PPC_RELOC_LO14_SECTDIFF ||
 		   r_type == PPC_RELOC_HA16_SECTDIFF ||
 		   r_type == PPC_RELOC_LO14 ||
 		   r_type == PPC_RELOC_JBSR){
@@ -3238,6 +3286,7 @@ enum bool verbose)
 	    }
 	    else if(r_type == PPC_RELOC_LO16 ||
 		    r_type == PPC_RELOC_LO16_SECTDIFF ||
+		    r_type == PPC_RELOC_LO14_SECTDIFF ||
 		    r_type == PPC_RELOC_LO14)
 		value = other_half << 16 | value;
 	    else if(r_type == PPC_RELOC_JBSR)
@@ -3245,6 +3294,7 @@ enum bool verbose)
 	    if(r_scattered &&
                (r_type != PPC_RELOC_HI16_SECTDIFF &&
                 r_type != PPC_RELOC_HA16_SECTDIFF &&
+                r_type != PPC_RELOC_LO14_SECTDIFF &&
                 r_type != PPC_RELOC_LO16_SECTDIFF)){
 		offset = value - r_value;
 		value = r_value;
@@ -3254,6 +3304,7 @@ enum bool verbose)
 	if(reloc_found &&
 	   (r_type == PPC_RELOC_HI16_SECTDIFF ||
 	    r_type == PPC_RELOC_HA16_SECTDIFF ||
+	    r_type == PPC_RELOC_LO14_SECTDIFF ||
 	    r_type == PPC_RELOC_LO16_SECTDIFF)){
 	    if(r_type == PPC_RELOC_HI16_SECTDIFF)
 		printf("hi16(");
@@ -3391,7 +3442,7 @@ enum bool verbose)
  */
 static
 unsigned long
-get_reloc(
+get_reloc_r_type(
 unsigned long pc,
 struct relocation_info *relocs,
 unsigned long nrelocs)
@@ -3414,6 +3465,48 @@ unsigned long nrelocs)
 		continue;
 	    if(r_address == pc)
 		return(r_type);
+	}
+	return(0xffffffff);
+}
+
+/*
+ * For branch conditional instructions that use the Y-bit that were
+ * predicted the r_length is set to 3 instead of 2.  So to correctly
+ * print the prediction, we have to search for a reloc of and look at
+ * the r_length.  If there is a reloc at the pc of the branch, and if the
+ * r_length is 3 it then we know it was a predicted branch and we will always
+ * print the prediction based on the Y-bit, the sign of the displacement
+ * or the opcode (in the case of bclrX and bcctrX instructions). This routine
+ * uses the logic from the above routine to loop though the relocs and give the
+ * r_length for the particular address.
+ */
+static
+unsigned long
+get_reloc_r_length(
+unsigned long sect_offset,
+struct relocation_info *relocs,
+unsigned long nrelocs)
+{
+    unsigned long i;
+    struct relocation_info *rp;
+    unsigned long r_length, r_address, r_type;
+  
+	for(i = 0; i < nrelocs; i++){
+	    rp = &relocs[i];
+	    if(rp->r_address & R_SCATTERED){
+		r_type = ((struct scattered_relocation_info *)rp)->r_type;
+		r_length = ((struct scattered_relocation_info *)rp)->r_length;
+		r_address = ((struct scattered_relocation_info *)rp)->r_address;
+	    }
+	    else{
+		r_type = rp->r_type;
+		r_length = rp->r_length;
+		r_address = rp->r_address;
+	    }
+	    if(r_type == PPC_RELOC_PAIR)
+		continue;
+	    if(r_address == sect_offset)
+		return(r_length);
 	}
 	return(0xffffffff);
 }

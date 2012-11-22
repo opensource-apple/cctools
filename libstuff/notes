@@ -5,6 +5,19 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.12 release (the cctools-469 release):
+- Fixed a problem with the added checks of the of the dylib_module struct in
+  ofile.c made in cctools-466 for Radar bug #3208399 where it did not work if
+  the file was not in host byte sex.  The fix was to copy the struct and byte
+  swap it if needed before doing the checks on the copy of the struct in
+  check_dylib_module() in ofile.c .  Radar bug #3228664.
+
+Changes for the 5.12 release (the cctools-467 release):
+- Added support for the PPC_RELOC_LO14_SECTDIFF relocation type used with
+  double word load/store instructions. Radar bug #3218027.
+  - Added tests for PPC_RELOC_LO14_SECTDIFF in both reloc_has_pair() and
+    reloc_is_sectdiff() in reloc.c .
+
 Changes for the 5.12 release (the cctools-466 release):
 - Fixed the incorrect casts on the comparison of the nlist struct's n_strx field
   where the value being compared to was casted to a long.  The correct fix was

@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -83,7 +82,8 @@ static void print_relocs(
     enum bool verbose);
 static void print_r_type(
     cpu_type_t cputype,
-    unsigned long r_type);
+    unsigned long r_type,
+    enum bool predicted);
 static void print_cstring_char(
     char c);
 static void print_literal4(
@@ -3990,7 +3990,7 @@ enum bool verbose)
     unsigned long j;
     struct relocation_info *r, reloc;
     struct scattered_relocation_info *sr;
-    enum bool previous_sectdiff, previous_ppc_jbsr;
+    enum bool previous_sectdiff, previous_ppc_jbsr, predicted;
     unsigned long sectdiff_r_type;
 
 	host_byte_sex = get_host_byte_sex();
@@ -4002,6 +4002,7 @@ enum bool verbose)
 	    j < nreloc &&
 	    reloff + (j + 1) * sizeof(struct relocation_info) <= object_size;
 	    j++){
+	    predicted = FALSE;
 	    r = (struct relocation_info *)
 		 (object_addr + reloff +
 		  j * sizeof(struct relocation_info));
@@ -4045,12 +4046,27 @@ enum bool verbose)
 		    case 2:
 			printf("long   ");
 			break;
+		    case 3:
+			/*
+			 * The value of 3 for r_length for PowerPC is to encode
+			 * that a conditional branch using the Y-bit for static
+			 * branch prediction was predicted in the assembly
+			 * source.
+			 */
+			if(mh->cputype == CPU_TYPE_POWERPC ||
+			   mh->cputype == CPU_TYPE_VEO){
+			    printf("long   ");
+			    predicted = TRUE;
+			}
+			else
+			    printf("?(%2d)  ", sr->r_length);
+			break;
 		    default:
 			printf("?(%2d)  ", sr->r_length);
 			break;
 		    }
 		    printf("n/a    ");
-		    print_r_type(mh->cputype, sr->r_type);
+		    print_r_type(mh->cputype, sr->r_type, predicted);
 		    printf("True      0x%08x", (unsigned int)sr->r_value);
 		    if(previous_sectdiff == FALSE){
 			if((mh->cputype == CPU_TYPE_MC88000 &&
@@ -4092,6 +4108,7 @@ enum bool verbose)
 			     mh->cputype == CPU_TYPE_VEO) &&
 			    (sectdiff_r_type == PPC_RELOC_HI16_SECTDIFF ||
 			     sectdiff_r_type == PPC_RELOC_LO16_SECTDIFF ||
+			     sectdiff_r_type == PPC_RELOC_LO14_SECTDIFF ||
 			     sectdiff_r_type == PPC_RELOC_HA16_SECTDIFF)){
 			    printf(" other_half = 0x%04x ",
 				   (unsigned int)sr->r_address);
@@ -4107,6 +4124,7 @@ enum bool verbose)
 			(sr->r_type == PPC_RELOC_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_HI16_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_LO16_SECTDIFF ||
+			 sr->r_type == PPC_RELOC_LO14_SECTDIFF ||
 			 sr->r_type == PPC_RELOC_HA16_SECTDIFF)) ||
 		       (mh->cputype == CPU_TYPE_I860 &&
 			sr->r_type == I860_RELOC_SECTDIFF) ||
@@ -4168,13 +4186,28 @@ enum bool verbose)
 		    case 2:
 			printf("long   ");
 			break;
+		    case 3:
+			/*
+			 * The value of 3 for r_length for PowerPC is to encode
+			 * that a conditional branch using the Y-bit for static
+			 * branch prediction was predicted in the assembly
+			 * source.
+			 */
+			if(mh->cputype == CPU_TYPE_POWERPC ||
+			   mh->cputype == CPU_TYPE_VEO){
+			    printf("long   ");
+			    predicted = TRUE;
+			}
+			else
+			    printf("?(%2d)  ", reloc.r_length);
+			break;
 		    default:
 			printf("?(%2d)  ", reloc.r_length);
 			break;
 		    }
 		    if(reloc.r_extern){
 			printf("True   ");
-			print_r_type(mh->cputype, reloc.r_type);
+			print_r_type(mh->cputype, reloc.r_type, predicted);
 			printf("False     ");
 			if(symbols == NULL || strings == NULL ||
 			   reloc.r_symbolnum > nsymbols ||
@@ -4188,7 +4221,7 @@ enum bool verbose)
 		    }
 		    else{
 			printf("False  ");
-			print_r_type(mh->cputype, reloc.r_type);
+			print_r_type(mh->cputype, reloc.r_type, predicted);
 			printf("False     ");
 			if((mh->cputype == CPU_TYPE_I860 &&
 			    reloc.r_type == I860_RELOC_PAIR) ||
@@ -4262,9 +4295,9 @@ static char *i860_r_types[] = {
     "BRADDR  ", "SECTDIF ", " 14 (?) ", " 15 (?) "
 };
 static char *ppc_r_types[] = {
-    "VANILLA ", "PAIR    ", "BR14    ", "BR24    ", "HI16    ", "LO16    ",
+    "VANILLA ", "PAIR    ", "BR14",     "BR24    ", "HI16    ", "LO16    ",
     "HA16    ", "LO14    ", "SECTDIF ", "PBLAPTR ", "HI16DIF ", "LO16DIF ",
-    "HA16DIF ", "JBSR    ", " 14 (?) ", " 15 (?) "
+    "HA16DIF ", "JBSR    ", "LO14DIF ", " 15 (?) "
 };
 static char *hppa_r_types[] = {
 	"VANILLA ", "PAIR    ", "HI21    ", "LO14    ", "BR17    ",
@@ -4282,7 +4315,8 @@ static
 void
 print_r_type(
 cpu_type_t cputype,
-unsigned long r_type)
+unsigned long r_type,
+enum bool predicted)
 {
 	if(r_type > 0xf){
 	    printf("%-7lu ", r_type);
@@ -4302,6 +4336,12 @@ unsigned long r_type)
 	case CPU_TYPE_POWERPC:
 	case CPU_TYPE_VEO:
 	    printf("%s", ppc_r_types[r_type]);
+	    if(r_type == PPC_RELOC_BR14){
+		if(predicted == TRUE)
+		    printf("+/- ");
+		else
+		    printf("    ");
+	    }
 	    break;
 	case CPU_TYPE_HPPA:
 	    printf("%s", hppa_r_types[r_type]);

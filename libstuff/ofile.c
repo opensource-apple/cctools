@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -3748,16 +3747,23 @@ unsigned long module_index)
 	return(CHECK_GOOD);
 #else /* !defined OTOOL */
     unsigned long i;
+    enum byte_sex host_byte_sex;
+    enum bool swapped;
+    struct dylib_module m;
 
-	if(ofile->dylib_module->module_name > st->strsize){
+	m = *ofile->dylib_module;
+	host_byte_sex = get_host_byte_sex();
+	swapped = (enum bool)(host_byte_sex != ofile->object_byte_sex);
+	if(swapped)
+	    swap_dylib_module(&m, 1, host_byte_sex);
+
+	if(m.module_name > st->strsize){
 	    Mach_O_error(ofile, "truncated or malformed object (module_name "
 		"of module table entry %lu past the end of the string table)",
 		module_index);
 	    return(CHECK_BAD);
 	}
-	for(i = ofile->dylib_module->module_name;
-	    i < st->strsize && strings[i] != '\0';
-	    i++)
+	for(i = m.module_name; i < st->strsize && strings[i] != '\0'; i++)
 		;
 	if(i >= st->strsize){
 	    Mach_O_error(ofile, "truncated or malformed object (module_name "
@@ -3766,60 +3772,56 @@ unsigned long module_index)
 	    return(CHECK_BAD);
 	}
 
-	if(ofile->dylib_module->nextdefsym != 0){
-	    if(ofile->dylib_module->iextdefsym > st->nsyms){
+	if(m.nextdefsym != 0){
+	    if(m.iextdefsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (iextdefsym "
 		    "field of module table entry %lu past the end of the "
 		    "symbol table", module_index);
 		return(CHECK_BAD);
 	    }
-	    if(ofile->dylib_module->iextdefsym +
-	       ofile->dylib_module->nextdefsym > st->nsyms){
+	    if(m.iextdefsym + m.nextdefsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (iextdefsym "
 		    "field of module table entry %lu plus nextdefsym field "
 		    "extends past the end of the symbol table", module_index);
 		return(CHECK_BAD);
 	    }
 	}
-	if(ofile->dylib_module->nlocalsym != 0){
-	    if(ofile->dylib_module->ilocalsym > st->nsyms){
+	if(m.nlocalsym != 0){
+	    if(m.ilocalsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (ilocalsym "
 		    "field of module table entry %lu past the end of the "
 		    "symbol table", module_index);
 		return(CHECK_BAD);
 	    }
-	    if(ofile->dylib_module->ilocalsym +
-	       ofile->dylib_module->nlocalsym > st->nsyms){
+	    if(m.ilocalsym + m.nlocalsym > st->nsyms){
 		Mach_O_error(ofile, "truncated or malformed object (ilocalsym "
 		    "field of module table entry %lu plus nlocalsym field "
 		    "extends past the end of the symbol table", module_index);
 		return(CHECK_BAD);
 	    }
 	}
-	if(ofile->dylib_module->nrefsym != 0){
-	    if(ofile->dylib_module->irefsym > dyst->nextrefsyms){
+	if(m.nrefsym != 0){
+	    if(m.irefsym > dyst->nextrefsyms){
 		Mach_O_error(ofile, "truncated or malformed object (irefsym "
 		    "field of module table entry %lu past the end of the "
 		    "reference table", module_index);
 		return(CHECK_BAD);
 	    }
-	    if(ofile->dylib_module->irefsym +
-	       ofile->dylib_module->nrefsym > dyst->nextrefsyms){
+	    if(m.irefsym + m.nrefsym > dyst->nextrefsyms){
 		Mach_O_error(ofile, "truncated or malformed object (irefsym "
 		    "field of module table entry %lu plus nrefsym field "
 		    "extends past the end of the reference table",module_index);
 		return(CHECK_BAD);
 	    }
 	}
-	if(ofile->dylib_module->nextrel != 0){
-	    if(ofile->dylib_module->iextrel > dyst->extreloff){
+	if(m.nextrel != 0){
+	    if(m.iextrel > dyst->extreloff){
 		Mach_O_error(ofile, "truncated or malformed object (iextrel "
 		    "field of module table entry %lu past the end of the "
 		    "external relocation enrties", module_index);
 		return(CHECK_BAD);
 	    }
-	    if(ofile->dylib_module->iextrel +
-	       ofile->dylib_module->nextrel > dyst->extreloff){
+	    if(m.iextrel + m.nextrel > dyst->extreloff){
 		Mach_O_error(ofile, "truncated or malformed object (iextrel "
 		    "field of module table entry %lu plus nextrel field "
 		    "extends past the end of the external relocation enrties",

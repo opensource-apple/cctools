@@ -1,9 +1,9 @@
 <HTML>
-<!--This file created 4/3/03 10:28 AM by Claris Home Page version 3.0-->
+<!--This file created 5/21/03 3:58 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Mac OS X Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=54 BOTTOM=861 LEFT=64 RIGHT=714>
+   <X-CLARIS-WINDOW TOP=48 BOTTOM=850 LEFT=56 RIGHT=740>
    <X-CLARIS-TAGVIEW MODE=minimal>
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
@@ -39,6 +39,58 @@ topics:</P>
 <H2>Notes Specific to Mac OS X June 2003 Developer Release</H2>
 
 <H2>New Features</H2>
+
+<H3><FONT SIZE="+1">The compiler tools now support the PowerPC 970
+processor</FONT></H3>
+
+<P>The compiler tools now support the PowerPC 970 processor. The
+architecture specific flag <B>-arch ppc970</B> is used to specify
+this specific processor. The assembler will only assemble 64-bit
+instructions and other PowerPC AS User Instruction Set Architecture
+Version 2.00 instructions supported by the PowerPC 970 processor when
+<B>-arch ppc970 </B>or <B>-force_cpusubtype_ALL</B> is specified.</P>
+
+<P>To specify branch predictions which use the AT bit encodings for
+<I>The branch is very likely to be taken</I> and <I>The branch is
+very likely not to be taken</I> the two character suffixes ++ and --
+are used. For example:</P>
+
+<BLOCKQUOTE>bge-- foo</BLOCKQUOTE>
+
+<P>The single character suffixes + and - continue to encode branch
+predictions which use the Y-bit encoding by default. The encoding can
+be changed for the single character suffixes to use the AT bit
+encodings with the assembler flag
+<B>-static_branch_prediction_AT_bits</B> (see the <I>as</I>(1) man
+page for more details).</P>
+
+<H3><FONT SIZE="+1">The compiler tools now support stub
+libraries</FONT></H3>
+
+<P>The compiler tools now support stub libraries created from dynamic
+libraries which are used in the SDKs. Stub libraries are created via
+<I>strip</I>(1) and the new <B>-c</B> option. And can be linked
+against in place of the actual dynamic library.</P>
+
+<H3><FONT SIZE="+1">The static linker now can search for libraries
+first in the library paths</FONT></H3>
+
+<P>By default when the <B>-dynamic</B> flag is in effect, the
+<B>-l</B><I>x</I> and <B>-weak-l</B><I>x</I> options first search for
+a file of the form lib<I>x</I>.dylib in each directory in the library
+search path, then a file of the form lib<I>x</I>.a is searched for in
+the library search paths. The new option <B>-search_paths_first</B>
+changes it so that in each path lib<I>x</I>.dylib is searched for
+then lib<I>x</I>.a before the next path in the library search path is
+searched.</P>
+
+<H3><FONT SIZE="+1">The static linker now supports forcing a dynamic
+library to be weak</FONT></H3>
+
+<P>Added the <B>-weak_framework</B>, <B>-weak_library</B> and
+<B>-weak-l</B> options to <I>ld</I>(1) to force the dynamic library
+and the symbols referenced from it to be marked as weak imports. See
+the <I>ld</I>(1) man page for more details.</P>
 
 <H3><FONT SIZE="+1">The static linker now has a work around for not
 having dead code stripping</FONT></H3>

@@ -1,3 +1,19 @@
+Changes for the 5.12 release (the cctools-477 release):
+- Changed <mach-o/kld.h> to make kld_load_basefile_from_memory() available for
+  both __DYNAMIC__ and __STATIC__  and added kld_set_link_options() as well as
+  the constants to use with it.  Radar bug #3270588.
+
+Changes for the 5.12 release (the cctools-468 release):
+- Added some comments to <mach-o/ppc/reloc.h> to describe the new use of the
+  previously unused value 3 for r_length to mean that the conditional branch was
+  predicted using the Y-bit and the sign of the displacement and opcode.
+  Radar bug #3223045.
+
+Changes for the 5.12 release (the cctools-467 release):
+- Added the PPC_RELOC_LO14_SECTDIFF relocation type to <mach-o/ppc/reloc.h>
+  to match the PPC_RELOC_LO14 relocation type for load and store double
+  instructions using a section difference expression.  Radar bug #3218027.
+
 Changes for the 5.12 release (the cctools-466 release):
 - Added the DYNAMIC_LOOKUP_ORDINAL to <mach-o/nlist.h> and reduced the value of
   MAX_LIBRARY_ORDINAL by one.  This is to allow dynamic flat namespace lookups

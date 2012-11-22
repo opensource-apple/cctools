@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -117,7 +116,8 @@ void)
  */
 __private_extern__
 void
-merge_dylibs(void)
+merge_dylibs(
+enum bool force_weak)
 {
     unsigned long i;
     struct mach_header *mh;
@@ -143,7 +143,9 @@ merge_dylibs(void)
 		 * file.  Only record the library itself.
 		 */
 		if((lc->cmd != LC_LOAD_DYLIB &&
-		    lc->cmd != LC_LOAD_WEAK_DYLIB) || mh->filetype != MH_DYLIB){
+		    lc->cmd != LC_LOAD_WEAK_DYLIB) ||
+		   (mh->filetype != MH_DYLIB &&
+		    mh->filetype != MH_DYLIB_STUB) ){
 		    dl = (struct dylib_command *)lc;
 		    mdl = lookup_merged_dylib(dl);
 		    if(filetype == MH_DYLIB && dylib_install_name != NULL &&
@@ -152,6 +154,7 @@ merge_dylibs(void)
 			   "same install_name (%s) as the output", 
 			   dylib_install_name);
 		    p = add_dynamic_lib(DYLIB, dl, cur_obj);
+		    p->force_weak_dylib = force_weak;
 		    mdl->dynamic_library = p;
 		}
 	    }

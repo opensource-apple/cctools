@@ -23,6 +23,93 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.12 release (the cctools-477 release):
+- Picked up changes to kld interfaces.  Changes in rld.c and layout.c .
+  Radar bug #3270588.
+
+Changes for the 5.12 release (the cctools-473 release):
+- Fixed a bug with the use of a modulus operator on a signed value which caused
+  a crash.  The fix was to cast to unsigned long not long.  The problem was in
+  lookup_indirect_item() in indirect_sections.c when it used the modulus
+  operator to come up with a hash value.  Radar bug #3255992.
+
+Changes for the 5.12 release (the cctools-472 release):
+- Moved the #ifndef RLD in output_local_symbols() in symbols.c down so that
+  the call to swap_nlist() is not ifdef'ed out.  This allows cross building of
+  a kernel's symbol file with kld.  Radar bug #3251273.
+
+Changes for the 5.12 release (the cctools-471 release):
+- Backed out the change to call to _exit() in ld_exit() in ld.c in Radar bug
+  #3237013 as it does not flush the stdio buffers.  Then changed the handler()
+  routine in ld.c used for signals to not call ld_exit() and instead unlink(2)
+  the output file if one was created and call _exit(1).  Radar bug #3245341.
+- Fixed a problem in the kld libraries where the code that was not ignoring the
+  alignment of non-regular non-zerofill sections from the base file.  A missing
+  #ifdef KLD and test of the base file was needed on one more place in
+  merge_sections() in sections.c .  Radar bug #3245534.
+
+Changes for the 5.12 release (the cctools-470 release):
+- Changed the call to exit() in ld_exit() in ld.c to _exit as it was causing a
+  hang in dyld when used with signal handlers.  Radar bug #3237013.
+- Added the flag -search_paths_first to cause -lx flags to search each path
+  for .dylib then .a before searching next path.  Radar bug #3176974.
+  - Added the enum bool variable search_paths_first to pass1.c and pass1.h and
+    code to parse out the option and set variable in main() in ld.c .
+  - The new static routines search_paths_for_lname() and search_path_for_lname()
+    were added to pass1.c .
+  - In pass1() in pass1.c a test of the new search_paths_first variable is done
+    and if TRUE then search_paths_for_lname() is called.
+
+Changes for the 5.12 release (the cctools-468 release):
+- Added support to force a dynamic library to be marked weak in the output.
+  This can be done using these three flags:
+    -weak_framework Foo
+    -weak-lx
+    -weak_library library_filename
+  Radar bug #3069758.
+  - Added parsing out "-weak_framework", "-weak-lx"and "-weak_library" to
+    ld.c and calling pass1() with the force_weak parameter as TRUE.
+  - Added the new boolean parameter force_weak to pass1() in pass1.c and
+    pass1.h . Changed the existing calls to pass1() in ld.c to pass the new
+    boolean parameter force_weak as FALSE.
+  - Added the new boolean parameter force_weak to pass1_fat(), pass1_archive()
+    and pass1_object() in pass1.c .  Propagated the passing of this new
+    parameter down through the calls.  And passed it as FALSE in call to
+    pass1_fat() and pass1_object() from open_dylib().
+  - Added the new boolean parameter force_weak to merge() in pass1.c .  And
+    passed this as the parameter force_weak parameter or FALSE in the existing
+    calls.
+  - Added the new boolean parameter force_weak to merge_dylibs() in dylibs.c and
+    dylibs.h .  After the call to add_dynamic_lib() the parameter force_weak is
+    set into the field force_weak_dylib in the dynamic_library struct.
+  - Added the boolean field force_weak_dylib to the dynamic_library structure
+    in pass1.h .
+  - Changed merge_dylib_module_symbols() in symbols.c to test the
+    force_weak_dylib field of the dynamic_library structure and if TRUE set the
+    N_WEAK_REF bit on the merged symbol to mark the symbol as a weak reference.
+
+Changes for the 5.12 release (the cctools-468 release):
+- Added support for the new use of the previously unused value 3 for r_length
+  to mean that the conditional branch was predicted using the Y-bit and the
+  sign of the displacement and opcode.  Radar bug #3223045.
+  - Changed ppc_reloc() in ppc_reloc.c to correctly flip the Y-bit for
+    PPC_RELOC_BR14 r_types with an r_length value of 3 for branch conditions
+    that are not branch always and the sign of the displacement is different
+    after relocation.
+- Fixed a problem when linking against stub libraries that the dependencies of
+  the stub libraries were getting recored in the output file.  This caused them
+  to have LC_LOAD_DYLIB load commands which inturn messed up the recorded
+  library ordinals.  The fix is in merge_dylibs() in dylibs.c to add a check
+  that the object's file type was not MH_DYLIB_STUB.  Radar bug #3220772.
+
+Changes for the 5.12 release (the cctools-467 release):
+- Added support for the PPC_RELOC_LO14_SECTDIFF relocation type used with
+  double word load/store instructions. Radar bug #3218027.
+  - Changed ppc_reloc() in ppc_reloc.c treat a PPC_RELOC_LO14_SECTDIFF as it
+    other PowerPC section difference relocation entries and expect it to have
+    a pair.   And added cases for PPC_RELOC_LO14_SECTDIFF to relocate it as it
+    would for PPC_RELOC_LO14.
+
 Changes for the 5.12 release (the cctools-466 release):
 - Added the new treatment of "-undefined define_a_way" to define all undefined
   symbols as private extern symbols.  This is a temporary work around to not

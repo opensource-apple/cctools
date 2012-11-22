@@ -1,9 +1,9 @@
 <HTML>
-<!--This file created 4/3/03 2:08 PM by Claris Home Page version 3.0-->
+<!--This file created 6/12/03 4:10 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=81 BOTTOM=848 LEFT=240 RIGHT=870>
+   <X-CLARIS-WINDOW TOP=79 BOTTOM=846 LEFT=110 RIGHT=740>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
@@ -12,7 +12,7 @@
 2003 by Apple Computer, Inc. All Rights Reserved.</FONT></P>
 
 <H2>Private Mac OS X June 2003 Developer Release Notes:<BR>
-Compiler Tools (cctools-466)</H2>
+Compiler Tools (cctools-478)</H2>
 
 <P>This file contains release notes for the 5.12 release of the
 Compiler Tools for the Mac OS X June 2003 Developer Release. This
@@ -32,6 +32,201 @@ file contains information about the following topics:</P>
 
 <H2>Notes Specific to Release 5.12 (Mac OS X June 2003 Developer
 Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-477 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in dyld that was causing things to be doublely
+   relocated and causing programs to crash. (Radar bug
+   #3274768).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-476 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Added the new PowerPC assembler mnemonic "dcbzl" to be the
+   same as "dcbz128" and changed the assembler to disassemble this as
+   "dcbzl". (Radar bug #3270067).</LI>
+   
+   <LI>Added the kld_set_link_options() to the kld library to contol
+   the stripping of the generated files. (Radar bug #3270588).</LI>
+   
+   <LI>Changed the source of the cctools project to allow it to build
+   with Libc-302 by stubbing out the functions __fpclassifyd(), for
+   PowerPC and __fpclassify() for i386. (Radar bug #3271830).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-475 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the otool(1)'s i386 disassembly of some of the
+   movq instructions where it was not printing the mnemonic. (Radar
+   bug #3268255).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-474 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Updated the assembler man page, as(1) and the arch(3) man
+   page. (Radar bug #3265334).</LI>
+   
+   <LI>Fixed The Data Cache Block Touch Instruction variant with the
+   TH field so it is 4 bits and marked as a 64-bit instruction.
+   (Radar bug #3265411).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-473 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug the libredo_prebinding(3) code that caused it to
+   leak memory when run on system with partially fat files. (Radar
+   bug #3144803).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-472 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug the static linker that can cause it to crash when
+   linking with large dynamic libraries. (Radar bug #3255992).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-471 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed the libkld routines so that symbol files for kernel
+   extensions for i386 can be built on ppc. (Radar bug
+   #3251273).</LI>
+   
+   <LI>Fixed a bug in the i386 assembler where it used the incorrect
+   operand for the movq instruction so that the source &amp;
+   destination got reversed. (Radar bug #3250086).</LI>
+   
+   <LI>Fixed a bug in the seg_addr_table(1) tools that when the
+   -relayout option is used it did not set the &lt;&lt;&lt; Next
+   split address to assign &gt;&gt;&gt; properly. . (Radar bug
+   #3245958).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-470 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the dynamic linker that caused it to crash if a
+   symbol is undefined that is using -undefined dynamic_lookup when
+   trying to print out the name of the undefined symbol. (Radar bug
+   #3246167).</LI>
+   
+   <LI>Fixed a bug in the kld libraries where the code that was not
+   ignoring the alignment of non-regular non-zerofill sections from
+   the base file. (Radar bug #3245534).</LI>
+   
+   <LI>Backed out the change made in ld(1) to call _exit instead of
+   exit() done for Radar bug #3245341 as it does not correctly flush
+   the output buffers. (Radar bug #3245341).</LI>
+   
+   <LI>Changed the dynamic linker so that when the private
+   LINK_OPTION_RELOC_JUST_THIS_MODULE option to NSLinkModule() is
+   used the undefined handler gets the last undefined symbol not the
+   first. (Radar bug #3243939).</LI>
+   
+   <LI>Fixed a bug in the dynamic linker where it incorrectly stopped
+   trying to use prebound libraries after a launch if a plugin was
+   loaded that was out of date with respect to its libraries. (Radar
+   bug #3243961).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-469 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Added the private LINK_OPTION_RELOC_JUST_THIS_MODULE option to
+   NSLinkModule() to be used by ZeroLink to improve the performance
+   by avoid spending time filling in the indirect symbol pointers for
+   anything but the new image. (Radar bug #3235113).</LI>
+   
+   <LI>Added the strip(1) option <B>-c</B> to create create stub
+   libraries from dynamic libraries by stripping the section
+   contents. (Radar bug #3235093).</LI>
+   
+   <LI>Improved the interface between the dynamic linker and debugger
+   so that the debugger spends less time reading the state of the
+   dynamic linker, especially for ZeroLink. (Radar bug
+   #3233782).</LI>
+   
+   <LI>Added the ld(1) option <B>-search_paths_first</B> . When
+   specified and <B>-dynamic</B> is in effect this casuses ld(1) to
+   search for files for <B>-l</B><I>x</I> arguments in each library
+   search path for libx.dylib then libx.a before searching the next
+   library search path. (Radar bug #3176974).</LI>
+   
+   <LI>Changed ld(1) to call _exit instead of exit(). (Radar bug
+   #3245341).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-468 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Added the ld(1) options <B>-weak_framework</B>,
+   <B>-weak_library</B> and <B>-weak-l</B> to force a dynamic library
+   and all references to it to be marked as weak imports. (Radar bug
+   #3069758).</LI>
+   
+   <LI>Changed the dynamic linker's internal inline strcmp to have
+   the correct GNU asm constrains. (Radar bug #3225099)</LI>
+   
+   <LI>Fixed a bug in seg_addr_table(1) that caused it to crash
+   introduced in cctools-464. (Radar bug #3225931).</LI>
+   
+   <LI>Fixed a bug in the assembler's .p2align directive when used
+   with no fill expression that did not fill with no-op instructions
+   when appropriate. (Radar bug #3227897).</LI>
+   
+   <LI>Fixed a problem with the fix to Radar bug #3208399 that caused
+   an incorrect "malformed object" error on a dynamic shared library
+   with the opposite byte sex of the host machine. (Radar bug
+   #3228664).</LI>
+   
+   <LI>Added private callbacks in the dynamic linker so ZeroLink can
+   help locate definitions faster. (Radar bug #3229077).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-467 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the compiler tools that caused the static link
+   editor, ld(1), to mess up the static branches that were predicted
+   using the Y-bit in cases it changed the sign of the displacement.
+   (Radar bug #3223045).</LI>
+   
+   <LI>Fixed a bug in the static link editor, ld(1), when linking
+   against stub libraries it would incorrectly record the dependent
+   libraries of the stub libraries. This caused library ordinals for
+   undefined symbols to be incorrect causing the program to fail to
+   run with an error from the dynamic linker saying it can't find a
+   symbol from the incorrecly recorded library. (Radar bug
+   #3220772).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-466 for
+the 5.12 MacOS June 2003 Developer release) </FONT></H5>
+
+<UL>
+   <LI>Changed the assember to allow .section directives with
+   diffenent attributes. (Radar bug #3218644).</LI>
+   
+   <LI>Changed the compiler tools to allow section difference
+   relocations with PowerPC load/store double instructions. (Radar
+   bug #3218027).</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-465 for
 the 5.12 MacOS June 2003 Developer release) </FONT></H5>

@@ -3,6 +3,43 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.12 release (the cctools-477 release):
+- Added stub functions for __fpclassifyd(), for ppc, and __fpclassify() for i386
+  to the end of main.c to allow otool to link with just libc.a given the new
+  code in __ldtoa().  Radar bug #3271830.
+
+Changes for the 5.12 release (the cctools-476 release):
+- Fixed a bug in the i386 disassembly of movd instructions with the 0x7e sub
+  opcode.  Radar bug #3268255.
+
+Changes for the 5.12 release (the cctools-472 release):
+- Fixed a bug in disassembling the movq SSE2 instruction opcodes.  The operands
+  for register to memory and memory to register were switch.
+  Radar bug #3250086.
+
+Changes for the 5.12 release (the cctools-468 release):
+- Added support for the new use of the previously unused value 3 for r_length
+  to mean that the conditional branch was predicted using the Y-bit and the
+  sign of the displacement and opcode.  Radar bug #3223045.
+  - Changed in print_r_type() in ofile_print.c to take a new boolean parameter
+    predicted to tell it to print "+/-" after the r_type.
+  - Changed print_relocs() in ofile_print.c to set a local boolean predicted
+    to TRUE when r_length is 3 and pass it to print_r_type().
+  - Added the new routine get_reloc_r_length() to ppc_disasm.c .
+  - Changed the routine get_reloc() to get_reloc_r_type() in ppc_disasm.c .
+  - Change bc() in ppc_disasm.c to take 3 new parameters sect_offset, relocs and
+    nrelos so it can look for a relocation entry with a r_length value of 3 to
+    know to always print the prediction in this case.
+
+Changes for the 5.12 release (the cctools-467 release):
+- Added support for the PPC_RELOC_LO14_SECTDIFF relocation type used with
+  double word load/store instructions. Radar bug #3218027.
+  - Changed print_relocs() and in ofile_print.c to expect and print a pair
+    relocation entry for PPC_RELOC_LO14_SECTDIFF relocation type.
+  - Changed the 14th entry in ppc_r_types[] from " 14 (?) " to "LO14DIF " in
+    ofile_print.c that print_r_type() uses.
+  - Changed print_immediate() in ppc_disasm.c to handle PPC_RELOC_LO14_SECTDIFF.
+
 Changes for the 5.12 release (the cctools-466 release):
 - Fixed the incorrect cast on the comparison of the nlist struct's n_strx field
   where the value being compared to was casted to a long.  The correct fix was

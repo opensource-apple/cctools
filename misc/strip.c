@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -65,6 +64,8 @@ static long nflag;	/* save N_SECT global symbols */
 static long Sflag;	/* -S strip only debugger symbols N_STAB */
 static long xflag;	/* -x strip non-globals */
 static long Xflag;	/* -X strip local symbols with 'L' names */
+static long cflag;	/* -c strip section contents from dynamic libraries
+			   files to create stub libraries */
 static long strip_all = 1;
 /*
  * This is set on an object by object basis if the strip_all flag is still set
@@ -374,6 +375,12 @@ char *envp[])
 			    strip_all = 0;
 #endif /* !defined(NMEDIT) */
 			    break;
+#ifndef NMEDIT
+			case 'c':
+			    cflag = 1;
+			    strip_all = 0;
+			    break;
+#endif /* NMEDIT */
 			default:
 			    error("unrecognized option: %s", argv[i]);
 			    usage();
@@ -621,7 +628,7 @@ enum bool all_archs)
 
 	    /*
 	     * Now this arch[i] has been selected to be processed so process it
-	     * according to it's type.
+	     * according to its type.
 	     */
 	    if(archs[i].type == OFILE_ARCHIVE){
 		for(j = 0; j < archs[i].nmembers; j++){
@@ -766,6 +773,15 @@ struct object *object)
 	strings = object->object_addr + object->st->stroff;
 	strsize = object->st->strsize;
 
+#ifndef NMEDIT
+	if(object->mh->filetype != MH_DYLIB && cflag)
+	    fatal_arch(arch, member, "-c can't be used on non-dynamic "
+		       "library: ");
+#endif /* !(NMEDIT) */
+	if(object->mh->filetype == MH_DYLIB_STUB)
+	    fatal_arch(arch, member, "dynamic stub library can't be changed "
+		       "once created: ");
+
 	if(object->mh->filetype == MH_DYLIB){
 	    tocs = (struct dylib_table_of_contents *)
 		    (object->object_addr + object->dyst->tocoff);
@@ -781,6 +797,71 @@ struct object *object)
 		swap_dylib_module(mods, nmodtab, host_byte_sex);
 		swap_dylib_reference(refs, nextrefsyms, host_byte_sex);
 	    }
+#ifndef NMEDIT
+	    /* 
+	     * In the -c flag is specified then strip the section contents of
+	     * this dynamic library and change it into a stub library.  When
+	     * creating a stub library the timestamp is not changed.
+	     */
+	    if(cflag){
+		object->mh->filetype = MH_DYLIB_STUB;
+		arch->dont_update_LC_ID_DYLIB_timestamp = TRUE;
+
+		lc = object->load_commands;
+		for(i = 0; i < object->mh->ncmds; i++){
+		    if(lc->cmd == LC_SEGMENT){
+			sg = (struct segment_command *)lc;
+			if(strcmp(sg->segname, SEG_LINKEDIT) != 0){
+			    /*
+			     * Zero out the section offset, reloff, and size
+			     * fields as the section contents are being removed.
+			     */
+			    s = (struct section *)&sg[1];
+			    for(j = 0; j < sg->nsects; j++){
+				/*
+				 * For section types with indirect tables we
+				 * do not zero out the section size in a stub
+				 * library.  As the section size is needed to
+				 * know now many indirect table entries the
+				 * section has.  This is a bit odd but programs
+				 * dealing with MH_DYLIB_STUB filetypes special
+				 * case this.
+				 */ 
+				section_type = s[j].flags & SECTION_TYPE;
+				if(section_type != S_SYMBOL_STUBS &&
+				   section_type != S_LAZY_SYMBOL_POINTERS &&
+				   section_type != S_NON_LAZY_SYMBOL_POINTERS){
+				    s[j].size = 0;
+				}
+				s[j].addr    = 0;
+				s[j].offset  = 0;
+				s[j].reloff  = 0;
+			    }
+			    /* zero out file offset and size in the segment */
+			    sg->fileoff = 0;
+			    sg->filesize = 0;
+			}
+		    }
+		    lc = (struct load_command *)((char *)lc + lc->cmdsize);
+		}
+		/*
+		 * To get the right amount of the file copied out by writeout()
+		 * for the case when we are stripping out the section contents
+		 * we reduce the object size by the size of the section contents
+		 * including the padding after the load commands.  Then this
+		 * size minus the size of the input symbolic information is
+		 * copied out.
+		 */
+		object->object_size -= (object->seg_linkedit->fileoff -
+			(sizeof(struct mach_header) + object->mh->sizeofcmds));
+		/*
+		 * Set the file offset to the link edit information to be right
+		 * after the load commands.
+		 */
+		object->seg_linkedit->fileoff = 
+			sizeof(struct mach_header) + object->mh->sizeofcmds;
+	    }
+#endif /* !(NMEDIT) */
 	}
 	else{
 	    tocs = NULL;
@@ -863,7 +944,12 @@ struct object *object)
 	    
 		}
 
-		if(object->mh->filetype == MH_DYLIB){
+		/*
+		 * If the -c option is specified the object's filetype will
+		 * have been changed from MH_DYLIB to MH_DYLIB_STUB above.
+		 */
+		if(object->mh->filetype == MH_DYLIB ||
+		   object->mh->filetype == MH_DYLIB_STUB){
 		    object->output_tocs = new_tocs;
 		    object->output_ntoc = new_ntoc;
 #ifdef NMEDIT
@@ -896,9 +982,20 @@ struct object *object)
 		    object->dyst->ntoc * sizeof(struct dylib_table_of_contents)+
 		    object->dyst->nmodtab * sizeof(struct dylib_module) +
 		    object->dyst->nextrefsyms * sizeof(struct dylib_reference);
+#ifndef NMEDIT
+		/*
+		 * When stripping out the section contents to create a
+		 * dynamic library stub the relocation info also gets
+		 * stripped.
+		 */
+		if(!cflag) 
+#endif /* !(NMEDIT) */
+		{
+		    object->output_sym_info_size +=
+			object->dyst->nlocrel * sizeof(struct relocation_info) +
+			object->dyst->nextrel * sizeof(struct relocation_info);
+		}
 		object->output_sym_info_size +=
-		    object->dyst->nlocrel * sizeof(struct relocation_info) +
-		    object->dyst->nextrel * sizeof(struct relocation_info) +
 		    object->dyst->nindirectsyms * sizeof(unsigned long) +
 		    new_ntoc * sizeof(struct dylib_table_of_contents)+
 		    object->dyst->nmodtab * sizeof(struct dylib_module) +
@@ -947,9 +1044,23 @@ struct object *object)
 		if(object->dyst->nlocrel != 0){
 		    object->output_loc_relocs = (struct relocation_info *)
 			(object->object_addr + object->dyst->locreloff);
-		    object->dyst->locreloff = offset;
-		    offset += object->dyst->nlocrel *
-			      sizeof(struct relocation_info);
+#ifndef NMEDIT
+		    /*
+		     * When stripping out the section contents to create a
+		     * dynamic library stub the relocation info also gets
+		     * stripped.
+		     */
+		    if(cflag){
+			object->dyst->nlocrel = 0;
+			object->dyst->locreloff = 0;
+		    }
+		    else
+#endif /* defined(NMEDIT) */
+		    {
+			object->dyst->locreloff = offset;
+			offset += object->dyst->nlocrel *
+				  sizeof(struct relocation_info);
+		    }
 		}
 		else
 		    object->dyst->locreloff = 0;
@@ -976,9 +1087,23 @@ struct object *object)
 		if(object->dyst->nextrel != 0){
 		    object->output_ext_relocs = (struct relocation_info *)
 			(object->object_addr + object->dyst->extreloff);
-		    object->dyst->extreloff = offset;
-		    offset += object->dyst->nextrel *
-			      sizeof(struct relocation_info);
+#ifndef NMEDIT
+		    /*
+		     * When stripping out the section contents to create a
+		     * dynamic library stub the relocation info also gets
+		     * stripped.
+		     */
+		    if(cflag){
+			object->dyst->nextrel = 0;
+			object->dyst->extreloff = 0;
+		    }
+		    else
+#endif /* defined(NMEDIT) */
+		    {
+			object->dyst->extreloff = offset;
+			offset += object->dyst->nextrel *
+			    sizeof(struct relocation_info);
+		    }
 		}
 		else
 		    object->dyst->extreloff = 0;
@@ -1000,6 +1125,24 @@ struct object *object)
 		    object->dyst->tocoff = 0;
 
 		if(object->dyst->nmodtab != 0){
+#ifndef NMEDIT
+		    /*
+		     * When stripping out the section contents to create a
+		     * dynamic library stub zero out the fields in the module
+		     * table for the sections and relocation information.
+		     */
+		    if(cflag){
+			/* Clear Objective-C address and size from modules. */
+			for(k = 0; k < object->dyst->nmodtab; k++){
+			    mods[k].iinit_iterm = 0;
+			    mods[k].ninit_nterm = 0;
+			    mods[k].iextrel = 0;
+			    mods[k].nextrel = 0;
+			    mods[k].objc_module_info_addr = 0;
+			    mods[k].objc_module_info_size = 0;
+			}
+		    }
+#endif /* !(NMEDIT) */
 		    object->dyst->modtaboff = offset;
 		    offset += object->dyst->nmodtab *
 			      sizeof(struct dylib_module);

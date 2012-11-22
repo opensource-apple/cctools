@@ -22,7 +22,7 @@ const char *in_s2)
 	    "\tbeq- cr1,2f\n"
 	    "\tbeq+ 1b\n2:"
 	    /* outputs: */  : "=&r" (result), "+b" (s1), "+b" (s2), "=r" (temp)
-	    /* inputs: */   : "1" (s1) , "2" (s2)
+	    /* inputs: */   :
 	    /* clobbers: */ : "cr0", "cr1", "memory");
 	return(result);
 }

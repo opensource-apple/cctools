@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -34,6 +33,9 @@
  */
 
 #ifndef RLD
+/* TRUE if -search_paths_first was specified */
+__private_extern__ enum bool search_paths_first;
+
 /* the user specified directories to search for -lx filenames, and the number
    of them */
 __private_extern__ char **search_dirs;
@@ -85,6 +87,7 @@ struct dynamic_library {
     enum bool indirect_twolevel_ref_flagged;
     enum bool some_non_weak_refs;
     enum bool some_symbols_referenced;
+    enum bool force_weak_dylib;
     struct object_file *definition_obj;
     char *dylib_file; /* argument to -dylib_file "install_name:file_name" */
     struct dylib_table_of_contents *tocs;
@@ -126,10 +129,12 @@ __private_extern__ void pass1(
     enum bool lname,
     enum bool base_name,
     enum bool framework_name,
-    enum bool bundle_loader);
+    enum bool bundle_loader,
+    enum bool force_weak);
 __private_extern__ void merge(
     enum bool dylib_only,
-    enum bool bundle_loader);
+    enum bool bundle_loader,
+    enum bool force_weak);
 __private_extern__ void check_fat(
     char *file_name,
     unsigned long file_size,

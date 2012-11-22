@@ -1,4 +1,4 @@
-.TH LIBTOOL 1 "December 11, 2002" "Apple Computer, Inc."
+.TH LIBTOOL 1 "April 17, 2002" "Apple Computer, Inc."
 .SH NAME
 libtool \- create libraries
 .br
@@ -241,6 +241,9 @@ For a dynamic shared library the following
 .IR ld (1)
 flags are accepted and passed through:
 .BI \-l x,
+.BI \-weak-l x,
+.B \-search_paths_first
+.B \-weak_library,
 .BI \-L dir,
 .BI \-y sym,
 .BI \-u sym,
@@ -263,6 +266,7 @@ flags are accepted and passed through:
 .B \-prebind_all_twolevel_modules,
 .B \-noprebind,
 .B \-framework,
+.B \-weak_framework,
 .B \-umbrella,
 .B \-allowable_client,
 .B \-sub_umbrella,

@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -122,6 +121,8 @@ struct cmd_flags {
     enum bool L_or_T_specified;
     enum bool		/* set if the environ var RC_TRACE_ARCHIVES is set */
 	rc_trace_archives;
+    enum bool		/* set if -search_paths_first is specified */
+	search_paths_first;
 };
 static struct cmd_flags cmd_flags = { 0 };
 
@@ -199,6 +200,11 @@ static char *file_name_from_l_flag(
     char *l_flag);
 static char *search_for_file(
     char *base_name);
+static char * search_paths_for_lname(
+    const char *lname_argument);
+static char * search_path_for_lname(
+    const char *dir,
+    const char *lname_argument);
 static void add_member(
     struct ofile *ofile);
 static void free_archs(
@@ -758,7 +764,21 @@ char **envp)
 		    cmd_flags.files[cmd_flags.nfiles++] = argv[i];
 		    lflags_seen = TRUE;
 		}
-		else if(strcmp(argv[i], "-framework") == 0){
+		else if(strncmp(argv[i], "-weak-l", 7) == 0){
+		    if(cmd_flags.ranlib == TRUE){
+			error("unknown option: %s", argv[i]);
+			usage();
+		    }
+		    if(argv[i][7] == '\0'){
+			error("-weak-l: name missing");
+			usage();
+		    }
+		    cmd_flags.files[cmd_flags.nfiles++] = argv[i];
+		    lflags_seen = TRUE;
+		}
+		else if(strcmp(argv[i], "-framework") == 0 ||
+		        strcmp(argv[i], "-weak_framework") == 0 ||
+		        strcmp(argv[i], "-weak_library") == 0){
 		    if(cmd_flags.ranlib == TRUE){
 			error("unknown option: %s", argv[i]);
 			usage();
@@ -814,6 +834,16 @@ char **envp)
 		    }
 		    /* We need to ignore -pg */
 			;
+		}
+		else if(strcmp(argv[i], "-search_paths_first") == 0){
+		    if(cmd_flags.ranlib == TRUE){
+			error("unknown option: %s", argv[i]);
+			usage();
+		    }
+		    cmd_flags.search_paths_first = TRUE;
+		    cmd_flags.ldflags = reallocate(cmd_flags.ldflags,
+				sizeof(char *) * (cmd_flags.nldflags + 1));
+		    cmd_flags.ldflags[cmd_flags.nldflags++] = argv[i];
 		}
 		else{
 		    for(j = 1; argv[i][j] != '\0'; j++){
@@ -1075,7 +1105,8 @@ void)
 	 */
 	ofiles = allocate(sizeof(struct ofile) * cmd_flags.nfiles);
 	for(i = 0; i < cmd_flags.nfiles; i++){
-	    if(strncmp(cmd_flags.files[i], "-l", 2) == 0){
+	    if(strncmp(cmd_flags.files[i], "-l", 2) == 0 ||
+	       strncmp(cmd_flags.files[i], "-weak-l", 7) == 0){
 		file_name = file_name_from_l_flag(cmd_flags.files[i]);
 		if(file_name != NULL)
 		    if(ofile_map(file_name, NULL, NULL, ofiles + i, TRUE) ==
@@ -1270,33 +1301,46 @@ ranlib_fat_error:
 }
 
 /*
- * file_name_from_l_flag() is passed a "-lx" flag and returns a name of a file
- * for this flag.  The flag "-lx" is the same flag as used in the link editor
- * to refer to file names.  If it can't find a file name for the flag it prints
- * an error and returns NULL.
+ * file_name_from_l_flag() is passed a "-lx" or "-weak-lx" flag and returns a
+ * name of a file for this flag.  The flag "-lx" and "-weak-lx" are the same
+ * flags as used in the link editor to refer to file names.  If it can't find a
+ * file name for the flag it prints an error and returns NULL.
  */
 static
 char *
 file_name_from_l_flag(
 char *l_flag)
 {
-    char *file_name, *p;
+    char *file_name, *p, *start;
 
-	p = &l_flag[2];
-	p = strrchr(p, '.');
+	if(strncmp(l_flag, "-weak-l", 7) == 0)
+	    start = &l_flag[7];
+	else
+	    start = &l_flag[2];
+	p = strrchr(start, '.');
 	if(p != NULL && strcmp(p, ".o") == 0){
-	    p = &l_flag[2];
+	    p = start;
 	    file_name = search_for_file(p);
 	}
 	else{
 	    file_name = NULL;
 	    if(cmd_flags.dynamic == TRUE){
-		p = makestr("lib", &l_flag[2], ".dylib", NULL);
-		file_name = search_for_file(p);
-		free(p);
+		if(cmd_flags.search_paths_first == TRUE){
+		    file_name = search_paths_for_lname(start);
+		}
+		else{
+		    p = makestr("lib", start, ".dylib", NULL);
+		    file_name = search_for_file(p);
+		    free(p);
+		    if(file_name == NULL){
+			p = makestr("lib", start, ".a", NULL);
+			file_name = search_for_file(p);
+			free(p);
+		    }
+		}
 	    }
-	    if(file_name == NULL){
-		p = makestr("lib", &l_flag[2], ".a", NULL);
+	    else{
+		p = makestr("lib", start, ".a", NULL);
 		file_name = search_for_file(p);
 		free(p);
 	    }
@@ -1333,6 +1377,68 @@ char *base_name)
 		return(file_name);
 	    free(file_name);
 	}
+	return(NULL);
+}
+
+/*
+ * search_paths_for_lname() takes the argument to a -lx option and and trys to
+ * find a file with the name libx.dylib or libx.a.  This routine is only used
+ * when the -search_paths_first option is specified and -dynamic is in effect.
+ * And looks for a file name ending in .dylib then .a in each directory before
+ * looking in the next directory.  The list of the -L search directories and in
+ * the standard directories are searched in that order.  If this is sucessful
+ * it returns a pointer to the file name else NULL.
+ */
+static
+char *
+search_paths_for_lname(
+const char *lname_argument)
+{
+    unsigned long i;
+    char *file_name, *dir;
+
+	for(i = 0; i < cmd_flags.nLdirs ; i++){
+	    if(cmd_flags.Ldirs[i][1] != 'L')
+		continue;
+	    dir = makestr(cmd_flags.Ldirs[i] + 2, "/", NULL);
+	    file_name = search_path_for_lname(dir, lname_argument);
+	    free(dir);
+	    if(file_name != NULL)
+		return(file_name);
+	}
+	for(i = 0; standard_dirs[i] != NULL ; i++){
+	    file_name = search_path_for_lname(standard_dirs[i], lname_argument);
+	    if(file_name != NULL)
+		return(file_name);
+	}
+	return(NULL);
+}
+
+/*
+ * search_path_for_lname() takes the argument to a -lx option and and trys to
+ * find a file with the name libx.dylib then libx.a in the specified directory
+ * name.  This routine is only used when the -search_paths_first option is
+ * specified and -dynamic is in effect.  If this is sucessful it returns a
+ * pointer to the file name else NULL.
+ */
+static
+char *
+search_path_for_lname(
+const char *dir,
+const char *lname_argument)
+{
+    char *file_name;
+
+	file_name = makestr(dir, "/", "lib", lname_argument, ".dylib", NULL);
+	if(access(file_name, R_OK) != -1)
+	    return(file_name);
+	free(file_name);
+
+	file_name = makestr(dir, "/", "lib", lname_argument, ".a", NULL);
+	if(access(file_name, R_OK) != -1)
+	    return(file_name);
+	free(file_name);
+
 	return(NULL);
 }
 

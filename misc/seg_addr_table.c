@@ -1210,7 +1210,7 @@ char **envp)
 			      entry->install_name);
                 }
             }
-	    if(update_overlaps == FALSE){
+	    if(update_overlaps == FALSE && relayout == FALSE){
 		next_split = FALSE;
 		for(i = 0 ; i < info.table_size; i++){
 		    entry = info.seg_addr_table + i;
@@ -1663,6 +1663,7 @@ unsigned long size)
 {
     unsigned long seg1addr, start, end;
     unsigned long i;
+    long j;
 
 	if(info->allocate_flat_increasing == TRUE){
 	    seg1addr = info->seg1addr;
@@ -1693,9 +1694,9 @@ printf("next_flat_seg1addr() stepping over region start = 0x%x  end = 0x%x\n",
 	     * past that region.  When all regions have been checked then
 	     * return the seg1addr to be used.
 	     */
-	    for(i = info->nsorted_flat-1 ; i >= 0; i--){
-		start = info->sorted_flat_layout_info[i]->seg1addr;
-		end = start + info->sorted_flat_layout_info[i]->max_sizes.all;
+	    for(j = info->nsorted_flat-1 ; j >= 0; j--){
+		start = info->sorted_flat_layout_info[j]->seg1addr;
+		end = start + info->sorted_flat_layout_info[j]->max_sizes.all;
 		if((seg1addr <= start && seg1addr + size > start) ||
 		   (seg1addr < end && seg1addr + size > end)){
 #ifdef DEBUG

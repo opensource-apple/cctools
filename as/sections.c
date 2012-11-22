@@ -130,11 +130,7 @@ unsigned long sizeof_stub)
 		as_warn("section stub size does not match previous section "
 			"stub size");
 	    }
-	    if((frcP->frch_section.flags & SECTION_ATTRIBUTES_USR) !=
-		attributes){
-		as_warn("section attributes does not match previous section "
-			"attributes");
-	    }
+	    frcP->frch_section.flags |= attributes;
 	}
 
 	/*

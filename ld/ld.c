@@ -3,22 +3,21 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
  * 
  * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
@@ -514,6 +513,8 @@ char *envp[])
 		p = &(argv[i][1]);
 		switch(*p){
 		case 'l':
+		    if(p[1] == '\0')
+			fatal("-l: argument missing");
 		    /* path searched abbrevated file name, processed in the
 		       next pass of parsing arguments */
 		    break;
@@ -923,6 +924,9 @@ char *envp[])
 			dynamic = FALSE;
 			static_specified = TRUE;
 		        twolevel_namespace = FALSE;
+		    }
+		    else if(strcmp(p, "search_paths_first") == 0){
+			search_paths_first = TRUE;
 		    }
 		    /*
 		     * Flags for specifing information about sections.
@@ -1612,6 +1616,26 @@ char *envp[])
 			weak_reference_mismatches =
 			    new_weak_reference_mismatches;
 			break;
+		    }
+		    else if(strcmp(p, "weak_library") == 0){
+			if(i + 1 >= argc)
+			    fatal("-weak_library: argument missing");
+			/* object file argv[i] processed in the next pass of
+			   parsing arguments */
+			i += 1;
+		    }
+		    else if(strncmp(p, "weak-l", sizeof("weak-l") - 1) == 0){
+			if(p[sizeof("weak-l") - 1] == '\0')
+			    fatal("-weak-l: argument missing");
+			/* path searched abbrevated file name, processed in the
+			   next pass of parsing arguments */
+		    }
+		    else if(strcmp(p, "weak_framework") == 0){
+			if(i + 1 >= argc)
+			    fatal("-weak_framework: argument missing");
+			/* path searched abbrevated framework name, processed
+			   in the next pass of parsing arguments */
+			i += 1;
 		    }
 		    else
 			goto unknown_flag;
@@ -2347,12 +2371,12 @@ unknown_flag:
 	 * output force the bundle_loader to be loaded first.
 	 */
 	if(bundle_loader != NULL && twolevel_namespace == FALSE){
-	    pass1(bundle_loader, FALSE, FALSE, FALSE, TRUE);
+	    pass1(bundle_loader, FALSE, FALSE, FALSE, TRUE, FALSE);
 	}
 	for(i = 1 ; i < argc ; i++){
 	    if(*argv[i] != '-'){
 		/* just a normal object file name */
-		pass1(argv[i], FALSE, FALSE, FALSE, FALSE);
+		pass1(argv[i], FALSE, FALSE, FALSE, FALSE, FALSE);
 		objects_specified++;
 	    }
 	    else{
@@ -2366,20 +2390,20 @@ unknown_flag:
 			 * loaded first above.
 			 */
 			if(twolevel_namespace == TRUE)
-			    pass1(argv[i+1], FALSE, FALSE, FALSE, TRUE);
+			    pass1(argv[i+1], FALSE, FALSE, FALSE, TRUE, FALSE);
 			i++;
 			break;
 		    }
 		    break;
 		case 'l':
 		    /* path searched abbrevated file name */
-		    pass1(argv[i], TRUE, FALSE, FALSE, FALSE);
+		    pass1(argv[i], TRUE, FALSE, FALSE, FALSE, FALSE);
 		    objects_specified++;
 		    break;
 		case 'A':
 		    if(base_obj != NULL)
 			fatal("only one -A argument can be specified");
-		    pass1(argv[++i], FALSE, TRUE, FALSE, FALSE);
+		    pass1(argv[++i], FALSE, TRUE, FALSE, FALSE, FALSE);
 		    objects_specified++;
 		    break;
 		case 'f':
@@ -2387,7 +2411,7 @@ unknown_flag:
 			if(dynamic == FALSE)
 			    fatal("incompatible flag -framework used (must "
 				  "specify \"-dynamic\" to be used)");
-			pass1(argv[++i], FALSE, FALSE, TRUE, FALSE);
+			pass1(argv[++i], FALSE, FALSE, TRUE, FALSE, FALSE);
 			objects_specified++;
 		    }
 		    if(strcmp(p, "filelist") == 0){
@@ -2428,7 +2452,8 @@ unknown_flag:
 				    file_name = mkstr(dirname, "/",
 						      file_name, NULL);
 				}
-				pass1(file_name, FALSE, FALSE, FALSE, FALSE);
+				pass1(file_name, FALSE, FALSE, FALSE, FALSE,
+				      FALSE);
 				objects_specified++;
 				file_name = addr + j + 1;
 			    }
@@ -2554,6 +2579,23 @@ unknown_flag:
 		case 'w':
 		    if(strcmp(p, "weak_reference_mismatches") == 0)
 			i++;
+		    else if(strcmp(p, "weak_library") == 0){
+			pass1(argv[++i], FALSE, FALSE, FALSE, FALSE, TRUE);
+			objects_specified++;
+		    }
+		    else if(strncmp(p, "weak-l", sizeof("weak-l") - 1) == 0){
+			/* path searched abbrevated file name */
+			pass1(argv[i] + sizeof("weak"), TRUE, FALSE, FALSE,
+			      FALSE, TRUE);
+			objects_specified++;
+		    }
+		    else if(strcmp(p, "weak_framework") == 0){
+			if(dynamic == FALSE)
+			    fatal("incompatible flag -weak_framework used (must"
+				  " specify \"-dynamic\" to be used)");
+			pass1(argv[++i], FALSE, FALSE, TRUE, FALSE, TRUE);
+			objects_specified++;
+		    }
 		    break;
 		}
 	    }
@@ -2883,7 +2925,9 @@ int sig)
     int dummy;
         dummy = sig;
 #endif
-	cleanup();
+	if(output_addr != NULL)
+	    unlink(outputfile);
+	_exit(1);
 }
 
 /*

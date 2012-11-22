@@ -7,6 +7,43 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.12 release (the cctools-474 release):
+- Fixed a bug in redo_prebinding that was leaking memory if the
+  allow_missing_architectures parameter was used and the fat file did not
+  contain an architecture.  The fix was in load_library() in 4 places it
+  checks to see if the missing architecure is allowed to be missing and it now
+  unmap's the ofile before returning.  Radar bug #3144803.
+
+Changes for the 5.12 release (the cctools-472 release):
+- Fixed a bug in seg_addr_table(1) when run with -relayout the <<< Next split
+  address to assign >>> isn't getting set properly.  The fix in in main() to add
+  relayout == FALSE to the if() condition for the code that loops and updates
+  the NEXT_SPLIT_ADDRESS_TO_ASSIGN.  Radar bug #3245958.
+
+Changes for the 5.12 release (the cctools-470 release):
+- Added the -c option to strip(1) to strip the section contents of a dynamic
+  shared library and create a stub library.  Radar bug #3235093.
+- Changed install_name_tool(1) to not change MH_DYLIB_STUB filetypes.  
+  Radar bug #3235093.
+- Added the flag -search_paths_first to cause -lx flags to search each path
+  for .dylib then .a before searching next path to libtool(1).  Radar bug
+  #3176974.
+  - Added the enum bool variable search_paths_first to the cmd_flags struct and
+    code to parse out the option, set variable and add it to the ldflags[] in
+    main() .
+  - The new static routines search_paths_for_lname() and search_path_for_lname()
+    were added.
+  - In file_name_from_l_flag() a test of the new search_paths_first variable is
+    done and if TRUE then search_paths_for_lname() is called.
+
+Changes for the 5.12 release (the cctools-469 release):
+- Added support for the -weak-lx, -weak_library and -weak_framework flags to
+  libtool(1).  Radar bug #3069758.
+- Fixed a bug seg_addr_table(1) in next_flat_seg1addr() where the variable i
+  was previously changed to unsigned.  The second loop uses this varaiable as
+  signed and thus this change was causing the loop to never terminate.  Radar
+  bug 3225931.
+
 Changes for the 5.12 release (the cctools-466 release):
 - Fixed a bug in libtool(1) for the -static option that caused it to crash if
   the objects contained no symbols to put in the table of contents.  Radar bug
