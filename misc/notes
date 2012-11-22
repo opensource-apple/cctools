@@ -9,6 +9,18 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.20 release (the cctools-590.20 release):
+- Removed the warnings when building. Radar bug #4340147.
+  - Added -fno-builtin-round to the Makefile.
+  - Changed the local variable p to a char * in print_symbols() in nm.c .
+  - Changed the cast of argument 3 of the call to bootstrap_look_up() to
+    (unsigned int *) in tellProjectBuilder() in libtool.c .
+- Fixed a bug in redo_prebinding in the support for new i386 self (dyld)
+  modifiying code stubs.  The problem was with calculation for the new
+  displacement of the jmp instruction for non-prebound undefined symbols not
+  taking in to account that the symbol is also being slid.  The fix was in
+  update_self_modifying_stubs() in redo_prebinding.c code.  Radar bug #4335281.
+
 Changes for the 5.19 release (the cctools-590.18 release):
 - Fixed a bug in nmedit(1) when it tried to change a global coalesced symbol
   into a static and did not get the r_symbolnum for relocation entries set

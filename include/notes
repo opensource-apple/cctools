@@ -1,3 +1,10 @@
+Changes for the 5.20 release (the cctools-590.20 release):
+- Removed the wanrnings when building. Radar bug #4340147.
+  - Removed the const from put_macosx_deployment_target() in
+    "stuff/macosx_deployment_target.h" .
+  - Added #undef VALID_THREAD_STATE_FLAVOR and #undef THREAD_STATE_NONE to
+    "stuff/bytesex.h"
+
 Changes for the 5.18 release (the cctools-590.15 release):
 - Added the SG_PROTECTED_VERSION_1 constant to <mach-o/loader.h> for encrypted
   segment contents. Radar bug #4298526.

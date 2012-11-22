@@ -112,7 +112,7 @@ enum bool redo_live)
     struct nlist *nlists;
     unsigned long *indirect_symtab;
     struct undefined_map *undefined_map;
-    struct merged_symbol *merged_symbol, *indr_symbol, **hash_pointer;
+    struct merged_symbol *merged_symbol, *indr_symbol;
     enum bool new;
 
     struct relocation_info *relocs, reloc;
@@ -261,9 +261,9 @@ enum bool redo_live)
 		 * it is an external symbol so get the merged_symbol for this
 		 * external symbol by looking it up by name.
 		 */
-		merged_symbol = *(lookup_symbol(strings +
-						nlists[index].n_un.n_strx));
-		if(merged_symbol == NULL)
+		merged_symbol = lookup_symbol(strings +
+						nlists[index].n_un.n_strx);
+		if(merged_symbol->name_len == 0)
 		    fatal("interal error, indirect_section_merge() failed in "
 			  "looking up external symbol");
 		/*
@@ -706,14 +706,13 @@ account_for_size:
 		    if((nlists[r_symbolnum].n_type & N_TYPE) == N_SECT &&
 		       (cur_obj->section_maps[nlists[r_symbolnum].
 			n_sect-1].s->flags & SECTION_TYPE) == S_COALESCED){
-			hash_pointer = lookup_symbol(strings +
+			merged_symbol = lookup_symbol(strings +
 					   nlists[r_symbolnum].n_un.n_strx);
-			if(hash_pointer == NULL){
+			if(merged_symbol->name_len == 0){
 			    fatal("internal error, in indirect_section_merge() "
 				  "failed to lookup coalesced symbol %s",
 				  strings + nlists[r_symbolnum].n_un.n_strx);
 			}
-			merged_symbol = *hash_pointer;
 			if(((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT &&
 			    keep_private_externs == FALSE) ||
 			   dynamic == FALSE ||

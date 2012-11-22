@@ -1,21 +1,21 @@
 <HTML>
-<!--This file created 10/27/05 11:47 AM by Claris Home Page version 3.0-->
+<!--This file created 12/12/05 11:18 AM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=91 BOTTOM=980 LEFT=63 RIGHT=810>
+   <X-CLARIS-WINDOW TOP=104 BOTTOM=993 LEFT=95 RIGHT=842>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 2.2 Developer Release Copyright
+<P><FONT SIZE="-1">Mac OS X Xcode 2.2.1 Developer Release Copyright
 2005 by Apple Computer, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 2.2 Developer Release:<BR>
-Compiler Tools (cctools-590.18)</H2>
+<H2>Private Mac OS X Xcode 2.2.1 Developer Release:<BR>
+Compiler Tools (cctools-590.23.2)</H2>
 
-<P>This file contains release notes for the 5.19 release of the
-Compiler Tools for the Mac OS X Xcode 2.2 Developer Release. This
+<P>This file contains release notes for the 5.20 release of the
+Compiler Tools for the Mac OS X Xcode 2.2.1 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -25,6 +25,89 @@ file contains information about the following topics:</P>
    
    <LI>Mach-O object tools (<B>nm</B>, <B>otool</B>, and so
    on)&nbsp;</LI>
+</UL>
+
+<H2>Notes Specific to Release 5.20 (Mac OS X Xcode 2.2.1 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.23.1
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug that caused the ld(1) and libkld to not be built
+   with optimization. Radar bug #4367423.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.23
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug that caused the code in libkld to crash. Radar bug
+   #4367423.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.22
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed the routines that byteswap the i386 floating point
+   thread state. Radar bug #4350771.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.21
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in ld(1) code that caused it to crash when linking
+   Objective-C code. Radar bug #4348548.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.20
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the libkld code that caused it to crash using
+   the kld_forget_symbol() api. Radar bug #4346485.</LI>
+   
+   <LI>Fixed a bug in strip(1) that caused it to crash when stripping
+   a dynamic library with multiple cpusubtypes on a host machine with
+   different byte sex, Radar bug #4265381.</LI>
+   
+   <LI>Fixed a bug otool(1) when a -arch flag was specified on a thin
+   binary which caused an incorrect error about the architecture not
+   being present. Radar bug #4337271.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.19
+for the 5.20 Mac OS X Xcode 2.2.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in the redo_prebinding code for the new self
+   (dyld) modifying Intel stubs that was not correctly setting the
+   jmp instruction target for symbols defined in a shared library.
+   Radar bug #4335281.</LI>
+   
+   <LI>Fixed a bug in ld(1) that was causing an internal error if
+   both -s and -dead_strip were used and there were dead private
+   extern symbols. Radar bug #4286691.</LI>
+   
+   <LI>Fixed a bug in ld(1) when -w was used that did not suppress
+   printing the list of multiply defined symbols from dylibs. Radar
+   bug #4334705.</LI>
+   
+   <LI>Cleaned up the cctools source code so it will build cleanly
+   without warnings. Radar bug #4340147.</LI>
+   
+   <LI>Fixed a problem in the cctools source that would not allow it
+   to build on Leopard9A68. Radar bug #4342523.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-590.18
+for the 5.19 Mac OS X Xcode 2.2 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Made changes to improve the performance of the static link
+   editor. Radar bug 4299546.</LI>
 </UL>
 
 <H2>Notes Specific to Release 5.19 (Mac OS X Xcode 2.2 Developer

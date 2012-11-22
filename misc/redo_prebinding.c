@@ -7838,7 +7838,7 @@ void
 update_self_modifying_stubs(
 unsigned long vmslide)
 {
-    unsigned long i, j, k, section_type, displacement;
+    unsigned long i, j, k, section_type, displacement, symbol_slide;
     struct load_command *lc;
     struct segment_command *sg;
     struct section *s;
@@ -7917,7 +7917,12 @@ unsigned long vmslide)
 			    arch_symbol = arch_symbols +
 				     arch_indirect_symtab[s->reserved1 + k];
 			    if((arch_symbol->n_type & N_TYPE) != N_PBUD){
-				displacement = arch_symbol->n_value -
+				if(arch_symbol->n_sect == NO_SECT)
+				    symbol_slide = 0;
+				else
+				    symbol_slide = vmslide;
+				displacement = arch_symbol->n_value +
+					   symbol_slide -
 					   (vmslide + s->addr + (k * 5) + 5);
 			    }
 			    else{

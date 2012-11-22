@@ -3,6 +3,16 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.20 release (the cctools-590.23 release):
+- Changed print_thread_states() in ofile_print.c for the current i386 thread
+  states (#if i386_THREAD_STATE == 1 case) so that it does use the fields
+  of the i386_float_state struct when i386_EXCEPTION_STATE_COUNT is defined.
+  Radar bug #4350771.
+
+Changes for the 5.20 release (the cctools-590.20 release):
+- Removed the warnings when building. Radar bug #4340147.
+  - Added -fno-builtin-round to the Makefile.
+
 Changes for the 5.19 release (the cctools-590.15 release):
 - Adding printing SG_PROTECTED_VERSION_1 in print_segment_command() in
   ofile_print.c .  Radar bug #4298526.

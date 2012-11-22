@@ -43,7 +43,7 @@ static const struct macosx_deployment_target_pair
 };
 
 /* last value passed to put_macosx_deployment_target() */
-static const char *command_line_macosx_deployment_target = NULL;
+static char *command_line_macosx_deployment_target = NULL;
 
 /*
  * put_macosx_deployment_target() is called with the command line argument to
@@ -56,7 +56,7 @@ static const char *command_line_macosx_deployment_target = NULL;
 __private_extern__
 void
 put_macosx_deployment_target(
-const char *target)
+char *target)
 {
 	command_line_macosx_deployment_target = target;
 }

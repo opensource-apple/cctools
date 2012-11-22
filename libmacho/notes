@@ -1,3 +1,9 @@
+Changes for the 5.20 release (the cctools-590.23 release):
+- Changed swap_i386_float_state() in i386_swap.c for the current floating point
+  i386 thread state (#if i386_THREAD_STATE == 1 case) so that it does swap
+  the struct fields if i386_EXCEPTION_STATE_COUNT is defined.  Radar bug
+  #4350771.
+
 Changes for the 5.19 release (the cctools-590.11 release):
 - Changed swap_i386_float_state() in i386_swap.c for the current i386 thread
   states (#if i386_THREAD_STATE == 1 case) so that it does not swap any fields.

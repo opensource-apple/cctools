@@ -1843,10 +1843,10 @@ struct merged_section *ms)
 		    if(dead_strip == TRUE){
 			if((start_section == TRUE || j != 0) &&
 			   object_symbols[load_orders[j].index].n_type & N_EXT){
-			    merged_symbol = *(lookup_symbol(object_strings +
+			    merged_symbol = lookup_symbol(object_strings +
 				object_symbols[load_orders[j].index].
-				    n_un.n_strx));
-			    if(merged_symbol != NULL &&
+				    n_un.n_strx);
+			    if(merged_symbol->name_len != 0 &&
 			       merged_symbol->definition_object == cur_obj){
 				fine_relocs[j].merged_symbol = merged_symbol;
 				merged_symbol->fine_reloc = fine_relocs + j;
@@ -3309,7 +3309,7 @@ unsigned long *nextrel)
     unsigned long r_address, r_type, r_extern, r_symbolnum, r_pcrel, r_value,
 		  r_length;
     struct undefined_map *undefined_map;
-    struct merged_symbol *merged_symbol, **hash_pointer;
+    struct merged_symbol *merged_symbol;
     struct nlist *nlists;
     char *strings;
     enum bool defined, pic;
@@ -3403,14 +3403,13 @@ unsigned long *nextrel)
 		    if((nlists[r_symbolnum].n_type & N_TYPE) == N_SECT &&
 		       (cur_obj->section_maps[nlists[r_symbolnum].n_sect-1].
 			s->flags & SECTION_TYPE) == S_COALESCED){
-			hash_pointer = lookup_symbol(strings +
+			merged_symbol = lookup_symbol(strings +
 					     nlists[r_symbolnum].n_un.n_strx);
-			if(hash_pointer == NULL){
+			if(merged_symbol->name_len == 0){
 			    fatal("internal error, in count_relocs() failed to "
 			          "lookup coalesced symbol %s", strings +
 				  nlists[r_symbolnum].n_un.n_strx);
 			}
-			merged_symbol = *hash_pointer;
 		    }
 		    else
 			return;
@@ -4196,9 +4195,9 @@ char *contents)
 				(int (*)(const void *, const void *))
 				undef_bsearch);
 			    if(undefined_map == NULL){
-				merged_symbol = *(lookup_symbol(strings +
-						    nlists[index].n_un.n_strx));
-				if(merged_symbol == NULL)
+				merged_symbol = lookup_symbol(strings +
+						    nlists[index].n_un.n_strx);
+				if(merged_symbol->name_len == 0)
 				    fatal("interal error, scatter_copy() failed"
 					  " in looking up external symbol");
 			    }
@@ -4311,9 +4310,9 @@ char *contents)
 			    (int (*)(const void *, const void *))
 			    undef_bsearch);
 			if(undefined_map == NULL){
-			    merged_symbol = *(lookup_symbol(strings +
-						nlists[index].n_un.n_strx));
-			    if(merged_symbol == NULL)
+			    merged_symbol = lookup_symbol(strings +
+						nlists[index].n_un.n_strx);
+			    if(merged_symbol->name_len == 0)
 				fatal("interal error, scatter_copy() failed"
 				      " in looking up external symbol");
 			}
@@ -4429,9 +4428,9 @@ char *contents)
 			(int (*)(const void *, const void *))
 			undef_bsearch);
 		    if(undefined_map == NULL){
-			merged_symbol = *(lookup_symbol(strings +
-					    nlists[index].n_un.n_strx));
-			if(merged_symbol == NULL)
+			merged_symbol = lookup_symbol(strings +
+					    nlists[index].n_un.n_strx);
+			if(merged_symbol->name_len == 0)
 				fatal("interal error, scatter_copy() failed"
 				  " in looking up external symbol");
 		    }
@@ -5018,13 +5017,13 @@ live_marking(void)
 	   filetype != MH_DYLIB &&
 	   filetype != MH_BUNDLE){
 	    if(entry_point_name != NULL){
-		merged_symbol = *(lookup_symbol(entry_point_name));
+		merged_symbol = lookup_symbol(entry_point_name);
 		/*
 		 * If the symbol is not found the entry point it can't be
 		 * marked live. Note: the error of specifying a bad entry point
 		 * name is handled in layout_segments() in layout.c .
 		 */
-		if(merged_symbol != NULL){
+		if(merged_symbol->name_len != 0){
 #ifdef DEBUG
 		    if(((debug & (1 << 25)) || (debug & (1 << 26)))){
 			print("** In live_marking() -e symbol ");
@@ -5096,13 +5095,13 @@ live_marking(void)
 	 * live.
 	 */
 	if(filetype == MH_DYLIB && init_name != NULL){
-	    merged_symbol = *(lookup_symbol(init_name));
+	    merged_symbol = lookup_symbol(init_name);
 	    /*
 	     * If the symbol is not found the init routine it can't be marked
 	     * live. Note: the error of specifying a bad init routine name is
 	     * handled in layout_segments() in layout.c .
 	     */
-	    if(merged_symbol != NULL){
+	    if(merged_symbol->name_len != 0){
 #ifdef DEBUG
 		if(((debug & (1 << 25)) || (debug & (1 << 26)))){
 		    print("** In live_marking() -init symbol ");
@@ -5594,6 +5593,11 @@ struct fine_reloc *self_fine_reloc)
     struct fine_reloc *ref_fine_reloc;
     struct ref r, *refs, *new_ref;
 
+	r.next = NULL;
+	r.fine_reloc = NULL;
+	r.map = NULL;
+	r.obj = NULL;
+	r.merged_symbol = NULL;
 	if(ref->ref_type == LIVE_REF_VALUE){
 	    r_symbolnum = r_symbolnum_from_r_value(ref->value, obj);
 	    local_map = &(obj->section_maps[r_symbolnum - 1]);

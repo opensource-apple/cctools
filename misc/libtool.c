@@ -2295,7 +2295,7 @@ char *fileName)
 	    return;
 #else
 	if(bootstrap_look_up(bootstrap_port, portName,
-	   (int *)&ProjectBuilder_port) != KERN_SUCCESS)
+	   (unsigned int *)&ProjectBuilder_port) != KERN_SUCCESS)
 	    return;
 #endif
 	if(ProjectBuilder_port == MACH_PORT_NULL)

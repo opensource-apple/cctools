@@ -44,9 +44,13 @@
 #import <mach/m68k/thread_status.h>
 #undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
 #undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #import <mach/ppc/thread_status.h>
 #undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
 #undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #import <mach/m88k/thread_status.h>
 #import <mach/i860/thread_status.h>
 #import <mach/i386/thread_status.h>
@@ -1758,7 +1762,7 @@ layout_segments(void)
 	 */
 	if(output_thread_info.thread_in_output == TRUE){
 	    if(entry_point_name != NULL){
-		merged_symbol = *(lookup_symbol(entry_point_name));
+		merged_symbol = lookup_symbol(entry_point_name);
 		/*
 		 * If the symbol is not found, undefined or common the
 		 * entry point can't be set.
@@ -1800,7 +1804,7 @@ layout_segments(void)
 	 */
 	if(output_routines_info.routines_in_output == TRUE){
 	    if(init_name != NULL){
-		merged_symbol = *(lookup_symbol(init_name));
+		merged_symbol = lookup_symbol(init_name);
 		/*
 		 * If the symbol is not found, undefined or common the
 		 * initialization routine address can't be set.

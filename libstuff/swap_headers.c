@@ -24,9 +24,13 @@
 #include <mach/m68k/thread_status.h>
 #undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
 #undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #include <mach/ppc/thread_status.h>
 #undef MACHINE_THREAD_STATE	/* need to undef these to avoid warnings */
 #undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #include <mach/m88k/thread_status.h>
 #include <mach/i860/thread_status.h>
 #include <mach/i386/thread_status.h>

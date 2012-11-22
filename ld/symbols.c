@@ -78,7 +78,7 @@ __private_extern__ char *base_name;
  * static depending on the -keep_private_externs flag.  The count of merged
  * symbols referenced only from dylibs will not be in the output file.
  */
-__private_extern__ struct merged_symbol_list *merged_symbol_lists = NULL;
+__private_extern__ struct merged_symbol_root *merged_symbol_root = NULL;
 __private_extern__ unsigned long nmerged_symbols = 0;
 __private_extern__ unsigned long nmerged_private_symbols = 0;
 __private_extern__ unsigned long nmerged_symbols_referenced_only_from_dylibs =0;
@@ -91,19 +91,14 @@ __private_extern__ unsigned long nmerged_symbols_referenced_only_from_dylibs =0;
 __private_extern__ unsigned long nstripped_merged_symbols = 0;
 /*
  * When -dead_strip is specified some of these the merged private symbols may
- * get stripped. To allow assign_output_symbol_indexes() to do its consistency
- * check after assigning local symbol indexes nstripped_merged_private_symbols
- * is set in count_live_symbols().
+ * get stripped. To allow assign_output_symbol_indexes() to recalculate the
+ * value of nstripped_merged_symbols when it sets the strip_level to
+ * STRIP_DYNAMIC_EXECUTABLE it starts with this value and then adds the
+ * additional merged symbols to strip.  This value is also used to do its
+ * consistency check after assigning local symbol indexes.
+ * nstripped_merged_private_symbols is set in count_live_symbols().
  */
 static unsigned long nstripped_merged_private_symbols = 0;
-
-/*
- * This is set by lookup_symbol() and used by enter_symbol(). When a symbol
- * is not found in the symbol_list by lookup_symbol() it returns a pointer
- * to a hash_table entry in a merged_symbol_list.  The merged_symbol_list that
- * pointer is in is pointed to by merged_symbol_list_for_enter_symbol.
- */
-static struct merged_symbol_list *merged_symbol_list_for_enter_symbol = NULL;
 
 /*
  * The head of the list of the blocks that store the strings for the merged
@@ -400,7 +395,7 @@ static enum bool noundefs = TRUE;
 __private_extern__ enum bool merged_symbols_relocated = FALSE;
 
 static struct merged_symbol *enter_symbol(
-    struct merged_symbol **hash_pointer,
+    struct merged_symbol *hash_pointer,
     struct nlist *object_symbol,
     char *object_strings,
     struct object_file *definition_object);
@@ -862,7 +857,7 @@ merge_symbols(void)
     unsigned long i, j, object_undefineds, nrefsym, output_strlen;
     struct nlist *object_symbols;
     char *object_strings;
-    struct merged_symbol **hash_pointer, *merged_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol;
     enum bool discarded_coalesced_symbol;
     unsigned short n_desc;
     char resolved_path[PATH_MAX];
@@ -1084,7 +1079,7 @@ merge_symbols(void)
 		/* lookup the symbol and see if it has already been seen */
 		hash_pointer = lookup_symbol(object_strings +
 					     object_symbols[i].n_un.n_strx);
-		if(*hash_pointer == NULL){
+		if(hash_pointer->name_len == 0){
 		    /*
 		     * If this is the basefile and the symbol is not a
 		     * definition of a symbol (or an indirect) then don't enter
@@ -1104,7 +1099,7 @@ merge_symbols(void)
 		}
 		/* the symbol has been seen so merge it */
 		else{
-		    merged_symbol = *hash_pointer;
+		    merged_symbol = hash_pointer;
 		    /*
 		     * If this symbol has only been referenced by a dylib up to
 		     * this point re-enter the symbol name so it is in a string
@@ -1994,7 +1989,7 @@ command_line_symbol(
 char *symbol_name)
 {
     unsigned long i;
-    struct merged_symbol **hash_pointer, *merged_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol;
     struct object_file *command_line_object;
 
 	command_line_object = new_object_file();
@@ -2014,7 +2009,7 @@ char *symbol_name)
 	}
 	/* lookup the symbol and see if it has already been seen */
 	hash_pointer = lookup_symbol(symbol_name);
-	if(*hash_pointer == NULL){
+	if(hash_pointer->name_len == 0){
 	    /*
 	     * The symbol has not been seen yet so just enter it as an
 	     * undefined symbol and it will be returned.
@@ -2040,7 +2035,7 @@ char *symbol_name)
 	}
 	/* the symbol has been seen so just use it */
 	else{
-	    merged_symbol = *hash_pointer;
+	    merged_symbol = hash_pointer;
 	    /*
 	     * If this symbol has only been referenced by a dylib up to
 	     * this point re-enter the symbol name so it is in a string
@@ -2072,7 +2067,7 @@ char *indr_symbol_name)
 {
     unsigned long i, j;
     enum bool was_traced;
-    struct merged_symbol **hash_pointer, *merged_symbol, *merged_indr_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol, *merged_indr_symbol;
     struct object_file *command_line_object;
 
 	command_line_object = new_object_file();
@@ -2094,7 +2089,7 @@ char *indr_symbol_name)
 	}
 	/* lookup the symbol_name and see if it has already been seen */
 	hash_pointer = lookup_symbol(symbol_name);
-	if(*hash_pointer == NULL){
+	if(hash_pointer->name_len == 0){
 	    /*
 	     * The symbol has not been seen yet so just enter it as an
 	     * undefined and it will be changed to a proper merged indirect
@@ -2111,7 +2106,7 @@ char *indr_symbol_name)
 	     * The symbol exist.  So if the symbol is anything but a common or
 	     * undefined then it is multiply defined.
 	     */
-	    merged_symbol = *hash_pointer;
+	    merged_symbol = hash_pointer;
 	    /*
 	     * If this symbol has only been referenced by a dylib up to
 	     * this point re-enter the symbol name so it is in a string
@@ -2172,7 +2167,7 @@ char *indr_symbol_name)
 
 	/* lookup the indr_symbol_name and see if it has already been seen */
 	hash_pointer = lookup_symbol(indr_symbol_name);
-	if(*hash_pointer == NULL){
+	if(hash_pointer->name_len == 0){
 	    /*
 	     * The symbol has not been seen yet so just enter it after tracing
 	     * if the symbol is specified.
@@ -2192,7 +2187,7 @@ char *indr_symbol_name)
 							    command_line_object;
 	}
 	else{
-	    merged_indr_symbol = *hash_pointer;
+	    merged_indr_symbol = hash_pointer;
 	    /*
 	     * If this symbol has only been referenced by a dylib up to
 	     * this point re-enter the symbol name so it is in a string
@@ -2250,7 +2245,7 @@ struct dynamic_library *dynamic_library)
     struct dylib_reference *refs;
     unsigned long flags;
     enum bool was_traced, resolve_flat;
-    struct merged_symbol **hash_pointer, *merged_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol;
     struct object_file *obj;
     struct dylib_table_of_contents *toc;
     struct dynamic_library *dep;
@@ -2288,7 +2283,7 @@ struct dynamic_library *dynamic_library)
 	    }
 	    /* lookup the symbol_name and see if it has already been seen */
 	    hash_pointer = lookup_symbol(symbol_name);
-	    if(*hash_pointer == NULL){
+	    if(hash_pointer->name_len == 0){
 		/*
 		 * The symbol has not been seen yet so just enter it as a
 		 * prebound undefined.
@@ -2297,7 +2292,7 @@ struct dynamic_library *dynamic_library)
 					     symbol_name, cur_obj);
 	    }
 	    else{
-		merged_symbol = *hash_pointer;
+		merged_symbol = hash_pointer;
 		/*
 		 * If the merged symbol is not undefined and if this symbol is
 		 * a weak definition then it is simply ignored and the merged
@@ -2423,9 +2418,12 @@ struct dynamic_library *dynamic_library)
 			        definition_object->obj_addr))->flags &
    				MH_TWOLEVEL) == MH_TWOLEVEL)))){
 				if(multiply_defined_flag ==
-				   MULTIPLY_DEFINED_WARNING)
+				   MULTIPLY_DEFINED_WARNING){
 				    warning("multiple definitions of symbol %s",
 					  merged_symbol->nlist.n_un.n_name);
+				    if(nowarnings == TRUE)
+					continue;
+				}
 				else if(multiply_defined_flag ==
 				   MULTIPLY_DEFINED_ERROR){
 				    if(told_ProjectBuilder == FALSE){
@@ -2670,7 +2668,7 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 		    }
 		    /* lookup the symbol and see if it has already been seen */
 		    hash_pointer = lookup_symbol(symbol_name);
-		    if(*hash_pointer == NULL){
+		    if(hash_pointer->name_len == 0){
 			/*
 			 * The symbol has not been seen yet so just enter it as
 			 * an undefined symbol and it will be returned.
@@ -2679,7 +2677,7 @@ printf("merging in coalesced symbol %s\n", merged_symbol->nlist.n_un.n_name);
 				    &(undefined_symbol), symbol_name, cur_obj);
 		    }
 		    else{
-			merged_symbol = *hash_pointer;
+			merged_symbol = hash_pointer;
 		    }
 		    merged_symbol->nlist.n_desc |= REFERENCED_DYNAMICALLY;
 		}
@@ -2807,7 +2805,7 @@ struct dynamic_library *dynamic_library)
     char *strings, *symbol_name;
     struct nlist *symbols, *fake_trace_symbol;
     enum bool was_traced;
-    struct merged_symbol **hash_pointer, *merged_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol;
 
 	strings = cur_obj->obj_addr + cur_obj->symtab->stroff;
 	symbols = (struct nlist *)(cur_obj->obj_addr +
@@ -2839,7 +2837,7 @@ struct dynamic_library *dynamic_library)
 	    }
 	    /* lookup the symbol_name and see if it has already been seen */
 	    hash_pointer = lookup_symbol(symbol_name);
-	    if(*hash_pointer == NULL){
+	    if(hash_pointer->name_len == 0){
 		/*
 		 * The symbol has not been seen yet so just enter it as a
 		 * prebound undefined.
@@ -2848,7 +2846,7 @@ struct dynamic_library *dynamic_library)
 					     symbol_name, cur_obj);
 	    }
 	    else{
-		merged_symbol = *hash_pointer;
+		merged_symbol = hash_pointer;
 		/*
 		 * If the merged symbol is not undefined and if this symbol is
 		 * a weak definition then it is simply ignored and the merged
@@ -3222,6 +3220,7 @@ char *name)
 	    else
 		break;
 	}
+    
 	if(first_colon == NULL)
 	    return(NULL);
 	/*
@@ -3281,88 +3280,171 @@ char *name_end)
 #endif /* !defined(RLD) */
 
 /*
- * lookup_symbol() returns a pointer to a hash_table entry for the symbol name
- * passed to it.  Either the symbol is found in which case the hash_table entry
- * pointed to by the return value points to the merged_symbol for that symbol.
- * If the symbol is not found the hash_table entry pointed to the the return
- * value is NULL.  In this case that pointer can be used in the call to
- * enter_symbol() to enter the symbol.  This is the routine that actually
- * allocates the merged_symbol_list's and enter_symbol() just uses the
- * hash_pointer returned and the list pointer that is set into
- * merged_symbol_list_for_enter_symbol to enter the symbol.
+ * lookup_symbol() returns a pointer to a merged_symbol struct for the symbol
+ * name passed to it.  Either the symbol is found in which case the struct
+ * pointed to has a non-zero name_len field.  If the symbol is not found the
+ * struct pointed to is used by enter_symbol() to enter the symbol.  This
+ * is the routine that actually allocates the merged_symbol structs as part of
+ * the merged_symbol_chunk structs.  And it allocates the first of the 
+ * merged_symbol_list structs hang off the merged_symbol_root.
  */
 __private_extern__
-struct merged_symbol **
+struct merged_symbol *
 lookup_symbol(
 char *symbol_name)
 {
-    struct merged_symbol_list **p, *merged_symbol_list;
-    struct merged_symbol **hash_pointer;
+    struct merged_symbol_chunk *p, *q;
+    struct merged_symbol *sym;
     unsigned long hash_index, i, name_len;
 
 	hash_index = hash_string(symbol_name, &name_len) %
 		     SYMBOL_LIST_HASH_SIZE;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
-	    hash_pointer = merged_symbol_list->hash_table + hash_index;
-	    i = 1;
-	    do{
-		if(*hash_pointer == NULL){
-		    if(merged_symbol_list->used == NSYMBOLS)
-			break;
-		    merged_symbol_list_for_enter_symbol = merged_symbol_list;
-		    return(hash_pointer);
-		}
-		if((*hash_pointer)->name_len == name_len &&
-		   strcmp((*hash_pointer)->nlist.n_un.n_name, symbol_name) == 0)
-		    return(hash_pointer);
-		hash_pointer += i;
-		i += 2;
-		if(hash_pointer >=
-		   merged_symbol_list->hash_table + SYMBOL_LIST_HASH_SIZE)
-		    hash_pointer -= SYMBOL_LIST_HASH_SIZE;
-	    }while(i < SYMBOL_LIST_HASH_SIZE);
-	    if(i > SYMBOL_LIST_HASH_SIZE + 1)
-		fatal("internal error, lookup_symbol() failed");
+	if(merged_symbol_root == NULL){
+	    merged_symbol_root = allocate(sizeof(struct merged_symbol_root));
+	    memset(merged_symbol_root, 0, sizeof(struct merged_symbol_root));
+	    merged_symbol_root->list =
+		allocate(sizeof(struct merged_symbol_list));
+	    memset(merged_symbol_root->list, 0,
+		sizeof(struct merged_symbol_list));
+	    merged_symbol_root->list->used = 0;
+	    merged_symbol_root->list->next = NULL;
+	    return(&merged_symbol_root->chunks[hash_index].symbols[0]);
 	}
-	*p = allocate(sizeof(struct merged_symbol_list));
-	merged_symbol_list = *p;
-	merged_symbol_list->used = 0;
-	merged_symbol_list->next = NULL;
-	merged_symbol_list->hash_table = allocate(sizeof(struct merged_symbol *)
-						 * SYMBOL_LIST_HASH_SIZE);
-	memset(merged_symbol_list->hash_table, '\0',
-	       sizeof(struct merged_symbol *) * SYMBOL_LIST_HASH_SIZE);
-	hash_pointer = merged_symbol_list->hash_table + hash_index;
-	merged_symbol_list_for_enter_symbol = merged_symbol_list;
-	return(hash_pointer);
+	q = NULL;
+	for(p = &merged_symbol_root->chunks[hash_index]; p != NULL;p = p->next){
+	    for(i = 0; i < SYMBOL_CHUNK_SIZE; i++){
+		sym = &p->symbols[i];
+		if(sym->name_len == 0){
+			return(sym);
+		}
+		if(sym->name_len == name_len &&
+		   strcmp(sym->nlist.n_un.n_name, symbol_name) == 0){
+			return(sym);
+		}
+	    }
+	    q = p;
+	}
+	q->next = allocate(sizeof(struct merged_symbol_chunk));
+	memset(q->next, 0, sizeof(struct merged_symbol_chunk));
+	return(&q->next->symbols[0]);
+}
+
+#ifndef RLD
+/*
+ * hash_instrument() is called when -hash_instrument is specified and prints out
+ * the info about the hash table and the merged symbols lists.
+ */
+__private_extern__
+void
+hash_instrument(void)
+{
+    struct merged_symbol_list *merged_symbol_list;
+    struct merged_symbol_chunk *p;
+    unsigned long n, u, i, j, h, b, c, t;
+	
+	n = 0;
+	u = 0;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
+	    u += merged_symbol_list->used;
+	    n++;
+	}
+	print("Number of merged_symbol_lists = %lu (containing %d pointers "
+	      "each)\n", n, SYMBOL_LIST_HASH_SIZE);
+	print("sizeof(struct merged_symbol_list) is %lu (total %lu)\n",
+	      sizeof(struct merged_symbol_list),
+	      n * sizeof(struct merged_symbol_list));
+	print("Number of used pointers in the lists = %lu (%.2f%%)\n",
+	      u, ((double)u) / ((double)(SYMBOL_LIST_HASH_SIZE * n)) *
+		    100.0);
+
+	h = 0;
+	b = 0;
+	c = 0;
+	for(i = 0; i < SYMBOL_LIST_HASH_SIZE; i++){
+	    if(merged_symbol_root->chunks[i].symbols[0].name_len != 0)
+		h++;
+	    for(p = &merged_symbol_root->chunks[i];
+		p != NULL;
+		p = p->next){
+		if(p != &merged_symbol_root->chunks[i])
+		    c++;
+		for(j = 0; j < SYMBOL_CHUNK_SIZE; j++){
+		    if(p->symbols[j].name_len != 0)
+			b++;
+		}
+	    }
+	}
+	print("The SYMBOL_LIST_HASH_SIZE is %d\n", SYMBOL_LIST_HASH_SIZE);
+	print("sizeof(struct merged_symbol_root) is %lu\n",
+	      sizeof(struct merged_symbol_root));
+	print("Number of additional chunks: %lu (size of these %lu)\n", c,
+	      c * sizeof(struct merged_symbol_chunk));
+	print("Number of hash entries used: %lu (%.2f%%) average #buckets "
+	      "%.2f\n", h, ((double)h)/ ((double)SYMBOL_LIST_HASH_SIZE) * 100.0,
+	      ((double)b) / ((double)h) );
+	t = SYMBOL_LIST_HASH_SIZE * SYMBOL_CHUNK_SIZE + c * SYMBOL_CHUNK_SIZE;
+	print("Number of buckets (merged symbols) used: %lu out of %lu "
+	      "(%.2f%%)\n", b, t, ((double)b)/ ((double)t) * 100.0);
+
+	/* print_symbol_list("from hash_instrument()", FALSE); */
+}
+#endif /* !defined(RLD) */
+
+/*
+ * add_to_symbol_list() adds the passed merged_symbol to our linked list of
+ * symbols that complements our hash table lookups.
+ */
+static
+void
+add_to_symbol_list(
+struct merged_symbol *merged_symbol)
+{
+    struct merged_symbol_list *prev, *merged_symbol_list, *new;
+
+	prev = NULL;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
+	    if(merged_symbol_list->used != SYMBOL_LIST_HASH_SIZE){
+		merged_symbol_list->symbols[merged_symbol_list->used] =
+		    merged_symbol;
+		merged_symbol_list->used += 1;
+		return;
+	    }
+	    prev = merged_symbol_list;
+	}
+	new = allocate(sizeof(struct merged_symbol_list));
+	prev->next = new;
+	memset(new, '\0', sizeof(struct merged_symbol_list));
+	new->symbols[0] = merged_symbol;
+	new->used = 1;
+	new->next = NULL;
 }
 
 /*
- * enter_symbol() enters the symbol passed to it in the merged symbol table (in
- * the segment of the list pointed to by merged_symbol_list_for_enter_symbol)
- * and sets the hash table pointer to passed to it to the merged_symbol.
+ * enter_symbol() enters the object_symbol passed to it in the merged symbol.
+ * The object's string table and defintion object are also passed in.  The
+ * hash_pointer points to an unused merged_symbol to fill in as previously
+ * returned by lookup_symbol().
  */
 static
 struct merged_symbol *
 enter_symbol(
-struct merged_symbol **hash_pointer,
+struct merged_symbol *hash_pointer,
 struct nlist *object_symbol,
 char *object_strings,
 struct object_file *definition_object)
 {
     struct merged_symbol *merged_symbol;
 
-	if(hash_pointer <  merged_symbol_list_for_enter_symbol->hash_table ||
-	   hash_pointer >= merged_symbol_list_for_enter_symbol->hash_table +
-			   SYMBOL_LIST_HASH_SIZE)
-	    fatal("internal error, enter_symbol() passed bad hash_pointer");
-
-	merged_symbol = merged_symbol_list_for_enter_symbol->merged_symbols +
-			merged_symbol_list_for_enter_symbol->used++;
 	if((cur_obj != base_obj || strip_base_symbols == FALSE))
 	    nmerged_symbols++;
-	*hash_pointer = merged_symbol;
+
+	merged_symbol = hash_pointer;
 	memset(merged_symbol, '\0', sizeof(struct merged_symbol));
 	merged_symbol->nlist = *object_symbol;
 #ifdef RLD
@@ -3375,6 +3457,8 @@ struct object_file *definition_object)
 						 object_symbol->n_un.n_strx,
 						 &merged_symbol->name_len);
 	merged_symbol->definition_object = definition_object;
+	add_to_symbol_list(merged_symbol);
+
 	if(object_symbol->n_type == (N_UNDF | N_EXT) &&
 	   object_symbol->n_value == 0)
 	    add_to_undefined_list(merged_symbol);
@@ -3399,20 +3483,18 @@ struct nlist *object_symbol,
 char *object_strings,
 struct object_file *definition_object)
 {
-    struct merged_symbol **hash_pointer, *indr_symbol;
+    struct merged_symbol *hash_pointer, *indr_symbol;
 
 	nindr_symbols++;
 	hash_pointer = lookup_symbol(object_strings + object_symbol->n_value);
-	if(*hash_pointer != NULL){
-	    indr_symbol = *hash_pointer;
+	if(hash_pointer->name_len != 0){
+	    indr_symbol = hash_pointer;
 	}
 	else{
-	    indr_symbol =
-		    merged_symbol_list_for_enter_symbol->merged_symbols +
-		    merged_symbol_list_for_enter_symbol->used++;
+	    indr_symbol = hash_pointer;
+	    add_to_symbol_list(indr_symbol);
 	    if(cur_obj != base_obj || strip_base_symbols == FALSE)
 		nmerged_symbols++;
-	    *hash_pointer = indr_symbol;
 	    indr_symbol->nlist.n_type = N_UNDF | N_EXT;
 	    indr_symbol->nlist.n_sect = NO_SECT;
 	    if(definition_object != NULL &&
@@ -3718,26 +3800,6 @@ __private_extern__
 void
 free_pass1_symbol_data(void)
 {
-#ifdef notdef
-/*
- * Because of the fact that the complier emits .indirect_symbols for defined
- * external symbols (not just undefined as it needs to) the hash table is needed
- * in the second pass to look up a symbol by name (instead of just using the
- * undefined map) to get a handle on the merged_symbol.
- */
-    struct merged_symbol_list **p, *merged_symbol_list;
-
-	/*
-	 * Free the hash table for the symbol lists.
-	 */
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
-	    if(merged_symbol_list->hash_table != NULL){
-		free(merged_symbol_list->hash_table);
-		merged_symbol_list->hash_table = NULL;
-	    }
-	}
-#endif
 	free_undefined_list();
 }
 #endif /* !defined(RLD) */
@@ -3784,7 +3846,7 @@ define_common_symbols(void)
     struct section *s;
 
     unsigned long i, j, common_size, align;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     struct common_symbol *common_symbol;
 
@@ -3895,10 +3957,12 @@ define_common_symbols(void)
 	 * is determined so a common load map can be allocated.
 	 */
 	commons_exist = FALSE;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
 		   (merged_symbol->nlist.n_type & N_TYPE) ==  N_UNDF &&
 		   merged_symbol->nlist.n_value != 0){
@@ -4035,10 +4099,12 @@ define_common_symbols(void)
 	 * Also these symbols are trace as they are defined if they are to be
 	 * traced.
 	 */
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if((merged_symbol->nlist.n_type & N_EXT) == N_EXT &&
 		   (merged_symbol->nlist.n_type & N_TYPE) ==  N_UNDF &&
 		   merged_symbol->nlist.n_value != 0){
@@ -4174,13 +4240,15 @@ define_undefined_symbols_a_way(
 void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
 		   merged_symbol->nlist.n_value == 0){
 		    if(dynamic == TRUE &&
@@ -4239,7 +4307,7 @@ void
 mark_globals_live(void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     enum bool only_referenced_dynamically;
 
@@ -4257,10 +4325,12 @@ mark_globals_live(void)
 	else
 	    only_referenced_dynamically = FALSE;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		/*
 		 * If the symbol is marked REFERENCED_DYNAMICALLY or
 		 * N_NO_DEAD_STRIP or defined in a section with the attribute
@@ -4436,13 +4506,15 @@ void
 set_fine_relocs_for_merged_symbols(void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];				
 		/*
 		 * Skip symbols that have already had there fine_reloc set which
 		 * happens if the block was created using symbol's addresses.
@@ -4484,7 +4556,7 @@ void
 count_live_symbols(void)
 {
     unsigned long i, j, nrefsym;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     struct object_list *object_list, **q;
     struct object_file *obj;
@@ -4509,10 +4581,12 @@ count_live_symbols(void)
 	 * saved with STRIP_DYNAMIC_EXECUTABLE would also be live since
 	 * it would have REFERENCED_DYNAMICALLY set.
 	 */
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		/*
 		 * Because a live fine_reloc's could have multiple global
 		 * symbols, we need to check all global symbols to see if they
@@ -4768,10 +4842,10 @@ unsigned long header_address)
     struct merged_symbol *merged_symbol;
 
 	/* look up the symbol to see if it is present */
-	merged_symbol = *(lookup_symbol(_MH_EXECUTE_SYM));
+	merged_symbol = lookup_symbol(_MH_EXECUTE_SYM);
 
 	/* if it is not present just return */
-	if(merged_symbol == NULL)
+	if(merged_symbol->name_len == 0)
 	    return;
 
 	/* set it's correct value */
@@ -4813,9 +4887,9 @@ void)
 	else /* filetype == MH_DYLINKER */
 	    symbol_name = _MH_DYLINKER_SYM;
 	/* look up the symbol to see if it is present */
-	merged_symbol = *(lookup_symbol(symbol_name));
+	merged_symbol = lookup_symbol(symbol_name);
 	/* if it is not present just return */
-	if(merged_symbol == NULL)
+	if(merged_symbol->name_len == 0)
 	    return;
 
 	/*
@@ -4926,7 +5000,7 @@ unsigned long header_address)
 {
     char *symbol_name;
     struct merged_symbol *merged_symbol;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     unsigned long i;
 
 	if(filetype == MH_BUNDLE)
@@ -4937,10 +5011,10 @@ unsigned long header_address)
 	    symbol_name = _MH_DYLINKER_SYM;
 
 	/* look up the symbol to see if it is present */
-	merged_symbol = *(lookup_symbol(symbol_name));
+	merged_symbol = lookup_symbol(symbol_name);
 
 	/* if it is not present just return */
-	if(merged_symbol == NULL)
+	if(merged_symbol->name_len == 0)
 	    return;
 
 	/* set it's correct value */
@@ -4952,10 +5026,12 @@ unsigned long header_address)
 
 	/* set the correct values of the undefined symbols defined a way */ 
 	if(undefined_flag == UNDEFINED_DEFINE_A_WAY){
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+		merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->define_a_way == 1){
 			if(merged_symbol->nlist.n_sect == NO_SECT)
 			    merged_symbol->nlist.n_value = header_address;
@@ -5069,8 +5145,8 @@ enum bool setup)
 			define_link_editor_symbol(symbol_name, N_EXT | N_SECT,
 						  i+1, 0, 0);
 		    else{
-			merged_symbol = *(lookup_symbol(symbol_name));
-			if(merged_symbol != NULL)
+			merged_symbol = lookup_symbol(symbol_name);
+			if(merged_symbol->name_len != 0)
 			    merged_symbol->nlist.n_value = ms->s.size;
 		    }
 		    i++;
@@ -5086,8 +5162,8 @@ enum bool setup)
 		define_link_editor_symbol(symbol_name, N_EXT | N_SECT,
 					  first_section, 0, 0);
 	    else{
-		merged_symbol = *(lookup_symbol(symbol_name));
-		if(merged_symbol != NULL)
+		merged_symbol = lookup_symbol(symbol_name);
+		if(merged_symbol->name_len != 0)
 		    merged_symbol->nlist.n_value = msg->sg.vmsize;
 	    }
 	    p = &(msg->next);
@@ -5113,9 +5189,9 @@ unsigned long value)
     struct merged_symbol *merged_symbol;
 
 	/* look up the symbol to see if it is present */
-	merged_symbol = *(lookup_symbol(symbol_name));
+	merged_symbol = lookup_symbol(symbol_name);
 	/* if it is not present just return */
-	if(merged_symbol == NULL)
+	if(merged_symbol->name_len == 0)
 	    return;
 	/*
 	 * The symbol is present and must be undefined unless it is defined
@@ -5181,15 +5257,17 @@ void
 reduce_indr_symbols(void)
 {
     unsigned long i, j, k, indr_depth, from_dylibs, not_from_dylibs;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol, **indr_symbols, *indr_symbol;
     struct indr_symbol_pair *indr_symbol_pair;
 
 	indr_symbols = allocate(nindr_symbols * sizeof(struct merged_symbol *));
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 
 		/*
 		 * Reduce indirect symbol chains to have all the indirect
@@ -5299,13 +5377,15 @@ void
 layout_merged_symbols(void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		relocate_symbol(&(merged_symbol->nlist),
 				merged_symbol->definition_object);
 	    }
@@ -5602,7 +5682,7 @@ char *object_strings)
     long output_strlen;
     struct localsym_block *localsym_block, **next_localsym_block;
     char *stab_name, *symbol_name, *p;
-    struct merged_symbol **hash_pointer, *merged_symbol;
+    struct merged_symbol *hash_pointer, *merged_symbol;
 
 	/*
 	 * Previouly in merge_symbols(), nlocal_symbols and local_string_size
@@ -5632,7 +5712,7 @@ char *object_strings)
 				       object_symbols[i].n_un.n_strx == 0 ? "" :
 				       object_strings +
 				       object_symbols[i].n_un.n_strx,
-				       &output_strlen))){
+				       (unsigned long *)&output_strlen))){
 		/*
 		 * If is_output_local_symbol() was called in the if() above then
 		 * output_strlen will not be -1.  Else we need to calculate the 
@@ -5667,9 +5747,9 @@ char *object_strings)
 		strcpy(symbol_name, "_");
 		strncat(symbol_name, stab_name, len);
 		hash_pointer = lookup_symbol(symbol_name);
-		if(*hash_pointer == NULL)
+		if(hash_pointer->name_len == 0)
 		    continue;
-		merged_symbol = *hash_pointer;
+		merged_symbol = hash_pointer;
 		if(merged_symbol->live == FALSE){
 		    nlocal_symbols--;
 		    cur_obj->nlocalsym--;
@@ -5953,7 +6033,7 @@ output_local_symbols(void)
 		    object_symbols[i].n_sect, cur_obj,
 		    object_symbols[i].n_un.n_strx == 0 ? "" :
 		    object_strings + object_symbols[i].n_un.n_strx,
-		    &output_strlen))){
+		    (unsigned long *)&output_strlen))){
 
 		/*
 		 * If is_output_local_symbol() was called in the if() above then
@@ -6238,7 +6318,7 @@ output_merged_symbols(void)
 {
     unsigned long i, j, flush_symbol_offset,
 		  flush_string_offset, start_string_size;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol, *indr_symbol;
     struct string_block **q, *string_block;
     struct nlist *nlist;
@@ -6255,11 +6335,12 @@ output_merged_symbols(void)
 	 * value field is set to the index of the string the symbol is refering
 	 * to.
 	 */
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
-
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->nlist.n_type == (N_EXT | N_INDR)){
 		    /*
 		     * If this N_INDR symbol was in a chain has symbols both
@@ -6321,10 +6402,12 @@ output_merged_symbols(void)
 	   keep_private_externs == FALSE &&
 	   (strip_level != STRIP_NONGLOBALS ||
 	    (filetype == MH_DYLIB && multi_module_dylib == TRUE)) ){
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+	        merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->referenced_in_non_dylib == FALSE)
 			continue;
 		    if(strip_base_symbols == TRUE && 
@@ -6587,7 +6670,7 @@ output_rld_symfile_merged_symbols(
 void)
 {
     struct nlist *nlist;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     unsigned long string_offset;
     struct string_block **q, *string_block;
@@ -6595,10 +6678,12 @@ void)
 
 	nlist = (struct nlist *)(output_addr +
 				 output_symtab_info.symtab_command.symoff);
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->definition_object->set_num != cur_set)
 		    continue;
 		*nlist = merged_symbol->nlist;
@@ -6689,9 +6774,8 @@ void
 process_undefineds(
 void)
 {
-
     unsigned long i, j, Ycount, errors_save;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     enum bool printed_undef, allowed_undef, prebound_undef;
     struct object_list *object_list, **q;
@@ -6709,10 +6793,12 @@ void)
 	errors_save = 0;
 	printed_undef = FALSE;
 	prebound_undef = FALSE;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		/*
 		 * If the output file is not relocatable check to see if this
 		 * symbol is undefined.  If it is and it is not on the allowed
@@ -6837,10 +6923,12 @@ void)
 	 */
 	if(macosx_deployment_target <= MACOSX_DEPLOYMENT_TARGET_10_1){
 	    weak_ref_warning = FALSE;
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+	        merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
 			 merged_symbol->nlist.n_value == 0) ||
 		       (merged_symbol->nlist.n_type & N_TYPE) == N_PBUD) &&
@@ -6870,10 +6958,12 @@ void)
 	     * symbols that had a weak reference mismatch that is still
 	     * undefined print the error for it.
 	     */
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	        merged_symbol_list != NULL;
+	        merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->weak_reference_mismatch == TRUE &&
 		       ((merged_symbol->nlist.n_type == (N_EXT | N_UNDF) &&
 			 merged_symbol->nlist.n_value == 0) ||
@@ -7086,10 +7176,12 @@ done:
 	 * so the number of merged symbols in the output file is know for
 	 * laying out the output file.
 	 */
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		/*
 		 * If this symbol is only referenced from a dylib then it will
 		 * not be in the file's output.
@@ -7111,13 +7203,15 @@ reset_prebound_undefines(
 void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol, *indr_symbol;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if((merged_symbol->nlist.n_type & N_TYPE) == N_PBUD){
 		    /*
 		     * If not prebinding then reset this prebound undefined
@@ -7196,7 +7290,7 @@ assign_output_symbol_indexes(
 void)
 {
     unsigned long index, i, nextdefsym, nundefsym, n_pext;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol, *indr_symbol;
     struct object_list *object_list, **q;
     struct object_file *last_object;
@@ -7215,32 +7309,21 @@ void)
 		merged_string_size = 0;
 		rebuild_merged_string_table = TRUE;
 		/*
-		 * The value of nstripped_merged_symbols is reset to zero here
-		 * since we are setting the strip_level to
-		 * STRIP_DYNAMIC_EXECUTABLE.  This routine will then increment
-		 * nstripped_merged_symbols for the symbols to be stripped. It
-		 * may have previouly held the count of dead symbols to strip if
-		 * -dead_strip was specified. This works since any symbol to be
-		 * saved with STRIP_DYNAMIC_EXECUTABLE would also be live since
-		 * it would have REFERENCED_DYNAMICALLY set.  Except for
-		 * undefined symbols, so if -dead_strip is specified and the
-		 * undefined symbol is not live then nstripped_merged_symbols
+		 * The value of nstripped_merged_symbols is reset here since we
+		 * are setting the strip_level to STRIP_DYNAMIC_EXECUTABLE.
+		 * This routine will then increment nstripped_merged_symbols
+		 * for the symbols to be stripped. It may have previouly held
+		 * the count of dead symbols to strip if -dead_strip was
+		 * specified. We start with the the number of dead stripped
+		 * merged private symbols then add the live merged symbols to
+		 * strip.  This works since any symbol to be saved with
+		 * STRIP_DYNAMIC_EXECUTABLE would also be live since it would
+		 * have REFERENCED_DYNAMICALLY set.  Except for undefined
+		 * symbols, so if -dead_strip is specified and the undefined
+		 * symbol is not live then nstripped_merged_symbols
 		 * is incremented to account for these.
 		 */
-		nstripped_merged_symbols = 0;
-/*
-printf("assign_output_symbol_indexes() nstripped_merged_symbols set to 0\n");
-*/
-		/*
-		 * The value of nstripped_merged_private_symbols is also reset
-		 * to zero since we are setting the strip_level to
-		 * STRIP_DYNAMIC_EXECUTABLE.  Since this causes all private
-		 * symbols to be stripped and nstripped_merged_private_symbols
-		 * held the count of merged private symbols when -dead_strip
-		 * was specified.  This routine will then increment
-		 * nstripped_merged_private_symbols for all private symbols.
-		 */
-		nstripped_merged_private_symbols = 0;
+		nstripped_merged_symbols = nstripped_merged_private_symbols;
 	    }
 	    else{
 		seglinkedit = FALSE;
@@ -7368,10 +7451,12 @@ print("assign_output_symbol_indexes() adding cur_obj->nprivatesym %lu to nstripp
 	 */
 	nundefsym = 0;
 	nextdefsym = 0;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->referenced_in_non_dylib == FALSE)
 		    continue;
 		if(strip_base_symbols == TRUE && 
@@ -7451,10 +7536,12 @@ printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for 
 	 */
 	nundefsym = 0;
 	nextdefsym = 0;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->referenced_in_non_dylib == FALSE)
 		    continue;
 		if(strip_base_symbols == TRUE && 
@@ -7560,10 +7647,12 @@ printf("assign_output_symbol_indexes() nstripped_merged_symbols incremented for 
 	 */
 	if(nmerged_private_symbols != 0 && keep_private_externs == FALSE){
 	    cur_obj = NULL;
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+		merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->referenced_in_non_dylib == FALSE)
 			continue;
 		    if(strip_base_symbols == TRUE && 
@@ -7801,7 +7890,7 @@ void)
     struct dylib_reference *ref, *refs;
     struct dylib_module *mod, *mods;
     struct merged_symbol **toc_order;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
     struct dylib_table_of_contents *tocs, *toc;
     struct merged_section *ms;
@@ -7841,10 +7930,12 @@ void)
 	     * For single module dylibs there is one reference table and it is
 	     * built from the merged symbol table.
 	     */
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+		merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->referenced_in_non_dylib == FALSE)
 			continue;
 		    if(dead_strip == TRUE && merged_symbol->live == FALSE)
@@ -7985,10 +8076,12 @@ void)
 	toc_order = allocate(output_dysymtab_info.dysymtab_command.ntoc *
 			     sizeof(struct merged_symbol *));
 	ntoc = 0;
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->referenced_in_non_dylib == FALSE)
 		    continue;
 		if((merged_symbol->nlist.n_type & N_TYPE) != N_UNDF &&
@@ -8036,16 +8129,18 @@ clear_read_only_reloc_flags(
 void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
 	if(some_read_only_reloc_flags_set == FALSE)
 	    return;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		merged_symbol->flagged_read_only_reloc = FALSE;
 	    }
 	}
@@ -8066,7 +8161,7 @@ unsigned long output_index,
 enum bool *first_time)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
 	if(*first_time == TRUE){
@@ -8081,10 +8176,12 @@ enum bool *first_time)
 	    *first_time = FALSE;
 	}
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if(merged_symbol->output_index == output_index){
 		    if(merged_symbol->flagged_read_only_reloc == FALSE){
 			print("%s\n", merged_symbol->nlist.n_un.n_name);
@@ -8118,55 +8215,52 @@ free_multiple_defs(void)
  * remove_merged_symbols() removes the merged symbols that are defined in the
  * current object file set and their strings.  This take advantage of the fact
  * that symbols from the current set of symbols were all merged after the
- * previous set.
+ * previous set and appear last in symbol list and hash table.
  */
 __private_extern__
 void
 remove_merged_symbols(void)
 {
-    unsigned long i;
-    struct merged_symbol_list *merged_symbol_list, *prev_merged_symbol_list,
+    long i;
+    unsigned long j;
+    struct merged_symbol_list *m, *merged_symbol_list, *prev_merged_symbol_list,
 			      *next_merged_symbol_list;
-    struct merged_symbol **hash_table, *merged_symbol;
-
+    enum bool have_some_symbols;
+    struct merged_symbol_chunk *p, *first_chunk, *prev_chunk, *next_chunk;
     struct string_block *string_block, *prev_string_block, *next_string_block;
 
 	/*
-	 * The compiler "warning: `prev_merged_symbol_list' and
-	 * `prev_string_block' may be used uninitialized in this function"
-	 * can safely be ignored.
+	 * Clear all the merged symbol table entries for symbols that come
+	 * from the current set of object files.
 	 */
-	prev_merged_symbol_list = NULL;
-	prev_string_block = NULL;
 
 	/*
-	 * Clear all the merged symbol table entries for symbols that come
-	 * from the current set of object files.  This is done by walking the
-	 * hashtable an not the symbol list so the hashtable can be cleared
-	 * out also.
+	 * First clear all symbol pointers in the merged_symbol_list from this
+	 * set.  Then if there are any symbol lists with no used symbols free
+	 * them.
 	 */
-	for(merged_symbol_list = merged_symbol_lists;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
 	    merged_symbol_list != NULL;
 	    merged_symbol_list = merged_symbol_list->next){
-	    if(merged_symbol_list->hash_table != NULL){
-		hash_table = merged_symbol_list->hash_table;
-		for(i = 0; i < SYMBOL_LIST_HASH_SIZE; i++){
-		    if(hash_table[i] != NULL){
-			merged_symbol = hash_table[i];
-			if(merged_symbol->definition_object->set_num ==cur_set){
-			    memset(merged_symbol, '\0',
-				   sizeof(struct merged_symbol));
-			    hash_table[i] = NULL;
-			    merged_symbol_list->used--;
-			}
-		    }
+	    for(i = merged_symbol_list->used - 1; i >= 0; i--){
+		if(merged_symbol_list->symbols[i] != NULL &&
+		   merged_symbol_list->symbols[i]->name_len != 0 &&
+		   merged_symbol_list->symbols[i]->definition_object != NULL &&
+		   merged_symbol_list->symbols[i]->definition_object->set_num ==
+		   cur_set){
+		    merged_symbol_list->symbols[i] = NULL;
+		    merged_symbol_list->used--;
 		}
 	    }
 	}
 	/*
-	 * Find the first symbol list that now has 0 entries used.
+	 * Find the first symbol list that now has 0 entries used if any.
 	 */
-	for(merged_symbol_list = merged_symbol_lists;
+	prev_merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				  merged_symbol_root->list;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
 	    merged_symbol_list != NULL;
 	    merged_symbol_list = merged_symbol_list->next){
 	    if(merged_symbol_list->used == 0)
@@ -8174,33 +8268,88 @@ remove_merged_symbols(void)
 	    prev_merged_symbol_list = merged_symbol_list;
 	}
 	/*
-	 * If there are any symbol lists with 0 entries used free their hash
-	 * tables and the list.
+	 * If there are any symbol lists with 0 entries used free it and the
+	 * chain of lists that follows.
 	 */
 	if(merged_symbol_list != NULL && merged_symbol_list->used == 0){
 	    /*
-	     * First set the pointer to this list in the previous list to
-	     * NULL.
+	     * First set the pointer to this list in the previous list to NULL.
 	     */
-	    if(merged_symbol_list == merged_symbol_lists)
-		merged_symbol_lists = NULL;
+	    if(merged_symbol_list == merged_symbol_root->list)
+		merged_symbol_root->list = NULL;
 	    else
 		prev_merged_symbol_list->next = NULL;
-	    /*
-	     * Now free the hash table for this list the list itself and do the
-	     * same for all remaining lists.
-	     */
-	    do {
-		free(merged_symbol_list->hash_table);
-		next_merged_symbol_list = merged_symbol_list->next;
-		free(merged_symbol_list);
-		merged_symbol_list = next_merged_symbol_list;
-	    }while(merged_symbol_list != NULL);
+	    for(m = merged_symbol_list; m != NULL; m = next_merged_symbol_list){
+		next_merged_symbol_list = m->next;
+		free(m);
+	    }
 	}
 
 	/*
-	 * Find the first string block for the current set of object files.
+	 * Second clear out the hash table entries and free any allocated chunks
+	 * that only have symbols from this set.
 	 */
+	have_some_symbols = FALSE;
+	for(i = 0; i < SYMBOL_LIST_HASH_SIZE; i++){
+	    if(merged_symbol_root == NULL)
+		break;
+	    first_chunk = NULL;
+	    prev_chunk = NULL;
+	    for(p = &merged_symbol_root->chunks[i]; p != NULL; p = p->next){
+		for(j = 0; j < SYMBOL_CHUNK_SIZE; j++){
+		    if(p->symbols[j].name_len != 0 &&
+		       p->symbols[j].definition_object->set_num == cur_set){
+			memset(p->symbols + j, '\0',
+			       sizeof(struct merged_symbol));
+			/*
+			 * Save a pointer to the first chunk that is allocated
+			 * in the chain who first symbol (and all remaining) is
+			 * for this set.
+			 */
+			if(first_chunk == NULL &&
+			   p != &merged_symbol_root->chunks[i] &&
+			   j == 0)
+			    first_chunk = p;
+		    }
+		    else{
+			if(p->symbols[j].name_len != 0)
+			    have_some_symbols = TRUE;
+		    }
+		}
+		/*
+		 * If we have not yet found a first allocated chunk that has all
+		 * symbols from this set, save the pointer to this chunk as it
+		 * may end up being the previous chunk.
+		 */
+		if(first_chunk == NULL)
+		    prev_chunk = p;
+	    }
+	    /*
+	     * Free any allocated chunks after the first one in the hash table
+	     * that had symbols all from this set and clear the next pointer to
+	     * this chain.
+	     */
+	    if(first_chunk != NULL){
+		for(p = first_chunk; p != NULL; p = next_chunk){
+		    next_chunk = p->next;
+		    free(p);
+		}
+		prev_chunk->next = NULL;
+	    }
+	}
+	/*
+	 * If there are no symbol left in the hash table then free it too.
+	 */
+	if(have_some_symbols == FALSE){
+	    free(merged_symbol_root);
+	    merged_symbol_root = NULL;
+	}
+
+	/*
+	 * Third, find the first string block for the current set of object
+	 * files to clear them out.
+	 */
+	prev_string_block = NULL;
 	for(string_block = merged_string_blocks;
 	    string_block != NULL;
 	    string_block = string_block->next){
@@ -8245,21 +8394,23 @@ print_symbol_list(
 char *string,
 enum bool input_based)
 {
-    struct merged_symbol_list **p, *merged_symbol_list;
-    unsigned long i;
+    struct merged_symbol_list *merged_symbol_list;
+    struct merged_symbol_chunk *p;
+    unsigned long i, j;
     struct nlist *nlist;
     struct section *s;
     struct section_map *maps;
-    struct merged_symbol **hash_table;
 
 	print("Merged symbol list (%s)\n", string);
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    print("merged_symbols\n");
 	    for(i = 0; i < merged_symbol_list->used; i++){
 		print("%-4lu[0x%x]\n", i,
-		      (unsigned int)(merged_symbol_list->merged_symbols + i));
-		nlist = &((merged_symbol_list->merged_symbols + i)->nlist);
+		      (unsigned int)(merged_symbol_list->symbols + i));
+		nlist = &(merged_symbol_list->symbols[i]->nlist);
 		print("    n_name %s\n", nlist->n_un.n_name);
 		print("    n_type ");
 		switch(nlist->n_type & N_TYPE){
@@ -8287,8 +8438,8 @@ enum bool input_based)
 		    break;
 		}
 		print("    n_sect %d ", nlist->n_sect);
-		maps = (merged_symbol_list->merged_symbols + i)->
-			definition_object->section_maps;
+		maps = merged_symbol_list->symbols[i]->
+		       definition_object->section_maps;
 		if(nlist->n_sect == NO_SECT)
 		    print("NO_SECT\n");
 		else{
@@ -8313,17 +8464,20 @@ enum bool input_based)
 		print("\n");
 		print("    set_num %d\n", merged_symbol_list->merged_symbols[i].
 		      definition_object->set_num);
-#endif /* RLD */
+#endif 
 	    }
-	    print("hash_table 0x%x\n",
-		  (unsigned int)(merged_symbol_list->hash_table));
-	    if(merged_symbol_list->hash_table != NULL){
-		hash_table = merged_symbol_list->hash_table;
-		for(i = 0; i < SYMBOL_LIST_HASH_SIZE; i++){
-		    print("    %-4lu [0x%x] (%s)\n", i,
-			  (unsigned int)(hash_table + i),
-			  *(hash_table + i) == NULL ? "NULL" :
-			  (*(hash_table + i))->nlist.n_un.n_name);
+	}
+
+	print("Hash table (merged_symbol_root 0x%x)\n",
+	      (unsigned int)(merged_symbol_root));
+	for(i = 0; i < SYMBOL_LIST_HASH_SIZE; i++){
+	    for(p = &merged_symbol_root->chunks[i]; p != NULL; p = p->next){
+		for(j = 0; j < SYMBOL_CHUNK_SIZE; j++){
+		    if(p->symbols[j].name_len != 0){
+			print("    %-5lu %-2lu [0x%x] %s\n", i, j,
+			      (unsigned int)(p->symbols + j),
+			       p->symbols[j].nlist.n_un.n_name);
+		    }
 		}
 	    }
 	}

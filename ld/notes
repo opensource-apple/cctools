@@ -23,13 +23,164 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.20 release (the cctools-590.23.1 release):
+- Fixed a bug that caused a crash in remove_merged_symbols() in symbols.c when
+  looping through the merged_symbol_list.  The fix was really likely with the
+  missing memset() needed in lookup_symbol() in symbols.c after the allocate()
+  of the merged_symbol_list struct.  The loop in remove_merged_symbols() that
+  caused the crash was also changed to be more robust by looping backwards over
+  only the used elements in the array and adding additional checks to avoid
+  indirection through possible bad pointers.  Radar bug #4371058
+
+Changes for the 5.20 release (the cctools-590.22 release):
+- Fixed a bug in literal_pointer_output() in literal_pointers.c where it was
+  creating local relocation entries in the output file's memory buffer when it
+  shouldn't.  In doing so it can run off the end of the memory buffer and cause
+  a crash.  If it doesn't crash we get lucky as this just happens to be done
+  early and later the correct stuff gets placed over this area in the memory
+  buffer.  Radar bug #4348548.
+
+Changes for the 5.20 release (the cctools-590.21 release):
+- Fixed a bug in remove_merged_symbols() in symbols.c that was using
+  merged_symbol_root->list where merged_symbol_root could be NULL.  Radar bug
+  #4346485.
+
+Changes for the 5.20 release (the cctools-590.20 release):
+- Removed the warnings when building. Radar bug #4340147.
+  - Added -fno-builtin-round and -fno-builtin-trunc to the Makefile.
+  - Changed the cast of argument 3 of the call to bootstrap_look_up() to
+    (unsigned int *) in check_for_ProjectBuilder() in ld.c .
+  - Set the fields of the local struct r to NULL in setup_reference() in
+    sections.c .
+  - Added a cast of (unsigned long *) to argument 5 of is_output_local_symbol()
+    in remove_dead_N_GSYM_stabs_for_cur_obj() and output_local_symbols() in
+    symbols.c . 
+  - Added two #undef's, one for THREAD_STATE_NONE and one for
+    VALID_THREAD_STATE_FLAVOR in layout.c .
+- Changed the definition of kld_basefile_name in internal_kld_load() in kld.c
+  to include const so it matches the header file:
+  /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa/stdlib.h
+  if it exists on the system.  Radar bug #4342523.
+- Fixed a bug when both -s and -dead_strip were used and there were dead private
+  extern symbols.  This caused an internal error in
+  assign_output_symbol_indexes() in symbols.c with inconsistent local symbol
+  counts.  The first problem was that nstripped_merged_private_symbols was being
+  reset to zero causing the problem with local symbol counts.  The second
+  problem was the count of merged symbols was wrong because
+  nstripped_merged_symbols was reset to zero not to
+  nstripped_merged_private_symbols before adding in the live symbols to be
+  stripped.  Radar bug #4286691.
+- Fixed a bug where the -w flag to suppress warnings was not suppressing the
+  list of multiply defined symbols.  The fix was in merge_dylib_module_symbols()
+  in symbols.c where after it calls warning() to print the header a test of
+  nowarnings == TRUE was added and if so a continue is done to skip tracing of
+  symbols.  Radar bug #4334705.
+
+Changes for the 5.20 release (the cctools-590.17 release):
+- Changed symbol lookup to make it faster.  Radar bug #4299546.
+  - The structures and global variable for storing the merged symbol hash table
+    and list of merged symbols in symbols.[ch] were changed.  The pointer to get
+    to the merged symbol table is a new global variable merged_symbol_root
+    replacing the old merged_symbol_lists pointer.
+    - The contents of merged_symbol_list struct was completely changed and is
+      now only a list of merged symbols implemented as array of pointers, a
+      count of the used pointers and a next pointer in a linked list of
+      merged_symbol_list structs.  There is no global variable to get to the
+      start of the list and instead it is hung off the new merged_symbol_root
+      struct. As such all code that has loops that to loop over the list of
+      merged symbols are changed and then after the loop a change is made to
+      indirect through the pointer in the symbols[] array.
+      These changes were made in:
+	in pass1.c
+	  search_dynamic_libs()
+	  prebinding_check_for_dylib_override_symbols()
+	  twolevel_namespace_check_for_unused_dylib_symbols()
+	in symbols.c
+	  define_common_symbols() (2 loops)
+	  define_undefined_symbols_a_way()
+	  mark_globals_live()
+	  set_fine_relocs_for_merged_symbols()
+	  count_live_symbols()
+	  define_link_editor_dylib_symbols()
+	  reduce_indr_symbols()
+	  layout_merged_symbols()
+	  output_merged_symbols() (2 loops)
+	  output_rld_symfile_merged_symbols()
+	  process_undefineds() (4 loops)
+	  reset_prebound_undefines()
+	  assign_output_symbol_indexes() (3 loops)
+	  output_dylib_tables() (2 loops)
+	  clear_read_only_reloc_flags()
+	  flag_read_only_reloc()
+    - A new merged_symbol_root struct now stores the hash table and has a
+      pointer to the merged_symbol_list struct.  There is a new global variable
+      merged_symbol_root which is a pointer to this struct.  This is made up of
+      an array of new merged_symbol_chunk structs.
+    - The new merged_symbol_chunk structs has an array of merged_symbol structs
+      of SYMBOL_CHUNK_SIZE and a pointer to the next merged_symbol_chunk struct.
+  - The routine lookup_symbol() was changed to return a pointer to a
+    merged_symbol struct instead of a pointer to a pointer.  So to see if the
+    symbol is defined the callers now need to look to see if the name_len field
+    of the merged_symbol pointer returned is != 0.
+    These changes were made in:
+	coalesced_section_merge() in coalesced_sections.c
+	generic_reloc() in generic_reloc.c
+	hppa_reloc() in hppa_reloc.c
+	i860_reloc() in i860_reloc.c
+	indirect_section_merge() in indirect_sections.c
+	layout_segments() in layout.c
+	literal_pointer_merge() in literal_pointers.c
+	m88k_reloc() in m88k_reloc.c
+	pass1_archive() in pass1.c
+	ppc_reloc() in ppc_reloc.c
+	sparc_reloc() in sparc_reloc.c
+	in rld.c
+	  kld_lookup()/rld_lookup()
+	  kld_forget_symbol()/rld_forget_symbol()
+	in sections.c
+	  layout_ordered_section()
+	  count_relocs()
+	  scatter_copy() (2 places)
+	  live_marking() (2 places)
+	in symbols.c
+	  merge_symbols()
+	  command_line_symbol()
+	  command_line_indr_symbol()
+	  merge_dylib_module_symbols()
+	  merge_bundle_loader_symbols()
+	  enter_indr_symbol()
+	  define_link_editor_execute_symbols()
+	  setup_link_editor_symbols()
+	  define_link_editor_dylib_symbols()
+	  define_link_editor_preload_symbols() (2 places)
+	  define_link_editor_symbol()
+	  remove_dead_N_GSYM_stabs_for_cur_obj()
+    Since lookup_symbol() now returns a pointer to a merged_symbol struct
+    to be used by enter_symbol().  So the static variable
+    merged_symbol_list_for_enter_symbol pointing to the merged_symbol_list has
+    been removed.
+  - The new static routine add_to_symbol_list() in symbols.c was added which is
+    passed merged_symbol and adds it to the merged_symbol_list linked list.
+  - The routine enter_symbol() was changed so the hash_pointer parameter is now
+    just a pointer to a merged_symbol struct not a pointer to a pointer.  The
+    code that used the removed merged_symbol_list_for_enter_symbol was removed.
+    And a call to the new add_to_symbol_list() routine was added.
+  - The routine enter_indr_symbol() was changed so the hash_pointer variable
+    is now a pointer to a merged_symbol struct returned from lookup_symbol().
+    The code that used the removed merged_symbol_list_for_enter_symbol was
+    removed.  And a call to the the new add_to_symbol_list() routine was added.
+  - Changed free_pass1_symbol_data() in symbols.c and just removed the code that
+    has been #ifdef notdef'ed out instead of updating the loop that deallocated
+    the hash table.
+  - The routines remove_merged_symbols() and print_symbol_list() in symbols.c
+    were updated to deal with the new merged symbol table data structures.
+  - Added the routine hash_instrument() in symbols.[ch] to print out info about
+    the contents of the hash table.  The new flag -hash_instrument in main() in
+    ld.c causes this to be called.
+
 Changes for the 5.18 release (the cctools-590.16 release):
 - Changed is_output_local_symbol() in symbols.c for the STRIP_MIN_DEBUG (-Sp)
   case so we never keep types.  Radar bug #4312007.
-
-Changes for the 5.18 release (the cctools-590.15 release):
-- Changed is_output_local_symbol() in symbols.c for the STRIP_MIN_DEBUG (-Sp)
-  case so we never keep unnamed types.  Radar bug #4305465.
 
 Changes for the 5.18 release (the cctools-590.13 release):
 - Fixed a bug when -dead_strip was used that caused it to remove local symbols

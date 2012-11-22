@@ -25,6 +25,12 @@ Bugs to be fixed:
 - The PowerPC extended branch mnemonic like beqlrl need to take a CRFONLY or
   a number shifted over by 2 (like the fcmpu instruction).
 
+Changes for the 5.20 release (the cctools-590.20 release):
+- Removed the warnings when building. Radar bug #4340147.
+  - Added -fno-builtin-round to the Makefile.
+  - Added two casts to (unsigned int *) for the second argument of getval() in
+    parse_cst() in m88k.c . 
+
 Changes for the 5.19 release (the cctools-590.12 release):
 - Added support for the new assembler directives, .secure_log_unique and
   .secure_log_reset . Radar bug #4291741.

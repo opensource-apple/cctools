@@ -589,9 +589,15 @@ void *cookie)
 						 arch_flags[0].cpusubtype);
 		    }
 #ifdef OTOOL
-		    if(ofile.mh != NULL &&
-		       ofile.mh->magic == SWAP_LONG(MH_MAGIC)){
-			if((cpu_type_t)SWAP_LONG(ofile.mh->cputype) ==
+		    if(ofile.mh != NULL){
+		        if(ofile.mh->magic == MH_MAGIC &&
+			   ofile.mh->cputype == arch_flags[i].cputype &&
+			   (ofile.mh->cpusubtype == arch_flags[i].cpusubtype ||
+			    family == TRUE)){
+			    arch_found = TRUE;
+			}
+		        if(ofile.mh->magic == SWAP_LONG(MH_MAGIC) &&
+			   (cpu_type_t)SWAP_LONG(ofile.mh->cputype) ==
 				arch_flags[i].cputype &&
 			   ((cpu_subtype_t)SWAP_LONG(ofile.mh->cpusubtype) ==
 				arch_flags[i].cpusubtype ||
@@ -599,9 +605,15 @@ void *cookie)
 			    arch_found = TRUE;
 			}
 		    }
-		    else if(ofile.mh64 != NULL &&
-		       ofile.mh64->magic == SWAP_LONG(MH_MAGIC_64)){
-			if((cpu_type_t)SWAP_LONG(ofile.mh64->cputype) ==
+		    else if(ofile.mh64 != NULL){
+		        if(ofile.mh64->magic == MH_MAGIC_64 &&
+			   ofile.mh64->cputype == arch_flags[i].cputype &&
+			   (ofile.mh64->cpusubtype ==arch_flags[i].cpusubtype ||
+			    family == TRUE)){
+			    arch_found = TRUE;
+			}
+		        if(ofile.mh64->magic == SWAP_LONG(MH_MAGIC_64) &&
+			   (cpu_type_t)SWAP_LONG(ofile.mh64->cputype) ==
 				arch_flags[i].cputype &&
 			   ((cpu_subtype_t)SWAP_LONG(ofile.mh64->cpusubtype) ==
 				arch_flags[i].cpusubtype ||

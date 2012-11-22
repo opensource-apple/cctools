@@ -37,4 +37,4 @@ __private_extern__ void get_macosx_deployment_target(
     cpu_type_t cputype);
 
 __private_extern__ void put_macosx_deployment_target(
-    const char *target);
+    char *target);

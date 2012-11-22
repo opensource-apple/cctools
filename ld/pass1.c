@@ -1666,9 +1666,9 @@ down:
 	    while(member_loaded == TRUE && errors == 0){
 		member_loaded = FALSE;
 		for(i = 0; i < nranlibs; i++){
-		    merged_symbol = *(lookup_symbol(bsearch_strings +
-						   ranlibs[i].ran_un.ran_strx));
-		    if(merged_symbol != NULL){
+		    merged_symbol = lookup_symbol(bsearch_strings +
+						   ranlibs[i].ran_un.ran_strx);
+		    if(merged_symbol->name_len != 0){
 			if(merged_symbol->nlist.n_type == (N_UNDF | N_EXT) &&
 			   merged_symbol->nlist.n_value == 0){
 
@@ -2028,7 +2028,7 @@ void)
     struct ranlib *ranlib;
 
     enum bool bind_at_load_warning;
-    struct merged_symbol_list **m, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
     unsigned long library_ordinal;
@@ -2958,10 +2958,12 @@ undefined_twolevel_reference:
 	 */
 	if(filetype == MH_EXECUTE && bind_at_load == FALSE){
 	    bind_at_load_warning = FALSE;
-	    for(m = &merged_symbol_lists; *m; m = &(merged_symbol_list->next)){
-		merged_symbol_list = *m;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+		merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if(merged_symbol->defined_in_dylib != TRUE)
 			continue;
 		    if(merged_symbol->coalesced_defined_in_dylib == TRUE)
@@ -3312,14 +3314,16 @@ prebinding_check_for_dylib_override_symbols(
 void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
 	if(prebinding == TRUE){
-	    for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-		merged_symbol_list = *p;
+	    for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				     merged_symbol_root->list;
+		merged_symbol_list != NULL;
+		merged_symbol_list = merged_symbol_list->next){
 		for(i = 0; i < merged_symbol_list->used; i++){
-		    merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		    merged_symbol = merged_symbol_list->symbols[i];
 		    if((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT)
 			continue;
 		    check_dylibs_for_definition(merged_symbol, TRUE, FALSE);
@@ -3340,13 +3344,15 @@ twolevel_namespace_check_for_unused_dylib_symbols(
 void)
 {
     unsigned long i;
-    struct merged_symbol_list **p, *merged_symbol_list;
+    struct merged_symbol_list *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
-	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
-	    merged_symbol_list = *p;
+	for(merged_symbol_list = merged_symbol_root == NULL ? NULL :
+				 merged_symbol_root->list;
+	    merged_symbol_list != NULL;
+	    merged_symbol_list = merged_symbol_list->next){
 	    for(i = 0; i < merged_symbol_list->used; i++){
-		merged_symbol = &(merged_symbol_list->merged_symbols[i]);
+		merged_symbol = merged_symbol_list->symbols[i];
 		if((merged_symbol->nlist.n_type & N_PEXT) == N_PEXT)
 		    continue;
 		check_dylibs_for_definition(merged_symbol, FALSE, TRUE);

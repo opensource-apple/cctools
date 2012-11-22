@@ -490,6 +490,7 @@ char *envp[])
     enum bool missing_syms;
     enum bool vflag;
     enum bool prebinding_via_LD_PREBIND;
+    enum bool hash_instrument_specified;
 
 #ifdef __MWERKS__
     char **dummy;
@@ -500,6 +501,7 @@ char *envp[])
 	exported_symbols_list = NULL;
 	unexported_symbols_list = NULL;
 	seg_addr_table_entry = NULL;
+	hash_instrument_specified = FALSE;
 
 	progname = argv[0];
 #ifndef BINARY_COMPARE
@@ -1782,6 +1784,9 @@ char *envp[])
 		    else if(strcmp(p, "headerpad_max_install_names") == 0){
 			headerpad_max_install_names = TRUE;
 		    }
+		    else if(strcmp(p, "hash_instrument") == 0){
+			hash_instrument_specified = TRUE;
+		    }
 		    else
 			goto unknown_flag;
 		    break;
@@ -3015,6 +3020,9 @@ unknown_flag:
 	if(errors != 0)
 	    cleanup();
 
+	if(hash_instrument_specified == TRUE)
+	    hash_instrument();
+
 	ld_exit(0);
 
 	/* this is to remove the compiler warning, it never gets here */
@@ -3240,7 +3248,7 @@ check_for_ProjectBuilder(void)
 	    return;
 #else
 	if(bootstrap_look_up(bootstrap_port, portName,
-	   (int *)&ProjectBuilder_port) != KERN_SUCCESS)
+	   (unsigned int *)&ProjectBuilder_port) != KERN_SUCCESS)
 	    return;
 #endif
 	if(ProjectBuilder_port == MACH_PORT_NULL)
