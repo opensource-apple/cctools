@@ -134,7 +134,7 @@ void)
 	     * on a address that is aligned correctly for the engine that runs
 	     * the assembler.
 	     */
-	    obstack_finish(&frags);
+	    (void)obstack_finish(&frags);
 
 	    /*
 	     * Make a fresh frag for the last frag.
@@ -142,7 +142,7 @@ void)
 	    frag_now = (fragS *)obstack_alloc(&frags, SIZEOF_STRUCT_FRAG);
 	    memset(frag_now, '\0', SIZEOF_STRUCT_FRAG);
 	    frag_now->fr_next = NULL;
-	    obstack_finish(&frags);
+	    (void)obstack_finish(&frags);
 
 	    /*
 	     * Append the new frag to current frchain.
@@ -195,7 +195,7 @@ void)
 	     * on a address that is aligned correctly for the engine that runs
 	     * the assembler.
 	     */
-	    obstack_finish(&frags);
+	    (void)obstack_finish(&frags);
 
 	    /*
 	     * Make a fresh frag for the last frag.
@@ -203,7 +203,7 @@ void)
 	    frag_now = (fragS *)obstack_alloc(&frags, SIZEOF_STRUCT_FRAG);
 	    memset(frag_now, '\0', SIZEOF_STRUCT_FRAG);
 	    frag_now->fr_next = NULL;
-	    obstack_finish(&frags);
+	    (void)obstack_finish(&frags);
 
 	    /*
 	     * Append the new frag to current frchain.

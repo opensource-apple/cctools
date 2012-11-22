@@ -631,7 +631,7 @@ struct arch *arch)
 		    state += sizeof(uint32_t);
 		    switch(arch->object->mh_cputype){
 		    case CPU_TYPE_I386:
-			switch(flavor){
+			switch((int)flavor){
 			i386_thread_state_t *cpu;
 			case i386_THREAD_STATE:
 #if i386_THREAD_STATE == 1
@@ -670,8 +670,10 @@ struct arch *arch)
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
-	/* add one for the .reloc section to contain the base relocations */
-	nscns++;
+	if(reloc_size != 0){
+	    /* add one for the .reloc section to contain the base relocations */
+	    nscns++;
+	}
 
 	/*
 	 * If there is a -d flag add one for the .debug section to contain
@@ -840,20 +842,22 @@ struct arch *arch)
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
-	strcpy(scnhdrs[j].s_name, ".reloc");
-	scnhdrs[j].s_vsize = reloc_size;
-	reloc_addr = round(reloc_addr, section_alignment);
-	scnhdrs[j].s_vaddr = reloc_addr;
-	scnhdrs[j].s_size = round(reloc_size, file_alignment);
-	scnhdrs[j].s_relptr = 0;
-	scnhdrs[j].s_lnnoptr = 0;
-	scnhdrs[j].s_nlnno = 0;
-	scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
-			     IMAGE_SCN_CNT_INITIALIZED_DATA |
-			     IMAGE_SCN_MEM_DISCARDABLE;
-	reloc_scnhdr = scnhdrs + j;
-	scn_contents[j] = reloc_contents;
-	j++;
+	if(reloc_size != 0){
+	    strcpy(scnhdrs[j].s_name, ".reloc");
+	    scnhdrs[j].s_vsize = reloc_size;
+	    reloc_addr = round(reloc_addr, section_alignment);
+	    scnhdrs[j].s_vaddr = reloc_addr;
+	    scnhdrs[j].s_size = round(reloc_size, file_alignment);
+	    scnhdrs[j].s_relptr = 0;
+	    scnhdrs[j].s_lnnoptr = 0;
+	    scnhdrs[j].s_nlnno = 0;
+	    scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
+				 IMAGE_SCN_CNT_INITIALIZED_DATA |
+				 IMAGE_SCN_MEM_DISCARDABLE;
+	    reloc_scnhdr = scnhdrs + j;
+	    scn_contents[j] = reloc_contents;
+	    j++;
+	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
@@ -988,8 +992,10 @@ struct arch *arch)
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
-	/* add one for the .reloc section to contain the base relocations */
-	nscns++;
+	if(reloc_size != 0){
+	    /* add one for the .reloc section to contain the base relocations */
+	    nscns++;
+	}
 
 	/*
 	 * At the beginning of the COFF string table are 4 bytes that contain
@@ -1104,22 +1110,24 @@ struct arch *arch)
 	    }
 	    lc = (struct load_command *)((char *)lc + lc->cmdsize);
 	}
-	strcpy(scnhdrs[j].s_name, ".reloc");
-	scnhdrs[j].s_vsize = reloc_size;
-	reloc_addr = round(reloc_addr, section_alignment);
-	scnhdrs[j].s_vaddr = reloc_addr;
-	scnhdrs[j].s_size = round(reloc_size, file_alignment);
-	scnhdrs[j].s_relptr = 0;
-	scnhdrs[j].s_lnnoptr = 0;
-	scnhdrs[j].s_nlnno = 0;
-	scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
-			     IMAGE_SCN_CNT_INITIALIZED_DATA |
-			     IMAGE_SCN_MEM_DISCARDABLE |
-			     IMAGE_SCN_CNT_CODE |
-			     IMAGE_SCN_MEM_EXECUTE;
-	reloc_scnhdr = scnhdrs + j;
-	scn_contents[j] = reloc_contents;
-	j++;
+	if(reloc_size != 0){
+	    strcpy(scnhdrs[j].s_name, ".reloc");
+	    scnhdrs[j].s_vsize = reloc_size;
+	    reloc_addr = round(reloc_addr, section_alignment);
+	    scnhdrs[j].s_vaddr = reloc_addr;
+	    scnhdrs[j].s_size = round(reloc_size, file_alignment);
+	    scnhdrs[j].s_relptr = 0;
+	    scnhdrs[j].s_lnnoptr = 0;
+	    scnhdrs[j].s_nlnno = 0;
+	    scnhdrs[j].s_flags = IMAGE_SCN_MEM_READ |
+				 IMAGE_SCN_CNT_INITIALIZED_DATA |
+				 IMAGE_SCN_MEM_DISCARDABLE |
+				 IMAGE_SCN_CNT_CODE |
+				 IMAGE_SCN_MEM_EXECUTE;
+	    reloc_scnhdr = scnhdrs + j;
+	    scn_contents[j] = reloc_contents;
+	    j++;
+	}
 
 	if(debug_filename != NULL){
 	    strcpy(scnhdrs[j].s_name, ".debug");
@@ -1349,7 +1357,8 @@ struct ofile *ofile)
 				  round(aouthdr.bsize, section_alignment) +
 				  round(nsyments * sizeof(struct syment),
 					section_alignment) +
-				  round(strsize, section_alignment);
+				  round(strsize, section_alignment) +
+				  round(header_size, section_alignment);
 	    aouthdr.SizeOfHeaders = header_size;
 	    aouthdr.CheckSum = 0;
 	    aouthdr.Subsystem = Subsystem;
@@ -1361,8 +1370,10 @@ struct ofile *ofile)
 	    aouthdr.LoaderFlags = 0;
 	    aouthdr.NumberOfRvaAndSizes = 16;
 	    /* Entry 5, Base Relocation Directory [.reloc] address & size */
-	    aouthdr.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
-	    aouthdr.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    if(reloc_size != 0){
+		aouthdr.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
+		aouthdr.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    }
 	    /*  Entry 6, Debug Directory [.debug] address & size */
 	    if(debug_filename != NULL){
 		aouthdr.DataDirectory[6][0] = debug_scnhdr->s_vaddr;
@@ -1429,7 +1440,8 @@ struct ofile *ofile)
 				    round(aouthdr64.bsize, section_alignment) +
 				    round(nsyments * sizeof(struct syment),
 					  section_alignment) +
-				    round(strsize, section_alignment);
+				    round(strsize, section_alignment) +
+				    round(header_size, section_alignment);
 #ifdef HACK_TO_MATCH_TEST_CASE
 	    /* this is a hack as it seams that the minimum size is 0x10000 */
 	    if(aouthdr64.SizeOfImage < 0x10000)
@@ -1449,8 +1461,10 @@ struct ofile *ofile)
 	    aouthdr64.LoaderFlags = 0;
 	    aouthdr64.NumberOfRvaAndSizes = 16;
 	    /* Entry 5, Base Relocation Directory [.reloc] address & size */
-	    aouthdr64.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
-	    aouthdr64.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    if(reloc_size != 0){
+		aouthdr64.DataDirectory[5][0] = reloc_scnhdr->s_vaddr;
+		aouthdr64.DataDirectory[5][1] = reloc_scnhdr->s_vsize;
+	    }
 	    /*  Entry 6, Debug Directory [.debug] address & size */
 	    if(debug_filename != NULL){
 		aouthdr64.DataDirectory[6][0] = debug_scnhdr->s_vaddr;
@@ -2106,8 +2120,9 @@ struct arch *arch)
 		    CPU_TYPE_X86_64, 3, X86_64_RELOC_UNSIGNED,
 		    IMAGE_REL_BASED_DIR64);
 	}
+	/*
 	if(dyst != NULL && dyst->nextrel != 0)
-	    ; /* TODO error if there are external relocation entries */
+	    ; TODO error if there are external relocation entries */
 
 	/*
 	 * Now with all the info gathered make the base relocation entries.

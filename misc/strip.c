@@ -133,10 +133,12 @@ static uint32_t new_strsize = 0;
 static uint32_t new_nlocalsym = 0;
 static uint32_t new_nextdefsym = 0;
 static uint32_t new_nundefsym = 0;
+#if defined(TRIE_SUPPORT) && !defined(NMEDIT)
 /*
  * The index into the new symbols where the defined external start.
  */
 static uint32_t inew_nextdefsym = 0;
+#endif
 
 /*
  * These hold the new table of contents, reference table and module table for
@@ -3298,7 +3300,9 @@ uint32_t nextrefsyms)
 		}
 	    }
 	}
+#ifdef TRIE_SUPPORT
 	inew_nextdefsym = inew_syms;
+#endif /* TRIE_SUPPORT */
 	for(i = 0; i < nsyms; i++){
 	    if(saves[i]){
 		if(object->mh != NULL){
@@ -3792,7 +3796,7 @@ struct object *object)
 	 * Create the ld -r command line and execute it.
 	 */
 	reset_execute_list();
-	add_execute_list("ld");
+	add_execute_list_with_prefix("ld");
 	add_execute_list("-keep_private_externs");
 	add_execute_list("-r");
 	if(Sflag)
@@ -5356,9 +5360,9 @@ change_symbol:
 	    }
 	}
 
-	if(sections != NULL);
+	if(sections != NULL)
 	    free(sections);
-	if(sections64 != NULL);
+	if(sections64 != NULL)
 	    free(sections64);
 
 	if(errors == 0)

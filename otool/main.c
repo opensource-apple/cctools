@@ -67,7 +67,7 @@ enum bool Rflag = FALSE; /* print the dylib reference table */
 enum bool Iflag = FALSE; /* print the indirect symbol table entries */
 enum bool Hflag = FALSE; /* print the two-level hints table */
 enum bool Sflag = FALSE; /* print the contents of the __.SYMDEF file */
-enum bool vflag = FALSE; /* print verbosely (symbolicly) when possible */
+enum bool vflag = FALSE; /* print verbosely (symbolically) when possible */
 enum bool Vflag = FALSE; /* print dissassembled operands verbosely */
 enum bool cflag = FALSE; /* print the argument and environ strings of a core */
 enum bool iflag = FALSE; /* print the shared library initialization table */
@@ -490,8 +490,8 @@ void)
 		"library\n");
 	fprintf(stderr, "\t-I print the indirect symbol table\n");
 	fprintf(stderr, "\t-H print the two-level hints table\n");
-	fprintf(stderr, "\t-v print verbosely (symbolicly) when possible\n");
-	fprintf(stderr, "\t-V print disassembled operands symbolicly\n");
+	fprintf(stderr, "\t-v print verbosely (symbolically) when possible\n");
+	fprintf(stderr, "\t-V print disassembled operands symbolically\n");
 	fprintf(stderr, "\t-c print argument strings of a core file\n");
 	fprintf(stderr, "\t-X print no leading addresses or headers\n");
 	fprintf(stderr, "\t-m don't use archive(member) syntax\n");

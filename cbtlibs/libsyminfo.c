@@ -137,7 +137,6 @@ static struct symbol *select_symbols(
 struct selectedSymbolListInfo {
     vm_size_t mappedFileSize;
     void *mappedFile;
-    char *fileName;
     char *cachedFileName;
     int byteSex;
     struct nlist *all_symbols;
@@ -184,7 +183,6 @@ char *fileName)
 	    my_mach_error(r, "Can't vm_deallocate mapped memory for file: "
 		   "%s",fileName);
 	}
-	free(gInfo->fileName);
 	free(gInfo->cachedFileName);
 	return(rList);
 }
@@ -589,7 +587,6 @@ void *cookie)
 	/* Store all this info so that it can be cleaned up later */
 	gInfo->mappedFile = ofile->file_addr;
 	gInfo->mappedFileSize = ofile->file_size;
-	gInfo->fileName = ofile->file_name;
 
 	/* Reallocate the array of SymInfoSymbol export structs in self */
 	self->exports = reallocate(self->exports,

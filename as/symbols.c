@@ -270,7 +270,6 @@ decode_local_label_name (char *s)
   int label_number;
   int instance_number;
   char *type;
-  const char *message_format;
   int index = 0;
 
 #ifdef LOCAL_LABEL_PREFIX
@@ -292,9 +291,9 @@ decode_local_label_name (char *s)
   for (instance_number = 0, p++; isdigit (*p); ++p)
     instance_number = (10 * instance_number) + *p - '0';
 
-  message_format = _("\"%d\" (instance number %d of a %s label)");
-  symbol_decode = obstack_alloc (&notes, strlen (message_format) + 30);
-  sprintf (symbol_decode, message_format, label_number, instance_number, type);
+#define MESSAGE_FORMAT "\"%d\" (instance number %d of a %s label)"
+  symbol_decode = obstack_alloc (&notes, strlen (MESSAGE_FORMAT) + 30);
+  sprintf (symbol_decode, MESSAGE_FORMAT, label_number, instance_number, type);
 
   return symbol_decode;
 }

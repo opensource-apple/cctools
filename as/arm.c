@@ -127,7 +127,7 @@ enum {
   BFD_RELOC_ARM_ROSEGREL32,
   BFD_RELOC_ARM_SBREL32,
   BFD_RELOC_32_PCREL,
-  BFD_RELOC_THUMB_PCREL_BRANCH20 = ARM_THUMB_32BIT_BRANCH,
+  BFD_RELOC_THUMB_PCREL_BRANCH20,
   BFD_RELOC_THUMB_PCREL_BRANCH23 = ARM_THUMB_RELOC_BR22,
   BFD_RELOC_ARM_PCREL_BRANCH = ARM_RELOC_BR24
 };
@@ -744,7 +744,7 @@ walk_no_bignums (symbolS * sp)
 	      || (symbol_get_value_expression (sp)->X_op_symbol
 		  && walk_no_bignums (symbol_get_value_expression (sp)->X_op_symbol)));
     }
-#endif NOTYET
+#endif /* NOTYET */
 
   return 0;
 }
@@ -2309,7 +2309,7 @@ opcode_select (int width)
 	  /* No need to force the alignment, since we will have been
 	     coming from ARM mode, which is word-aligned.  */
 	  record_alignment (now_seg, 1);
-#endif NOTYET
+#endif /* NOTYET */
 	}
       mapping_state (MAP_THUMB);
       break;
@@ -2326,7 +2326,7 @@ opcode_select (int width)
 	    frag_align (2, 0, 0);
 
 	  record_alignment (now_seg, 1);
-#endif NOTYET
+#endif /* NOTYET */
 	}
       mapping_state (MAP_ARM);
       break;
@@ -2381,7 +2381,7 @@ s_force_thumb (uintptr_t ignore ATTRIBUTE_UNUSED)
       thumb_mode = 2;
 #ifdef NOTYET
       record_alignment (now_seg, 1);
-#endif NOTYET
+#endif /* NOTYET */
     }
 
   demand_empty_rest_of_line ();
@@ -2504,7 +2504,7 @@ s_thumb_set (uintptr_t equiv)
       && S_IS_DEFINED (symbolP)
       && S_GET_SEGMENT (symbolP) != reg_section)
     as_bad (_("symbol `%s' already defined"), S_GET_NAME (symbolP));
-#endif NOTYET
+#endif /* NOTYET */
 
   pseudo_set (symbolP);
 
@@ -2587,14 +2587,14 @@ s_align (uintptr_t unused ATTRIBUTE_UNUSED)
   if (temp
 #ifdef NOTYET
       && !need_pass_2
-#endif NOTYET
+#endif /* NOTYET */
      )
     {
 #ifdef NOTYET
       if (!fill_p && subseg_text_p (now_seg))
 	frag_align_code (temp, 0);
       else
-#endif NOTYET
+#endif /* NOTYET */
       {
         char fill[4];
 	md_number_to_chars(fill, temp_fill, 4);
@@ -2605,9 +2605,9 @@ s_align (uintptr_t unused ATTRIBUTE_UNUSED)
 
 #ifdef NOTYET
   record_alignment (now_seg, temp);
-#endif NOTYET
+#endif /* NOTYET */
 }
-#endif NOTYET
+#endif /* NOTYET */
 
 static void
 s_bss (uintptr_t ignore ATTRIBUTE_UNUSED)
@@ -2620,7 +2620,7 @@ s_bss (uintptr_t ignore ATTRIBUTE_UNUSED)
   mapping_state (MAP_DATA);
 #else
   as_fatal(".bss directive not supported, use .zerofill for Mach-O files");
-#endif NOTYET
+#endif /* NOTYET */
 }
 
 static void
@@ -2629,12 +2629,12 @@ s_even (uintptr_t ignore ATTRIBUTE_UNUSED)
   /* Never make frag if expect extra pass.  */
 #ifdef NOTYET
   if (!need_pass_2)
-#endif NOTYET
+#endif /* NOTYET */
     frag_align (1, 0, 0, 0);
 
 #ifdef NOTYET
   record_alignment (now_seg, 1);
-#endif NOTYET
+#endif /* NOTYET */
 
   demand_empty_rest_of_line ();
 }
@@ -2822,12 +2822,12 @@ s_ltorg (uintptr_t ignored ATTRIBUTE_UNUSED)
      Only make a frag if we have to.  */
 #ifdef NOTYET
   if (!need_pass_2)
-#endif NOTYET
+#endif /* NOTYET */
     frag_align (2, 0, 0, 0);
 
 #ifdef NOTYET
   record_alignment (now_seg, 2);
-#endif NOTYET
+#endif /* NOTYET */
 
   sprintf (sym_name, "$$lit_\002%x", pool->id);
 
@@ -8967,6 +8967,8 @@ static void
 do_t_rbit (void)
 {
   inst.instruction |= inst.operands[0].reg << 8;
+  /* Rm is bits 3-0 is in of *both* 16-bit halves of the opcode */
+  inst.instruction |= inst.operands[1].reg;
   inst.instruction |= inst.operands[1].reg << 16;
 }
 
@@ -12788,7 +12790,7 @@ fix_new_arm (fragS *	   frag,
 #ifdef NOTYET
       new_fix = fix_new (frag, where, size, make_expr_symbol (exp), 0,
 			 pc_rel, reloc);
-#endif NOTYET
+#endif /* NOTYET */
       break;
     }
 
@@ -13149,7 +13151,7 @@ md_assemble (char *str)
       S_SET_VALUE (last_label_seen, (valueT) frag_now_fix ());
       S_SET_SEGMENT (last_label_seen, now_seg);
     }
-#endif NOTYET
+#endif /* NOTYET */
 
   memset (&inst, '\0', sizeof (inst));
   inst.reloc.type = BFD_RELOC_UNUSED;
@@ -17747,7 +17749,7 @@ autoselect_thumb_from_cpu_variant (void)
   if (!ARM_CPU_HAS_FEATURE (cpu_variant, arm_ext_v1))
     opcode_select (16);
 }
-#endif NOTYET
+#endif /* NOTYET */
 
 void
 md_begin (void)
@@ -17965,7 +17967,7 @@ md_begin (void)
     mach = bfd_mach_arm_unknown;
 
   bfd_set_arch_mach (stdoutput, TARGET_ARCH, mach);
-#endif NOTYET
+#endif /* NOTYET */
 
   if (force_cpusubtype_ALL)
     {
@@ -17997,7 +17999,7 @@ md_begin (void)
       case CPU_SUBTYPE_ARM_V7:
 	{
 	  static const arm_feature_set arm_arch_v7_vfp_v3_plus_neon_v1 =
-	    ARM_FEATURE (ARM_AEXT_V7_ARM | ARM_EXT_DIV,
+	    ARM_FEATURE (ARM_AEXT_V7_ARM | ARM_EXT_V7M | ARM_EXT_DIV,
 			 FPU_VFP_V3 | FPU_NEON_EXT_V1);
 	  cpu_variant = arm_arch_v7_vfp_v3_plus_neon_v1;
 	}
@@ -18056,6 +18058,16 @@ int nsect)
 	if(fixP->fx_r_type == NO_RELOC ||
 	   fixP->fx_r_type == ARM_RELOC_VANILLA){
 	    switch(nbytes){
+	    case 8:
+		*buf++ = val & 0xff;
+		*buf++ = (val >> 8) & 0xff;
+		*buf++ = (val >> 16) & 0xff;
+		*buf++ = (val >> 24) & 0xff;
+		*buf++ = (val >> 32) & 0xff;
+		*buf++ = (val >> 40) & 0xff;
+		*buf++ = (val >> 48) & 0xff;
+		*buf++ = (val >> 56) & 0xff;
+		break;
 	    case 4:
 		*buf++ = val & 0xff;
 		*buf++ = (val >> 8) & 0xff;

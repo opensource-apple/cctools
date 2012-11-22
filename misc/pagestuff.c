@@ -960,6 +960,7 @@ uint32_t page_number)
     struct mach_o_part *mp;
     enum bool printed;
     enum bool sections, sections64;
+    const char *arch_name;
 
 	offset = page_number * vm_page_size;
 	size = vm_page_size;
@@ -1204,10 +1205,14 @@ uint32_t page_number)
 			continue;
 		    if(offset > mp->offset + mp->size)
 			continue;
+		    if(fp->mh != NULL)
+			arch_name = get_arch_name_from_types(fp->mh->cputype,
+						    	fp->mh->cpusubtype);
+		    else
+			arch_name = get_arch_name_from_types(fp->mh64->cputype,
+						    	fp->mh64->cpusubtype);
 		    printf("File Page %u contains empty space in the Mach-O "
-			   "file for %s between:\n", page_number,
-			   get_arch_name_from_types(fp->mh->cputype,
-						    fp->mh->cpusubtype));
+			   "file for %s between:\n", page_number, arch_name);
 		    if(mp->prev == NULL)
 			printf("    the start of the Mach-O file");
 		    else{
@@ -1270,14 +1275,20 @@ void
 print_file_part(
 struct file_part *fp)
 {
+    const char *arch_name;
+
 	switch(fp->type){
 	case FP_FAT_HEADERS:
 	    printf("fat file headers");
 	    break;
 	case FP_MACH_O:
-	    printf("Mach-O file for %s",
-		   get_arch_name_from_types(fp->mh->cputype,
-					    fp->mh->cpusubtype));
+	    if(fp->mh != NULL)
+		arch_name = get_arch_name_from_types(fp->mh->cputype,
+						fp->mh->cpusubtype);
+	    else
+		arch_name = get_arch_name_from_types(fp->mh64->cputype,
+						fp->mh64->cpusubtype);
+	    printf("Mach-O file for %s", arch_name);
 	    break;
 	case FP_EMPTY_SPACE:
 	    printf("empty space");

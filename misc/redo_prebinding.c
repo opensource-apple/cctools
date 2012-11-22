@@ -674,7 +674,7 @@ char *argv[],
 char *envp[])
 {
     int i;
-    char *input_file, *output_file;
+    char *input_file, *output_file, *objcunique;
     struct arch *archs;
     uint32_t narchs;
     struct stat stat_buf;
@@ -936,11 +936,12 @@ char *envp[])
 		output_file = NULL;
 	    }
 	    /*
-	     * Run /usr/bin/objcunique on the output.
+	     * Run objcunique on the output.
 	     */
-	    if(stat("/usr/bin/objcunique", &stat_buf) != -1){
+	    objcunique = cmd_with_prefix("objcunique");
+	    if(stat(objcunique, &stat_buf) != -1){
 		reset_execute_list();
-		add_execute_list("/usr/bin/objcunique");
+		add_execute_list(objcunique);
 		if(output_file != NULL)
 		    add_execute_list(output_file);
 		else
@@ -953,7 +954,7 @@ char *envp[])
 		    add_execute_list(root_dir);
 		}
 		if(execute_list(verbose) == 0)
-		    fatal("internal /usr/bin/objcunique command failed");
+		    fatal("internal objcunique command failed");
 	    }
 	    /*
 	     * Call chmod(2) to insure set-uid, set-gid and sticky bits get set.

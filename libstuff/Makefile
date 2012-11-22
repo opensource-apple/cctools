@@ -5,7 +5,7 @@ OPEN = -D__OPEN_SOURCE__
 LEGACY = -D_MACH_I386_THREAD_STATUS_FPSTATE_LEGACY_FIELD_NAMES_ \
 	 -D_ARCHITECTURE_I386_FPU_FPSTATE_LEGACY_FIELD_NAMES_
 
-ifeq "" "$(NEXT_ROOT)"
+ifneq "$(RC_MAJOR_RELEASE_TRAIN)" "Tiger"
 KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -msoft-float -nostdinc \
        -iwithsysroot /System/Library/Frameworks/Kernel.framework/PrivateHeaders/libsa \
@@ -32,11 +32,14 @@ USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
 	     echo YES ; else echo NO ; \
 	     fi; )
 	
-ifeq "mwccppc" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) $(OPEN) $(LTO) -g -gccinc -I$(SRCROOT)/../include $(LEGACY)
+G = -g
+ifeq "clang" "$(notdir $(CC))"
+  CFLAGS = $(OFLAG) $(OPEN) $(LTO) $(G) -I$(SRCROOT)/../include -Wall $(LEGACY)
+  PG =
 else
-  CFLAGS = $(OFLAG) $(OPEN) $(LTO) -g -I$(SRCROOT)/../include -Wall \
+  CFLAGS = $(OFLAG) $(OPEN) $(LTO) $(G) -I$(SRCROOT)/../include -Wall \
 	   $(X_CFLAGS) $(LEGACY)
+  PG = -pg
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"
@@ -156,7 +159,7 @@ dynamic: $(OBJROOT)/dynamic_obj
 		OFILE_DIR=.						\
 		SRCROOT=..						\
 		SYMROOT=..						\
-		COPTS="-dynamic"					\
+		COPTS="$(DYNAMIC)"					\
 		OFLAG="$(OFLAG)"					\
 		CFILES="$(CFILES)"					\
 		RC_CFLAGS="$(RC_CFLAGS)"				\
@@ -169,7 +172,7 @@ dynamic: $(OBJROOT)/dynamic_obj
 		OFILE_DIR=$(OBJROOT)/dynamic_obj			\
 		SRCROOT=$(SRCROOT)					\
 		SYMROOT=$(SYMROOT)					\
-		COPTS="-dynamic"					\
+		COPTS="$(DYNAMIC)"					\
 		OFLAG="$(OFLAG)"					\
 		CFILES="$(CFILES)"					\
 		RC_CFLAGS="$(RC_CFLAGS)"				\
@@ -186,7 +189,7 @@ profile: $(OBJROOT)/profile_obj
 		OFILE_DIR=.						\
 		SRCROOT=..						\
 		SYMROOT=..						\
-		COPTS="-dynamic -pg"					\
+		COPTS="$(DYNAMIC) $(PG)"				\
 		OFLAG="$(OFLAG)"					\
 		RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)";					\
@@ -198,7 +201,7 @@ profile: $(OBJROOT)/profile_obj
 		OFILE_DIR=$(OBJROOT)/profile_obj			\
 		SRCROOT=$(SRCROOT)					\
 		SYMROOT=$(SYMROOT)					\
-		COPTS="-dynamic -pg"					\
+		COPTS="$(DYNAMIC) $(PG)"				\
 		OFLAG="$(OFLAG)"					\
 		RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)";					\
@@ -284,7 +287,7 @@ fromGASsrc: $(OBJROOT)/dynamic_obj
 	    OFILE_DIR=.							\
 	    SRCROOT=..							\
 	    SYMROOT=..							\
-	    COPTS="-dynamic"						\
+	    COPTS="$(DYNAMIC)"						\
 	    OFLAG="$(OFLAG)"						\
 	    CFILES="bytesex.c round.c"					\
 	    RC_CFLAGS="$(RC_CFLAGS)"					\

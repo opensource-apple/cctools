@@ -125,6 +125,6 @@ extern void frag_align(
 		frag_wane (frag_now);	\
 		frag_new (0);		\
 	}				\
-	obstack_1grow( &frags, datum );	\
+	(void)obstack_1grow( &frags, datum );	\
 }
 #endif /* _FRAGS_H_ */

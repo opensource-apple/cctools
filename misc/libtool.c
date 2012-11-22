@@ -2913,7 +2913,7 @@ char *output)
 	 */
 	for(i = 0; i < narchs || (i == 0 && narchs == 0); i++){
 	    reset_execute_list();
-	    add_execute_list("ld");
+	    add_execute_list_with_prefix("ld");
 	    if(narchs != 0 && cmd_flags.arch_only_flag.name == NULL)
 		add_execute_list("-arch_multiple");
 	    if(archs != NULL){
@@ -3009,7 +3009,7 @@ char *output)
 	 */
 	if(narchs > 1){
 	    reset_execute_list();
-	    add_execute_list("lipo");
+	    add_execute_list_with_prefix("lipo");
 	    add_execute_list("-create");
 	    add_execute_list("-output");
 	    add_execute_list(cmd_flags.output);
@@ -3028,19 +3028,19 @@ char *output)
 	    }
 	}
 	/*
-	 * If we are doing prebinding then run /usr/bin/objcunique on the
+	 * If we are doing prebinding then run objcunique on the
 	 * output.
 	 */
 	if(cmd_flags.prebinding == TRUE){
 	    if(stat("/usr/bin/objcunique", &stat_buf) != -1){
 		reset_execute_list();
-		add_execute_list("/usr/bin/objcunique");
+		add_execute_list_with_prefix("objcunique");
 		add_execute_list(cmd_flags.output);
 		add_execute_list("-prebind");
 		for(j = 0; j < cmd_flags.nLdirs; j++)
 		    add_execute_list(cmd_flags.Ldirs[j]);
 		if(execute_list(cmd_flags.verbose) == 0)
-		    fatal("internal /usr/bin/objcunique command failed");
+		    fatal("internal objcunique command failed");
 	    }
 	}
 }

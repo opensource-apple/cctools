@@ -2,6 +2,10 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.27 release (the cctools-758 release):
+- Fixed the strings(1) man page for the -arch option and removed the comment
+  about -arch all being the default.  Radar bug #6945015.
+
 Changes for the 5.27 release (the cctools-751 release):
 - Fixed the typo of embed -> embedded in the codesign_allocate(1) manpage.
   Radar bug #5859182.

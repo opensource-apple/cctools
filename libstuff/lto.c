@@ -188,11 +188,6 @@ char *target_triple)
 	    ofile->lto_cputype = CPU_TYPE_ARM;
 	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V6;
 	}
-	else if(strncmp(target_triple, "armv7", n) == 0 ||
-	        strncmp(target_triple, "thumbv7", n) == 0){
-	    ofile->lto_cputype = CPU_TYPE_ARM;
-	    ofile->lto_cpusubtype = CPU_SUBTYPE_ARM_V7;
-	}
 	else{
 	    return(0);
 	}

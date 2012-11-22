@@ -177,6 +177,7 @@ input_scrub_next_buffer(
 char **bufp)
 {
   register char *	limit;	/* -> just after last char of buffer. */
+  int give_next_size;
 
   if (partial_size)
     {
@@ -184,11 +185,12 @@ char **bufp)
       memcpy(buffer_start + BEFORE_SIZE, save_source, (int)AFTER_SIZE);
     }
 get_more:
-  limit = input_file_give_next_buffer (buffer_start + BEFORE_SIZE + partial_size);
+  limit = input_file_give_next_buffer(
+		buffer_start + BEFORE_SIZE + partial_size,
+		&give_next_size);
   if (limit)
     {
       register char *	p;	/* Find last newline. */
-
       for (p = limit;   * -- p != '\n';   )
 	{
 	}
@@ -199,6 +201,16 @@ get_more:
 	
 	  new = limit - (buffer_start + BEFORE_SIZE + partial_size);
 	  partial_size += new;
+
+	  /*
+	   * If there is enough room left in this buffer for what
+	   * input_file_give_next_buffer() will need don't reallocate as we
+	   * could run out of memory needlessly.
+	   */
+	  if((BEFORE_SIZE + buffer_length * 2) - (limit - buffer_start) >
+	     give_next_size)
+	      goto get_more;
+
   	  buffer_length = buffer_length * 2;
   	  buffer_start = xrealloc (buffer_start,
 				   (size_t)(BEFORE_SIZE + buffer_length +

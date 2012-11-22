@@ -305,9 +305,11 @@ struct section_info_32 {
     char *contents;
     uint32_t addr;
     uint32_t size;
+    uint32_t offset;
     struct relocation_info *relocs;
     uint32_t nrelocs;
     enum bool protected;
+    enum bool zerofill;
 };
 
 static void walk_pointer_list(
@@ -1159,13 +1161,14 @@ uint32_t *nsections,
 uint32_t *database) 
 {
     enum byte_sex host_byte_sex;
-    enum bool swapped, database_set, zerobased;
+    enum bool swapped, database_set, zerobased, encrypt_found;
 
     uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command sg;
     struct section s;
+    struct encryption_info_command encrypt;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != object_byte_sex;
@@ -1175,6 +1178,7 @@ uint32_t *database)
 	database_set = FALSE;
 	*database = 0;
 	zerobased = FALSE;
+	encrypt_found = FALSE;
 
 	lc = load_commands;
 	for(i = 0 ; i < ncmds; i++){
@@ -1229,6 +1233,9 @@ uint32_t *database)
 			   s.sectname, 16);
 		    (*sections)[*nsections].addr = s.addr;
 		    (*sections)[*nsections].contents = object_addr + s.offset;
+		    (*sections)[*nsections].offset = s.offset;
+		    (*sections)[*nsections].zerofill = (s.flags & SECTION_TYPE)
+			== S_ZEROFILL ? TRUE : FALSE;
 		    if(s.offset > object_size){
 			printf("section contents of: (%.16s,%.16s) is past "
 			       "end of file\n", s.segname, s.sectname);
@@ -1282,6 +1289,16 @@ uint32_t *database)
 		    p += size;
 		}
 		break;
+	    case LC_ENCRYPTION_INFO:
+		memset((char *)&encrypt, '\0',
+		       sizeof(struct encryption_info_command));
+		size = left < sizeof(struct encryption_info_command) ?
+		       left : sizeof(struct encryption_info_command);
+		memcpy((char *)&encrypt, (char *)lc, size);
+		if(swapped)
+		    swap_encryption_command(&encrypt, host_byte_sex);
+		encrypt_found = TRUE;
+		break;
 	    }
 	    if(lcmd.cmdsize == 0){
 		printf("load command %u size zero (can't advance to other "
@@ -1294,6 +1311,25 @@ uint32_t *database)
 	}
 	if(zerobased == TRUE)
 	    *database = 0;
+
+	if(encrypt_found == TRUE && encrypt.cryptid != 0){
+	    for(i = 0; i < *nsections; i++){
+		if((*sections)[i].size > 0 && (*sections)[i].zerofill == FALSE){
+		    if((*sections)[i].offset >
+		       encrypt.cryptoff + encrypt.cryptsize){
+			/* section starts past encryption area */ ;
+		    }
+		    else if((*sections)[i].offset + (*sections)[i].size <
+			encrypt.cryptoff){
+			/* section ends before encryption area */ ;
+		    }
+		    else{
+			/* section has part in the encrypted area */
+			(*sections)[i].protected = TRUE;
+		    }
+		}
+	    }
+	}
 }
 
 static

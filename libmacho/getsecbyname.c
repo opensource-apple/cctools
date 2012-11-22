@@ -146,7 +146,7 @@ getsectbynamefromheaderwithswap(
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
 	for(i = 0; i < mhp->ncmds; i++){
-	    if(sgp->cmd == (fSwap ? NXSwapLong(LC_SEGMENT) : LC_SEGMENT)) {
+	    if(sgp->cmd == (fSwap ? OSSwapInt32(LC_SEGMENT) : LC_SEGMENT)) {
 	    
 		if (fSwap) {
 #ifdef __LITTLE_ENDIAN__
@@ -182,7 +182,7 @@ getsectbynamefromheaderwithswap(
 		sgp = (struct segment_command *)((char *)sgp + sgp->cmdsize);
 	    } else {
 		sgp = (struct segment_command *)((char *)sgp +
-		    (fSwap ? NXSwapLong(sgp->cmdsize) : sgp->cmdsize));
+		    (fSwap ? OSSwapInt32(sgp->cmdsize) : sgp->cmdsize));
 	    }
 	}
 	return((struct section *)0);

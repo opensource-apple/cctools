@@ -586,7 +586,7 @@ struct fat_arch *fat_arch)
 	    }
 	    break;
 	case CPU_TYPE_ANY:
-	    switch(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK){
+	    switch((int)(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK)){
 	    case CPU_SUBTYPE_MULTIPLE:
 		printf("any\n");
 		break;
@@ -610,7 +610,7 @@ print_arch_unknown:
 
 /*
  * print_cputype() helps print_fat_headers by printing the cputype and
- * cpusubtype (symbolicly for the one's it knows about).
+ * cpusubtype (symbolically for the one's it knows about).
  */
 static
 void
@@ -859,7 +859,7 @@ cpu_subtype_t cpusubtype)
 	    }
 	    break;
 	case CPU_TYPE_ANY:
-	    switch(cpusubtype & ~CPU_SUBTYPE_MASK){
+	    switch((int)(cpusubtype & ~CPU_SUBTYPE_MASK)){
 	    case CPU_SUBTYPE_MULTIPLE:
 		printf("    cputype CPU_TYPE_ANY\n"
 		       "    cpusubtype CPU_SUBTYPE_MULTIPLE\n");
@@ -3187,13 +3187,13 @@ struct uuid_command *uuid)
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf("   uuid 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x"
-	       "\n", (unsigned int)uuid->uuid[0], (unsigned int)uuid->uuid[1],
+	printf("   uuid %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-"
+	       "%02X%02X%02X%02X%02X%02X\n",
+	       (unsigned int)uuid->uuid[0], (unsigned int)uuid->uuid[1],
 	       (unsigned int)uuid->uuid[2],  (unsigned int)uuid->uuid[3],
 	       (unsigned int)uuid->uuid[4],  (unsigned int)uuid->uuid[5],
-	       (unsigned int)uuid->uuid[6],  (unsigned int)uuid->uuid[7]);
-	printf("        0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x"
-	       "\n", (unsigned int)uuid->uuid[8],  (unsigned int)uuid->uuid[9],
+	       (unsigned int)uuid->uuid[6],  (unsigned int)uuid->uuid[7],
+	       (unsigned int)uuid->uuid[8],  (unsigned int)uuid->uuid[9],
 	       (unsigned int)uuid->uuid[10], (unsigned int)uuid->uuid[11],
 	       (unsigned int)uuid->uuid[12], (unsigned int)uuid->uuid[13],
 	       (unsigned int)uuid->uuid[14], (unsigned int)uuid->uuid[15]);
@@ -4466,9 +4466,9 @@ enum byte_sex thread_states_byte_sex)
 		        memcpy((char *)&cpu, begin, left);
 		        begin += left;
 		    }
-#ifdef x86_THREAD_STATE64
+#if defined(x86_THREAD_STATE64) && i386_THREAD_STATE != -1
 print_x86_thread_state32:
-#endif /* x86_THREAD_STATE64 */
+#endif
 		    if(swapped)
 			swap_i386_thread_state(&cpu, host_byte_sex);
 		    printf(

@@ -160,7 +160,7 @@ static void immediate(
 static void displacement(
     const char **symadd,
     const char **symsub,
-    uint32_t *value,
+    uint64_t *value,
     const uint32_t value_size,
     const char *sect,
     uint64_t sect_addr,
@@ -2149,7 +2149,7 @@ enum bool verbose)
 		else if(prefix_byte == 0xf2)
 		    printf("movddup\t");
 		else if(prefix_byte == 0xf3)
-		    printf("%movsldup\t");
+		    printf("movsldup\t");
 		else{ /* no prefix_byte */
 		    if(mode == REG_ONLY)
 			printf("%shlps\t", mnemonic);
@@ -3215,11 +3215,11 @@ enum bool verbose)
 	/* single operand, a 16/32 bit displacement */
 	case D:
 	    value0_size = OPSIZE(data16, LONGOPERAND, 0);
-	    DISPLACEMENT(&symadd0, &symsub0, &value0, value0_size);
+	    DISPLACEMENT(&symadd0, &symsub0, &imm0, value0_size);
 	    printf("%s\t", mnemonic);
-	    print_operand(seg, symadd0, symsub0, value0, value0_size, "", "");
+	    print_operand(seg, symadd0, symsub0, imm0, value0_size, "", "");
 	    if(verbose){
-		indirect_symbol_name = guess_indirect_symbol(value0,
+		indirect_symbol_name = guess_indirect_symbol(imm0,
 		    ncmds, sizeofcmds, load_commands, object_byte_sex,
 		    indirect_symbols, nindirect_symbols, symbols, symbols64,
 		    nsymbols, strings,strings_size);
@@ -3231,6 +3231,15 @@ enum bool verbose)
 
 	/* indirect to memory or register operand */
 	case INM:
+	    /*
+	     * If this is call (near) in a 64-bit object the FF /2 opcode
+	     * results in a 64-bit operand even without a rex prefix byte.
+	     * So to get the 64-bit register names in the disassembly we
+	     * set the REX.W bit to indicate 64-bit operand size.
+	     */
+	    if((cputype & CPU_ARCH_ABI64) == CPU_ARCH_ABI64 &&
+	       opcode1 == 0xf && opcode2 == 0xf && opcode3 == 2)
+		rex |= 0x8;
 	    wbit = LONGOPERAND;
 	    GET_OPERAND(&symadd0, &symsub0, &value0, &value0_size, result0);
 	    if((mode == 0 && (r_m == 5 || r_m == 4)) || mode == 1 ||
@@ -3269,9 +3278,9 @@ enum bool verbose)
 	/* jmp/call. single operand, 8 bit displacement */
 	case BD:
 	    value0_size = sizeof(char);
-	    DISPLACEMENT(&symadd0, &symsub0, &value0, value0_size);
+	    DISPLACEMENT(&symadd0, &symsub0, &imm0, value0_size);
 	    printf("%s\t", mnemonic);
-	    print_operand(seg, symadd0, symsub0, value0, sizeof(int32_t), "",
+	    print_operand(seg, symadd0, symsub0, imm0, sizeof(int32_t), "",
 			  "\n");
 	    return(length);
 
@@ -3660,7 +3669,7 @@ void
 displacement(
 const char **symadd,
 const char **symsub,
-uint32_t *value,
+uint64_t *value,
 const uint32_t value_size,
 
 const char *sect,

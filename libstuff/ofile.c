@@ -363,6 +363,15 @@ void *cookie)
 	     */
 	    if(all_archs == FALSE){
 		(void)get_arch_from_host(&host_arch_flag, NULL);
+#if __LP64__
+		/*
+		 * If runing as a 64-bit binary and on an Intel x86 host
+		 * default to 64-bit.
+		 */
+		if(host_arch_flag.cputype == CPU_TYPE_I386)
+		    host_arch_flag =
+			*get_arch_family_from_cputype(CPU_TYPE_X86_64);
+#endif /* __LP64__ */
 		hostflag = FALSE;
 
 		family = FALSE;
@@ -4190,7 +4199,7 @@ check_dylib_command:
 		    }
 		    break;
 		}
-#endif PPC_THREAD_STATE64_COUNT
+#endif /* PPC_THREAD_STATE64_COUNT */
 	    	if(cputype == CPU_TYPE_MC88000){
 		    m88k_thread_state_grf_t *cpu;
 		    m88k_thread_state_xrf_t *fpu;
@@ -4379,7 +4388,7 @@ check_dylib_command:
 			    *((uint32_t *)state) = count;
 			}
 			state += sizeof(uint32_t);
-			switch(flavor){
+			switch((int)flavor){
 			case i386_THREAD_STATE:
 #if i386_THREAD_STATE == 1
 			case -1:

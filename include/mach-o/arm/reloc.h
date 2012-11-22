@@ -39,6 +39,6 @@ enum reloc_type_arm
     ARM_RELOC_BR24,	/* 24 bit branch displacement (to a word address) */
     ARM_THUMB_RELOC_BR22, /* 22 bit branch displacement (to a half-word
 			     address) */
-    ARM_THUMB_32BIT_BRANCH, /* a thumb 32-bit branch instruction possibly
-				needing page-spanning branch workaround */
+    ARM_THUMB_32BIT_BRANCH, /* obsolete - a thumb 32-bit branch instruction
+			     possibly needing page-spanning branch workaround */
 };

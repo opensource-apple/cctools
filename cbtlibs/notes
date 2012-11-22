@@ -1,3 +1,12 @@
+Changes for the 5.27 release (the cctools-755 release):
+- Changed libsyminfo.c and removed the fileName field from the
+  selectedSymbolListInfo struct and the code to save and free it.  Radar bug
+  #6766272.
+
+Changes for the 5.27 release (the cctools-752 release):
+- Ported to build with clang.
+  - Changed Makefile to work around bug 6761248.
+
 Changes for the 5.26 release (the cctools-705 release):
 - Ported libsyminfo.c to run on 64-bit hosts by changing unsigned long to
   uint32_t. Radar bug #6022298

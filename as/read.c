@@ -4018,14 +4018,14 @@ int *lenP)
 	{
 	    input_line_pointer++;	/* Skip opening quote. */
 	    while((c = next_char_of_string()) >= 0){
-		obstack_1grow(&notes, c);
+		(void)(obstack_1grow(&notes, c));
 		len++;
 	    }
 	    /*
 	     * This next line is so demand_copy_C_string will return a null
 	     * termanated string.
 	     */
-	    obstack_1grow(&notes, '\0');
+	    (void)(obstack_1grow(&notes, '\0'));
 	    retval = obstack_finish(&notes);
 	}
 	else{
@@ -4263,8 +4263,8 @@ uintptr_t value)
 	else{
 	    SKIP_WHITESPACE();
 	    while(is_part_of_name(c = *input_line_pointer ++))
-		obstack_1grow (&macros, c);
-	    obstack_1grow(&macros, '\0');
+		(void)(obstack_1grow (&macros, c));
+	    (void)(obstack_1grow(&macros, '\0'));
 	    --input_line_pointer;
 	    macro_name = obstack_finish(&macros);
 	    if(macro_name == NULL)
@@ -4295,7 +4295,7 @@ uintptr_t value)
 	    ignore_rest_of_line();
 	}
 	else{
-	    obstack_1grow(&macros, '\0');
+	    (void)(obstack_1grow(&macros, '\0'));
 	    errorString = hash_insert(ma_hash, macro_name,
 				      obstack_finish(&macros));
 	    if(errorString != NULL && *errorString)
@@ -4330,7 +4330,7 @@ char *char_pointer)
 	do{
 	    c = *char_pointer ++;
 	    know(c != '\0');
-	    obstack_1grow(&macros, c);
+	    (void)(obstack_1grow(&macros, c));
 	}while((c != ':') && !(is_end_of_line(c)));
 	if(char_pointer > input_line_pointer)
 	    input_line_pointer = char_pointer;
@@ -4386,9 +4386,9 @@ char *macro_contents)
 		    know(c != '\0');
 		    if(is_end_of_line(c))
 			as_bad("mismatched parenthesis");
-		    obstack_1grow(&macros, c);
+		    (void)(obstack_1grow(&macros, c));
 		}while(1);
-		obstack_1grow(&macros, '\0');
+		(void)(obstack_1grow(&macros, '\0'));
 		arguments[index] = obstack_finish(&macros);
 		nargs++;
 		if(is_end_of_line(c))
@@ -4406,7 +4406,7 @@ char *macro_contents)
 	 * Build a buffer containing the macro contents with arguments
 	 * substituted
 	 */
-	obstack_1grow(&macros, '\n');
+	(void)(obstack_1grow(&macros, '\n'));
 	while((c = *macro_contents++)){
 	    if(c == '$'){
 		if(*macro_contents == '$'){
@@ -4418,21 +4418,21 @@ char *macro_contents)
 		    macro_contents = arguments[index];
 		    if(macro_contents){
 			while ((c = * macro_contents ++))
-			obstack_1grow (&macros, c);
+			(void)(obstack_1grow (&macros, c));
 		    }
 		    macro_contents = last_input_line_pointer;
 		    continue;
 		}
 		else if (*macro_contents == 'n'){
 		    macro_contents++ ;
-		    obstack_1grow(&macros, nargs + '0');
+		    (void)(obstack_1grow(&macros, nargs + '0'));
 		    continue;
 		}
 	    }
-	    obstack_1grow (&macros, c);
+	    (void)(obstack_1grow (&macros, c));
 	}
-	obstack_1grow (&macros, '\n');
-	obstack_1grow (&macros, '\0');
+	(void)(obstack_1grow (&macros, '\n'));
+	(void)(obstack_1grow (&macros, '\0'));
 	last_buffer_limit = buffer_limit;
 	last_count_lines = count_lines;
 	last_input_line_pointer = input_line_pointer;
@@ -4550,14 +4550,14 @@ uintptr_t value)
 		do{
 		    do{
 			the_char = getc_unlocked(dump_fp);
-			obstack_1grow(&macros, the_char);
+			(void)(obstack_1grow(&macros, the_char));
 		    }while(the_char);
 		    char_pointer = obstack_finish (&macros);
 		    if(!(*char_pointer))
 			break;
 		    do{
 			the_char = getc_unlocked(dump_fp);
-			obstack_1grow(&macros, the_char);
+			(void)(obstack_1grow(&macros, the_char));
 		    }while(the_char);
 		    if(hash_insert(ma_hash, char_pointer,
 				   obstack_finish(&macros)))
@@ -4574,7 +4574,7 @@ uintptr_t value)
 		do{
 		    do{
 			the_char = getc_unlocked(dump_fp);
-			obstack_1grow(&macros, the_char);
+			(void)(obstack_1grow(&macros, the_char));
 		    }while(the_char);
 		    char_pointer = obstack_base(&macros);
 		    obstack_next_free(&macros) = char_pointer;

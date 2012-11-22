@@ -328,10 +328,12 @@ struct section_info_64 {
     char *contents;
     uint64_t addr;
     uint64_t size;
+    uint32_t offset;
     struct relocation_info *relocs;
     uint32_t nrelocs;
     enum bool cstring;
     enum bool protected;
+    enum bool zerofill;
 };
 
 static void walk_pointer_list(
@@ -1679,13 +1681,14 @@ uint32_t *nsections,
 uint64_t *database) 
 {
     enum byte_sex host_byte_sex;
-    enum bool swapped, database_set, zerobased;
+    enum bool swapped, database_set, zerobased, encrypt_found;
 
     uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command_64 sg64;
     struct section_64 s64;
+    struct encryption_info_command encrypt;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != object_byte_sex;
@@ -1695,6 +1698,7 @@ uint64_t *database)
 	database_set = FALSE;
 	*database = 0;
 	zerobased = FALSE;
+	encrypt_found = FALSE;
 
 	lc = load_commands;
 	for(i = 0 ; i < ncmds; i++){
@@ -1749,6 +1753,9 @@ uint64_t *database)
 			   s64.sectname, 16);
 		    (*sections)[*nsections].addr = s64.addr;
 		    (*sections)[*nsections].contents = object_addr + s64.offset;
+		    (*sections)[*nsections].offset = s64.offset;
+		    (*sections)[*nsections].zerofill =
+			(s64.flags & SECTION_TYPE) == S_ZEROFILL ? TRUE : FALSE;
 		    if(s64.offset > object_size){
 			printf("section contents of: (%.16s,%.16s) is past "
 			       "end of file\n", s64.segname, s64.sectname);
@@ -1806,6 +1813,16 @@ uint64_t *database)
 		    p += size;
 		}
 		break;
+	    case LC_ENCRYPTION_INFO:
+		memset((char *)&encrypt, '\0',
+		       sizeof(struct encryption_info_command));
+		size = left < sizeof(struct encryption_info_command) ?
+		       left : sizeof(struct encryption_info_command);
+		memcpy((char *)&encrypt, (char *)lc, size);
+		if(swapped)
+		    swap_encryption_command(&encrypt, host_byte_sex);
+		encrypt_found = TRUE;
+		break;
 	    }
 	    if(lcmd.cmdsize == 0){
 		printf("load command %u size zero (can't advance to other "
@@ -1815,6 +1832,25 @@ uint64_t *database)
 	    lc = (struct load_command *)((char *)lc + lcmd.cmdsize);
 	    if((char *)lc > (char *)load_commands + sizeofcmds)
 		break;
+	}
+
+	if(encrypt_found == TRUE && encrypt.cryptid != 0){
+	    for(i = 0; i < *nsections; i++){
+		if((*sections)[i].size > 0 && (*sections)[i].zerofill == FALSE){
+		    if((*sections)[i].offset >
+		       encrypt.cryptoff + encrypt.cryptsize){
+			/* section starts past encryption area */ ;
+		    }
+		    else if((*sections)[i].offset + (*sections)[i].size <
+			encrypt.cryptoff){
+			/* section ends before encryption area */ ;
+		    }
+		    else{
+			/* section has part in the encrypted area */
+			(*sections)[i].protected = TRUE;
+		    }
+		}
+	    }
 	}
 }
 

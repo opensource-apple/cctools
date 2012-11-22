@@ -113,6 +113,9 @@ open_archive(mode)
 	if ((fd = open(archive, mode, DEFFILEMODE)) < 0)
 		error(archive);
 
+	if((mode & O_ACCMODE) == O_RDONLY)
+	    goto skip_flock;
+
 	/* 
 	 * Attempt to place a lock on the opened file - if we get an 
 	 * error then someone is already working on this library (or
@@ -169,6 +172,7 @@ opened:
 			break;
 		}
 	}
+skip_flock:
 
 	/*
 	 * If not created, O_RDONLY|O_RDWR indicates that it has to be

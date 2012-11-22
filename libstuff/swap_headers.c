@@ -663,7 +663,7 @@ check_dylib_command:
 			state += sizeof(uint32_t);
 			count = *((uint32_t *)state);
 			state += sizeof(uint32_t);
-			switch(flavor){
+			switch((int)flavor){
 			case i386_THREAD_STATE:
 /* current i386 thread states */
 #if i386_THREAD_STATE == 1
@@ -1348,7 +1348,7 @@ check_dylib_command:
 			count = *((uint32_t *)state);
 			*((uint32_t *)state) = SWAP_INT(count);
 			state += sizeof(uint32_t);
-			switch(flavor){
+			switch((int)flavor){
 			case i386_THREAD_STATE:
 /* current i386 thread states */
 #if i386_THREAD_STATE == 1

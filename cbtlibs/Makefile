@@ -71,7 +71,7 @@ else
 endif
 
 libsyminfo.a: libsyminfo.o
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
+	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/libsyminfo.o.tmp \
 		libsyminfo.o $(LIBSTUFF)
 	libtool -static -o $(SYMROOT)/libsyminfo.a \

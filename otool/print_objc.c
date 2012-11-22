@@ -311,7 +311,9 @@ struct section_info {
     char *contents;
     uint32_t addr;
     uint32_t size;
+    uint32_t offset;
     enum bool protected;
+    enum bool zerofill;
 };
 
 static void get_objc_sections(
@@ -1098,13 +1100,14 @@ uint32_t *sect_addr,
 uint32_t *sect_size)
 {
     enum byte_sex host_byte_sex;
-    enum bool swapped;
+    enum bool swapped, encrypt_found;
 
     uint32_t i, j, left, size;
     struct load_command lcmd, *lc;
     char *p;
     struct segment_command sg;
     struct section s;
+    struct encryption_info_command encrypt;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != object_byte_sex;
@@ -1114,6 +1117,7 @@ uint32_t *sect_size)
 	*sect = NULL;
 	*sect_addr = 0;
 	*sect_size = 0;
+	encrypt_found = FALSE;
 
 	lc = load_commands;
 	for(i = 0 ; i < ncmds; i++){
@@ -1159,6 +1163,9 @@ uint32_t *sect_size)
 			(*objc_sections)[*nobjc_sections].addr = s.addr;
 			(*objc_sections)[*nobjc_sections].contents = 
 							 object_addr + s.offset;
+			(*objc_sections)[*nobjc_sections].offset = s.offset;
+		        (*objc_sections)[*nobjc_sections].zerofill =
+			  (s.flags & SECTION_TYPE) == S_ZEROFILL ? TRUE : FALSE;
 			if(s.offset > object_size){
 			    printf("section contents of: (%.16s,%.16s) is past "
 				   "end of file\n", s.segname, s.sectname);
@@ -1197,6 +1204,16 @@ uint32_t *sect_size)
 		    p += size;
 		}
 		break;
+	    case LC_ENCRYPTION_INFO:
+		memset((char *)&encrypt, '\0',
+		       sizeof(struct encryption_info_command));
+		size = left < sizeof(struct encryption_info_command) ?
+		       left : sizeof(struct encryption_info_command);
+		memcpy((char *)&encrypt, (char *)lc, size);
+		if(swapped)
+		    swap_encryption_command(&encrypt, host_byte_sex);
+		encrypt_found = TRUE;
+		break;
 	    }
 	    if(lcmd.cmdsize == 0){
 		printf("load command %u size zero (can't advance to other "
@@ -1206,6 +1223,26 @@ uint32_t *sect_size)
 	    lc = (struct load_command *)((char *)lc + lcmd.cmdsize);
 	    if((char *)lc > (char *)load_commands + sizeofcmds)
 		break;
+	}
+
+	if(encrypt_found == TRUE && encrypt.cryptid != 0){
+	    for(i = 0; i < *nobjc_sections; i++){
+		if((*objc_sections)[i].size > 0 &&
+		   (*objc_sections)[i].zerofill == FALSE){
+		    if((*objc_sections)[i].offset >
+		       encrypt.cryptoff + encrypt.cryptsize){
+			/* section starts past encryption area */ ;
+		    }
+		    else if((*objc_sections)[i].offset +
+			    (*objc_sections)[i].size < encrypt.cryptoff){
+			/* section ends before encryption area */ ;
+		    }
+		    else{
+			/* section has part in the encrypted area */
+			(*objc_sections)[i].protected = TRUE;
+		    }
+		}
+	    }
 	}
 }
 

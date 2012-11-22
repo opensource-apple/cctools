@@ -2,13 +2,13 @@ RC_OS = macos
 export USE_APPLE_PB_SUPPORT = all
 OFLAG = -Os
 OPEN = -D__OPEN_SOURCE__
-X_CFLAGS = -fno-builtin-round
+X_CFLAGS = -fno-builtin-round -mdynamic-no-pic
 
-ifneq "mwccppc" "$(notdir $(CC))"
-  GCC_FLAGS = -Wall $(X_CFLAGS) -mdynamic-no-pic
+ifneq "clang" "$(notdir $(CC))"
+  GCC_FLAGS = -Wall $(X_CFLAGS)
 endif
 
-USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
+USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "clang" ] && \
 				  [ "$(RC_XBS)" != "YES" ]; then \
 	     echo YES ; else echo NO ; \
 	     fi; )
@@ -319,15 +319,15 @@ asparc_test: asparc_dir
 
 
 driver:	driver.o apple_version.o
-	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/driver \
+	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/driver \
 		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o \
 		$(LIBSTUFF_DIR) $(LIBSTUFF)
 
 as:	$(OBJS) $(TARGET_OBJS)
-	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
+	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/as.private.o $(OBJS) $(TARGET_OBJS) \
 		$(LIBSTUFF_DIR) $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/as $(SYMROOT)/as.private.o
+	$(CC) $(RC_CFLAGS) -o $(SYMROOT)/as $(SYMROOT)/as.private.o
 
 m68k-check:
 	$(CC) $(COPTS) $(CFLAGS) -o check ../m68k-check.c
@@ -361,3 +361,94 @@ test:
 
 apple_version.c:
 	echo "const char apple_version[]= " \"`vers_string $(VERS_STRING_FLAGS) -f cctools`\" ";" > \
+		$(OFILE_DIR)/$@
+
+ifeq "NO" "$(USE_DEPENDENCY_FILE)"
+.c.o:
+	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -c -o $(OFILE_DIR)/$*.o $<
+else
+.c.o:
+	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -c -MD \
+		-dependency-file $(OFILE_DIR)/$*.d -o $(OFILE_DIR)/$*.o $<
+	md -d -u $(OFILE_DIR)/Makedep $(OFILE_DIR)/$*.d
+endif
+
+clean shlib_clean:
+	-rm -r -f $(OFILE_DIRS) make.out
+
+installsrc installGASsrc:
+	$(MKDIRS) $(SRCROOT)
+	chmod 755 $(SRCROOT)
+	gnutar cf - $(INSTALL_FILES) | (cd $(SRCROOT); gnutar xf -)
+	chmod 444 $(SRCROOT)/*
+
+install: all $(RC_OS)_install
+
+macos_install: common_install xcommon_install
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/i386
+	install -c -s -m 555 $(SYMROOT)/a386_dir/as \
+		$(DSTROOT)$(LIBDIR)/i386/as
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/x86_64
+	install -c -s -m 555 $(SYMROOT)/ax86_64_dir/as \
+		$(DSTROOT)$(LIBDIR)/x86_64/as
+
+teflon_install: common_install xcommon_install
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/i386
+	install -c -s -m 555 $(SYMROOT)/a386_dir/as \
+		$(DSTROOT)$(LIBDIR)/i386/as
+
+xcommon_install:
+	$(MKDIRS) $(DSTROOT)$(USRBINDIR)
+	install -c -s -m 555 $(SYMROOT)/driver_dir/driver \
+		$(DSTROOT)$(USRBINDIR)/as	
+	$(MKDIRS) $(DSTROOT)/usr/local/OpenSourceVersions/
+	install -c -s -m 444 $(SRCROOT)/cctools.plist \
+		$(DSTROOT)/usr/local/OpenSourceVersions/cctools.plist
+	$(MKDIRS) $(DSTROOT)/usr/local/OpenSourceLicenses/
+	install -c -s -m 444 $(SRCROOT)/COPYING \
+		$(DSTROOT)/usr/local/OpenSourceLicenses/cctools.txt
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc
+	install -c -s -m 555 $(SYMROOT)/appc_dir/as \
+		$(DSTROOT)$(LIBDIR)/ppc/as
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/ppc64
+	install -c -s -m 555 $(SYMROOT)/appc64_dir/as \
+		$(DSTROOT)$(LIBDIR)/ppc64/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/m68k
+	install -c -s -m 555 $(SYMROOT)/a68_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/m68k/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/sparc 
+	install -c -s -m 555 $(SYMROOT)/asparc_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/sparc/as
+
+nextstep_install: common_install
+	$(MKDIRS) $(DSTROOT)$(BINDIR)
+	install -c -s -m 555 $(SYMROOT)/driver_dir/driver \
+		$(DSTROOT)$(BINDIR)/as	
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/m68k
+	install -c -s -m 555 $(SYMROOT)/a68_dir/as \
+		$(DSTROOT)$(LIBDIR)/m68k/as
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/i386
+	install -c -s -m 555 $(SYMROOT)/a386_dir/as \
+		$(DSTROOT)$(LIBDIR)/i386/as
+	$(MKDIRS) $(DSTROOT)$(LIBDIR)/sparc
+	install -c -s -m 555 $(SYMROOT)/asparc_dir/as \
+		$(DSTROOT)$(LIBDIR)/sparc/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/ppc
+	install -c -s -m 555 $(SYMROOT)/appc_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/ppc/as
+
+common_install:
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/m88k
+	install -c -s -m 555 $(SYMROOT)/a88_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/m88k/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/hppa
+	install -c -s -m 555 $(SYMROOT)/ahppa_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/hppa/as
+	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/i860
+	install -s -m 555 $(SYMROOT)/a860_dir/as \
+		$(DSTROOT)$(LOCLIBDIR)/i860/as
+
+$(OFILE_DIRS) $(SYM_DIRS):
+	$(MKDIRS) $@
+
+-include $(DEP_DIR)/Makedep

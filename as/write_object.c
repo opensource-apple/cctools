@@ -1030,15 +1030,8 @@ struct fix *fixP)
 	/*
 	 * If fx_addsy is NULL then this fix needs no relocation entry.
 	 */
-	if(fixP->fx_addsy == NULL){
-#ifdef ARM
-	    if(archflag_cpusubtype == CPU_SUBTYPE_ARM_V7 &&
-	       (fixP->fx_r_type == ARM_THUMB_32BIT_BRANCH ||
-	        fixP->fx_r_type == ARM_THUMB_RELOC_BR22))
-		return(1);
-#endif
+	if(fixP->fx_addsy == NULL)
 	    return(0);
-	}
 
 	/*
 	 * If this fix has a subtract symbol it is a SECTDIFF relocation which
@@ -1100,9 +1093,6 @@ struct relocation_info *riP,
 uint32_t debug_section)
 {
     struct symbol *symbolP;
-#ifdef ARM
-    struct symbol fake_arm_thumb_symbol;
-#endif
     uint32_t count;
     struct scattered_relocation_info sri;
     uint32_t sectdiff;
@@ -1113,33 +1103,15 @@ uint32_t debug_section)
 	/*
 	 * If fx_addsy is NULL then this fix needs no relocation entry.
 	 */
-	if(fixP->fx_addsy == NULL){
-#ifdef ARM
-	    if(archflag_cpusubtype != CPU_SUBTYPE_ARM_V7 ||
-	       (fixP->fx_r_type != ARM_THUMB_32BIT_BRANCH &&
-	        fixP->fx_r_type != ARM_THUMB_RELOC_BR22))
-#endif
-	    	return(0);
-	}
+	if(fixP->fx_addsy == NULL)
+	    return(0);
 
 #ifdef TC_VALIDATE_FIX
 	TC_VALIDATE_FIX(fixP, sect_addr, 0);
 #endif
 
 	memset(riP, '\0', sizeof(struct relocation_info));
-#ifdef ARM
-	if(fixP->fx_addsy == NULL &&
-	   archflag_cpusubtype == CPU_SUBTYPE_ARM_V7 &&
-	   (fixP->fx_r_type == ARM_THUMB_32BIT_BRANCH ||
-	    fixP->fx_r_type == ARM_THUMB_RELOC_BR22)){
-	    memset(&fake_arm_thumb_symbol, '\0', sizeof(struct symbol));
-	    symbolP = &fake_arm_thumb_symbol;
-	    symbolP->sy_type = N_ABS;
-	    fixP->fx_r_type = ARM_THUMB_32BIT_BRANCH;
-	}
-	else
-#endif /* ARM */
-	    symbolP = fixP->fx_addsy;
+	symbolP = fixP->fx_addsy;
 
 	switch(fixP->fx_size){
 	    case 1:

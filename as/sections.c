@@ -185,7 +185,7 @@ uint32_t sizeof_stub)
 	     * on a address that is aligned correctly for the engine that runs
 	     * the assembler.
 	     */
-	    obstack_finish(&frags);
+	    (void)obstack_finish(&frags);
 	}
 
 	/*
