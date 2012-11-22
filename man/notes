@@ -2,6 +2,10 @@ TODO:
 - Add -v description to checksyms.
 - The 4.4bsd a.out(5) man page is wrong for Rhapsody.
 
+Changes for the 5.16 release (the cctools-524 release):
+- Changed the Makefile to use OLD_DYLD_STUFF instead of DYLD_STUFF to work
+  around Radar bug #3675086.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Added the description of the -v flag to the ld(1) man page.  Radar bug
   #3557760.

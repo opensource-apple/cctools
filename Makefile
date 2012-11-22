@@ -42,26 +42,26 @@ else
 endif
 
 ifeq "macos" "$(RC_OS)"
-  DYLD_STUFF := $(shell if [ "$(RC_RELEASE)" = "Beaker"    ] || \
-			   [ "$(RC_RELEASE)" = "Bunsen"    ] || \
-			   [ "$(RC_RELEASE)" = "Gonzo"     ] || \
-			   [ "$(RC_RELEASE)" = "Kodiak"    ] || \
-			   [ "$(RC_RELEASE)" = "Cheetah"   ] || \
-			   [ "$(RC_RELEASE)" = "Puma"      ] || \
-			   [ "$(RC_RELEASE)" = "Jaguar"    ] || \
-			   [ "$(RC_RELEASE)" = "Panther"   ] || \
-			   [ "$(RC_RELEASE)" = "MuonPrime" ]; then \
+  OLD_DYLD_STUFF := $(shell if [ "$(RC_RELEASE)" = "Beaker"    ] || \
+			       [ "$(RC_RELEASE)" = "Bunsen"    ] || \
+			       [ "$(RC_RELEASE)" = "Gonzo"     ] || \
+			       [ "$(RC_RELEASE)" = "Kodiak"    ] || \
+			       [ "$(RC_RELEASE)" = "Cheetah"   ] || \
+			       [ "$(RC_RELEASE)" = "Puma"      ] || \
+			       [ "$(RC_RELEASE)" = "Jaguar"    ] || \
+			       [ "$(RC_RELEASE)" = "Panther"   ] || \
+			       [ "$(RC_RELEASE)" = "MuonPrime" ]; then \
 				echo "dyld" ; \
 			    else \
 				echo "" ; fi; )
 else
-  DYLD_STUFF = dyld
+  OLD_DYLD_STUFF = dyld
 endif
 
 ifeq "nextstep" "$(RC_OS)"
-  SUBDIRS = $(COMMON_SUBDIRS) $(DYLD_STUFF)
+  SUBDIRS = $(COMMON_SUBDIRS) $(OLD_DYLD_STUFF)
 else
-  SUBDIRS = $(COMMON_SUBDIRS) $(DYLD_STUFF) $(APPLE_SUBDIRS)
+  SUBDIRS = $(COMMON_SUBDIRS) $(OLD_DYLD_STUFF) $(APPLE_SUBDIRS)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"
@@ -82,7 +82,7 @@ all clean:
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			DYLD_STUFF="$(DYLD_STUFF)"			\
+			OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"		\
 			DSTROOT=$$DSTROOT				\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -95,7 +95,7 @@ all clean:
 		    echo =========== $(MAKE) $@ for $$i =============;	\
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
-			DYLD_STUFF="$(DYLD_STUFF)"			\
+			OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"		\
 			DSTROOT=$$DSTROOT $@) || exit 1 ;		\
 	      done							\
 	fi
@@ -120,7 +120,7 @@ install:
 	    $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
-		DYLD_STUFF="$(DYLD_STUFF)"				\
+		OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"			\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)					\
 		OBJROOT=$(OBJROOT)					\
@@ -131,7 +131,7 @@ install:
 	    $(MAKE) RC_CFLAGS="$(RC_CFLAGS)" RC_ARCHS="$(RC_ARCHS)" 	\
 		RC_OS="$(RC_OS)" SUBDIRS="$(SUBDIRS)"			\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
-		DYLD_STUFF="$(DYLD_STUFF)"				\
+		OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"			\
 		DSTROOT=$$DSTROOT install_tools lib_ofiles_install;	\
 	fi
 
@@ -145,7 +145,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			DYLD_STUFF="$(DYLD_STUFF)"			\
+			OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"		\
 			DSTROOT=$$DSTROOT				\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -160,7 +160,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			DYLD_STUFF="$(DYLD_STUFF)"			\
+			OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"		\
 			DSTROOT=$$DSTROOT				\
 			SRCROOT=$(SRCROOT)/$$i				\
 			OBJROOT=$(OBJROOT)/$$i				\
@@ -175,7 +175,7 @@ install_tools: installhdrs
 		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
-			DYLD_STUFF="$(DYLD_STUFF)"			\
+			OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"		\
 			DSTROOT=$$DSTROOT install) || exit 1;		\
 	      done							\
 	fi
@@ -189,7 +189,7 @@ ofiles_install:
 		SRCROOT=$(SRCROOT)					\
 		OBJROOT=$(OBJROOT)					\
 		SYMROOT=$(SYMROOT)					\
-		DYLD_STUFF="$(DYLD_STUFF)"				\
+		OLD_DYLD_STUFF="$(OLD_DYLD_STUFF)"			\
 		lib_ofiles_install
 
 lib_ofiles lib_ofiles_install: installhdrs
@@ -305,7 +305,7 @@ installhdrs: $(DSTROOT)
 	    else							\
 		(cd include; $(MAKE) DSTROOT=$(DSTROOT)			\
 			RC_OS="$(RC_OS)" install) || exit 1;		\
-		if [ $(DYLD_STUFF) ];					\
+		if [ $(OLD_DYLD_STUFF) ];				\
 		then							\
 		    (cd dyld; $(MAKE) DSTROOT=$(DSTROOT)		\
 			 RC_OS=$(RC_OS)	installhdrs) || exit 1;		\
@@ -314,7 +314,7 @@ installhdrs: $(DSTROOT)
 	else								\
 	    (cd include; $(MAKE) DSTROOT=$(DSTROOT) RC_OS=$(RC_OS) 	\
 		install) || exit 1;					\
-	    if [ $(DYLD_STUFF) ];					\
+	    if [ $(OLD_DYLD_STUFF) ];					\
 	    then							\
 		(cd dyld; $(MAKE) DSTROOT=$(DSTROOT) RC_OS=$(RC_OS) 	\
 		    installhdrs) || exit 1;				\

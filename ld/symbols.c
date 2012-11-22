@@ -3,8 +3,6 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -7248,6 +7246,13 @@ void)
 }
 
 /*
+ * When any merged_symbol has its flagged_read_only_reloc set then this static
+ * is also set.  This allows clear_read_only_reloc_flags() to avoid doing any
+ * work.
+ */
+static enum bool some_read_only_reloc_flags_set = FALSE;
+
+/*
  * clear_read_only_reloc_flags() clears the flagged_read_only_reloc flags on
  * all the merged symbols.
  */
@@ -7260,6 +7265,9 @@ void)
     struct merged_symbol_list **p, *merged_symbol_list;
     struct merged_symbol *merged_symbol;
 
+	if(some_read_only_reloc_flags_set == FALSE)
+	    return;
+
 	for(p = &merged_symbol_lists; *p; p = &(merged_symbol_list->next)){
 	    merged_symbol_list = *p;
 	    for(i = 0; i < merged_symbol_list->used; i++){
@@ -7267,6 +7275,7 @@ void)
 		merged_symbol->flagged_read_only_reloc = FALSE;
 	    }
 	}
+	some_read_only_reloc_flags_set = FALSE;
 }
 
 /*
@@ -7306,6 +7315,7 @@ enum bool *first_time)
 		    if(merged_symbol->flagged_read_only_reloc == FALSE){
 			print("%s\n", merged_symbol->nlist.n_un.n_name);
 			merged_symbol->flagged_read_only_reloc = TRUE;
+			some_read_only_reloc_flags_set = TRUE;
 		    }
 		    return;
 		}

@@ -3,8 +3,6 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -1056,6 +1054,9 @@ enum bool library_warnings)
     unsigned long i;
     enum bool multiple_defs;
     struct member *member;
+
+	if(arch->toc_nranlibs == 0 || arch->toc_nranlibs == 1)
+	    return(TRUE);
 
 	/*
 	 * Since the symbol table is sorted by name look to any two adjcent

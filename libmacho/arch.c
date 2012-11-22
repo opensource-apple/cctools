@@ -3,8 +3,6 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -364,7 +362,7 @@ unsigned long nfat_archs)
 	    /* if no intel cputypes found return NULL */
 	    if(lowest_family == CPU_SUBTYPE_INTEL_FAMILY_MAX + 1)
 		return(NULL);
-	    lowest_model = ULONG_MAX;
+	    lowest_model = LONG_MAX;
 	    lowest_index = -1;
 	    for(i = 0; i < nfat_archs; i++){
 		if(fat_archs[i].cputype != cputype)

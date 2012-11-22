@@ -5,6 +5,14 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.16 release (the cctools-524 release):
+- Fixed a bug in check_sort_ranlibs() in writeout.c that caused a crash if
+  there are 0 ranlib structs to sort.  Reported in Radar bug #3451378.
+- Fixed a bug in cpusubtype_findbestarch() in best_arch.c when trying to pick
+  the lowest model i386 fat arch.  The variable lowest_model was initialized to
+  ULONG_MAX when it should have been LONG_MAX as it was a signed value. Radar
+  bug #3694812.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Fixed a bug that caused otool(1) to crash when it was called with a bad fat
   file (a java class file).  The calls to ofile_first_arch() in ofile.c was not

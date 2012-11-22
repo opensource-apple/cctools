@@ -9,6 +9,12 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.16 release (the cctools-524 release):
+- Fixed a bug in strip(1) that when used on the dynamic linker with no options,
+  to strip all symbols, it crashed.  The fix was in strip_object() in strip.c to
+  change it to make it call strip_symtab() when the file is an MH_DYLINKER.
+  Radar bug #3697374.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Fixed a bug in strip(1) that when used on a dynamic library with no options,
   to strip all symbols, it produced a malformed file that had bad offsets

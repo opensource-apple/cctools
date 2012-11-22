@@ -1,3 +1,10 @@
+Changes for the 5.16 release (the cctools-524 release):
+- Fixed a problem in the Makefile where stuff/errors.h and stuff/openstep_mach.h
+  appeared in both GAS_OTHER_SRCS and OTHER_SRCS causing problems on make
+  installsrc if the file had more one hard link.
+- Changed the Makefile to use OLD_DYLD_STUFF instead of DYLD_STUFF to work
+  around Radar bug #3675086.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Changed the reference to kmodload(8) in <mach-o/kld.h> to kextload(8).
   Radar bug #3633604.

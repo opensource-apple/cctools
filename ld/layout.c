@@ -3,8 +3,6 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -150,6 +148,7 @@ static void check_overlap(struct merged_segment *msg1,
     			  struct merged_segment *outputs_linkedit_segment);
 static void check_for_overlapping_segments(
     struct merged_segment *outputs_linkedit_segment);
+static void check_for_lazy_pointer_relocs_too_far(void);
 static void print_load_map(void);
 static void print_load_map_for_objects(struct merged_section *ms);
 #endif /* !defined(RLD) */
@@ -1485,6 +1484,15 @@ layout_segments(void)
 	 * Check for overlapping segments (including fvmlib segments).
 	 */
 	check_for_overlapping_segments(&linkedit_segment);
+
+	/*
+	 * If prebinding check to see the that the lazy pointer relocation
+	 * entries are not too far away to fit into the 24-bit r_adderess field
+	 * of a scattered relocation entry.
+	 */
+	if(prebinding)
+	    check_for_lazy_pointer_relocs_too_far();
+
 	if(prebinding)
 	    output_mach_header.flags |= MH_PREBOUND;
 #endif /* RLD */
@@ -2106,6 +2114,47 @@ struct merged_segment *outputs_linkedit_segment)
 		      (unsigned int)(msg2->sg.vmsize), msg2->filename);
 	}
 	prebinding = FALSE;
+}
+
+/*
+ * check_for_lazy_pointer_relocs_too_far() is call when prebinding is TRUE and
+ * checks to see that the lazy pointer's will not be too far away to overflow
+ * the the 24-bit r_address field of a scattered relocation entry.  If so
+ * then prebinding will be disabled.
+ */
+static
+void
+check_for_lazy_pointer_relocs_too_far(
+void)
+{
+    struct merged_segment **p, *msg;
+    struct merged_section **content, *ms;
+    unsigned long base_addr;
+
+	if(segs_read_only_addr_specified == TRUE)
+	    base_addr = segs_read_write_addr;
+	else
+	    base_addr = merged_segments->sg.vmaddr;
+
+	p = &merged_segments;
+	while(*p && prebinding){
+	    msg = *p;
+	    content = &(msg->content_sections);
+	    while(*content && prebinding){
+		ms = *content;
+		if((ms->s.flags & SECTION_TYPE) ==
+		   S_LAZY_SYMBOL_POINTERS){
+		    if(((ms->s.addr + ms->s.size) - base_addr) & 0xff000000){
+			warning("prebinding disabled because output is too "
+				"large (limitation of the 24-bit r_address "
+				"field of scattered relocation entries)");
+			prebinding = FALSE;
+		    }
+		}
+		content = &(ms->next);
+	    }
+	    p = &(msg->next);
+	}
 }
 
 /*

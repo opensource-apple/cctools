@@ -26,12 +26,12 @@ LOCFILES = mach-o/rld_state.h mach-o/rld.h mach-o/sarld.h mach-o/kld.h \
 GAS_OTHER_SRCS = stuff/bytesex.h stuff/bool.h stuff/round.h stuff/errors.h \
 		 stuff/openstep_mach.h
 OTHER_SRCS = notes gnu/symseg.h \
-	     stuff/allocate.h stuff/arch.h stuff/errors.h stuff/execute.h \
+	     stuff/allocate.h stuff/arch.h stuff/execute.h \
 	     stuff/ofile.h \
 	     stuff/hash_string.h stuff/breakout.h stuff/best_arch.h \
 	     stuff/hppa.h stuff/reloc.h stuff/vm_flush_cache.h \
 	     stuff/print.h stuff/version_number.h stuff/crc32.h sys/gmon.h \
-	     stuff/openstep_mach.h stuff/seg_addr_table.h stuff/dylib_table.h \
+	     stuff/seg_addr_table.h stuff/dylib_table.h \
 	     stuff/SymLoc.h stuff/dylib_roots.h stuff/guess_short_name.h \
 	     stuff/macosx_deployment_target.h stuff/symbol_list.h \
 	     $(GAS_OTHER_SRCS)
@@ -109,7 +109,7 @@ common_install:
 	    install -c -m 444 ${IFLAGS} arch.h ldsyms.h reloc.h \
 	    dyld_debug.h nlist.h stab.h loader.h fat.h swap.h getsect.h \
 	    ranlib.h ${DSTROOT}${$(RC_OS)_INCDIR}/mach-o
-	if [ $(DYLD_STUFF) ];					\
+	if [ $(OLD_DYLD_STUFF) ];				\
 	then							\
 	    cd mach-o; install -c -m 444 ${IFLAGS} dyld.h 	\
 		${DSTROOT}${$(RC_OS)_INCDIR}/mach-o ;		\
@@ -138,7 +138,7 @@ common_install:
 	cd mach-o; \
 	    install -c -m 444 ${IFLAGS} rld.h rld_state.h \
 	    ${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o
-	if [ $(DYLD_STUFF) ];						  \
+	if [ $(OLD_DYLD_STUFF) ];					  \
 	then								  \
 	    cd mach-o; install -c -m 444 ${IFLAGS} dyld_gdb.h dyld_priv.h \
 		${DSTROOT}${$(RC_OS)_LOCINCDIR}/mach-o ;		  \

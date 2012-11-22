@@ -1,6 +1,4 @@
 TODO for MacOS X:
-- Due to changes for Tiger in Radar bug #3535291 we will likely have to stub
-  out __hdtoa() and __hldtoa() if dyld is to build again on Tiger.
 - Figure out why setting the FULLYBOUND_STATE does not seem to work.  Doing the
   first two seem to break the work space putting disks on the desktop on the
   Cheetah4K78 twolevel partion on rino.apple.com
@@ -31,6 +29,10 @@ TODO for MacOS X:
 
 TODO:
 - For hppa cache flushing use FDC and FIC on the written instruction address.
+
+Changes for the 5.16 release (the cctools-524 release):
+- Due to changes for Tiger in Radar bug #3535291 we stub out __hdtoa() and
+  __hldtoa() in dyld_init.c to allow this to build on Tiger.
 
 Changes for the 5.16 release (the cctools-511 release):
 - Cleaned up the change in cctools-495.6 for Radar bug #3626905 and removed the

@@ -3,6 +3,12 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.16 release (the cctools-524 release):
+- Fixed a bug in print_fat_headers() in ofile_print.c in the loop that was
+  looking for illegal duplicate architectures.  The loop was using unsigned
+  indexes and testing for j < i - 1 without checkin that i could be zero.
+  Radar bug #3709358.
+
 Changes for the 5.16 release (the cctools-522 release):
 - Fixed the problem with the changes to libc in Radar bug #3535291 causing the
   symbols ___fegetfltrounds and ___fpclassifyd to be undefined.

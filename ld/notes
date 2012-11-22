@@ -23,6 +23,35 @@ Build problems:
 - For m68k builds -finline-functions crashes the compiler (used in the Makefile
   on the ld_build target).
 
+Changes for the 5.16 release (the cctools-525 release):
+- Sped up clear_read_only_reloc_flags() in symbols.c in the normal case. Radar
+  bug #3728427.
+  - Added static enum bool some_read_only_reloc_flags_set to symbols.c .
+  - In flag_read_only_reloc() in symbols.c some_read_only_reloc_flags_set is
+    set to TRUE if any merged_symbol's field flagged_read_only_reloc is set
+    to TRUE.
+  - In clear_read_only_reloc_flags() in symbols.c added code to test
+    some_read_only_reloc_flags_set.  If not set then it returns.  If set it
+    does its normal work then clears some_read_only_reloc_flags_set.
+
+Changes for the 5.16 release (the cctools-524 release):
+- Made work around fixes to the problem with the 24-bit r_address field of a
+  scattered relocation entry overflowing when used in a binary for dyld.  Radar
+  bug #3451378.
+  - Changed the relocation routines:
+	ppc_reloc() in ppc_reloc.c
+	generic_reloc() in generic_reloc.c
+	hppa_reloc() in hppa_reloc.c
+	m88k_reloc() in m88k_reloc.c
+	sparc_reloc() in sparc_reloc.c
+    when output_for_dyld is TRUE to not create a scattered relocation entry for
+    external relocation entries with a non-zero offset and to change scattered
+    relocation entries into local relocation entries.
+  - Changed layout() in layout.c to call the new static routine
+    check_for_lazy_pointer_relocs_too_far() which checks to see that the lazy
+    pointer's will not be too far away to overflow the the 24-bit r_address
+    field of a scattered relocation entry.  If so then prebinding is disabled.
+
 Changes for the 5.16 release (the cctools-520 release):
 - Fixed a bug in the handling of PPC_RELOC_JBSR's when the output is a
   multi-module MH_DYLIB.  The code in ppc_reloc() was avoiding relocating the

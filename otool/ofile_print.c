@@ -3,8 +3,6 @@
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
- * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
- * 
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -128,7 +126,7 @@ enum bool verbose)
 
 	for(i = 0; i < fat_header->nfat_arch; i++){
 	    printf("architecture ");
-	    for(j = 0; j < i - 1; j++){
+	    for(j = 0; i != 0 && j < i - 1; j++){
 		if(fat_archs[i].cputype != 0 && fat_archs[i].cpusubtype != 0 &&
 		   fat_archs[i].cputype == fat_archs[j].cputype &&
 		   fat_archs[i].cpusubtype == fat_archs[j].cpusubtype){

@@ -1,3 +1,9 @@
+Changes for the 5.16 release (the cctools-524 release):
+- Fixed a bug in NXFindBestFatArch() in arch.c when trying to pick the lowest
+  model i386 fat arch.  The variable lowest_model was initialized to ULONG_MAX
+  when it should have been LONG_MAX as it was a signed value.
+  Radar bug #3694812.
+
 Changes for the 5.16 release (the cctools-509 release):
 - Added #ifdef INTERIM_PPC64 to the source changes to support the interim ppc64
   file format.  And added -DINTERIM_PPC64 to the Makefile.

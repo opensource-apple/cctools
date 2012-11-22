@@ -35,19 +35,19 @@ DSTDIRS = $(DSTROOT)$(MANDIR)/man1 $(DSTROOT)$(MANDIR)/man3 \
 install: $(DSTDIRS) $(COMMON_MAN1) $(OTHER_MAN1) $(MAN3) $(MAN5) $(MANL) \
 	 $(RC_OS) $(MANL3)
 	install -c -m 444 $(COMMON_MAN1) $(DSTROOT)$(MANDIR)/man1
-	if [ $(DYLD_STUFF) ];						\
+	if [ $(OLD_DYLD_STUFF) ];					\
 	then								\
 	    install -c -m 444 $(DYLD_MAN1) $(DSTROOT)$(MANDIR)/man1 ;	\
 	fi
 	install -c -m 444 $(MAN3) $(DSTROOT)$(MANDIR)/man3
-	if [ $(DYLD_STUFF) ];						\
+	if [ $(OLD_DYLD_STUFF) ];					\
 	then								\
 	    install -c -m 444 $(DYLD_MAN3) $(DSTROOT)$(MANDIR)/man3 ;	\
 	fi
 	install -c -m 444 $(MAN5) $(DSTROOT)$(MANDIR)/man5
 	install -c -m 444 $(MANL) $(DSTROOT)$(LOCMANDIR)/man1
 	install -c -m 444 $(MANL3) $(DSTROOT)$(LOCMANDIR)/man3
-	if [ $(DYLD_STUFF) ];						\
+	if [ $(OLD_DYLD_STUFF) ];					\
 	then								\
 	    install -c -m 444 $(DYLD_MANL3) $(DSTROOT)$(LOCMANDIR)/man3;\
 	fi

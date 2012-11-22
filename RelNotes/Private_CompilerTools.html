@@ -1,22 +1,22 @@
 <HTML>
-<!--This file created 6/11/04 9:35 AM by Claris Home Page version 3.0-->
+<!--This file created 7/14/04 6:12 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
-   <X-CLARIS-WINDOW TOP=74 BOTTOM=839 LEFT=185 RIGHT=832>
+   <X-CLARIS-WINDOW TOP=177 BOTTOM=942 LEFT=91 RIGHT=738>
    <X-CLARIS-TAGVIEW MODE=minimal>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X June 2004 Developer Release Copyright
-2004 by Apple Computer, Inc. All Rights Reserved.</FONT></P>
+<P><FONT SIZE="-1">Mac OS X Xcode 1.5 Release Copyright 2004 by Apple
+Computer, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X June 2004 Developer Release Notes:<BR>
-Compiler Tools (cctools-523)</H2>
+<H2>Private Mac OS X Xcode 1.5 Release:<BR>
+Compiler Tools (cctools-525)</H2>
 
 <P>This file contains release notes for the 5.16 release of the
-Compiler Tools for the Mac OS X June 2004 Developer Release. This
-file contains information about the following topics:</P>
+Compiler Tools for the Mac OS X Xcode 1.5 Release. This file contains
+information about the following topics:</P>
 
 <UL>
    <LI>The Mac OS X Mach-O GNU-based assemblers</LI>
@@ -34,10 +34,41 @@ stripping</FONT></H3>
 
 <P>See the Public release notes for the details.</P>
 
-<H2>Notes Specific to Release 5.16 (Mac OS X June 2004 Developer
-Release )</H2>
+<H2>Notes Specific to Release 5.16 (Mac OS X Xcode 1.5 Release)</H2>
 
-<H5><FONT SIZE="+1">Changes since the last release (cctools-521 for
+<H5><FONT SIZE="+1">Changes since the last release (cctools-524 for
+the 5.17 Mac OS X June 2004 Developer release</FONT></H5>
+
+<UL>
+   <LI>Changed the static link editor, ld(1), to link output files
+   for use by the dynamic linker faster. (Radar bug #3728427).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-523 for
+the 5.17 Mac OS X June 2004 Developer release</FONT></H5>
+
+<UL>
+   <LI>Changed the static link editor, ld(1), to not create scattered
+   relocation entried in output files for use with the dynamic
+   linker. And also to disable prebinding when the output is too
+   large that it would run into the limitation of the 24-bit
+   r_address field of scattered relocation entries. (Radar bug
+   #3451378).</LI>
+   
+   <LI>Fixed the otool(1) command's <B>-fv</B> output so that it does
+   not print <I>(illegal duplicate architecture)</I> and take a long
+   time producing the output on a two-way fat file. (Radar bug
+   #3709358).</LI>
+   
+   <LI>Fixed the strip(1) command that caused it to crash when run
+   with no options on a the dynamic linker.(Radar bug #3697374).</LI>
+   
+   <LI>Fixed a bug in selecting an i386 architecture from fat file
+   that only contained a i686 architecture which would cause ld(1) to
+   think the file was a bad Mach-O file. (Radar bug #3694812).</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-522 for
 the 5.17 Mac OS X June 2004 Developer release</FONT></H5>
 
 <UL>
