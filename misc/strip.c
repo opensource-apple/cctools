@@ -67,6 +67,7 @@ static long xflag;	/* -x strip non-globals */
 static long Xflag;	/* -X strip local symbols with 'L' names */
 static long cflag;	/* -c strip section contents from dynamic libraries
 			   files to create stub libraries */
+static long no_uuid;	/* -no_uuid strip LC_UUID load commands */
 static long strip_all = 1;
 /*
  * This is set on an object by object basis if the strip_all flag is still set
@@ -218,6 +219,11 @@ static enum bool strip_symtab(
     unsigned long *indirectsyms,
     unsigned long nindirectsyms);
 
+static void strip_LC_UUID_commands(
+    struct arch *arch,
+    struct member *member,
+    struct object *object);
+
 static enum bool private_extern_reference_by_module(
     unsigned long symbol_index,
     struct dylib_reference *refs,
@@ -290,6 +296,14 @@ static int cmp_bsearch_global_stab(
 static int cmp_bsearch_global_stab_64(
     const char *name,
     const struct nlist_64 **sym);
+
+static int cmp_bsearch_global(
+    const char *name,
+    const struct nlist **sym);
+
+static int cmp_bsearch_global_64(
+    const char *name,
+    const struct nlist_64 **sym);
 #endif /* NMEDIT */
 
 int
@@ -351,6 +365,9 @@ char *envp[])
 			fatal("only one -d option allowed");
 		    dfile = argv[i + 1];
 		    i++;
+		}
+		else if(strcmp(argv[i], "-no_uuid") == 0){
+		    no_uuid = 1;
 		}
 #endif /* !defined(NMEDIT) */
 		else if(strcmp(argv[i], "-arch") == 0){
@@ -1150,6 +1167,8 @@ struct object *object)
 		strings, strsize, tocs, ntoc, mods, mods64, nmodtab, refs,
 		nextrefsyms, indirectsyms, nindirectsyms) == FALSE)
 		return;
+	    if(no_uuid == TRUE)
+		strip_LC_UUID_commands(arch, member, object);
 #endif /* !defined(NMEDIT) */
 	    if(object->mh != NULL)
 		object->output_sym_info_size =
@@ -1914,6 +1933,7 @@ long *missing_reloc_symbols)
 	    made_local = FALSE;
 	    index = object->output_indirect_symtab[reserved1 + k];
 	    if(index == INDIRECT_SYMBOL_LOCAL ||
+	       index == INDIRECT_SYMBOL_ABS ||
 	       index == (INDIRECT_SYMBOL_LOCAL | INDIRECT_SYMBOL_ABS))
 		continue;
 	    if(index > nsyms)
@@ -3069,6 +3089,111 @@ unsigned long nindirectsyms)
 }
 
 /*
+ * strip_LC_UUID_commands() is called when -no_uuid is specified to remove any
+ * LC_UUID load commands from the object's load commands.
+ */
+static
+void
+strip_LC_UUID_commands(
+struct arch *arch,
+struct member *member,
+struct object *object)
+{
+    uint32_t i, ncmds, nuuids, mh_sizeofcmds, sizeofcmds;
+    struct load_command *lc1, *lc2, *new_load_commands;
+    struct segment_command *sg;
+
+	/*
+	 * See if there are any LC_UUID load commands.
+	 */
+	nuuids = 0;
+	lc1 = arch->object->load_commands;
+        if(arch->object->mh != NULL){
+            ncmds = arch->object->mh->ncmds;
+	    mh_sizeofcmds = arch->object->mh->sizeofcmds;
+	}
+	else{
+            ncmds = arch->object->mh64->ncmds;
+	    mh_sizeofcmds = arch->object->mh64->sizeofcmds;
+	}
+	for(i = 0; i < ncmds; i++){
+	    if(lc1->cmd == LC_UUID){
+		nuuids++;
+	    }
+	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);
+	}
+	/* if no LC_UUID load commands just return */
+	if(nuuids == 0)
+	    return;
+
+	/*
+	 * Allocate space for the new load commands as zero it out so any holes
+	 * will be zero bytes.
+	 */
+	new_load_commands = allocate(mh_sizeofcmds);
+	memset(new_load_commands, '\0', mh_sizeofcmds);
+
+	/*
+	 * Copy all the load commands except the LC_UUID load commands into the
+	 * allocated space for the new load commands.
+	 */
+	lc1 = arch->object->load_commands;
+	lc2 = new_load_commands;
+	sizeofcmds = 0;
+	for(i = 0; i < ncmds; i++){
+	    if(lc1->cmd != LC_UUID){
+		memcpy(lc2, lc1, lc1->cmdsize);
+		sizeofcmds += lc2->cmdsize;
+		lc2 = (struct load_command *)((char *)lc2 + lc2->cmdsize);
+	    }
+	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);
+	}
+
+	/*
+	 * Finally copy the updated load commands over the existing load
+	 * commands.
+	 */
+	memcpy(arch->object->load_commands, new_load_commands, sizeofcmds);
+	if(mh_sizeofcmds > sizeofcmds){
+		memset((char *)arch->object->load_commands + sizeofcmds, '\0', 
+			   (mh_sizeofcmds - sizeofcmds));
+	}
+	ncmds -= nuuids;
+        if(arch->object->mh != NULL) {
+            arch->object->mh->sizeofcmds = sizeofcmds;
+            arch->object->mh->ncmds = ncmds;
+        } else {
+            arch->object->mh64->sizeofcmds = sizeofcmds;
+            arch->object->mh64->ncmds = ncmds;
+        }
+	free(new_load_commands);
+
+	/* reset the pointers into the load commands */
+	lc1 = arch->object->load_commands;
+	for(i = 0; i < ncmds; i++){
+	    switch(lc1->cmd){
+	    case LC_SYMTAB:
+		arch->object->st = (struct symtab_command *)lc1;
+	        break;
+	    case LC_DYSYMTAB:
+		arch->object->dyst = (struct dysymtab_command *)lc1;
+		break;
+	    case LC_TWOLEVEL_HINTS:
+		arch->object->hints_cmd = (struct twolevel_hints_command *)lc1;
+		break;
+	    case LC_PREBIND_CKSUM:
+		arch->object->cs = (struct prebind_cksum_command *)lc1;
+		break;
+	    case LC_SEGMENT:
+		sg = (struct segment_command *)lc1;
+		if(strcmp(sg->segname, SEG_LINKEDIT) == 0)
+		    arch->object->seg_linkedit = sg;
+	    }
+	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);
+	}
+}
+
+/*
  * private_extern_reference_by_module() is passed a symbol_index of a private
  * extern symbol and the module table.  If the symbol_index appears in the
  * module symbol table this returns TRUE else it returns FALSE.
@@ -3198,6 +3323,7 @@ unsigned long nextrefsyms)
     struct nlist_64 **global_symbol64;
     enum bool global_symbol_found;
     char *global_name, save_char;
+    enum bool dwarf_debug_map;
     enum byte_sex host_byte_sex;
     long missing_reloc_symbols;
     enum bool edit_symtab_return;
@@ -3212,10 +3338,12 @@ unsigned long nextrefsyms)
     uint32_t iextdefsym, nextdefsym;
     uint8_t n_type, n_sect, global_symbol_n_sect;
     uint64_t n_value;
+    enum bool warned_about_global_coalesced_symbols;
 
 	edit_symtab_return = TRUE;
 	host_byte_sex = get_host_byte_sex();
 	missing_reloc_symbols = 0;
+	warned_about_global_coalesced_symbols = FALSE;
 
 	if(nmedits != NULL)
 	    free(nmedits);
@@ -3405,6 +3533,14 @@ unsigned long nextrefsyms)
 			   pflag == FALSE &&
 			   object->mh_filetype != MH_OBJECT){
 			    /* this remains a global defined symbol */
+			    if(warned_about_global_coalesced_symbols == FALSE){
+				warning_arch(arch, member, "can't make global "
+				    "coalesced symbols (like %s) into static "
+				    "symbols (use ld(1)'s "
+				    "-exported_symbols_list option) in a final "
+				    "linked image: ", strings + n_strx);
+				warned_about_global_coalesced_symbols = TRUE;
+			    }
 			    new_nextdefsym++;
 			    new_ext_strsize += len;
 			    new_strsize += len;
@@ -3641,18 +3777,52 @@ change_symbol:
 	else
 	    qsort(changed_globals64, nchanged_globals,sizeof(struct nlist_64 *),
 		  (int (*)(const void *, const void *))cmp_qsort_global_64);
+	dwarf_debug_map = FALSE;
 	for(i = 0; i < nsyms; i++){
+	  uint16_t n_desc;
 	    if(object->mh != NULL){
 		n_strx = symbols[i].n_un.n_strx;
 		n_type = symbols[i].n_type;
+		n_desc = symbols[i].n_desc;
 	    }
 	    else{
 		n_strx = symbols64[i].n_un.n_strx;
 		n_type = symbols64[i].n_type;
+		n_desc = symbols64[i].n_desc;
 	    }
-	    if(n_type & N_STAB &&
-	       (n_type == N_GSYM || n_type == N_FUN) &&
-	       (n_strx != 0 && strings[n_strx] != '\0')){
+	    if(n_type == N_SO)
+	      dwarf_debug_map = FALSE;
+	    else if (n_type == N_OSO)
+	      dwarf_debug_map = n_desc != 0;
+	    else if (dwarf_debug_map && n_type == N_GSYM){
+	      global_name = strings + n_strx;
+	      if(object->mh != NULL){
+		global_symbol = bsearch(global_name, changed_globals,
+					nchanged_globals,sizeof(struct nlist *),
+			     		(int (*)(const void *, const void *))
+					cmp_bsearch_global);
+		if(global_symbol != NULL){
+		  symbols[i].n_type = N_STSYM;
+		  symbols[i].n_sect = (*global_symbol)->n_sect;
+		  symbols[i].n_value = (*global_symbol)->n_value;
+		}
+	      }
+	      else{
+		global_symbol64 = bsearch(global_name, changed_globals64,
+					  nchanged_globals,
+					  sizeof(struct nlist_64 *),
+					  (int (*)(const void *, const void *))
+					  cmp_bsearch_global_64);
+		if(global_symbol64 != NULL){
+		  symbols64[i].n_type = N_STSYM;
+		  symbols64[i].n_sect = (*global_symbol64)->n_sect;
+		  symbols64[i].n_value = (*global_symbol64)->n_value;
+		}
+	      }
+	    }
+	    else if(! dwarf_debug_map &&
+		    (n_type == N_GSYM || n_type == N_FUN) &&
+		    (n_strx != 0 && strings[n_strx] != '\0')){
 		global_name = strings + n_strx;
 		if((global_name[0] == '+' || global_name[0] == '-') &&
 		   global_name[1] == '['){
@@ -4284,5 +4454,27 @@ const struct nlist_64 **sym)
 	 * stab string that is trying to be matched.
 	 */
 	return(strcmp(name, global_strings + (*sym)->n_un.n_strx + 1));
+}
+
+/*
+ * Function for bsearch for finding a global symbol that matches a stab name
+ * in the debug map.
+ */
+static
+int
+cmp_bsearch_global(
+const char *name,
+const struct nlist **sym)
+{
+	return(strcmp(name, global_strings + (*sym)->n_un.n_strx));
+}
+
+static
+int
+cmp_bsearch_global_64(
+const char *name,
+const struct nlist_64 **sym)
+{
+	return(strcmp(name, global_strings + (*sym)->n_un.n_strx));
 }
 #endif /* defined(NMEDIT) */

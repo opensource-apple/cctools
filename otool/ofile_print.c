@@ -1358,6 +1358,7 @@ enum bool very_verbose)
     routines_command_t rc;
     struct twolevel_hints_command hints;
     struct prebind_cksum_command cs;
+    struct uuid_command uuid;
 
 	host_byte_sex = get_host_byte_sex();
 	swapped = host_byte_sex != load_commands_byte_sex;
@@ -1611,6 +1612,16 @@ enum bool very_verbose)
 		if(swapped)
 		    swap_prebind_cksum_command(&cs, host_byte_sex);
 		print_prebind_cksum_command(&cs);
+		break;
+
+	    case LC_UUID:
+		memset((char *)&uuid, '\0', sizeof(struct uuid_command));
+		size = left < sizeof(struct uuid_command) ?
+		       left : sizeof(struct uuid_command);
+		memcpy((char *)&uuid, (char *)lc, size);
+		if(swapped)
+		    swap_uuid_command(&uuid, host_byte_sex);
+		print_uuid_command(&uuid);
 		break;
 
 	    default:
@@ -1954,6 +1965,8 @@ enum bool verbose)
 		printf(" LIVE_SUPPORT");
 	    if(section_attributes & S_ATTR_SELF_MODIFYING_CODE)
 		printf(" SELF_MODIFYING_CODE");
+	    if(section_attributes & S_ATTR_DEBUG)
+		printf(" DEBUG");
 	    if(section_attributes & S_ATTR_SOME_INSTRUCTIONS)
 		printf(" SOME_INSTRUCTIONS");
 	    if(section_attributes & S_ATTR_EXT_RELOC)
@@ -2530,6 +2543,32 @@ struct prebind_cksum_command *cksum)
 	else
 	    printf("\n");
 	printf("   cksum 0x%08x\n", (unsigned int)cksum->cksum);
+}
+
+/*
+ * print an LC_UUID command.  The uuid_command structure
+ * specified must be aligned correctly and in the host byte sex.
+ */
+void
+print_uuid_command(
+struct uuid_command *uuid)
+{
+	printf("     cmd LC_UUID\n");
+	printf(" cmdsize %u", uuid->cmdsize);
+	if(uuid->cmdsize != sizeof(struct uuid_command))
+	    printf(" Incorrect size\n");
+	else
+	    printf("\n");
+	printf("   uuid 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x"
+	       "\n", (unsigned int)uuid->uuid[0], (unsigned int)uuid->uuid[1],
+	       (unsigned int)uuid->uuid[2],  (unsigned int)uuid->uuid[3],
+	       (unsigned int)uuid->uuid[4],  (unsigned int)uuid->uuid[5],
+	       (unsigned int)uuid->uuid[6],  (unsigned int)uuid->uuid[7]);
+	printf("        0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x"
+	       "\n", (unsigned int)uuid->uuid[8],  (unsigned int)uuid->uuid[9],
+	       (unsigned int)uuid->uuid[10], (unsigned int)uuid->uuid[11],
+	       (unsigned int)uuid->uuid[12], (unsigned int)uuid->uuid[13],
+	       (unsigned int)uuid->uuid[14], (unsigned int)uuid->uuid[15]);
 }
 
 /*

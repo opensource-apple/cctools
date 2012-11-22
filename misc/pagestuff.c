@@ -1126,6 +1126,9 @@ unsigned long high_addr)
 {
     unsigned long i, count;
 
+	if(fp->st == NULL)
+	    return;
+
 	if(sorted_symbols == NULL)
 	    sorted_symbols = allocate(sizeof(struct nlist) * fp->st->nsyms);
 

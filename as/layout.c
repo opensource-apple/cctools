@@ -486,7 +486,8 @@ int nsect)
 
 			    exp = (expressionS *)add_symbolP->expression;
 			    value +=
-				exp->X_add_symbol->sy_value -
+				exp->X_add_symbol->sy_value +
+				exp->X_add_number -
 				exp->X_subtract_symbol->sy_value;
 			}
 			else

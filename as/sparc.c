@@ -1142,7 +1142,7 @@ md_atof (type, litP, sizeP)
 void
 md_number_to_chars (buf, val, n)
      char *buf;
-     signed_target_addr_t val;
+     signed_expr_t val;
      int n;
 {
   // sigh, all architectures do this..,
@@ -1167,7 +1167,7 @@ md_number_to_chars (buf, val, n)
 
 
 void
-md_number_to_imm(unsigned char *buf, signed_target_addr_t val, int size, fixS *fixP, int nsect)
+md_number_to_imm(unsigned char *buf, signed_expr_t val, int size, fixS *fixP, int nsect)
 {
 
   /* handle the most common case quickly */

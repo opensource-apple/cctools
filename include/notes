@@ -1,3 +1,18 @@
+Changes for the 5.21 release (the cctools-590.35 release):
+- Added the constant MH_DSYM to <mach-o/loader.h> for dSYM files.  Radar
+  #4443871.
+
+Changes for the 5.21 release (the cctools-590.25 release):
+- Changed the comment in <mach-o/loader.h> for debug sections to include that
+  they must have a section type of S_REGULAR.  Radar bug #3415593.
+
+Changes for the 5.21 release (the cctools-590.24 release):
+- Added support for DWARF.  Radar bug #4367423.
+  - Added the constant S_ATTR_DEBUG to <mach-o/loader.h> for debug sections.
+  - Added the constant LC_UUID and the uuid_command struct to <mach-o/loader.h>.
+  - Added the prototype for swap_uuid_command() to "stuff/bytesex.h" .
+  - Added the prototype for swap_uuid_command() to <mach-o/swap.h" .
+
 Changes for the 5.20 release (the cctools-590.20 release):
 - Removed the wanrnings when building. Radar bug #4340147.
   - Removed the const from put_macosx_deployment_target() in

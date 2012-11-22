@@ -568,9 +568,8 @@ expressionS *expressionP)
 	c = *input_line_pointer++;/* Input_line_pointer -> past char in c. */
 
 	if(isdigit(c)){
-#define NUMBER_FMT TA_DFMT
-	    valueT 
-	    number;	/* offset or (absolute) value */
+	    signed_expr_t
+			number; /* offset or (absolute) value */
 	    int digit;		/* value of next digit in current radix */
 				/* invented for humans only, hope */
 				/* optimising compiler flushes it! */
@@ -650,9 +649,13 @@ expressionS *expressionP)
 		radix = 10;
 		too_many_digits = 11;
 	    }
-#if defined(ARCH64)
+
+	    /*
+	     * Expressions are now evaluated as 64-bit values so the number
+	     * digits allowed is twice that for 32-bit expressions.
+	     */
 	    too_many_digits *= 2;
-#endif
+
 	    if(radix != 0){ /* Fixed-point integer constant. */
 			    /* May be bignum, or may fit in 32 bits. */
 		/*
@@ -763,8 +766,8 @@ expressionS *expressionP)
 				expressionP->X_seg        = SEG_SECT;
 			    }
 			    else{ /* Either not seen or not defined. */
-				as_warn("Backw. ref to unknown label \""
-					NUMBER_FMT "\", 0 assumed.", number);
+				as_warn("Backw. ref to unknown label \"%lld\","
+				"0 assumed.", number);
 				expressionP->X_add_number = 0;
 				expressionP->X_seg        = SEG_ABSOLUTE;
 			    }
@@ -889,7 +892,19 @@ expressionS *expressionP)
 		seg = N_TYPE_seg[(int)symbolP->sy_type & N_TYPE];
 		expressionP->X_seg = seg;
 		if(seg == SEG_ABSOLUTE && symbolP->expression == NULL){
-		    expressionP->X_add_number = symbolP->sy_value;
+		    expressionP->X_add_number =
+#ifndef ARCH64
+			/*
+			 * For 32-bit assemblers the type n_value in a symbol
+			 * table entry is unsigned.  But since we are using
+			 * this in a signed 64-bit expression we need to sign
+			 * extend this.  So by casting it to a signed value and
+			 * then assigning it to the 64-bit value the expression
+			 * will be correct.
+			 */
+			(long)
+#endif
+			symbolP->sy_value;
 		}
 		else{
 		    expressionP->X_add_number = 0;

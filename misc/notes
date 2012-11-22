@@ -9,17 +9,40 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
-Changes for the 5.20.1 release (the cctools-590.23.6 release):
-- Fixed a bug in the redo_prebinding code where it would call chmod(2) and
-  chown(2) unnecessarily when no output_file is specified.  The fix was in
-  unprebind() in redo_prebinding.c to remove the else clause of the
-  if(output_file != NULL && outbuf == NULL) so the chmod() and chown() are not
-  called on the file_name parameter.  Radar bug #4503724.
-- Fixed a leak in the redo_prebinding code where error_message_buffer is not
-  freed when system_error() is called.  The fix is in unprebind() in
-  redo_prebinding.c after the first call to cleanup().  It checks to see if
-  error_message_buffer is not NULL and if so calls free() on it.  Radar Bug
-  #4503576.
+Changes for the 5.21 release (the cctools-590.40 release):
+- Fixed a bug in pagestuff(1) where it would crash if it was processing a Mach-O
+  file with no LC_SYMTAB command.  It crashed in print_symbols() because it
+  lacked a check for fp->st not being NULL.  The fix was to add a check for
+  fp->st being NULL and just returning in that case.  Radar bug #4495141.
+
+Changes for the 5.21 release (the cctools-590.37 release):
+- Changed check_indirect_symtab() in strip.c so that nmedit(1) and strip(1)
+  would allow an indirect symbol table entry to just have INDIRECT_SYMBOL_ABS
+  as well as (INDIRECT_SYMBOL_LOCAL | INDIRECT_SYMBOL_ABS).  This is because
+  ld(1) puts this out in some cases.  Radar bug #4461173.
+- Added passing ld(1)'s -t flag through libtool(1).  Radar bug #4213190.
+
+Changes for the 5.21 release (the cctools-590.35 release):
+- Added a warning to nmedit(1) when it sees a global coalesced symbol to say it
+  can't make global coalesced symbols into a static symbols and suggest the use
+  of ld(1)'s -exported_symbols_list option for a final linked images.  The
+  change was in strip.c in edit_symtab() to add the warning an a boolean to
+  only print it once.  Radar bug #4269492.
+- Changed seg_hack so it doesn't affect debug sections.  Radar bug #4421656.
+
+Changes for the 5.21 release (the cctools-590.34 release):
+- Make 'nm: no name list' a warning, not an error.  Radar bug #4421611.
+
+Changes for the 5.21 release (the cctools-590.32 release):
+- Change edit_symtab in strip.c to handle the different format
+  of the DWARF debug map.  Add new functions cmp_bsearch_global and
+  cmp_bsearch_global_64.  Radar bug #4421583.
+
+Changes for the 5.21 release (the cctools-590.31 release):
+- Added the -no_uuid flag to strip(1) to remove LC_UUID load commands.  Radar
+  bug #4415536.
+- Added the -no_uuid flag to libtool(1) to pass on to ld(1).  Radar bug
+  #4415529.
 
 Changes for the 5.20 release (the cctools-590.20 release):
 - Removed the warnings when building. Radar bug #4340147.

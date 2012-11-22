@@ -610,6 +610,7 @@ static const template i386_optab[] = {
   {"divsd", 2, 0xf20f5e, _, RR|Modrm, {xmm|m64, xmm, 0},"O"},
   {"divss", 2, 0xf30f5e, _, RR|Modrm, {xmm|m32, xmm, 0},"O"},
   {"emms", 0, 0x0f77, _, NoModrm, {0, 0, 0} },
+  {"fisttp", 1, 0xdf, 1, Modrm, {Mem, 0, 0},"O"},
   {"fisttps", 1, 0xdf, 1, Modrm, {Mem, 0, 0},"O"},
   {"fisttpl", 1, 0xdb, 1, Modrm, {Mem, 0, 0},"O"},
   {"fisttpll", 1, 0xdd, 1, Modrm, {Mem, 0, 0},"O"},

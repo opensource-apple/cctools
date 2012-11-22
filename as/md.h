@@ -112,12 +112,12 @@ extern char *md_atof(
 
 /*
  * md_number_to_chars() is the target machine dependent routine that puts out
- * a binary value of size 4, 2, or 1 bytes into the specified buffer.  This is
- * done in the target machine's byte sex.
+ * a binary value of size 8, 4, 2, or 1 bytes into the specified buffer.  This
+ * is done in the target machine's byte sex.
  */
 extern void md_number_to_chars(
     char *buf,
-    signed_target_addr_t val,
+    signed_expr_t val,
     int n);
 
 /*
@@ -129,7 +129,7 @@ extern void md_number_to_chars(
  */
 extern void md_number_to_imm(
     unsigned char *buf,
-    signed_target_addr_t val,
+    signed_expr_t val,
     int n,
     fixS *fixP,
     int nsect);

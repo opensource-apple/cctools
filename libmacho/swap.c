@@ -314,6 +314,15 @@ enum NXByteOrder target_byte_sex)
 }
 
 void
+swap_uuid_command(
+struct uuid_command *uuid_cmd,
+enum NXByteOrder target_byte_sex)
+{
+	uuid_cmd->cmd = NXSwapLong(uuid_cmd->cmd);
+	uuid_cmd->cmdsize = NXSwapLong(uuid_cmd->cmdsize);
+}
+
+void
 swap_nlist(
 struct nlist *symbols,
 uint32_t nsymbols,

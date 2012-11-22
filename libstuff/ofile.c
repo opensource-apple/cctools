@@ -2936,6 +2936,7 @@ struct ofile *ofile)
     struct routines_command_64 *rc64;
     struct twolevel_hints_command *hints;
     struct prebind_cksum_command *cs;
+    struct uuid_command *uuid;
     unsigned long flavor, count, nflavor;
     char *p, *state;
 
@@ -2998,6 +2999,7 @@ struct ofile *ofile)
 	rc64 = NULL;
 	hints = NULL;
 	cs = NULL;
+	uuid = NULL;
 	for(i = 0, lc = load_commands; i < ncmds; i++){
 	    l = *lc;
 	    if(swapped)
@@ -3365,6 +3367,21 @@ struct ofile *ofile)
 		if(cs->cmdsize != sizeof(struct prebind_cksum_command)){
 		    Mach_O_error(ofile, "malformed object (LC_PREBIND_CKSUM "
 			"command %lu has incorrect cmdsize)", i);
+		    return(CHECK_BAD);
+		}
+		break;
+
+	    case LC_UUID:
+		if(uuid != NULL){
+		    Mach_O_error(ofile, "malformed object (more than one "
+			"LC_UUID command)");
+		    return(CHECK_BAD);
+		}
+		uuid = (struct uuid_command *)lc;
+		if(swapped)
+		    swap_uuid_command(uuid, host_byte_sex);
+		if(uuid->cmdsize != sizeof(struct uuid_command)){
+		    Mach_O_error(ofile, "malformed object (LC_UUID command %lu "			"has incorrect cmdsize)", i);
 		    return(CHECK_BAD);
 		}
 		break;

@@ -290,6 +290,10 @@ __private_extern__ void swap_prebind_cksum_command(
     struct prebind_cksum_command *cksum_cmd,
     enum byte_sex target_byte_sex);
 
+__private_extern__ void swap_uuid_command(
+    struct uuid_command *uuid_cmd,
+    enum byte_sex target_byte_sex);
+
 __private_extern__ void swap_nlist(
     struct nlist *symbols,
     unsigned long nsymbols,

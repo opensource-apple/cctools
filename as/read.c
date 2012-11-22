@@ -255,6 +255,7 @@ static struct attribute_name attribute_names[] = {
     { "no_dead_strip", S_ATTR_NO_DEAD_STRIP },
     { "live_support", S_ATTR_LIVE_SUPPORT },
     { "self_modifying_code", S_ATTR_SELF_MODIFYING_CODE },
+    { "debug", S_ATTR_DEBUG },
     { NULL, 0 }
 };
 
@@ -441,9 +442,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "lcomm",	s_lcomm,	0	},
   { "line",	s_line,		0	},
   { "long",	cons,		4	},
-#if defined(ARCH64)
   { "quad",	cons,		8	},
-#endif /* defined(ARCH64) */
   { "lsym",	s_lsym,		0	},
   { "section",	s_section,	0	},
   { "zerofill",	s_zerofill,	0	},
@@ -456,6 +455,7 @@ static const pseudo_typeS pseudo_table[] = {
   { "stabd",	stab,		'd'	},
   { "stabn",	stab,		'n'	},
   { "stabs",	stab,		's'	},
+  { "debug_note",	stab,		's'	},
   { "reference",s_reference,	0	},
   { "lazy_reference",s_lazy_reference,	0	},
   { "weak_reference",s_weak_reference,	0	},
@@ -3059,8 +3059,7 @@ symbolS *symbolP)
 	    break;
 
 	case SEG_DIFFSECT:
-	    if(exp.X_add_symbol && exp.X_subtract_symbol &&
-	       exp.X_add_symbol->sy_other == exp.X_subtract_symbol->sy_other){
+	    if(exp.X_add_symbol && exp.X_subtract_symbol){
 		if(exp.X_add_symbol->sy_frag !=
 		   exp.X_subtract_symbol->sy_frag ||
 		   exp.X_add_symbol->sy_type == N_UNDF ||
@@ -3129,7 +3128,7 @@ cons(
 int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 {
     char c;
-    signed_target_addr_t
+    signed_expr_t
     mask,		/* high-order bits to truncate */
     unmask,		/* what bits we will store */
     get,		/* the bits of the expression we get */
@@ -3142,15 +3141,11 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 	 * Input_line_pointer -> 1st char after pseudo-op-code and could legally
 	 * be a end-of-line. (Or, less legally an eof - which we cope with.)
 	 */
-	if(nbytes >= (int)sizeof(signed_target_addr_t))
+	if(nbytes >= (int)sizeof(signed_expr_t))
 	    mask = 0;
 	else 
 	    /* Don't store these bits. */
-#if defined(ARCH64)
 	    mask = ~0ULL << (BITS_PER_CHAR * nbytes);
-#else
-	    mask = ~0 << (BITS_PER_CHAR * nbytes);
-#endif /* defined(ARCH64) */
 	unmask = ~mask;		/* Do store these bits. */
 
 	/*
@@ -3181,7 +3176,6 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 	    p = frag_more(nbytes);
 	    switch(segment){
 	    case SEG_BIG:
-#if defined(ARCH64)
 		/*
 		 * Handle bignums small enough to fit in a long long and
 		 * thus be passed directly to md_number_to_chars.
@@ -3199,7 +3193,6 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 		    md_number_to_chars(p, sum, nbytes);
 		}
 		else
-#endif /* defined(ARCH64) */
 		{
 		    as_warn("%s number illegal. Absolute 0 assumed.",
 			    exp.X_add_number > 0 ? "Bignum" : "Floating-Point");
@@ -3218,8 +3211,7 @@ int nbytes) /* nbytes == 1 for .byte, 2 for .word, 4 for .long, 8 for .quad */
 		use = get & unmask;
 		if((get & mask) && (get & mask) != mask){
 		    /* Leading bits contain both 0s & 1s. */
-		    as_warn("Value x%x truncated to x%x.", (unsigned int)get,
-			    (unsigned int)use);
+		    as_warn("Value 0x%llx truncated to 0x%llx.", get, use);
 		}
 		/* put bytes in right order. */
 		md_number_to_chars(p, use, nbytes);
@@ -3574,6 +3566,7 @@ void)
 		break;
 	    case '\\':
 	    case '"':
+	    case '\'':
 		break;		/* As itself. */
 	    case '0':
 	    case '1':

@@ -3,6 +3,15 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.20 release (the cctools-590.25 release):
+- Changed print_uuid_command() in ofile_print.c to use two line for the uuid[]
+  values.  Radar bug #3415593.
+
+Changes for the 5.20 release (the cctools-590.24 release):
+- Added support for DWARF.  Radar bug #4367423.
+  - Added printing S_ATTR_DEBUG to print_section() in ofile_print.c.
+  - Added print_uuid_command() to ofile_print.[ch]
+
 Changes for the 5.20 release (the cctools-590.23 release):
 - Changed print_thread_states() in ofile_print.c for the current i386 thread
   states (#if i386_THREAD_STATE == 1 case) so that it does use the fields

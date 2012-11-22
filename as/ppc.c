@@ -2210,24 +2210,22 @@ unsigned long parcnt)
 
 /*
  * md_number_to_chars() is the target machine dependent routine that puts out
- * a binary value of size 4, 2, or 1 bytes into the specified buffer.  This is
- * done in the target machine's byte sex.  In this case the byte order is
+ * a binary value of size 8, 4, 2, or 1 bytes into the specified buffer.  This
+ * is done in the target machine's byte sex.  In this case the byte order is
  * big endian.
  */
 void
 md_number_to_chars(
 char *buf,
-signed_target_addr_t val,
+signed_expr_t val,
 int nbytes)
 {
 	switch(nbytes){
-#if defined(ARCH64)
 	case 8:
 	    *buf++ = val >> 56;
 	    *buf++ = val >> 48;
 	    *buf++ = val >> 40;
 	    *buf++ = val >> 32;
-#endif /* defined(ARCH64) */
 	case 4:
 	    *buf++ = val >> 24;
 	    *buf++ = val >> 16;
@@ -2253,7 +2251,7 @@ int nbytes)
 void
 md_number_to_imm(
 unsigned char *buf,
-signed_target_addr_t val,
+signed_expr_t val,
 int nbytes,
 fixS *fixP,
 int nsect)
@@ -2263,13 +2261,11 @@ int nsect)
 	if(fixP->fx_r_type == NO_RELOC ||
 	   fixP->fx_r_type == PPC_RELOC_VANILLA){
 	    switch(nbytes){
-#if defined(ARCH64)
             case 8:
                 *buf++ = val >> 56;
                 *buf++ = val >> 48;
                 *buf++ = val >> 40;
                 *buf++ = val >> 32;
-#endif /* defined(ARCH64) */
 	    case 4:
 		*buf++ = val >> 24;
 		*buf++ = val >> 16;
@@ -2313,13 +2309,13 @@ int nsect)
 	    if((val & 0xffff8000) && ((val & 0xffff8000) != 0xffff8000)){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of " TA_DFMT " too large for field width of 16 "
+		as_warn("Fixup of %lld too large for field width of 16 "
 			"bits", val);
 	    }
 	    if((val & 0x3) != 0){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of " TA_DFMT " is not to a 4 byte address", val);
+		as_warn("Fixup of %lld is not to a 4 byte address", val);
 	    }
 	    /*
 	     * Note PPC_RELOC_BR14 are only used with bc, "branch conditional"
@@ -2358,13 +2354,13 @@ int nsect)
 	    if((val & 0xfc000000) && ((val & 0xfc000000) != 0xfc000000)){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of " TA_DFMT " too large for field width of 26 "
+		as_warn("Fixup of %lld too large for field width of 26 "
 			"bits", val);
 	    }
 	    if((val & 0x3) != 0){
 		layout_file = fixP->file;
 		layout_line = fixP->line;
-		as_warn("Fixup of " TA_DFMT " is not to a 4 byte address", val);
+		as_warn("Fixup of %lld is not to a 4 byte address", val);
 	    }
 	    buf[0] |= (val >> 24) & 0x03;
 	    buf[1] = val >> 16;

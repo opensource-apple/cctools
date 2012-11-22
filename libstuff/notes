@@ -5,6 +5,16 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.21 release (the cctools-590.25 release):
+- Added more support for DWARF.  Radar bug #4367423.
+  - Updated check_Mach_O() in ofile.c to deal with LC_UUID load commands.
+
+Changes for the 5.21 release (the cctools-590.24 release):
+- Added support for DWARF.  Radar bug #4367423.
+  - Added swap_uuid_command() to bytesex.c .
+  - Updated swap_object_headers() in swap_headers.c to deal with LC_UUID load
+    commands.
+
 Changes for the 5.20 release (the cctools-590.23 release):
 - Changed swap_i386_float_state() in bytesex.c for the current floating point
   i386 thread state (#if i386_THREAD_STATE == 1 case) so that it does swap

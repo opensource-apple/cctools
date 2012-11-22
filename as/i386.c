@@ -2124,7 +2124,7 @@ char ***vecP)
 void				/* Knows about order of bytes in address. */
 md_number_to_chars(
 char *con,		/* Return 'nbytes' of chars here. */
-signed_target_addr_t value,	/* The value of the bits. */
+signed_expr_t value,	/* The value of the bits. */
 int nbytes)		/* Number of bytes in the output. */
 {
   register char * p = con;
@@ -2143,6 +2143,16 @@ int nbytes)		/* Number of bytes in the output. */
     p[2] = (value>>16) & 0xff;
     p[3] = (value>>24) & 0xff;
     break;
+  case 8:
+    p[0] = value & 0xff;
+    p[1] = (value>>8) & 0xff;
+    p[2] = (value>>16) & 0xff;
+    p[3] = (value>>24) & 0xff;
+    p[4] = (value>>32) & 0xff;
+    p[5] = (value>>40) & 0xff;
+    p[6] = (value>>48) & 0xff;
+    p[7] = (value>>56) & 0xff;
+    break;
   default:
     BAD_CASE (nbytes);
   }
@@ -2152,7 +2162,7 @@ int nbytes)		/* Number of bytes in the output. */
 void				/* Knows about order of bytes in address. */
 md_number_to_imm(
 unsigned char *con,	/* Return 'nbytes' of chars here. */
-signed_target_addr_t value,	/* The value of the bits. */
+signed_expr_t value,	/* The value of the bits. */
 int nbytes,		/* Number of bytes in the output. */
 fixS *fixP,
 int nsect)

@@ -452,6 +452,19 @@ char *out_file_name)
 		    expressionS *exp;
 
 		    exp = (expressionS *)symbolP->expression;
+		    if((exp->X_add_symbol->sy_type & N_TYPE) == N_UNDF)
+	    		as_fatal("undefined symbol `%s' in operation setting "
+				 "`%s'", exp->X_add_symbol->sy_name,
+				 symbol_name);
+		    if((exp->X_subtract_symbol->sy_type & N_TYPE) == N_UNDF)
+	    		as_fatal("undefined symbol `%s' in operation setting "
+				 "`%s'", exp->X_subtract_symbol->sy_name,
+				 symbol_name);
+		    if(exp->X_add_symbol->sy_other !=
+		       exp->X_subtract_symbol->sy_other)
+	    		as_fatal("invalid sections for operation on `%s' and "
+				 "`%s' setting `%s'",exp->X_add_symbol->sy_name,
+				 exp->X_subtract_symbol->sy_name, symbol_name);
 		    symbolP->sy_nlist.n_value +=
 			exp->X_add_symbol->sy_value -
 			exp->X_subtract_symbol->sy_value;

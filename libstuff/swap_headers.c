@@ -81,6 +81,7 @@ struct load_command *load_commands)
     struct routines_command_64 *rc64;
     struct twolevel_hints_command *hints;
     struct prebind_cksum_command *cs;
+    struct uuid_command *uuid;
     unsigned long flavor, count, nflavor;
     char *p, *state;
 
@@ -922,6 +923,15 @@ struct load_command *load_commands)
 		}
 		break;
 
+	    case LC_UUID:
+		uuid = (struct uuid_command *)lc;
+		if(uuid->cmdsize != sizeof(struct uuid_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_UUID command %lu has incorrect cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
 	    default:
 		error("in swap_object_headers(): malformed load commands "
 		      "(unknown load command %lu)", i);
@@ -1329,6 +1339,11 @@ struct load_command *load_commands)
 	    case LC_PREBIND_CKSUM:
 		cs = (struct prebind_cksum_command *)lc;
 		swap_prebind_cksum_command(cs, target_byte_sex);
+		break;
+
+	    case LC_UUID:
+		uuid = (struct uuid_command *)lc;
+		swap_uuid_command(uuid, target_byte_sex);
 		break;
 	    }
 

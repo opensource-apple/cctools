@@ -97,10 +97,18 @@ extern LITTLENUM_TYPE generic_bignum[];
  * In other words the "type" of an expression is its segment.
  */
 
+/*
+ * To allow 32-bit architecutres to use things like .quad we need to make
+ * all expressions be 64-bit regardless of the target architecure's address
+ * size.
+ */
+#include <stdint.h>
+typedef int64_t signed_expr_t;
+
 typedef struct {
     symbolS *X_add_symbol;	/* foo */
     symbolS *X_subtract_symbol;	/* bar */
-    signed_target_addr_t
+    signed_expr_t
     X_add_number;	/* 42 (must be signed) */
     segT     X_seg;		/* What segment (expr type) */
 } expressionS;
