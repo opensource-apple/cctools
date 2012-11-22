@@ -131,6 +131,8 @@ enum bool arch_found = FALSE;
 static struct nlist *sorted_symbols = NULL;
 static struct nlist_64 *sorted_symbols64 = NULL;
 
+static void usage(void);
+
 static void create_file_parts(
     char *file_name);
 static struct file_part *new_file_part(
@@ -191,12 +193,8 @@ char *argv[])
     struct arch_flag a;
 
 	progname = argv[0];
-	if(argc < 3){
-	    fprintf(stderr, "Usage: %s mach-o [-arch name] [-p] [-a] "
-	            "pagenumber [pagenumber ...]\n",
-		    progname);
-	    exit(EXIT_FAILURE);
-	}
+	if(argc < 3)
+	    usage();
 	start = 2;
 
 	if(strcmp(argv[start], "-arch") == 0){
@@ -211,6 +209,8 @@ char *argv[])
 	    }
 	    arch_flag = &a;
 	    start += 2;
+	    if(argc < 5)
+		usage();
         }
 
 	create_file_parts(argv[1]);
@@ -252,6 +252,16 @@ char *argv[])
 	}
 
 	return(EXIT_SUCCESS);
+}
+
+static
+void
+usage(void)
+{
+	fprintf(stderr, "Usage: %s mach-o [-arch name] [-p] [-a] "
+		"pagenumber [pagenumber ...]\n",
+		progname);
+	exit(EXIT_FAILURE);
 }
 
 static

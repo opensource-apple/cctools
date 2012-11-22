@@ -1,5 +1,5 @@
 <HTML>
-<!--This file created 2/7/11 2:02 PM by Claris Home Page version 3.0-->
+<!--This file created 6/14/11 3:38 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
@@ -12,7 +12,7 @@
 2011 by Apple, Inc. All Rights Reserved.</FONT></P>
 
 <H2>Private Mac OS X Xcode 4.1 Developer Release:<BR>
-Compiler Tools (cctools-800)</H2>
+Compiler Tools (cctools-806)</H2>
 
 <P>This file contains release notes for the 5.29 release of the
 Compiler Tools for the Mac OS X Xcode 4.1 Developer Release. This
@@ -29,6 +29,47 @@ file contains information about the following topics:</P>
 
 <H2>Notes Specific to Release 5.29 (Mac OS X Xcode 4.1 Developer
 Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-805 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed more bugs introduced in ranlib(1) causing incorrect
+   error messages about table of contents. Radar bug #9475790.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-803 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed bugs introduced in strip(1) and libtool(1) causing
+   incorrect error messages about table of contents. Radar bug
+   #9505797.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-802 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Updated ranlib(1) to update table of contents in place when
+   possible. Radar bug #9354605.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-801 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a problem with the fast 'nop' ranlib(1) in libtool(1).
+   Radar bug #9418154.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-800 for
+the 5.29 Mac OS X Xcode 4.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Implemented a fast 'nop' ranlib(1) when run right after ar(1)
+   has already run ranlib(1). Radar bug #9354501.</LI>
+</UL>
 
 <H5><FONT SIZE="+1">Changes since the last release (cctools-799 for
 the 5.28 Mac OS X Xcode 3.2.3 Developer release)</FONT></H5>

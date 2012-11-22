@@ -120,6 +120,8 @@ static enum check_type check_extend_format_1(
     struct ar_hdr *ar_hdr,
     uint32_t size_left,
     uint32_t *member_name_size);
+static enum check_type check_archive_toc(
+    struct ofile *ofile);
 static enum check_type check_Mach_O(
     struct ofile *ofile);
 static void swap_back_Mach_O(
@@ -868,8 +870,8 @@ enum bool archives_with_fat_objects)
 	    printf("Modification time = %ld\n", (long int)stat_buf.st_mtime);
 #endif /* OTOOL */
 
-	return(ofile_map_from_memory(addr, size, file_name, arch_flag,
-			     object_name, ofile, archives_with_fat_objects));
+	return(ofile_map_from_memory(addr, size, file_name, stat_buf.st_mtime,
+		  arch_flag, object_name, ofile, archives_with_fat_objects));
 }
 
 /*
@@ -886,6 +888,7 @@ ofile_map_from_memory(
 char *addr,
 uint32_t size,
 const char *file_name,
+uint64_t mtime,
 const struct arch_flag *arch_flag,	/* can be NULL */
 const char *object_name,		/* can be NULL */
 struct ofile *ofile,
@@ -908,6 +911,7 @@ enum bool archives_with_fat_objects)
 	    return(FALSE);
 	ofile->file_addr = addr;
 	ofile->file_size = size;
+	ofile->file_mtime = mtime;
 
 	/* Try to figure out what kind of file this is */
 
@@ -1746,6 +1750,17 @@ struct ofile *ofile)
 	    ofile->member_name_size = size_ar_name(ar_hdr);
 	    ar_name_size = 0;
 	}
+	/* Clear these in case there is no table of contents */
+	ofile->toc_addr = NULL;
+	ofile->toc_size = 0;
+	ofile->toc_ar_hdr = NULL;
+	ofile->toc_name = NULL;
+	ofile->toc_name_size = 0;
+	ofile->toc_ranlibs = NULL;
+	ofile->toc_nranlibs = 0;
+	ofile->toc_strings = NULL;
+	ofile->toc_strsize = 0;
+	ofile->toc_bad = FALSE;
 
 	host_byte_sex = get_host_byte_sex();
 
@@ -1833,6 +1848,19 @@ struct ofile *ofile)
 		ofile->load_commands = (struct load_command *)
 		    (ofile->object_addr + sizeof(struct mach_header_64));
 		if(check_Mach_O(ofile) == CHECK_BAD)
+		    goto cleanup;
+	    }
+	    if(ofile->member_type == OFILE_UNKNOWN &&
+	       (strncmp(ofile->member_name, SYMDEF_SORTED,
+		        sizeof(SYMDEF_SORTED) - 1) == 0 ||
+	        strncmp(ofile->member_name, SYMDEF,
+		        sizeof(SYMDEF) - 1) == 0)){
+		ofile->toc_addr = ofile->member_addr;
+		ofile->toc_size = ofile->member_size;
+		ofile->toc_ar_hdr = ofile->member_ar_hdr;
+		ofile->toc_name = ofile->member_name;
+		ofile->toc_name_size = ofile->member_name_size;
+		if(check_archive_toc(ofile) == CHECK_BAD)
 		    goto cleanup;
 	    }
 #ifdef LTO_SUPPORT
@@ -3119,6 +3147,153 @@ uint32_t *member_name_size)
 	    return(CHECK_BAD);
 	}
 	*member_name_size = ar_name_size;
+	return(CHECK_GOOD);
+}
+
+/*
+ * check_archive_toc() checks the archive table of contents referenced in the
+ * thin archive via the ofile for correctness and if bad sets the bad_toc field
+ * in the ofile struct to TRUE.   If not it sets the other toc_* fields that
+ * ranlib(1) uses to know it can't update the table of contents and doesn't
+ * have to totally rebuild it.  And by this always returning CHECK_GOOD it
+ * allows otool(1) to print messed up tables of contents for debugging.
+ */
+static
+enum check_type
+check_archive_toc(
+struct ofile *ofile)
+{
+    uint32_t i, symdef_length, offset, nranlibs, strsize;
+    enum byte_sex host_byte_sex, toc_byte_sex;
+    struct ranlib *ranlibs;
+    char *strings;
+
+	ofile->toc_ranlibs = NULL;
+	ofile->toc_nranlibs = 0;
+	ofile->toc_strings = NULL;
+	ofile->toc_strsize = 0;
+
+	/*
+	 * Note this can only be called when the whole file is a thin archive.
+	 */
+	if(ofile->file_type != OFILE_ARCHIVE)
+	    return(CHECK_GOOD);
+
+	symdef_length = ofile->toc_size;
+	/*
+	 * The contents of a __.SYMDEF file is begins with a 32-bit word giving 
+	 * the size in bytes of ranlib structures which immediately follow, and
+	 * then continues with a string table consisting of a 32-bit word giving
+	 * the number of bytes of strings which follow and then the strings
+	 * themselves.  So the smallest valid size is two 32-bit words long.
+	 */
+	if(symdef_length < 2 * sizeof(uint32_t)){
+	    /*
+	     * Size of table of contents for archive too small to be a valid
+	     * table of contents.
+	     */
+	    ofile->toc_bad = TRUE;
+	    return(CHECK_GOOD);
+	}
+	host_byte_sex = get_host_byte_sex();
+	toc_byte_sex = get_toc_byte_sex(ofile->file_addr, ofile->file_size);
+	if(toc_byte_sex == UNKNOWN_BYTE_SEX){
+	    /*
+	     * Can't determine the byte order of table of contents as it
+	     * contains no Mach-O files.
+	     */
+	    ofile->toc_bad = TRUE;
+	    return(CHECK_GOOD);
+	}
+	offset = 0;
+	nranlibs = *((uint32_t *)(ofile->toc_addr + offset));
+	if(toc_byte_sex != host_byte_sex)
+	    nranlibs = SWAP_INT(nranlibs);
+	nranlibs = nranlibs / sizeof(struct ranlib);
+	offset += sizeof(uint32_t);
+	ranlibs = (struct ranlib *)(ofile->toc_addr + offset);
+	offset += sizeof(struct ranlib) * nranlibs;
+	if(nranlibs == 0)
+	    return(CHECK_GOOD);
+	if(offset - (2 * sizeof(uint32_t)) > symdef_length){
+	    /*
+	     * Truncated or malformed archive.  The ranlib structures in table
+	     * of contents extends past the end of the table of contents.
+	     */
+	    ofile->toc_bad = TRUE;
+	    return(CHECK_GOOD);
+	}
+	strsize = *((uint32_t *)(ofile->toc_addr + offset));
+	if(toc_byte_sex != host_byte_sex)
+	    strsize = SWAP_INT(strsize);
+	offset += sizeof(uint32_t);
+	strings = ofile->toc_addr + offset;
+	offset += strsize;
+	if(offset - (2 * sizeof(uint32_t)) > symdef_length){
+	    /*
+	     * Truncated or malformed archive.  The ranlib strings in table of
+	     * contents extends past the end of the table of contents.
+	     */
+	    ofile->toc_bad = TRUE;
+	    return(CHECK_GOOD);
+	}
+	if(symdef_length == 2 * sizeof(uint32_t))
+	    return(CHECK_GOOD);
+
+	/*
+	 * Check the string offset and the member offsets of the ranlib structs.
+	 */
+	if(toc_byte_sex != host_byte_sex)
+	    swap_ranlib(ranlibs, nranlibs, host_byte_sex);
+	for(i = 0; i < nranlibs; i++){
+	    if(ranlibs[i].ran_un.ran_strx >= strsize){
+		/*
+		 * Malformed table of contents.  The ranlib struct at this index
+		 * has a bad string index field.
+		 */
+		ofile->toc_bad = TRUE;
+		return(CHECK_GOOD);
+	    }
+	    if(ranlibs[i].ran_off >= ofile->file_size){
+		/*
+		 * Malformed table of contents.  The ranlib struct at this index
+		 * has a bad library member offset field.
+		 */
+		ofile->toc_bad = TRUE;
+		return(CHECK_GOOD);
+	    }
+	    /*
+	     * These should be on 4 byte boundaries because the maximum
+	     * alignment of the header structures and relocation are 4 bytes.
+	     * But this is has to be 2 bytes because that's the way ar(1) has
+	     * worked historicly in the past.  Fortunately this works on the
+	     * 68k machines but will have to change when this is on a real
+	     * machine.
+	     */
+#if defined(mc68000) || defined(__i386__)
+	    if(ranlibs[i].ran_off % sizeof(short) != 0){
+		/*
+		 * Malformed table of contents.  This ranlib struct library
+		 * member offset not a multiple 2 bytes.
+		 */
+		ofile->toc_bad = TRUE;
+		return(CHECK_GOOD);
+	    }
+#else
+	    if(ranlibs[i].ran_off % sizeof(uint32_t) != 0){
+		/*
+		 * Malformed table of contents.  This ranlib struct library
+	         * member offset not a multiple of 4 bytes.
+		 */
+		ofile->toc_bad = TRUE;
+		return(CHECK_GOOD);
+	    }
+#endif
+	}
+	ofile->toc_ranlibs = ranlibs;
+	ofile->toc_nranlibs = nranlibs;
+	ofile->toc_strings = strings;
+	ofile->toc_strsize = strsize;
 	return(CHECK_GOOD);
 }
 

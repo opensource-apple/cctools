@@ -586,9 +586,17 @@ void *cookie) /* cookie is not used */
 	/*
 	 * Archive headers.
 	 */
-	if(aflag && ofile->member_ar_hdr != NULL)
+	if(aflag && ofile->member_ar_hdr != NULL){
+	    uint32_t member_offset;
+
+	    member_offset = ofile->member_offset - sizeof(struct ar_hdr);
+	    if(strncmp(ofile->member_ar_hdr->ar_name, AR_EFMT1,
+		       sizeof(AR_EFMT1) - 1) == 0)
+		member_offset -= ofile->member_name_size;
+
 	    print_ar_hdr(ofile->member_ar_hdr, ofile->member_name,
-			 ofile->member_name_size, vflag);
+			 ofile->member_name_size, member_offset, vflag, Vflag);
+	}
 
 	/*
 	 * Archive table of contents.

@@ -4,6 +4,10 @@ TODO:
   the kernel header and change ofile_print.c to recognize new thread states.
 
 Changes for the 5.29 release (the cctools-800 release):
+- Added printing archive member offsets when -aV is specified.  Radar bug
+  #9354605.
+
+Changes for the 5.29 release (the cctools-800 release):
 - Fixed the arm VCVT (between half-precision and single-precision) instructions
   encodings.  Had the op bit inverted in the table.  It should have been:
     VCVT<c><q>.F32.F16 <Qd>, <Dm> Encoded as op = 1 (aka fcvtshp)

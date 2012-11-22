@@ -9,6 +9,42 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.29 release (the cctools-805 release):
+- Changed create_library() in libtool.c to check the new ofile bad_toc field
+  and cause it to create a new library when this happens.  Radar bug #9475790.
+
+Changes for the 5.29 release (the cctools-803 release):
+- Changed libtool.c when running as ranlib(1) to attempt to update the table
+  of contents in place for the common case for thin archives.  And removed the
+  the time stamp checking for the "nop" ranlib case, which now ends up with just
+  "touching" the file and adjusting the timestamps.  Radar bug #9354605.
+  - Factored out existing code into new routines get_target_byte_sex() and
+    put_toc_member().
+  - Changed process() and removed the time stamp checking for the "nop" ranlib
+    case.
+  - Added the input_member_offset field to the struct member and added code to
+    set its value in add_member().
+  - Changed create_library() to take an ofile which is non-NULL if run as
+    ranlib(1) and a thin archive.
+  - Added code in create_library() to update the table of contents in place.
+    And code to only "touch", write the SARMAG, if the table of contents is
+    the same.  This code has to use the input_member_offset in cases that the
+    thin input archive would not be same as produced by libtool(1) but still
+    has member offsets at acceptable alignments.
+
+Changes for the 5.29 release (the cctools-802 release):
+- Fixed a problem with the change to libtool(1) for Radar bug #9354501.  It was
+  not setting toc_uptodate to TRUE and was not doing this only when
+  cmd_flags.ranlib == TRUE.  Radar bug #9418154.
+
+Changes for the 5.29 release (the cctools-801 release):
+- Changed process() in libtool.c to check that the table of contents was up to
+  date based on the file's time stamp and the table of contents time stamp for
+  archive files.  Then if it ranlib(1) being run do nothing if it is up to date.
+  Radar bug #9354501.
+- Fixed a bug in the error handling of pagestuff(1) when used with the -arch
+  argument but missing an argument for which page.  Radar bug #8979851.
+
 Changes for the 5.28 release (the cctools-798 release):
 - Added this line to the Makefile:
     CXX = $(shell xcrun -find -sdk $(SDKROOT) g++)

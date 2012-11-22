@@ -5,6 +5,31 @@
 TODO:
 - Deal with LC_PREPAGE and unknown load commands that don't need to be swapped.
 
+Changes for the 5.27 release (the cctools-806 release):
+- Maded more changes to check_archive_toc() only set the new ofile bad_toc
+  field when the anything is bad about the table of contents.
+
+Changes for the 5.27 release (the cctools-805 release):
+- Changed check_archive_toc() to set the new ofile bad_toc field when the
+  file offset or string offset of a toc entry is out of range.  This will
+  cause libtool/ranlib to rebuild it.  Radar bug #9475790.
+
+Changes for the 5.27 release (the cctools-804 release):
+- Fixed a bug that when check_archive_toc() was geting called when the whole
+  was not a file is a thin archive it was producing an error when it should
+  have just not done the checks.  Radar bug #9505797.
+
+Changes for the 5.27 release (the cctools-803 release):
+- Changed ofile_first_member() in ofile.c to fill in the added toc_* fields in
+  the ofile struct.  And added a check_archive_toc() routine to make sure
+  the table of contents offests are valid.  Radar bug #9354605.
+
+Changes for the 5.28 release (the cctools-801 release):
+- Changed ofile_map_from_memory() to take an mtime parameter and ofile_map()
+  to pass it.  ofile_map_from_memory() then saves that into the ofile's new
+  file_mtime field.  Changed breakout_mem() in breakout.c to pass 0 as the mtime
+  parameter.  Radar bug #9354501
+
 Changes for the 5.28 release (the cctools-799 release):
 - Changed is_llvm_bitcode() in lto.c to check for a filesize of zero and just
   return since the libLTO API's will crash it handed a empty file.  Radar bug

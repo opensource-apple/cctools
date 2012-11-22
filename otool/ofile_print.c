@@ -903,7 +903,9 @@ print_ar_hdr(
 struct ar_hdr *ar_hdr,
 char *member_name,
 uint32_t member_name_size,
-enum bool verbose)
+uint32_t member_offset,
+enum bool verbose,
+enum bool print_offset)
 {
     int32_t i;
     uint32_t j, mode;
@@ -941,6 +943,9 @@ enum bool verbose)
 	    size_buf[i] = '\0';
 	size_buf[sizeof(ar_hdr->ar_size)] = '\0';
 
+
+	if(print_offset == TRUE)
+	    printf("%u\t", member_offset);
 
 	if(verbose == TRUE){
 	    mode = strtoul(mode_buf, &endp, 8);

@@ -1,3 +1,14 @@
+Changes for the 5.27 release (the cctools-805 release):
+- Added toc_bad field to the ofile struct in "stuff/ofile.h".
+  Radar bug #9475790.
+
+Changes for the 5.27 release (the cctools-803 release):
+- Added toc_* fields to the ofile struct in "stuff/ofile.h". Radar bug #9354605.
+
+Changes for the 5.27 release (the cctools-801 release):
+- Added the file_mtime field to the ofile struct in "stuff/ofile.h" and the
+  mtime parameter to ofile_map_from_memory().  Radar bug #9354501.
+
 Changes for the 5.27 release (the cctools-800 release):
 - Updated comment in <mach-o/loader.h> before GET_LIBRARY_ORDINAL to include
   other dynamic library load commands.  Radar bug #8723078.

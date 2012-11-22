@@ -47,7 +47,9 @@ extern void print_ar_hdr(
     struct ar_hdr *ar_hdr,
     char *member_name,
     uint32_t member_name_size,
-    enum bool verbose);
+    uint32_t member_offset,
+    enum bool verbose,
+    enum bool print_offset);
 
 extern void print_library_toc(
     struct ar_hdr *toc_ar_hdr,
