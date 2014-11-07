@@ -234,14 +234,14 @@ lib_ofiles lib_ofiles_install: installhdrs
 		SRCROOT=$(SRCROOT)/libstuff				\
 		OBJROOT=$(OBJROOT)/libstuff				\
 		SYMROOT=$(SYMROOT)/libstuff $@) || exit 1;		\
-	    echo =========== $(MAKE) all for libstuff =============;	\
+	    echo ====== $(MAKE) lib_static_ofiles for libstuff =======; \
 	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		OLD_LIBKLD="$(OLD_LIBKLD)" 				\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)/libstuff				\
 		OBJROOT=$(OBJROOT)/libstuff				\
-		SYMROOT=$(SYMROOT)/libstuff all) || exit 1;		\
+		SYMROOT=$(SYMROOT)/libstuff lib_static_ofiles) || exit 1; \
 	    if [ $(BUILD_DYLIBS) = "YES" ];				\
 	    then							\
 	        echo =========== $(MAKE) $@ for libmacho =============;	\
@@ -284,10 +284,10 @@ lib_ofiles lib_ofiles_install: installhdrs
 	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
-	    echo =========== $(MAKE) all for libstuff =============;	\
+	    echo ====== $(MAKE) lib_static_ofiles for libstuff =======; \
 	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
-		DSTROOT=$$DSTROOT all) || exit 1;			\
+		DSTROOT=$$DSTROOT lib_static_ofiles) || exit 1;		\
 	    if [ $(BUILD_DYLIBS) = "YES" ];				\
 	    then							\
 	        echo =========== $(MAKE) $@ for libmacho =============;	\
@@ -311,7 +311,6 @@ lib_ofiles lib_ofiles_install: installhdrs
 	fi
 
 install_dev_tools:
-	@ export RC_FORCEHDRS=YES;					\
 	$(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)"					\
 		RC_OS="$(RC_OS)"					\

@@ -1535,6 +1535,7 @@ struct frchain *line_section)
   enum dwarf2_format d2f;
   int sizeof_offset, output_something;
 
+  sizeof_offset = 0;
   section_set(line_section);
 
   line_start = symbol_temp_new_now ();
