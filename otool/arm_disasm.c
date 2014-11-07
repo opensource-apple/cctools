@@ -5644,7 +5644,8 @@ LLVMDisasmContextRef thumb_dc,
 char *object_addr,
 uint32_t object_size,
 struct data_in_code_entry *dices,
-uint32_t ndices)
+uint32_t ndices,
+uint64_t seg_addr)
 {
     uint32_t bytes_consumed, pool_value, i, offset;
 
@@ -5710,10 +5711,10 @@ uint32_t ndices)
 	 * See if this address is has a data in code entry and if so print.
 	 */
 	if(ndices){
-            /* TODO in final linked imagess, offset is from the base address */
-            /* TODO in final linked imagess, offset is from first section address */
+            /* Note: in final linked images, offset is from the base address */
+            /* Note: in object files, offset is from first section address */
             if(nrelocs == 0) /* TODO better test for final linked image */
-                offset = addr; 
+                offset = addr - seg_addr; 
             else
                 offset = addr - sect_addr; 
             for(i = 0; i < ndices; i++){

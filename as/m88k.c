@@ -600,10 +600,6 @@ char *op)
 
 	/* if this instruction requires labels mark it for later */
 	switch (insn.reloc) {
-
-		case NO_RELOC:
-				break;
-
 		case M88K_RELOC_LO16:
 		case M88K_RELOC_HI16:
 				fix_new(

@@ -4622,6 +4622,8 @@ void *TagBuf)
 		op_info->Value -= Pc + Offset + Width;
 	    if(symbols != NULL)
 		n_strx = symbols[relocs[i].r_symbolnum].n_un.n_strx;
+	    else
+		return(0);
 	    if(n_strx >= strings_size)
 		return(0);
 	    name = strings + n_strx;

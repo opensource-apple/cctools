@@ -1,5 +1,5 @@
 <HTML>
-<!--This file created 8/6/12 4:28 PM by Claris Home Page version 3.0-->
+<!--This file created 9/19/12 4:34 PM by Claris Home Page version 3.0-->
 <HEAD>
    <TITLE>Private Compiler Tools Release Notes</TITLE>
    <META NAME=GENERATOR CONTENT="Claris Home Page 3.0">
@@ -8,14 +8,14 @@
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY BGCOLOR="#FFFFFF">
-<P><FONT SIZE="-1">Mac OS X Xcode 4.5 Developer Release Copyright
+<P><FONT SIZE="-1">Mac OS X Xcode 4.5.1 Developer Release Copyright
 2012 by Apple, Inc. All Rights Reserved.</FONT></P>
 
-<H2>Private Mac OS X Xcode 4.5 Developer Release:<BR>
-Compiler Tools (cctools-836)</H2>
+<H2>Private Mac OS X Xcode 4.5.1 Developer Release:<BR>
+Compiler Tools (cctools-839)</H2>
 
-<P>This file contains release notes for the 5.32 release of the
-Compiler Tools for the Mac OS X Xcode 4.5 Developer Release. This
+<P>This file contains release notes for the 5.33 release of the
+Compiler Tools for the Mac OS X Xcode 4.5.1 Developer Release. This
 file contains information about the following topics:</P>
 
 <UL>
@@ -27,6 +27,42 @@ file contains information about the following topics:</P>
    on)&nbsp;</LI>
 </UL>
 
+<H2>Notes Specific to Release 5.33 (Mac OS X Xcode 4.5.1 Developer
+Release)</H2>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-838 for
+the 5.33 Mac OS X Xcode 4.5.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the cctools project's source so the Makefile for
+   strip(1) uses libprunetrie from toolchain directory instead of
+   root.  Radar bug #12296255..</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-837 for
+the 5.33 Mac OS X Xcode 4.5.1 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Fixed a bug in otool(1) that would cause it to not use the
+   data in code tables when disassembling a linked executable. Radar
+   bug #12171547.</LI>
+   
+   <LI>Changed the cctools project's source so the Makefile does not
+   include contains internal train names. Radar bug #12000666.</LI>
+</UL>
+
+<H5><FONT SIZE="+1">Changes since the last release (cctools-836 for
+the 5.32 Mac OS X Xcode 4.5 Developer release)</FONT></H5>
+
+<UL>
+   <LI>Changed the cctools project to use INSTALL_LOCATION and not
+   DT_TOOLCHAIN_DIR when building. Radars 11918869.</LI>
+   
+   <LI>Fixed a bug in otool(1) that would cause it to crash when
+   using the -o option with an object that has bad Objective-C data.
+   Radar bug #12100282.</LI>
+</UL>
+
 <H2>Notes Specific to Release 5.32 (Mac OS X Xcode 4.5 Developer
 Release)</H2>
 
@@ -35,7 +71,7 @@ the 5.32 Mac OS X Xcode 4.5 Developer release)</FONT></H5>
 
 <UL>
    <LI>Fixed the cctools sources so it contains the header file
-   "mach/arm/_structs.h" to allow it to build on non-iOS trains. 
+   "mach/arm/_structs.h" to allow it to build on non-iOS trains.
    Radar bug 12025943.</LI>
 </UL>
 

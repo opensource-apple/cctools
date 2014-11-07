@@ -569,4 +569,5 @@ extern enum bool get_sect_info(
     uint64_t *sect_addr,
     struct relocation_info **sect_relocs,
     uint32_t *sect_nrelocs,
-    uint32_t *sect_flags);
+    uint32_t *sect_flags,
+    uint64_t *seg_addr);

@@ -12,10 +12,12 @@ ifneq "" "$(SDKROOT)"
 endif
 ifeq "clang" "$(notdir $(CC))"
   CFLAGS = $(OFLAG) $(LTO) $(TRIE) -g -Wall -Wno-format-nonliteral \
-	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK)
+	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK) \
+	 -I$(DT_TOOLCHAIN_DIR)/usr/local/include
 else
   CFLAGS = $(OFLAG) $(LTO) $(TRIE) -g -Wall $(X_CFLAGS) \
-	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK)
+	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(SDK) \
+	 -I$(DT_TOOLCHAIN_DIR)/usr/local/include
 endif
 
 USE_DEPENDENCY_FILE := $(shell if [ "$(notdir $(CC))" != "mwccppc" ] && \
@@ -28,7 +30,7 @@ LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 ifeq "" "$(TRIE)"
   LIB_PRUNETRIE =
   else
-  LIB_PRUNETRIE = /usr/local/lib/libprunetrie.a
+  LIB_PRUNETRIE = -L$(DT_TOOLCHAIN_DIR)/usr/local/lib -lprunetrie
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

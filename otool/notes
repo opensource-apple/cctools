@@ -3,6 +3,18 @@ TODO:
 - HPPA, bring the private version of mach/hppa/thread_status.h in sync with
   the kernel header and change ofile_print.c to recognize new thread states.
 
+Changes for the 5.33 release (the cctools-838 release):
+- Change the default disassembler to use the llvm disassembler via setting the
+  -q flag unless the -Q flag is set.  Radar bug #9801054.
+- Fix use of data in code table for final linked images as the offset is from
+  the base address.  Radar bug #12171547.
+  #12100282.
+
+Changes for the 5.33 release (the cctools-837 release):
+- Fixed a bug in print_method_list_t() in print_objc2_32bit.c where it was
+  copying the partial struct method_t into the wrong variable.  Radar bug
+  #12100282.
+
 Changes for the 5.32 release (the cctools-835 release):
 - Added support for the LC_ENCRYPTION_INFO_64 load command. Radar bug #11862845.
   - Added print_encryption_info_command_64() in ofile_print.[ch] .

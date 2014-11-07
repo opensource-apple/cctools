@@ -9,6 +9,10 @@ To Do:
   could have been set otherwise and does not print the next line.
 - Maybe add fat support for segedit(1)
 
+Changes for the 5.33 release (the cctools-839 release):
+- Changed the Makefile so that strip(1)'s use of <mach-o/prune_trie.h> and
+  libprunetrie.a so that it comes from DT_TOOLCHAIN_DIR.  Radar bug #12296255.
+
 Changes for the 5.32 release (the cctools-835 release):
 - Fixed a bug in strip(1) when the input was a .o file containg
   LC_FUNCTION_STARTS load command. The code in get_starting_syminfo_offset() in
