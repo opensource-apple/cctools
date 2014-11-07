@@ -48,6 +48,7 @@ static const struct arch_flag arch_flags[] = {
     /* architecture families */
     { "ppc64",     CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL },
     { "x86_64",    CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL },
+    { "x86_64h",   CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H },
     { "arm64",     CPU_TYPE_ARM64,     CPU_SUBTYPE_ARM64_ALL },
     /* specific architecture implementations */
     { "ppc970-64", CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_970 },

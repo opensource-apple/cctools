@@ -545,6 +545,15 @@ cpu_subtype_t cpusubtype1,
 cpu_subtype_t cpusubtype2)
 {
 	/*
+	 * If this is an x86_64 cputype and either subtype is the
+	 * "Haswell and compatible" it does not combine with anything else.
+	 */
+	if(cputype == CPU_TYPE_X86_64 &&
+	   (cpusubtype1 == CPU_SUBTYPE_X86_64_H ||
+	    cpusubtype2 == CPU_SUBTYPE_X86_64_H))
+	    return((cpu_subtype_t)-1);
+
+	/*
 	 * We now combine any i386 or x86_64 subtype to the ALL subtype.
 	 */
 	if(cputype == CPU_TYPE_I386 || cputype == CPU_TYPE_X86_64)

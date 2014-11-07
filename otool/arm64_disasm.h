@@ -17,6 +17,8 @@ extern uint32_t arm64_disassemble(
     uint32_t next_relocs,
     struct relocation_info *loc_relocs,
     uint32_t nloc_relocs,
+    struct dyld_bind_info *dbi,
+    uint64_t ndbi,
     struct nlist_64 *symbols64,
     uint32_t nsymbols,
     struct symbol *sorted_symbols,

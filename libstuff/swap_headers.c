@@ -1136,6 +1136,16 @@ check_dylinker_command:
 		}
 		break;
 
+	    case LC_LINKER_OPTIMIZATION_HINT:
+		ld = (struct linkedit_data_command *)lc;
+		if(ld->cmdsize != sizeof(struct linkedit_data_command)){
+		    error("in swap_object_headers(): malformed load commands "
+			  "(LC_LINKER_OPTIMIZATION_HINT command %lu has "
+			  "incorrect cmdsize", i);
+		    return(FALSE);
+		}
+		break;
+
 	    case LC_VERSION_MIN_MACOSX:
 		vc = (struct version_min_command *)lc;
 		if(vc->cmdsize != sizeof(struct version_min_command)){
@@ -1700,6 +1710,7 @@ check_dylinker_command:
 	    case LC_FUNCTION_STARTS:
 	    case LC_DATA_IN_CODE:
 	    case LC_DYLIB_CODE_SIGN_DRS:
+	    case LC_LINKER_OPTIMIZATION_HINT:
 		ld = (struct linkedit_data_command *)lc;
 		swap_linkedit_data_command(ld, target_byte_sex);
 		break;

@@ -31,9 +31,13 @@ ifneq "" "$(SDKROOT)"
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
   STRIP = $(shell xcrun -find -sdk ${SDKROOT} strip)
   DSYMUTIL = $(shell xcrun -find -sdk ${SDKROOT} dsymutil)
+  LIBTOOL = $(shell xcrun -find -sdk $(SDKROOT) libtool)
+  RANLIB = $(shell xcrun -find -sdk $(SDKROOT) ranlib)
 else
   STRIP = strip
   DSYMUTIL = dsymutil
+  LIBTOOL = libtool
+  RANLIB = ranlib
 endif
 
 OFLAG = -Os
@@ -288,13 +292,14 @@ dynamic_ofiles: $(OBJROOT)/dynamic_obj $(OBJROOT)/dtmp_obj
 	$(CC) $(CFLAGS) $(RC_CFLAGS) $(COPTS) -c -o $(OFILE_DIR)/$*.o $<
 
 clean:
-	-rm -r -f $(OFILE_DIRS) $(OBJROOT)/static_obj
+	-rm -r -f $(OFILE_DIRS) $(OBJROOT)/static_obj \
+		  $(OBJROOT)/dynamic_profile_obj
 
 shlib_clean:
 	-rm -r -f $(OBJROOT)/ptmp_obj $(OBJROOT)/otmp_obj $(OBJROOT)/dtmp_obj
 
 libmacho.a libmacho_pg.a libmacho_static.a libmacho_kld.a: $(OBJS)
-	libtool -static -o $(SYMROOT)/$@ $(OBJS)
+	$(LIBTOOL) -static -o $(SYMROOT)/$@ $(OBJS)
 
 libmacho$S.dylib libmacho$S_profile.dylib libmacho$S_debug.dylib: $(OBJS)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -dynamiclib  \
@@ -313,15 +318,15 @@ lib_ofiles_install: all
 	then								\
 	    install -c -m 444 dtmp_obj/libmacho.a			\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;			\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
 	    (cd $(DSTROOT)$(ARCHIVEDIR) ;				\
 	    rm -f libmacho_debug.a ; ln -s libmacho.a libmacho_debug.a); \
 	    install -c -m 444 ptmp_obj/libmacho_pg.a			 \
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;	\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;		\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;	\
 	    install -c -m 444 otmp_obj/libmacho_static.a		\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;	\
 	    install -c -m 555 dtmp_obj/libmacho$S.dylib			\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
 	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
@@ -334,15 +339,15 @@ lib_ofiles_install: all
 	else								\
 	    install -c -m 444 $(SYMROOT)/libmacho.a			\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;			\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
 	    (cd $(DSTROOT)$(ARCHIVEDIR) ;				\
 	    rm -f libmacho_debug.a ; ln -s libmacho.a libmacho_debug.a); \
 	    install -c -m 444 $(SYMROOT)/libmacho_pg.a			 \
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;	\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;		\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_profile.a;	\
 	    install -c -m 444 $(SYMROOT)/libmacho_static.a		\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
-	    ranlib $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
+	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;	\
 	    install -c -m 555 $(SYMROOT)/libmacho$S.dylib		\
 		     $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
 	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\

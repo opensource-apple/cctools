@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
 #include <mach-o/reloc.h>
@@ -7,9 +8,12 @@
 #include "stuff/bytesex.h"
 #include "stuff/symbol.h"
 #include "stuff/llvm.h"
+#include "stuff/allocate.h"
 #include "otool.h"
+#include "dyld_bind_info.h"
 #include "ofile_print.h"
 #include "arm64_disasm.h"
+#include "cxa_demangle.h"
 
 struct disassemble_info {
   /* otool(1) specific stuff */
@@ -21,6 +25,8 @@ struct disassemble_info {
   uint32_t next_relocs;
   struct relocation_info *loc_relocs;
   uint32_t nloc_relocs;
+  struct dyld_bind_info *dbi;
+  uint64_t ndbi;
   /* Symbol table.  */
   struct nlist_64 *symbols;
   uint32_t nsymbols;
@@ -45,6 +51,10 @@ struct disassemble_info {
   uint32_t adrp_inst;
   char *object_addr;
   uint32_t object_size;
+  const char *class_name;
+  const char *selector_name;
+  char *method;
+  char *demangled_name;
 } dis_info;
 
 /*
@@ -200,6 +210,120 @@ void *TagBuf)
 }
 
 /*
+ * guess_pointer_pointer() is passed the address of what might be a pointer to
+ * a reference to an Objective-C class, selector, message ref or cfstring.
+ */
+static
+uint64_t
+guess_pointer_pointer(
+const uint64_t value,
+const uint32_t ncmds,
+const uint32_t sizeofcmds,
+const struct load_command *load_commands,
+const enum byte_sex load_commands_byte_sex,
+const char *object_addr,
+const uint64_t object_size,
+enum bool *classref,
+enum bool *selref,
+enum bool *msgref,
+enum bool *cfstring)
+{
+    enum byte_sex host_byte_sex;
+    enum bool swapped;
+    uint32_t i, j, section_type;
+    uint64_t sect_offset, object_offset, pointer_value;
+    const struct load_command *lc;
+    struct load_command l;
+    struct segment_command_64 sg64;
+    struct section_64 s64;
+    char *p;
+    uint64_t big_load_end;
+
+	*classref = FALSE;
+	*selref = FALSE;
+	*msgref = FALSE;
+	*cfstring = FALSE;
+	host_byte_sex = get_host_byte_sex();
+	swapped = host_byte_sex != load_commands_byte_sex;
+
+	lc = load_commands;
+	big_load_end = 0;
+	for(i = 0 ; i < ncmds; i++){
+	    memcpy((char *)&l, (char *)lc, sizeof(struct load_command));
+	    if(swapped)
+		swap_load_command(&l, host_byte_sex);
+	    if(l.cmdsize % sizeof(int32_t) != 0)
+		return(0);
+	    big_load_end += l.cmdsize;
+	    if(big_load_end > sizeofcmds)
+		return(0);
+	    switch(l.cmd){
+	    case LC_SEGMENT_64:
+		memcpy((char *)&sg64, (char *)lc,
+		       sizeof(struct segment_command_64));
+		if(swapped)
+		    swap_segment_command_64(&sg64, host_byte_sex);
+		p = (char *)lc + sizeof(struct segment_command_64);
+		for(j = 0 ; j < sg64.nsects ; j++){
+		    memcpy((char *)&s64, p, sizeof(struct section_64));
+		    p += sizeof(struct section_64);
+		    if(swapped)
+			swap_section_64(&s64, 1, host_byte_sex);
+		    section_type = s64.flags & SECTION_TYPE;
+		    if((strncmp(s64.sectname, "__objc_selrefs", 16) == 0 ||
+		        strncmp(s64.sectname, "__objc_classrefs", 16) == 0 ||
+		        strncmp(s64.sectname, "__objc_superrefs", 16) == 0 ||
+			strncmp(s64.sectname, "__objc_msgrefs", 16) == 0 ||
+			strncmp(s64.sectname, "__cfstring", 16) == 0) &&
+		       value >= s64.addr && value < s64.addr + s64.size){
+			sect_offset = value - s64.addr;
+			object_offset = s64.offset + sect_offset;
+			if(object_offset < object_size){
+			    memcpy(&pointer_value, object_addr + object_offset,
+				   sizeof(uint64_t));
+			    if(swapped)
+				pointer_value = SWAP_LONG_LONG(pointer_value);
+			    if(strncmp(s64.sectname,
+				       "__objc_selrefs", 16) == 0)
+				*selref = TRUE; 
+			    else if(strncmp(s64.sectname,
+				       "__objc_classrefs", 16) == 0 ||
+			            strncmp(s64.sectname,
+				       "__objc_superrefs", 16) == 0)
+				*classref = TRUE; 
+			    else if(strncmp(s64.sectname,
+				       "__objc_msgrefs", 16) == 0 &&
+			     value + 8 < s64.addr + s64.size){
+				*msgref = TRUE; 
+				memcpy(&pointer_value,
+				       object_addr + object_offset + 8,
+				       sizeof(uint64_t));
+				if(swapped)
+				    pointer_value =
+					SWAP_LONG_LONG(pointer_value);
+			    }
+			    else if(strncmp(s64.sectname,
+				       "__cfstring", 16) == 0)
+				*cfstring = TRUE; 
+			    return(pointer_value);
+			}
+			else
+			    return(0);
+		    }
+		}
+		break;
+	    }
+	    if(l.cmdsize == 0){
+		return(0);
+	    }
+	    lc = (struct load_command *)((char *)lc + l.cmdsize);
+	    if((char *)lc > (char *)load_commands + sizeofcmds)
+		return(0);
+	}
+	return(0);
+}
+
+/*
  * guess_cstring_pointer() is passed the address of what might be a pointer to a
  * literal string in a cstring section.  If that address is in a cstring section
  * it returns a pointer to that string.  Else it returns NULL.
@@ -294,8 +418,9 @@ struct disassemble_info *info)
     struct load_command *load_commands;
     enum byte_sex object_byte_sex;
     char *object_addr;
-    uint64_t object_size;
-    const char *name;
+    uint64_t object_size, pointer_value;
+    const char *name, *class_name;
+    enum bool classref, selref, msgref, cfstring;
 
 	ncmds = info->ncmds;
 	sizeofcmds = info->sizeofcmds;
@@ -304,18 +429,154 @@ struct disassemble_info *info)
 	object_addr = info->object_addr;
 	object_size = info->object_size;
 
+	pointer_value = guess_pointer_pointer(value, ncmds, sizeofcmds,
+			    load_commands, object_byte_sex, object_addr,
+			    object_size, &classref, &selref, &msgref,
+			    &cfstring);
+
+	if(classref == TRUE && pointer_value == 0){
+	    /*
+	     * Note the value is a pointer into the __objc_classrefs section.
+	     * And the pointer_value in that section is typically zero as it
+	     * will be set by dyld as part of the "bind information".
+	     */
+	    name = get_dyld_bind_info_symbolname(value, info->dbi, info->ndbi);
+	    if(name != NULL){
+		*reference_type =
+		    LLVMDisassembler_ReferenceType_Out_Objc_Class_Ref;
+		class_name = rindex(name, '$');
+		if(class_name != NULL &&
+		   class_name[1] == '_' && class_name[2] != '\0')
+		    info->class_name = class_name + 2;
+		return(name);
+	    }
+	}
+
+	if(classref == TRUE){
+	    *reference_type =
+		LLVMDisassembler_ReferenceType_Out_Objc_Class_Ref;
+	    name = get_objc2_64bit_class_name(pointer_value,
+			info->load_commands, info->ncmds, info->sizeofcmds,
+			info->object_byte_sex, info->object_addr,
+			info->object_size);
+	    if(name != NULL)
+		info->class_name = name;
+	    else
+	        name = "bad class ref";
+	    return(name);
+	}
+
+	if(cfstring == TRUE){
+	    *reference_type =
+		LLVMDisassembler_ReferenceType_Out_Objc_CFString_Ref;
+	    name = get_objc2_64bit_cfstring_name(value,
+			info->load_commands, info->ncmds, info->sizeofcmds,
+			info->object_byte_sex, info->object_addr,
+			info->object_size);
+	    if(name == NULL)
+	        name = "bad cfstring ref";
+	    return(name);
+	}
+
+	if(pointer_value != 0)
+	    value = pointer_value;
+
 	/*
 	 * See if the value is pointing to a cstring.
 	 */
 	name = guess_cstring_pointer(value, ncmds, sizeofcmds, load_commands,
 				     object_byte_sex, object_addr, object_size);
 	if(name != NULL){
+	    if(pointer_value != 0 && selref == TRUE){
+	        *reference_type =
+		    LLVMDisassembler_ReferenceType_Out_Objc_Selector_Ref;
+		info->selector_name = name;
+	    }
+	    else if(pointer_value != 0 && msgref == TRUE){
+		info->class_name = NULL;
+	        *reference_type =
+		    LLVMDisassembler_ReferenceType_Out_Objc_Message_Ref;
+		info->selector_name = name;
+	    }
+            else
+		*reference_type =
+		    LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr;
+	    return(name);
+	}
+
+	name = guess_indirect_symbol(value, ncmds, sizeofcmds, load_commands,
+		object_byte_sex, info->indirect_symbols,info->nindirect_symbols,
+		NULL, info->symbols, info->nsymbols, info->strings,
+		info->strings_size);
+	if(name != NULL){
 	    *reference_type =
-	        LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr;
+		    LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr;
 	    return(name);
 	}
 
 	return(NULL);
+}
+
+/*
+ * method_reference() is called passing it the ReferenceName that might be
+ * a reference it to an Objective-C method.  If so then it allocates and
+ * assembles a method call string with the values last seen and saved in
+ * the disassemble_info's class_name and selector_name fields.  This is saved
+ * into the method field and any previous string is free'ed.  Then the
+ * class_name field is NULL'ed out.
+ */
+static
+void
+method_reference(
+struct disassemble_info *info,
+uint64_t *ReferenceType,
+const char **ReferenceName)
+{
+	if(*ReferenceName != NULL){
+	    if(strcmp(*ReferenceName, "_objc_msgSend") == 0){
+		*ReferenceType =
+		    LLVMDisassembler_ReferenceType_Out_Objc_Message;
+		if(info->selector_name != NULL){
+		    if(info->method != NULL)
+			free(info->method);
+		    if(info->class_name != NULL){
+			info->method =
+			    allocate(5 + strlen(info->class_name) +
+				    strlen(info->selector_name));
+			strcpy(info->method, "+[");
+			strcat(info->method, info->class_name);
+			strcat(info->method, " ");
+			strcat(info->method, info->selector_name);
+			strcat(info->method, "]");
+			*ReferenceName = info->method;
+			info->class_name = NULL;
+		    }
+		    else{
+			info->method =
+			    allocate(7 + strlen(info->selector_name));
+			strcpy(info->method, "-[x0 ");
+			strcat(info->method, info->selector_name);
+			strcat(info->method, "]");
+			*ReferenceName = info->method;
+		    }
+		}
+	    }
+	    else if(strcmp(*ReferenceName, "_objc_msgSendSuper2") == 0){
+		*ReferenceType =
+		    LLVMDisassembler_ReferenceType_Out_Objc_Message;
+		if(info->selector_name != NULL){
+		    if(info->method != NULL)
+			free(info->method);
+		    info->method =
+			allocate(15 + strlen(info->selector_name));
+		    strcpy(info->method, "-[[x0 super] ");
+		    strcat(info->method, info->selector_name);
+		    strcat(info->method, "]");
+		    *ReferenceName = info->method;
+		    info->class_name = NULL;
+		}
+	    }
+	}
 }
 
 /*
@@ -355,7 +616,21 @@ const char **ReferenceName)
 		    info->nsymbols, info->strings, info->strings_size);
 	    if(indirect_symbol_name != NULL){
 		*ReferenceName = indirect_symbol_name;
-		*ReferenceType = LLVMDisassembler_ReferenceType_Out_SymbolStub;
+		method_reference(info, ReferenceType, ReferenceName);
+		if(*ReferenceType !=
+			LLVMDisassembler_ReferenceType_Out_Objc_Message)
+		    *ReferenceType =
+			LLVMDisassembler_ReferenceType_Out_SymbolStub;
+	    }
+	    else if(symbol_name != NULL && strncmp(symbol_name, "__Z", 3) == 0){
+		if(info->demangled_name != NULL)
+		    free(info->demangled_name);
+		info->demangled_name = __cxa_demangle(symbol_name + 1, 0, 0, 0);
+		if(info->demangled_name != NULL){
+		    *ReferenceName = info->demangled_name;
+		    *ReferenceType =
+			LLVMDisassembler_ReferenceType_DeMangled_Name;
+		}
 	    }
 	    else{
 		*ReferenceName = NULL;
@@ -389,7 +664,7 @@ const char **ReferenceName)
 	    uint32_t addxri_inst;
 	    uint64_t adrp_imm, addxri_imm;
 
-	    adrp_imm = ((info->adrp_inst & 0x00ffffc0) << 2) |
+	    adrp_imm = ((info->adrp_inst & 0x00ffffe0) >> 3) |
 		       ((info->adrp_inst >> 29) & 0x3);
 	    if(info->adrp_inst & 0x0200000)
 		adrp_imm |= 0xfffffffffc000000LL;
@@ -406,6 +681,59 @@ const char **ReferenceName)
 						   info);
 	    if(*ReferenceName == NULL)
 		*ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	/*
+	 * If this reference is a load register instruction and we have seen
+	 * an adrp instruction just before it and the adrp's Xd register
+	 * matches this add's Xn register reconstruct the value being
+	 * referenced and look to see if it is a literal pointer.  Note the
+	 * load register instruction is passed in SymbolValue.
+	 */
+	else if(*ReferenceType ==
+		LLVMDisassembler_ReferenceType_In_ARM64_LDRXui &&
+		ReferencePC - 4 == info->adrp_addr &&
+		(info->adrp_inst & 0x9f000000) == 0x90000000 &&
+		(info->adrp_inst & 0x1f) == ((SymbolValue >> 5) & 0x1f) ){
+	    uint32_t ldrxui_inst;
+	    uint64_t adrp_imm, ldrxui_imm;
+
+	    adrp_imm = ((info->adrp_inst & 0x00ffffe0) >> 3) |
+		       ((info->adrp_inst >> 29) & 0x3);
+	    if(info->adrp_inst & 0x0200000)
+		adrp_imm |= 0xfffffffffc000000LL;
+
+	    ldrxui_inst = SymbolValue;
+	    ldrxui_imm = (ldrxui_inst >> 10) & 0xfff;
+
+	    SymbolValue = (info->adrp_addr & 0xfffffffffffff000LL) +
+			  (adrp_imm << 12) + (ldrxui_imm << 3);
+
+	    *ReferenceName = guess_literal_pointer(SymbolValue, ReferenceType,
+						   info);
+	    if(*ReferenceName == NULL)
+		*ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	/*
+	 * If this is an load register (PC-relative) instruction the SymbolValue
+	 * is the PC plus the immediate value.
+	 */
+	else if(*ReferenceType ==
+		LLVMDisassembler_ReferenceType_In_ARM64_LDRXl ||
+		*ReferenceType ==
+		LLVMDisassembler_ReferenceType_In_ARM64_ADR){
+	    *ReferenceName = guess_literal_pointer(SymbolValue, ReferenceType,
+						   info);
+	    if(*ReferenceName == NULL)
+		*ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+	}
+	else if(symbol_name != NULL && strncmp(symbol_name, "__Z", 3) == 0){
+	    if(info->demangled_name != NULL)
+		free(info->demangled_name);
+	    info->demangled_name = __cxa_demangle(symbol_name + 1, 0, 0, 0);
+	    if(info->demangled_name != NULL){
+		*ReferenceName = info->demangled_name;
+		*ReferenceType = LLVMDisassembler_ReferenceType_DeMangled_Name;
+	    }
 	}
 	else{
 	    *ReferenceName = NULL;
@@ -456,6 +784,8 @@ struct relocation_info *ext_relocs,
 uint32_t next_relocs,
 struct relocation_info *loc_relocs,
 uint32_t nloc_relocs,
+struct dyld_bind_info *dbi,
+uint64_t ndbi,
 struct nlist_64 *symbols,
 uint32_t nsymbols,
 struct symbol *sorted_symbols,
@@ -508,6 +838,8 @@ LLVMDisasmContextRef dc)
 	dis_info.next_relocs = next_relocs;
 	dis_info.loc_relocs = loc_relocs;
 	dis_info.nloc_relocs = nloc_relocs;
+	dis_info.dbi = dbi;
+	dis_info.ndbi = ndbi;
 	dis_info.symbols = symbols;
 	dis_info.nsymbols = nsymbols;
 	dis_info.sorted_symbols = sorted_symbols;
@@ -526,6 +858,7 @@ LLVMDisasmContextRef dc)
 	dis_info.left = left;
 	dis_info.addr = addr;
 	dis_info.sect_addr = sect_addr;
+	dis_info.demangled_name = NULL;
 
 	dst[4095] = '\0';
 	if(llvm_disasm_instruction(dc, (uint8_t *)sect, 4, addr, dst, 4095) != 0)

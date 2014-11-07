@@ -5,8 +5,10 @@ ifneq "" "$(SDKROOT)"
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
   CXX = $(shell xcrun -find -sdk $(SDKROOT) c++)
   DSYMUTIL = $(shell xcrun -find -sdk ${SDKROOT} dsymutil)
+  LIBTOOL = $(shell xcrun -find -sdk $(SDKROOT) libtool)
 else
   DSYMUTIL = dsymutil
+  LIBTOOL = libtool
 endif
 
 OFLAG = -Os
@@ -132,7 +134,7 @@ redo_prebinding.NEW: redo_prebinding.o
 libredo_prebinding.a: libredo_prebinding.o
 	$(CC) $(RC_CFLAGS) -nostdlib -r -o $(OBJROOT)/libredo.o \
 		libredo_prebinding.o $(LIBSTUFF)
-	libtool -static -o $(SYMROOT)/libredo_prebinding.a $(OBJROOT)/libredo.o
+	$(LIBTOOL) -static -o $(SYMROOT)/libredo_prebinding.a $(OBJROOT)/libredo.o
 
 seg_addr_table.NEW: seg_addr_table.o
 	$(CC) $(RC_CFLAGS) -nostdlib -r \

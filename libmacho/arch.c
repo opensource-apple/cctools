@@ -61,6 +61,8 @@ static const NXArchInfo ArchInfoTable[] = {
 	 "Intel 80x86"},
     { "x86_64",    CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL, NX_LittleEndian,
 	 "Intel x86-64" },
+    { "x86_64h",   CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H,  NX_LittleEndian,
+	 "Intel x86-64h Haswell" },
     {"i860",   CPU_TYPE_I860,    CPU_SUBTYPE_I860_ALL,     NX_BigEndian,
 	 "Intel 860"},
     {"m68k",   CPU_TYPE_MC680x0, CPU_SUBTYPE_MC680x0_ALL,  NX_BigEndian,
@@ -703,6 +705,15 @@ cpu_type_t cputype,
 cpu_subtype_t cpusubtype1,
 cpu_subtype_t cpusubtype2)
 {
+	/*
+	 * If this is an x86_64 cputype and either subtype is the
+	 * "Haswell and compatible" it does not combine with anything else.
+	 */
+	if(cputype == CPU_TYPE_X86_64 &&
+	   (cpusubtype1 == CPU_SUBTYPE_X86_64_H ||
+	    cpusubtype2 == CPU_SUBTYPE_X86_64_H))
+	    return((cpu_subtype_t)-1);
+
 	/*
 	 * We now combine any i386 or x86-64 subtype to the ALL subtype.
 	 */

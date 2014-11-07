@@ -4,7 +4,6 @@ DSTROOT = /
 RC_OS = macos
 RC_CFLAGS =
 
-
 INSTALLSRC_SUBDIRS = $(COMMON_SUBDIRS) $(SUBDIRS_32) ar include efitools \
 		     libmacho
 COMMON_SUBDIRS = libstuff as gprof misc man cbtlibs otool
@@ -54,7 +53,7 @@ all clean: $(DSTROOT)
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
- 		| sed 's/-arch arm64//' 				\
+ 		| sed 's/-arch arm64//' | sed 's/-arch x86_64h//'	\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -86,7 +85,7 @@ all clean: $(DSTROOT)
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
- 		| sed 's/-arch arm64//' 				\
+ 		| sed 's/-arch arm64//' | sed 's/-arch x86_64h//'	\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -162,7 +161,7 @@ install_tools: installhdrs
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
- 		| sed 's/-arch arm64//' 				\
+ 		| sed 's/-arch arm64//' | sed 's/-arch x86_64h//'	\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -195,7 +194,7 @@ install_tools: installhdrs
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
- 		| sed 's/-arch arm64//' 				\
+ 		| sed 's/-arch arm64//' | sed 's/-arch x86_64h//'	\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -232,6 +231,7 @@ lib_ofiles lib_ofiles_install: installhdrs
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
 		| sed 's/-arch arm64//'					\
+		| sed 's/-arch x86_64h//'				\
  		| sed 's/-arch x86_64//'`;				\
 	    echo =========== $(MAKE) $@ for libstuff =============;	\
 	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
@@ -287,6 +287,7 @@ lib_ofiles lib_ofiles_install: installhdrs
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
 		| sed 's/-arch arm64//'					\
+		| sed 's/-arch x86_64h//'				\
  		| sed 's/-arch x86_64//'`;				\
 	    echo =========== $(MAKE) $@ for libstuff =============;	\
 	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\

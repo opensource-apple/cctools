@@ -143,6 +143,10 @@ static enum bool arch_blank_flag = FALSE;
 
 static struct fat_header fat_header = { 0 };
 
+static struct fat_arch *arm64_fat_arch = NULL;
+static struct fat_arch *get_arm64_fat_arch(
+    void);
+
 static enum bool verify_flag = FALSE;
 static struct arch_flag *verify_archs = NULL;
 static uint32_t nverify_archs = 0;
@@ -581,7 +585,7 @@ unknown_flag:
 #else
 		       output_timep) == -1)
 #endif
-			system_fatal("can't set the modifiy times for "
+			system_fatal("can't set the modify times for "
 				     "output file: %s", output_file);
 		    break;
 		}
@@ -868,6 +872,9 @@ create_fat(void)
 	qsort(thin_files, nthin_files, sizeof(struct thin_file),
 	      (int (*)(const void *, const void *))cmp_qsort);
 
+	/* We will order the ARM64 slice last. */
+	arm64_fat_arch = get_arm64_fat_arch();
+
 	/* Fill in the fat header and the fat_arch's offsets. */
 	fat_header.magic = FAT_MAGIC;
 	fat_header.nfat_arch = nthin_files;
@@ -900,6 +907,12 @@ create_fat(void)
 	    swap_fat_header(&fat_header, LITTLE_ENDIAN_BYTE_SEX);
 #endif /* __LITTLE_ENDIAN__ */
 	    for(i = 0; i < nthin_files; i++){
+		/*
+		 * If we are ordering the ARM64 slice last of the fat_arch
+		 * structs, so skip it in this loop.
+		 */
+		if(arm64_fat_arch == &(thin_files[i].fat_arch))
+		    continue;
 #ifdef __LITTLE_ENDIAN__
 		swap_fat_arch(&(thin_files[i].fat_arch), 1,BIG_ENDIAN_BYTE_SEX);
 #endif /* __LITTLE_ENDIAN__ */
@@ -910,8 +923,24 @@ create_fat(void)
 #ifdef __LITTLE_ENDIAN__
 		swap_fat_arch(&(thin_files[i].fat_arch), 1,
 			      LITTLE_ENDIAN_BYTE_SEX);
-    #endif /* __LITTLE_ENDIAN__ */
+#endif /* __LITTLE_ENDIAN__ */
 	    }
+	}
+	/*
+	 * We are ordering the ARM64 slice so it gets written last of the
+	 * fat_arch structs, so write it out here as it was skipped above.
+	 */
+	if(arm64_fat_arch){
+#ifdef __LITTLE_ENDIAN__
+	    swap_fat_arch(arm64_fat_arch, 1, BIG_ENDIAN_BYTE_SEX);
+#endif /* __LITTLE_ENDIAN__ */
+	    if(write(fd, arm64_fat_arch,
+		     sizeof(struct fat_arch)) != sizeof(struct fat_arch))
+		system_fatal("can't write fat arch to output file: %s",
+			     rename_file);
+#ifdef __LITTLE_ENDIAN__
+	    swap_fat_arch(arm64_fat_arch, 1, LITTLE_ENDIAN_BYTE_SEX);
+#endif /* __LITTLE_ENDIAN__ */
 	}
 	for(i = 0; i < nthin_files; i++){
 	    if(extract_family_flag == FALSE || nthin_files > 1)
@@ -955,12 +984,12 @@ struct input_file *input)
 	if((fd = open(input->name, O_RDONLY)) == -1)
 	    system_fatal("can't open input file: %s", input->name);
 	if(fstat(fd, &stat_buf) == -1)
-	    system_fatal("Can't stat input file: %s", input->name);
+	    system_fatal("can't stat input file: %s", input->name);
 	size = stat_buf.st_size;
 	/* pick up set uid, set gid and sticky text bits */
 	output_filemode = stat_buf.st_mode & 07777;
 	/*
-	 * Select the eariliest modifiy time so that if the output file
+	 * Select the eariliest modify time so that if the output file
 	 * contains archives with table of contents lipo will not make them
 	 * out of date.  This logic however could make an out of date table of
 	 * contents appear up todate if another file is combined with it that
@@ -988,14 +1017,14 @@ struct input_file *input)
 	    addr = mmap(0, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE,
 			fd, 0);
 	if((intptr_t)addr == -1)
-	    system_fatal("Can't map input file: %s", input->name);
+	    system_fatal("can't map input file: %s", input->name);
 
 	/*
 	 * Because of rdar://8087586 we do a second stat to see if the file
 	 * is still there and the same file.
 	 */
 	if(fstat(fd, &stat_buf2) == -1)
-	    system_fatal("Can't stat input file: %s", input->name);
+	    system_fatal("can't stat input file: %s", input->name);
 	if(stat_buf2.st_size != size ||
 	   stat_buf2.st_mtime != stat_buf.st_mtime)
 	    system_fatal("Input file: %s changed since opened", input->name);
@@ -1240,7 +1269,7 @@ struct replace *replace)
 	    system_fatal("can't open replacement file: %s",
 			 replace->thin_file.name);
 	if(fstat(fd, &stat_buf) == -1)
-	    system_fatal("Can't stat replacement file: %s",
+	    system_fatal("can't stat replacement file: %s",
 			 replace->thin_file.name);
 	size = stat_buf.st_size;
 	/*
@@ -1253,7 +1282,7 @@ struct replace *replace)
 	    addr = mmap(0, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE,
 			fd, 0);
 	if((intptr_t)addr == -1)
-	    system_error("Can't map replacement file: %s",
+	    system_error("can't map replacement file: %s",
 			 replace->thin_file.name);
 	close(fd);
 
@@ -1514,6 +1543,32 @@ uint32_t *member_name_size)
 	    fatal("archive: %s truncated or malformed (archive name "
 		"of member extends past the end of the file)", name);
 	*member_name_size = ar_name_size;
+}
+
+/*
+ * get_arm64_fat_arch() will return a pointer to the fat_arch struct for the
+ * 64-bit arm slice in the thin_files[i] if it is present.  Else it returns
+ * NULL.
+ */
+static
+struct fat_arch *
+get_arm64_fat_arch(
+void)
+{
+    uint32_t i;
+    struct fat_arch *arm64_fat_arch;
+
+	/*
+	 * Look for a 64-bit arm slice.
+	 */
+	arm64_fat_arch = NULL;
+	for(i = 0; i < nthin_files; i++){
+	    if(thin_files[i].fat_arch.cputype == CPU_TYPE_ARM64){
+		    arm64_fat_arch = &(thin_files[i].fat_arch);
+		    return(arm64_fat_arch);
+	    }
+	}
+	return(NULL);
 }
 
 /*
@@ -1867,6 +1922,9 @@ struct fat_arch *fat_arch)
 	    case CPU_SUBTYPE_X86_64_ALL:
 		printf("x86_64");
 		break;
+	    case CPU_SUBTYPE_X86_64_H:
+		printf("x86_64h");
+		break;
 	    default:
 		goto print_arch_unknown;
 	    }
@@ -2146,6 +2204,10 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_X86_64_ALL:
 		printf("    cputype CPU_TYPE_X86_64\n"
 		       "    cpusubtype CPU_SUBTYPE_X86_64_ALL\n");
+		break;
+	    case CPU_SUBTYPE_X86_64_H:
+		printf("    cputype CPU_TYPE_X86_64\n"
+		       "    cpusubtype CPU_SUBTYPE_X86_64_H\n");
 		break;
 	    default:
 		goto print_arch_unknown;

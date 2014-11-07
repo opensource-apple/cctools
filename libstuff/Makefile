@@ -13,6 +13,9 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  LIBTOOL = $(shell xcrun -find -sdk $(SDKROOT) libtool)
+else
+  LIBTOOL = libtool
 endif
 
 OFLAG = -Os
@@ -208,7 +211,7 @@ shlib: $(OBJROOT)/shlib_obj
 	fi
 
 $(PRODUCT):	$(OFILE_DIR) $(SYMROOT) $(OBJS)
-	libtool -static -o $(SYMROOT)/$(PRODUCT) $(OBJS)
+	$(LIBTOOL) -static -o $(SYMROOT)/$(PRODUCT) $(OBJS)
 
 apple_version.c:
 	echo "const char apple_version[]=" > $(OFILE_DIR)/$@

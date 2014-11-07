@@ -207,6 +207,10 @@ char *target_triple)
 	    arch_flag->cputype = CPU_TYPE_X86_64;
 	    arch_flag->cpusubtype = CPU_SUBTYPE_X86_64_ALL;
 	}
+	else if(strncmp(target_triple, "x86_64h", n) == 0){
+	    arch_flag->cputype = CPU_TYPE_X86_64;
+	    arch_flag->cpusubtype = CPU_SUBTYPE_X86_64_H;
+	}
 	else if(strncmp(target_triple, "powerpc", n) == 0){
 	    arch_flag->cputype = CPU_TYPE_POWERPC;
 	    arch_flag->cpusubtype = CPU_SUBTYPE_POWERPC_ALL;

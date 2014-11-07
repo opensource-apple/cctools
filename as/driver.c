@@ -40,7 +40,7 @@ char **envp)
     uint32_t bufsize;
     struct arch_flag arch_flag;
     const struct arch_flag *arch_flags, *family_arch_flag;
-    enum bool oflag_specified, qflag, Qflag;
+    enum bool oflag_specified, qflag, Qflag, some_input_files;
 
 	progname = argv[0];
 	arch_name = NULL;
@@ -49,6 +49,7 @@ char **envp)
 	oflag_specified = FALSE;
 	qflag = FALSE;
 	Qflag = FALSE;
+	some_input_files = FALSE;
 	/*
 	 * Construct the prefix to the assembler driver.
 	 */
@@ -80,7 +81,12 @@ char **envp)
 	     * grouped with other flags (so "-a-" is not the same as "-a --").
 	     */
 	    if(argv[i][0] == '-' &&
-	       !(argv[i][1] == '-' && argv[i][2] == '0')){
+	       !(argv[i][1] == '-' && argv[i][2] == '\0')){
+		/*
+		 * Treat a single "-" as reading from stdin input also.
+		 */
+		if(argv[i][1] == '\0')
+		    some_input_files = TRUE;
 		/*
 		 * the assembler allows single letter flags to be grouped
 		 * together so "-abc" is the same as "-a -b -c".  So that
@@ -107,8 +113,18 @@ char **envp)
 		    case 'I':	/* -I directory */
 		    case 'm':	/* -mc68000, -mc68010 and mc68020 */
 		    case 'N':	/* -NEXTSTEP-deployment-target */
+			/*
+			 * We want to skip the next argv if the value is not
+			 * contained in this argv eg: -I dir .
+			 */
 			if(p[1] == '\0')
 			    i++;
+			/*
+			 * And in case the value is contained in this argv
+			 * (eg: -Idir), skip the rest.
+			 */
+			while(p[1])
+			    p++;
 			p = " "; /* Finished with this arg. */
 			break;
 	    	    case 'g':
@@ -168,6 +184,9 @@ char **envp)
 			break;
 		    }
 		}
+	    }
+	    else{
+		some_input_files = TRUE;
 	    }
 	}
 
@@ -251,16 +270,20 @@ char **envp)
 	    run_clang = 1;
 	}
 
-#ifdef notyet
+#if 0
+/*
+ * See rdar://9801003 where this will be changed before before NMOs and NMiOS.
+ */
 	/*
-	 * Use the x86 LLVM assembler as the default via running clang.
-	 * That is after rdar://11139995 "Qualify as(1) using the x86 LLVM
-	 * assembler as the default" is done.
+	 * Use the LLVM integrated assembler as the default with the as(1)
+	 * driver for Intel (64-bit & 32-bit) as well as ARM for 32-bit too
+	 * (64-bit ARM handled above) via running clang.
 	 */
 	if(arch_flag.cputype == CPU_TYPE_X86_64 ||
-	   arch_flag.cputype == CPU_TYPE_I386)
+	   arch_flag.cputype == CPU_TYPE_I386 ||
+	   arch_flag.cputype == CPU_TYPE_ARM)
 	    run_clang = 1;
-#endif /* notyet */
+#endif
 
 	/*
 	 * Use the clang as the assembler if is the default or asked to with
@@ -277,15 +300,40 @@ char **envp)
 		printf("%s: assembler (%s) not installed\n", progname, as);
 		exit(1);
 	    }
-	    new_argv = allocate((argc + 5) * sizeof(char *));
+	    new_argv = allocate((argc + 8) * sizeof(char *));
 	    new_argv[0] = as;
 	    j = 1;
+	    /*
+	     * Add "-x assembler" in case the input does not end in .s this must
+	     * come before "-" or the clang driver will issue an error:
+	     * "error: -E or -x required when input is from standard input"
+	     */
+	    new_argv[j] = "-x";
+	    j++;
+	    new_argv[j] = "assembler";
+	    j++;
+	    /*
+	     * If we have not seen some some_input_files or a "-" or "--" to
+	     * indicate we are assembling stdin add a "-" so clang will
+	     * assemble stdin as as(1) would.
+	     */
+	    if(some_input_files == FALSE){
+		new_argv[j] = "-";
+		j++;
+	    }
 	    for(i = 1; i < argc; i++){
+		/*
+		 * Translate as(1) use of "--" for stdin to clang's use of "-".
+		 */
+		if(strcmp(argv[i], "--") == 0){
+		    new_argv[j] = "-";
+		    j++;
+		}
 		/*
 		 * Do not pass command line argument that are Unknown to
 		 * to clang.
 		 */
-		if(strcmp(argv[i], "-V") != 0 &&
+		else if(strcmp(argv[i], "-V") != 0 &&
 		   strcmp(argv[i], "-q") != 0 &&
 		   strcmp(argv[i], "-Q") != 0){
 		    new_argv[j] = argv[i];

@@ -379,6 +379,17 @@ enum NXByteOrder target_byte_sex)
 }
 
 void
+swap_twolevel_hints_command(
+struct twolevel_hints_command *hints_cmd,
+enum NXByteOrder target_byte_sex)
+{
+	hints_cmd->cmd = OSSwapInt32(hints_cmd->cmd);
+	hints_cmd->cmdsize = OSSwapInt32(hints_cmd->cmdsize);
+	hints_cmd->offset = OSSwapInt32(hints_cmd->offset);
+	hints_cmd->nhints = OSSwapInt32(hints_cmd->nhints);
+}
+
+void
 swap_prebind_cksum_command(
 struct prebind_cksum_command *cksum_cmd,
 enum NXByteOrder target_byte_sex)
@@ -395,6 +406,112 @@ enum NXByteOrder target_byte_sex)
 {
 	uuid_cmd->cmd = OSSwapInt32(uuid_cmd->cmd);
 	uuid_cmd->cmdsize = OSSwapInt32(uuid_cmd->cmdsize);
+}
+
+void
+swap_linkedit_data_command(
+struct linkedit_data_command *ld,
+enum NXByteOrder target_byte_sex)
+{
+	ld->cmd = OSSwapInt32(ld->cmd);
+	ld->cmdsize = OSSwapInt32(ld->cmdsize);
+	ld->dataoff = OSSwapInt32(ld->dataoff);
+	ld->datasize = OSSwapInt32(ld->datasize);
+}
+
+void
+swap_version_min_command(
+struct version_min_command *ver_cmd,
+enum NXByteOrder target_byte_sex)
+{
+	ver_cmd->cmd = OSSwapInt32(ver_cmd->cmd);
+	ver_cmd->cmdsize = OSSwapInt32(ver_cmd->cmdsize);
+	ver_cmd->version = OSSwapInt32(ver_cmd->version);
+}
+
+void
+swap_rpath_command(
+struct rpath_command *rpath_cmd,
+enum NXByteOrder target_byte_sex)
+{
+	rpath_cmd->cmd = OSSwapInt32(rpath_cmd->cmd);
+	rpath_cmd->cmdsize = OSSwapInt32(rpath_cmd->cmdsize);
+	rpath_cmd->path.offset = OSSwapInt32(rpath_cmd->path.offset);
+}
+
+void
+swap_encryption_command(
+struct encryption_info_command *ec,
+enum NXByteOrder target_byte_sex)
+{
+	ec->cmd = OSSwapInt32(ec->cmd);
+	ec->cmdsize = OSSwapInt32(ec->cmdsize);
+	ec->cryptoff = OSSwapInt32(ec->cryptoff);
+	ec->cryptsize = OSSwapInt32(ec->cryptsize);
+	ec->cryptid = OSSwapInt32(ec->cryptid);
+}
+
+void
+swap_encryption_command_64(
+struct encryption_info_command_64 *ec,
+enum NXByteOrder target_byte_sex)
+{
+	ec->cmd = OSSwapInt32(ec->cmd);
+	ec->cmdsize = OSSwapInt32(ec->cmdsize);
+	ec->cryptoff = OSSwapInt32(ec->cryptoff);
+	ec->cryptsize = OSSwapInt32(ec->cryptsize);
+	ec->cryptid = OSSwapInt32(ec->cryptid);
+	ec->cryptid = OSSwapInt32(ec->pad);
+}
+
+void
+swap_linker_option_command(
+struct linker_option_command *lo,
+enum NXByteOrder target_byte_sex)
+{
+	lo->cmd = OSSwapInt32(lo->cmd);
+	lo->cmdsize = OSSwapInt32(lo->cmdsize);
+	lo->count = OSSwapInt32(lo->count);
+}
+
+void
+swap_dyld_info_command(
+struct dyld_info_command *ed,
+enum NXByteOrder target_byte_sex)
+{
+	ed->cmd = OSSwapInt32(ed->cmd);
+	ed->cmdsize = OSSwapInt32(ed->cmdsize);
+	ed->rebase_off = OSSwapInt32(ed->rebase_off);
+	ed->rebase_size = OSSwapInt32(ed->rebase_size);
+	ed->bind_off = OSSwapInt32(ed->bind_off);
+	ed->bind_size = OSSwapInt32(ed->bind_size);
+	ed->weak_bind_off = OSSwapInt32(ed->weak_bind_off);
+	ed->weak_bind_size = OSSwapInt32(ed->weak_bind_size);
+	ed->lazy_bind_off = OSSwapInt32(ed->lazy_bind_off);
+	ed->lazy_bind_size = OSSwapInt32(ed->lazy_bind_size);
+	ed->export_off = OSSwapInt32(ed->export_off);
+	ed->export_size = OSSwapInt32(ed->export_size);
+}
+
+void
+swap_entry_point_command(
+struct entry_point_command *ep,
+enum NXByteOrder target_byte_sex)
+{
+	ep->cmd = OSSwapInt32(ep->cmd);
+	ep->cmdsize = OSSwapInt32(ep->cmdsize);
+	ep->entryoff = OSSwapInt64(ep->entryoff);
+	ep->stacksize = OSSwapInt64(ep->stacksize);
+}
+
+void
+swap_source_version_command(
+struct source_version_command *sv,
+enum NXByteOrder target_byte_sex)
+{
+	sv->cmd = OSSwapInt32(sv->cmd);
+	sv->cmdsize = OSSwapInt32(sv->cmdsize);
+	sv->version = OSSwapInt64(sv->version);
 }
 
 void

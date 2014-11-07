@@ -54,13 +54,11 @@
  (x == ARM_DEBUG_STATE) 		||	\
  (x == THREAD_STATE_NONE)		||  \
  (x == ARM_NEON_STATE)		||	\
- (x == ARM_DEBUG_STATE32))
-/*
+ (x == ARM_DEBUG_STATE32)	||	\
  (x == ARM_THREAD_STATE64)		||	\
  (x == ARM_EXCEPTION_STATE64)	||	\
  (x == ARM_NEON_STATE64)		||	\
  (x == ARM_DEBUG_STATE64))
-*/
 
 typedef _STRUCT_ARM_THREAD_STATE		arm_thread_state_t;
 typedef _STRUCT_ARM_THREAD_STATE64		arm_thread_state64_t;

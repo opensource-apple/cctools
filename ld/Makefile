@@ -33,6 +33,10 @@ endif
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  LIBTOOL = $(shell xcrun -find -sdk $(SDKROOT) libtool)
+  RANLIB = $(shell xcrun -find -sdk $(SDKROOT) ranlib)
+  NMEDIT = $(shell xcrun -find -sdk $(SDKROOT) nmedit)
+  SEG_HACK = $(shell xcrun -find -sdk $(SDKROOT) seg_hack)
 endif
 CFLAGS = -g -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -Wall \
 	 $(GCC_FLAGS) $(SDK)
@@ -317,7 +321,7 @@ ld_g.NEW: $(OBJS)
 		$(SYMROOT)/ld_g.private.o
 
 librld_static.a librld_pg.a librld.a: librld.o
-	libtool -static -o $(SYMROOT)/$@ librld.o
+	$(LIBTOOL) -static -o $(SYMROOT)/$@ librld.o
 
 librld.o: $(OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
@@ -330,15 +334,16 @@ libsarld.a: $(OBJS)
 libkld.a: $(OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/prehack_libkld.a $(OBJS) $(LIBSTUFF) $(LIBMACHO)
-	nmedit -p $(SYMROOT)/prehack_libkld.a
-	seg_hack __KLD $(SYMROOT)/prehack_libkld.a -o $(SYMROOT)/static_libkld.o
-	libtool -o $(SYMROOT)/libkld.a $(SYMROOT)/static_libkld.o
+	$(NMEDIT) -p $(SYMROOT)/prehack_libkld.a
+	$(SEG_HACK) __KLD $(SYMROOT)/prehack_libkld.a \
+		-o $(SYMROOT)/static_libkld.o
+	$(LIBTOOL) -o $(SYMROOT)/libkld.a $(SYMROOT)/static_libkld.o
 
 libkld.dylib: $(OBJS)
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/dynamic_libkld.o $(OBJS) $(LIBSTUFF)
-	nmedit -p $(SYMROOT)/dynamic_libkld.o
-	libtool -o $(SYMROOT)/libkld.dylib $(SYMROOT)/dynamic_libkld.o
+	$(NMEDIT) -p $(SYMROOT)/dynamic_libkld.o
+	$(LIBTOOL) -o $(SYMROOT)/libkld.dylib $(SYMROOT)/dynamic_libkld.o
 
 .c.o:
 	$(CC) $(CFLAGS) $(COPTS) $(OFLAG) $(RC_CFLAGS) -c \
@@ -403,33 +408,33 @@ macos_lib_ofiles_install: $(KLD_BUILD) $(X_LIB_OFILES)
 	    then							\
 		install -p -c -m 444 dtmp_obj/librld.a			\
 			 $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
-		ranlib $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
+		$(RANLIB) $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
 		install -p -c -m 444 dtmp_obj/librld.a			\
 			 $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
-		ranlib $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
+		$(RANLIB) $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
 		(cd $(DSTROOT)$(SYSTEMDIR);				\
 		rm -f librld_debug.a ; ln -s librld.a librld_debug.a) ;	\
 		install -p -c -m 444 ptmp_obj/librld_pg.a		\
 			 $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
-		ranlib $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
+		$(RANLIB) $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
 		install -p -c -m 444 ptmp_obj/ld_dir/librld_pg.a	\
 			 $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
-		ranlib $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
+		$(RANLIB) $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
 	    else							\
 		install -p -c -m 444 $(SYMROOT)/ld_dir/librld.a		\
 			 $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
-		ranlib $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
+		$(RANLIB) $(DSTROOT)$(LOCLIBDIR)/librld.a ;		\
 		install -p -c -m 444 $(SYMROOT)/ld_dir/librld.a		\
 			 $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
-		ranlib $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
+		$(RANLIB) $(DSTROOT)$(SYSTEMDIR)/librld.a ;		\
 		(cd $(DSTROOT)$(SYSTEMDIR);				\
 		rm -f librld_debug.a ; ln -s librld.a librld_debug.a) ;	\
 		install -p -c -m 444 $(SYMROOT)/ld_dir/librld_pg.a	\
 			 $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
-		ranlib $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
+		$(RANLIB) $(DSTROOT)$(LOCLIBDIR)/librld_profile.a ;	\
 		install -p -c -m 444 $(SYMROOT)/ld_dir/librld_pg.a	\
 			 $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
-		ranlib $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
+		$(RANLIB) $(DSTROOT)$(SYSTEMDIR)/librld_profile.a ;	\
 	    fi								\
 	fi
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)

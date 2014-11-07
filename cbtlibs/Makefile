@@ -3,6 +3,11 @@ OFLAG = -Os
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
   CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
+  LIBTOOL = $(shell xcrun -find -sdk $(SDKROOT) libtool)
+  RANLIB = $(shell xcrun -find -sdk $(SDKROOT) ranlib)
+else
+  LIBTOOL = libtool
+  RANLIB = ranlib
 endif
 	
 CFLAGS = $(OFLAG) -g -I$(SRCROOT)/../include -Wall $(SDK)
@@ -28,7 +33,7 @@ lib_ofiles: $(OFILE_DIR) $(SYMROOT) libsyminfo.a
 
 clean shlib_clean:
 	-rm -r -f $(OFILE_DIRS)
-	-rm -f libsyminfo.a
+	-rm -f libsyminfo.a libsyminfo.o libsyminfo.o.tmp
 	-rm -r -f *dSYM
 
 install: all
@@ -50,7 +55,7 @@ libsyminfo.a: libsyminfo.o
 	$(CC) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/libsyminfo.o.tmp \
 		libsyminfo.o $(LIBSTUFF)
-	libtool -static -o $(SYMROOT)/libsyminfo.a \
+	$(LIBTOOL) -static -o $(SYMROOT)/libsyminfo.a \
 		$(OBJROOT)/libsyminfo.o.tmp
 
 
@@ -58,7 +63,7 @@ lib_ofiles_install: lib_ofiles
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)
 	install -p -c -m 444 $(SYMROOT)/libsyminfo.a \
 		$(DSTROOT)$(LOCLIBDIR)/libsyminfo.a
-	ranlib $(DSTROOT)$(LOCLIBDIR)/libsyminfo.a
+	$(RANLIB) $(DSTROOT)$(LOCLIBDIR)/libsyminfo.a
 
 $(OFILE_DIR) $(SYMROOT):
 	$(MKDIRS) $@

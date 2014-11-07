@@ -189,6 +189,69 @@ getsectbynamefromheaderwithswap(
 }
 
 /*
+ * This routine returns the section_64 structure for the named section in the
+ * named segment for the mach_header_64 pointer passed to it if it exist.
+ * Otherwise it returns zero.  If fSwap == YES (the mach header has been
+ * swapped to the endiannes of the current machine, but the segments and
+ * sections are different) then the segment and sections are swapped.
+ */
+const struct section_64 *
+getsectbynamefromheaderwithswap_64(
+    struct mach_header_64 *mhp,
+    const char *segname,
+    const char *sectname, 
+    int fSwap)
+{
+	struct segment_command_64 *sgp;
+	struct section_64 *sp;
+	uint32_t i, j;
+
+	sgp = (struct segment_command_64 *)
+	      ((char *)mhp + sizeof(struct mach_header_64));
+	for(i = 0; i < mhp->ncmds; i++){
+	    if(sgp->cmd == (fSwap ? OSSwapInt32(LC_SEGMENT) : LC_SEGMENT)) {
+	    
+		if (fSwap) {
+#ifdef __LITTLE_ENDIAN__
+		    swap_segment_command_64(sgp, NX_BigEndian);
+#else
+		    swap_segment_command_64(sgp, NX_LittleEndian);
+#endif /* __LITTLE_ENDIAN__ */
+		}
+	    
+		if(strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0 ||
+		   mhp->filetype == MH_OBJECT){
+		    sp = (struct section_64 *)((char *)sgp +
+			 sizeof(struct segment_command_64));
+		
+		    if (fSwap) {
+#ifdef __LITTLE_ENDIAN__
+			swap_section_64(sp, sgp->nsects, NX_BigEndian);
+#else
+			swap_section_64(sp, sgp->nsects, NX_LittleEndian);
+#endif /* __LITTLE_ENDIAN__ */
+		    }
+		
+		    for(j = 0; j < sgp->nsects; j++){
+			if(strncmp(sp->sectname, sectname,
+			   sizeof(sp->sectname)) == 0 &&
+			   strncmp(sp->segname, segname,
+			   sizeof(sp->segname)) == 0)
+			    return(sp);
+			sp = (struct section_64 *)((char *)sp +
+			     sizeof(struct section_64));
+		    }
+		}
+		sgp = (struct segment_command_64 *)((char *)sgp + sgp->cmdsize);
+	    } else {
+		sgp = (struct segment_command_64 *)((char *)sgp +
+		    (fSwap ? OSSwapInt32(sgp->cmdsize) : sgp->cmdsize));
+	    }
+	}
+	return((struct section_64 *)0);
+}
+
+/*
  * This routine returns the a pointer the section structure of the named
  * section in the named segment if it exist in the mach executable it is
  * linked into.  Otherwise it returns zero.

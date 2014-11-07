@@ -74,11 +74,11 @@ cpu_type_t cputype)
 	    return(ARM_RELOC_PAIR);
 	    break;
 	case CPU_TYPE_ARM64:
-		/*
-		 * We should never hit this case for arm64, so drop down to the
-		 * fatal error below.
-		 */
-		break;
+	    /*
+	     * We should never hit this case for arm64, so drop down to the
+	     * fatal error below.
+	     */
+	    break;
 	}
 	fatal("internal error: reloc_pair_r_type() called with unknown "
 	      "cputype (%u)", cputype);
@@ -160,7 +160,7 @@ uint32_t r_type)
 		return(TRUE);
 	    break;
 	case CPU_TYPE_ARM64:
-		return(FALSE);
+	    return(FALSE);
 	default:
 	    fatal("internal error: reloc_has_pair() called with unknown "
 		  "cputype (%u)", cputype);

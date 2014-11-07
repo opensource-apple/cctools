@@ -42,7 +42,9 @@
 #include "stuff/symbol.h"
 #include "stuff/symbol.h"
 #include "stuff/llvm.h"
+#include "stuff/guess_short_name.h"
 #include "otool.h"
+#include "dyld_bind_info.h"
 #include "ofile_print.h"
 #include "m68k_disasm.h"
 #include "i860_disasm.h"
@@ -77,6 +79,7 @@ enum bool Mflag = FALSE; /* print the dylib module table */
 enum bool Rflag = FALSE; /* print the dylib reference table */
 enum bool Iflag = FALSE; /* print the indirect symbol table entries */
 enum bool Hflag = FALSE; /* print the two-level hints table */
+enum bool Cflag = FALSE; /* print the linker optimization hints */
 enum bool Gflag = FALSE; /* print the data in code table */
 enum bool gflag = FALSE; /* group the disassembly */
 enum bool eflag = FALSE; /* print enhanced disassembly */
@@ -97,6 +100,9 @@ char *segname = NULL;	 /* name of the section to print the contents of */
 char *sectname = NULL;
 enum bool llvm_mc = FALSE; /* disassemble as llvm-mc will assemble */
 char *mcpu = "";	/* the arg of the -mcpu=arg flag */
+/* Print function offsets when disassembling when TRUE. */
+enum bool function_offsets = FALSE;
+enum bool print_bind_info = FALSE;  /* print dyld bind information */
 
 /* this is set when any of the flags that process object files is set */
 enum bool object_processing = FALSE;
@@ -189,6 +195,23 @@ static enum bool get_hints_cmd(
     enum byte_sex load_commands_byte_sex,
     struct twolevel_hints_command *hints_cmd);
 
+static void get_link_opt_hints(
+    struct load_command *load_commands,
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    enum byte_sex load_commands_byte_sex,
+    char *object_addr,
+    uint32_t object_size,
+    char **loh,
+    uint32_t *nloh);
+
+static enum bool get_link_opt_hint_cmd(
+    struct load_command *load_commands,
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    enum byte_sex load_commands_byte_sex,
+    struct linkedit_data_command *loh_cmd);
+
 static void get_data_in_code_info(
     struct load_command *load_commands,
     uint32_t ncmds,
@@ -226,6 +249,16 @@ static void get_linked_reloc_info(
     struct relocation_info **loc_relocs,
     uint32_t *nloc_relocs);
 
+static void setup_dyld_bind_info(
+    struct load_command *load_commands, 	/* input */
+    uint32_t ncmds,
+    uint32_t sizeofcmds,
+    enum byte_sex load_commands_byte_sex,
+    char *object_addr,
+    uint32_t object_size,
+    struct dyld_bind_info **dbi, /* output */
+    uint64_t *ndbi);
+
 static void print_text(
     cpu_type_t cputype,
     enum byte_sex object_byte_sex,
@@ -246,6 +279,8 @@ static void print_text(
     uint32_t next_relocs,
     struct relocation_info *loc_relocs,
     uint32_t nloc_relocs,
+    struct dyld_bind_info *dbi,
+    uint64_t ndbi,
     uint32_t *indirect_symbols,
     uint32_t nindirect_symbols,
     struct load_command *load_commands,
@@ -338,6 +373,15 @@ char **envp)
 	    }
 	    if(strcmp(argv[i], "-llvm-mc") == 0){
 		llvm_mc = TRUE;
+		continue;
+	    }
+	    if(strcmp(argv[i], "-function_offsets") == 0){
+		function_offsets = TRUE;
+		continue;
+	    }
+	    if(strcmp(argv[i], "-bind_info") == 0){
+		print_bind_info = TRUE;
+		object_processing = TRUE;
 		continue;
 	    }
 	    if(strncmp(argv[i], "-mcpu=", sizeof("-mcpu=")-1) == 0){
@@ -450,6 +494,10 @@ char **envp)
 		    Hflag = TRUE;
 		    object_processing = TRUE;
 		    break;
+		case 'C':
+		    Cflag = TRUE;
+		    object_processing = TRUE;
+		    break;
 		case 'G':
 		    Gflag = TRUE;
 		    object_processing = TRUE;
@@ -501,8 +549,9 @@ char **envp)
 	 */
 	if(!fflag && !aflag && !hflag && !lflag && !Lflag && !tflag && !dflag &&
 	   !oflag && !Oflag && !rflag && !Tflag && !Mflag && !Rflag && !Iflag &&
+	   !Cflag && !print_bind_info &&
 	   !Hflag && !Gflag && !Sflag && !cflag && !iflag && !Dflag &&!segname){
-	    error("one of -fahlLtdoOrTMRIHGScis must be specified");
+	    error("one of -fahlLtdoOrTMRIHCGScis must be specified");
 	    usage();
 	}
 	if(qflag && Qflag){
@@ -556,9 +605,8 @@ usage(
 void)
 {
 	fprintf(stderr,
-		"Usage: %s [-arch arch_type] [-fahlLDtdorSTMRIHGvVcXmqQ"
-			   "j"
-			   "] [-mcpu=arg] <object file> ...\n", progname);
+		"Usage: %s [-arch arch_type] [-fahlLDtdorSTMRIHGvVcXmqQjC] "
+		"[-mcpu=arg] <object file> ...\n", progname);
 
 	fprintf(stderr, "\t-f print the fat headers\n");
 	fprintf(stderr, "\t-a print the archive header\n");
@@ -593,7 +641,8 @@ void)
 	fprintf(stderr, "\t-q use llvm's disassembler (the default)\n");
 	fprintf(stderr, "\t-Q use otool(1)'s disassembler\n");
 	fprintf(stderr, "\t-mcpu=arg use `arg' as the cpu for disassembly\n");
-	fprintf(stderr, "\t-j print opcode bytes (ARM64 objects only)\n");
+	fprintf(stderr, "\t-j print opcode bytes\n");
+	fprintf(stderr, "\t-C print linker optimization hints\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -637,6 +686,10 @@ void *cookie) /* cookie is not used */
     struct data_in_code_entry *dices, *allocated_dices;
     uint32_t nhints, ndices;
     uint64_t seg_addr;
+    char *loh;
+    uint32_t nloh;
+    struct dyld_bind_info *dbi;
+    uint64_t ndbi;
 
 	sorted_symbols = NULL;
 	nsorted_symbols = 0;
@@ -667,6 +720,8 @@ void *cookie) /* cookie is not used */
 	allocated_refs = NULL;
 	allocated_hints = NULL;
 	allocated_dices = NULL;
+	dbi = NULL;
+	ndbi = 0;
 
 	/*
 	 * The fat headers are printed in ofile_map() in ofile.c #ifdef'ed
@@ -1030,7 +1085,7 @@ void *cookie) /* cookie is not used */
 			    continue;
 			if(strcmp(p, "gcc_compiled.") == 0)
 			    continue;
-			if(strcmp(p, "ltmp0") == 0)
+			if(strncmp(p, "ltmp", sizeof("ltmp") - 1) == 0)
 			    continue;
 			if(n_type == N_ABS && n_value == 0 && *p == '.')
 			    continue;
@@ -1153,6 +1208,11 @@ void *cookie) /* cookie is not used */
 		ofile->object_byte_sex, hints, nhints, symbols, symbols64,
 		nsymbols, strings, strings_size, vflag);
 	}
+	if(Cflag){
+	    get_link_opt_hints(ofile->load_commands, mh_ncmds, mh_sizeofcmds,
+		ofile->object_byte_sex, addr, size, &loh, &nloh);
+	    print_link_opt_hints(loh, nloh);
+	}
 	if(Gflag || (tflag && vflag)){
 	    get_data_in_code_info(ofile->load_commands, mh_ncmds, mh_sizeofcmds,
 		ofile->object_byte_sex, addr, size, &dices, &ndices);
@@ -1179,6 +1239,12 @@ void *cookie) /* cookie is not used */
 	    print_reloc(ofile->load_commands, mh_ncmds, mh_sizeofcmds,
 			mh_cputype, ofile->object_byte_sex, addr, size, symbols,
 		        symbols64, nsymbols, strings, strings_size, vflag);
+	if(print_bind_info){
+	    setup_dyld_bind_info(ofile->load_commands, mh_ncmds, mh_sizeofcmds,
+		ofile->object_byte_sex, ofile->object_addr, ofile->object_size,
+		&dbi, &ndbi);
+	    print_dyld_bind_info(dbi, ndbi);
+	}
 
 	if(tflag ||
 	   (sect_flags & S_ATTR_PURE_INSTRUCTIONS) ==
@@ -1245,6 +1311,10 @@ void *cookie) /* cookie is not used */
 		if(ofile->object_byte_sex != get_host_byte_sex())
 		    swap_relocation_info(relocs, nrelocs,
 					 get_host_byte_sex());
+		setup_dyld_bind_info(ofile->load_commands, mh_ncmds,
+				     mh_sizeofcmds, ofile->object_byte_sex,
+				     ofile->object_addr, ofile->object_size,
+				     &dbi, &ndbi);
 	    }
 	    if(Xflag == FALSE){
 		if(tflag)
@@ -1257,7 +1327,7 @@ void *cookie) /* cookie is not used */
 		       sect_addr, sect_flags, sorted_symbols,
 		       nsorted_symbols, symbols, symbols64, nsymbols, strings,
 		       strings_size, relocs, nrelocs, ext_relocs, next_relocs,
-		       loc_relocs, nloc_relocs, indirect_symbols,
+		       loc_relocs, nloc_relocs, dbi, ndbi, indirect_symbols,
 		       nindirect_symbols, ofile->load_commands, mh_ncmds,
 		       mh_sizeofcmds, vflag, Vflag, mh_cpusubtype,
 		       ofile->object_addr, ofile->object_size, dices, ndices,
@@ -1473,12 +1543,16 @@ void *cookie) /* cookie is not used */
 		    swap_relocation_info(loc_relocs, nloc_relocs,
 					 get_host_byte_sex());
 		}
+		setup_dyld_bind_info(ofile->load_commands, mh_ncmds,
+				     mh_sizeofcmds, ofile->object_byte_sex,
+				     ofile->object_addr, ofile->object_size,
+				     &dbi, &ndbi);
 		print_objc2_64bit(mh_cputype, ofile->load_commands, mh_ncmds,
 			    mh_sizeofcmds, ofile->object_byte_sex,
 			    ofile->object_addr, ofile->object_size, symbols64,
 			    nsymbols, strings, strings_size, sorted_symbols,
 			    nsorted_symbols, ext_relocs, next_relocs,
-			    loc_relocs, nloc_relocs, vflag, Vflag);
+			    loc_relocs, nloc_relocs, dbi, ndbi, vflag, Vflag);
 	    }
 	    else if(mh_cputype == CPU_TYPE_ARM){
 		get_linked_reloc_info(ofile->load_commands, mh_ncmds,
@@ -1586,6 +1660,8 @@ void *cookie) /* cookie is not used */
 	    free(allocated_mods);
 	if(allocated_refs != NULL)
 	    free(allocated_refs);
+	if(dbi != NULL)
+	    free(dbi);
 }
 
 /*
@@ -2122,6 +2198,122 @@ struct twolevel_hints_command *hints_cmd)
 }
 
 /*
+ * get_link_opt_hints() returns a pointer and the size of the linker
+ * optimization hints table.  This routine handles the problems related to the
+ * file being truncated and only returns valid pointers and sizes that can be
+ * used.  
+ */
+static
+void
+get_link_opt_hints(
+struct load_command *load_commands,
+uint32_t ncmds,
+uint32_t sizeofcmds,
+enum byte_sex load_commands_byte_sex,
+char *object_addr,
+uint32_t object_size,
+char **loh,
+uint32_t *nloh)
+{
+    struct linkedit_data_command loh_cmd;
+    uint64_t bigsize;
+
+	*loh = NULL;
+	*nloh = 0;
+
+	memset(&loh_cmd, '\0', sizeof(struct linkedit_data_command));
+	if(get_link_opt_hint_cmd(load_commands, ncmds, sizeofcmds,
+		                 load_commands_byte_sex, &loh_cmd) == FALSE)
+	    return;
+
+	if(loh_cmd.dataoff >= object_size){
+	    printf("linker optimization hints offset is past end of file\n");
+	}
+	else{
+	    *loh = object_addr + loh_cmd.dataoff;
+	    bigsize = loh_cmd.dataoff;
+	    bigsize += loh_cmd.datasize;
+	    if(bigsize > object_size){
+		printf("linker optimization hints extends past end of file\n");
+		*nloh = object_size - loh_cmd.dataoff;
+	    }
+	    else
+	    *nloh = loh_cmd.datasize;
+	}
+}
+
+/*
+ * get_link_opt_hint_cmd() gets the linker optimization hint command from the
+ * mach header and load commands passed to it and copys it into loh_cmd.  It if
+ * doesn't find one it returns FALSE else it returns TRUE.
+ */
+static
+enum bool
+get_link_opt_hint_cmd(
+struct load_command *load_commands,
+uint32_t ncmds,
+uint32_t sizeofcmds,
+enum byte_sex load_commands_byte_sex,
+struct linkedit_data_command *loh_cmd)
+{
+    enum byte_sex host_byte_sex;
+    enum bool swapped;
+    uint32_t i, left, size, cmd;
+    struct load_command *lc, l;
+
+	host_byte_sex = get_host_byte_sex();
+	swapped = host_byte_sex != load_commands_byte_sex;
+
+	cmd = UINT_MAX;
+	lc = load_commands;
+	for(i = 0 ; i < ncmds; i++){
+	    memcpy((char *)&l, (char *)lc, sizeof(struct load_command));
+	    if(swapped)
+		swap_load_command(&l, host_byte_sex);
+	    if(l.cmdsize % sizeof(int32_t) != 0)
+		printf("load command %u size not a multiple of "
+		       "sizeof(int32_t)\n", i);
+	    if((char *)lc + l.cmdsize >
+	       (char *)load_commands + sizeofcmds)
+		printf("load command %u extends past end of load "
+		       "commands\n", i);
+	    left = sizeofcmds - ((char *)lc - (char *)load_commands);
+
+	    switch(l.cmd){
+	    case LC_LINKER_OPTIMIZATION_HINT:
+		if(cmd != UINT_MAX){
+		    printf("more than one LC_LINKER_OPTIMIZATION_HINT command "
+			   "(using command %u)\n", cmd);
+		    break;
+		}
+		memset((char *)loh_cmd, '\0',
+		       sizeof(struct linkedit_data_command));
+		size = left < sizeof(struct linkedit_data_command) ?
+		       left : sizeof(struct linkedit_data_command);
+		memcpy((char *)loh_cmd, (char *)lc, size);
+		if(swapped)
+		    swap_linkedit_data_command(loh_cmd, host_byte_sex);
+		cmd = i;
+	    }
+	    if(l.cmdsize == 0){
+		printf("load command %u size zero (can't advance to other "
+		       "load commands)\n", i);
+		break;
+	    }
+	    lc = (struct load_command *)((char *)lc + l.cmdsize);
+	    if((char *)lc > (char *)load_commands + sizeofcmds)
+		break;
+	}
+	if((char *)load_commands + sizeofcmds != (char *)lc)
+	    printf("Inconsistent sizeofcmds\n");
+
+	if(cmd == UINT_MAX){
+	    return(FALSE);
+	}
+	return(TRUE);
+}
+
+/*
  * get_data_in_code_info() returns a pointer and the size of the data in code
  * table.  This routine handles the problems related to the file being truncated
  * and only returns valid pointers and sizes that can be used.  This routine
@@ -2594,6 +2786,271 @@ uint32_t *nloc_relocs)
 	}
 }
 
+/*
+ * setup_dyld_bind_info() looks for a LC_DYLD_INFO load command and if it has
+ * bind info unpacks it and returns it in dbi and ndbi values for the internal
+ * expanded structs.
+ */
+static
+void
+setup_dyld_bind_info(
+struct load_command *load_commands, 	/* input */
+uint32_t ncmds,
+uint32_t sizeofcmds,
+enum byte_sex load_commands_byte_sex,
+char *object_addr,
+uint32_t object_size,
+struct dyld_bind_info **dbi, /* output */
+uint64_t *ndbi)
+{
+    enum byte_sex host_byte_sex;
+    enum bool swapped, found_bind;
+    uint32_t pass, i, j, left, size, nsegs, nsegs64, ndylibs;
+    uint64_t big_size;
+    struct load_command *lc, l;
+    struct dyld_info_command dyld_info;
+    struct dylib_command dl;
+    struct segment_command sg, **segs;
+    struct segment_command_64 sg64, **segs64;
+    struct section s;
+    struct section_64 s64;
+    char *short_name, *has_suffix;
+    enum bool is_framework;
+    char *p, *a;
+    uint8_t *start, *end;
+    const char **dylibs;
+
+	/* If already setup just return. */
+	if(*dbi != NULL)
+	    return;
+
+	found_bind = FALSE;
+	*dbi = NULL;
+	*ndbi = 0;
+
+	host_byte_sex = get_host_byte_sex();
+	swapped = host_byte_sex != load_commands_byte_sex;
+
+	nsegs = 0;
+	nsegs64 = 0;
+	ndylibs = 0;
+
+	dylibs = NULL;
+	segs = NULL;
+	segs64 = NULL;
+	/*
+	 * Make two passes over the load commands. On the first pass count the
+	 * number of load commands for dylibs and segments and look for an
+	 * LC_DYLD_INFO load commands  If we find the bind info allocate space
+	 * arrays of pointers to dylibs and segments and fill them in on the
+	 * second pass.
+	 */
+	for(pass = 1; pass <= 2; pass++){
+	    ndylibs = 0;
+	    nsegs = 0;
+	    nsegs64 = 0;
+	    lc = load_commands;
+	    for(i = 0 ; i < ncmds; i++){
+		memcpy((char *)&l, (char *)lc, sizeof(struct load_command));
+		if(swapped)
+		    swap_load_command(&l, host_byte_sex);
+		if(l.cmdsize % sizeof(int32_t) != 0)
+		    printf("load command %u size not a multiple of "
+			   "sizeof(int32_t)\n", i);
+		if((char *)lc + l.cmdsize >
+		   (char *)load_commands + sizeofcmds)
+		    printf("load command %u extends past end of load "
+			   "commands\n", i);
+		left = sizeofcmds - ((char *)lc - (char *)load_commands);
+
+		switch(l.cmd){
+
+		case LC_DYLD_INFO:
+		case LC_DYLD_INFO_ONLY:
+		    if(pass == 1){
+			memset((char *)&dyld_info, '\0',
+			       sizeof(struct dyld_info_command));
+			size = left < sizeof(struct dyld_info_command) ?
+			       left : sizeof(struct dyld_info_command);
+			memcpy((char *)&dyld_info, (char *)lc, size);
+			if(swapped)
+			    swap_dyld_info_command(&dyld_info, host_byte_sex);
+			if(dyld_info.bind_off > object_size){
+			    printf("bind_off in LC_DYLD_INFO load command %u "
+				   "past end of file\n", i);
+			    return;
+			}
+			big_size = dyld_info.bind_off;
+			big_size += dyld_info.bind_size;
+        		if(big_size > object_size){
+			    printf("bind_off plus bind_size in LC_DYLD_INFO "
+				   "load command %u past end of file\n", i);
+			    return;
+			}
+			if(found_bind == TRUE){
+			    printf("more than one LC_DYLD_INFO load command\n");
+			    return;
+			}
+			found_bind = TRUE;
+		    }
+		    break;
+
+		case LC_LOAD_DYLIB:
+		case LC_LOAD_WEAK_DYLIB:
+		case LC_REEXPORT_DYLIB:
+		case LC_LOAD_UPWARD_DYLIB:
+		case LC_LAZY_LOAD_DYLIB:
+		    if(pass == 1){
+			ndylibs++;
+		    }
+		    else{
+			memset((char *)&dl, '\0', sizeof(struct dylib_command));
+			size = left < sizeof(struct dylib_command) ?
+			       left : sizeof(struct dylib_command);
+			memcpy((char *)&dl, (char *)lc, size);
+			if(swapped)
+			    swap_dylib_command(&dl, host_byte_sex);
+			if(dl.dylib.name.offset < dl.cmdsize)
+			    p = (char *)lc + dl.dylib.name.offset;
+			else
+			    p = "(bad offset for dylib.name.offset)";
+		        short_name = guess_short_name(p,
+						  &is_framework, &has_suffix);
+			if(short_name != NULL)
+			    dylibs[ndylibs++] = short_name;
+			else
+			    dylibs[ndylibs++] = p;
+		    }
+		    break;
+
+		case LC_SEGMENT:
+		    memset((char *)&sg, '\0', sizeof(struct segment_command));
+		    size = left < sizeof(struct segment_command) ?
+			   left : sizeof(struct segment_command);
+		    memcpy((char *)&sg, (char *)lc, size);
+		    if(swapped)
+			swap_segment_command(&sg, host_byte_sex);
+		    if(pass == 2){
+			a = allocate(sizeof(struct segment_command) +
+				     sg.nsects * sizeof(struct section));
+			memcpy(a, (char *)&sg,
+			       sizeof(struct segment_command));
+			segs[nsegs++] =
+			    (struct segment_command *)a;
+			a += sizeof(struct segment_command);
+		    }
+
+		    p = (char *)lc + sizeof(struct segment_command);
+		    for(j = 0 ; j < sg.nsects ; j++){
+			if(p + sizeof(struct section) >
+			   (char *)load_commands + sizeofcmds){
+			    printf("section structure command extends past "
+				   "end of load commands\n");
+			    return;
+			}
+			left = sizeofcmds - (p - (char *)load_commands);
+			memset((char *)&s, '\0', sizeof(struct section));
+			size = left < sizeof(struct section) ?
+			       left : sizeof(struct section);
+			memcpy((char *)&s, p, size);
+			if(swapped)
+			    swap_section(&s, 1, host_byte_sex);
+			if(pass == 2){
+			    memcpy(a, (char *)&s, sizeof(struct section));
+			    a += sizeof(struct section);
+			}
+			if(p + sizeof(struct section) >
+			   (char *)load_commands + sizeofcmds)
+			    return;
+			p += size;
+		    }
+		    if(pass == 1)
+			nsegs++;
+		    break;
+		case LC_SEGMENT_64:
+		    memset((char *)&sg64, '\0',
+			   sizeof(struct segment_command_64));
+		    size = left < sizeof(struct segment_command_64) ?
+			   left : sizeof(struct segment_command_64);
+		    memcpy((char *)&sg64, (char *)lc, size);
+		    if(swapped)
+			swap_segment_command_64(&sg64, host_byte_sex);
+		    if(pass == 2){
+			a = allocate(sizeof(struct segment_command_64) +
+				     sg64.nsects * sizeof(struct section_64));
+			memcpy(a, (char *)&sg64,
+			       sizeof(struct segment_command_64));
+			segs64[nsegs64++] =
+			    (struct segment_command_64 *)a;
+			a += sizeof(struct segment_command_64);
+		    }
+
+		    p = (char *)lc + sizeof(struct segment_command_64);
+		    for(j = 0 ; j < sg64.nsects ; j++){
+			if(p + sizeof(struct section_64) >
+			   (char *)load_commands + sizeofcmds){
+			    printf("section structure command extends past "
+				   "end of load commands\n");
+			}
+			left = sizeofcmds - (p - (char *)load_commands);
+			memset((char *)&s64, '\0', sizeof(struct section_64));
+			size = left < sizeof(struct section_64) ?
+			       left : sizeof(struct section_64);
+			memcpy((char *)&s64, p, size);
+			if(swapped)
+			    swap_section_64(&s64, 1, host_byte_sex);
+			if(pass == 2){
+			    memcpy(a, (char *)&s64, sizeof(struct section_64));
+			    a += sizeof(struct section_64);
+			}
+			if(p + sizeof(struct section_64) >
+			   (char *)load_commands + sizeofcmds)
+			    return;
+			p += size;
+		    }
+		    if(pass == 1)
+			nsegs64++;
+		    break;
+		}
+		if(l.cmdsize == 0){
+		    printf("load command %u size zero (can't advance to other "
+			   "load commands)\n", i);
+		    break;
+		}
+		lc = (struct load_command *)((char *)lc + l.cmdsize);
+		if((char *)lc > (char *)load_commands + sizeofcmds)
+		    break;
+	    }
+	    if(found_bind == FALSE)
+		return;
+	    if(pass == 1){
+		dylibs = (const char **)allocate(ndylibs * sizeof(char *));
+		segs = (struct segment_command **)allocate(
+				nsegs * sizeof(struct segment_command *));
+		segs64 = (struct segment_command_64 **)allocate(
+				nsegs64 * sizeof(struct segment_command_64 *));
+	    }
+	}
+
+	start = (uint8_t *)(object_addr + dyld_info.bind_off);
+	end = start + dyld_info.bind_size;
+	get_dyld_bind_info(start, end, dylibs, ndylibs, segs, nsegs,
+			   segs64, nsegs64, dbi, ndbi);
+
+	if(dylibs != NULL)
+	    free(dylibs);
+	if(segs != NULL){
+	    for(i = 0; i < nsegs; i++)
+		free(segs[i]);
+	    free(segs);
+	}
+	if(segs64 != NULL){
+	    for(i = 0; i < nsegs64; i++)
+		free(segs64[i]);
+	    free(segs64);
+	}
+}
+
 static
 void
 print_text(
@@ -2616,6 +3073,8 @@ struct relocation_info *ext_relocs,
 uint32_t next_relocs,
 struct relocation_info *loc_relocs,
 uint32_t nloc_relocs,
+struct dyld_bind_info *dbi,
+uint64_t ndbi,
 uint32_t *indirect_symbols,
 uint32_t nindirect_symbols,
 struct load_command *load_commands,
@@ -2632,7 +3091,7 @@ uint64_t seg_addr)
 {
     enum byte_sex host_byte_sex;
     enum bool swapped;
-    uint32_t i, j, offset, long_word;
+    uint32_t i, j, offset, long_word, label_offset;
     uint64_t cur_addr;
     unsigned short short_word;
     unsigned char byte_word;
@@ -2749,6 +3208,7 @@ uint64_t seg_addr)
 		ninsts = 100;
 		insts = allocate(sizeof(struct inst) * ninsts);
 	    }
+	    label_offset = 0;
 	    for(i = offset ; i < size ; ){
 		if(gflag &&
 		   (cputype == CPU_TYPE_X86_64 ||
@@ -2764,15 +3224,19 @@ uint64_t seg_addr)
 					       nsorted_symbols);;
 		}
 		else{
-		    print_label(cur_addr, TRUE, sorted_symbols,nsorted_symbols);
+		    if(print_label(cur_addr, TRUE, sorted_symbols,
+				   nsorted_symbols) == TRUE)
+			label_offset = i;
+		    if(function_offsets)
+			printf("%+6d ", (int)(i - label_offset));
 		    if(Xflag == FALSE){
 			if(cputype & CPU_ARCH_ABI64)
 			    printf("%016llx", cur_addr);
 			else
 			    printf("%08x", (uint32_t)cur_addr);
-			if(qflag == FALSE
-			   && cputype != CPU_TYPE_ARM64
-			  )
+			if((qflag == FALSE ||
+			    (cputype == CPU_TYPE_POWERPC)) &&
+			    cputype != CPU_TYPE_ARM64)
 			    printf("\t");
 		    }
 		}
@@ -2786,8 +3250,8 @@ uint64_t seg_addr)
 		else if(cputype == CPU_TYPE_X86_64)
 		    j = i386_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, ext_relocs,
-				next_relocs, loc_relocs, nloc_relocs, NULL,
-				symbols64, nsymbols, sorted_symbols,
+				next_relocs, loc_relocs, nloc_relocs, dbi, ndbi,
+				NULL, symbols64, nsymbols, sorted_symbols,
 				nsorted_symbols, strings, strings_size,
 				indirect_symbols, nindirect_symbols, cputype,
 				load_commands, ncmds, sizeofcmds, verbose,
@@ -2808,13 +3272,13 @@ uint64_t seg_addr)
 		else if(cputype == CPU_TYPE_I386)
 		    j = i386_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, ext_relocs,
-				next_relocs, loc_relocs, nloc_relocs, symbols,
-				NULL, nsymbols, sorted_symbols, nsorted_symbols,
-				strings, strings_size, indirect_symbols,
-				nindirect_symbols, cputype, load_commands, 
-				ncmds, sizeofcmds, verbose, llvm_mc, i386_dc,
-				x86_64_dc, object_addr, object_size,
-				&(insts[n]), NULL, 0);
+				next_relocs, loc_relocs, nloc_relocs, dbi, ndbi,
+				symbols, NULL, nsymbols, sorted_symbols,
+				nsorted_symbols, strings, strings_size,
+				indirect_symbols, nindirect_symbols, cputype,
+				load_commands, ncmds, sizeofcmds, verbose,
+				llvm_mc, i386_dc, x86_64_dc, object_addr,
+				object_size, &(insts[n]), NULL, 0);
 		else if(cputype == CPU_TYPE_MC88000)
 		    j = m88k_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, symbols,
@@ -2852,7 +3316,7 @@ uint64_t seg_addr)
 		else if(cputype == CPU_TYPE_ARM64)
 		    j = arm64_disassemble(sect, size - i, cur_addr, addr,
 				object_byte_sex, relocs, nrelocs, ext_relocs,
-				next_relocs, loc_relocs, nloc_relocs,
+				next_relocs, loc_relocs, nloc_relocs, dbi, ndbi,
 				symbols64, nsymbols, sorted_symbols,
 				nsorted_symbols, strings, strings_size,
 				indirect_symbols, nindirect_symbols,
@@ -2909,7 +3373,7 @@ uint64_t seg_addr)
 			j = i386_disassemble(sect, size - offset, cur_addr,
 				addr, object_byte_sex, relocs, nrelocs,
 				ext_relocs, next_relocs, loc_relocs,
-				nloc_relocs, symbols, NULL,
+				nloc_relocs, dbi, ndbi, symbols, NULL,
 				nsymbols, sorted_symbols, nsorted_symbols,
 				strings, strings_size, indirect_symbols,
 				nindirect_symbols, cputype, load_commands, 

@@ -224,6 +224,7 @@
 #include "stuff/allocate.h"
 #include "stuff/errors.h"
 #include "stuff/guess_short_name.h"
+#include "dyld_bind_info.h"
 #include "ofile_print.h"
 
 /* <mach/loader.h> */
@@ -460,6 +461,9 @@ struct fat_arch *fat_arch)
 	    switch(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK){
 	    case CPU_SUBTYPE_X86_64_ALL:
 		printf("x86_64\n");
+		break;
+	    case CPU_SUBTYPE_X86_64_H:
+		printf("x86_64h\n");
 		break;
 	    default:
 		goto print_arch_unknown;
@@ -729,6 +733,10 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_X86_64_ALL:
 		printf("    cputype CPU_TYPE_X86_64\n"
 		       "    cpusubtype CPU_SUBTYPE_X86_64_ALL\n");
+		break;
+	    case CPU_SUBTYPE_X86_64_H:
+		printf("    cputype CPU_TYPE_X86_64\n"
+		       "    cpusubtype CPU_SUBTYPE_X86_64_H\n");
 		break;
 	    default:
 		goto print_arch_unknown;
@@ -1339,6 +1347,9 @@ enum bool verbose)
 		switch(cpusubtype & ~CPU_SUBTYPE_MASK){
 		case CPU_SUBTYPE_X86_64_ALL:
 		    printf("        ALL");
+		    break;
+		case CPU_SUBTYPE_X86_64_H:
+		    printf("    Haswell");
 		    break;
 		default:
 		    printf(" %10d", cpusubtype & ~CPU_SUBTYPE_MASK);
@@ -2195,6 +2206,7 @@ enum bool very_verbose)
 	    case LC_FUNCTION_STARTS:
 	    case LC_DATA_IN_CODE:
 	    case LC_DYLIB_CODE_SIGN_DRS:
+	    case LC_LINKER_OPTIMIZATION_HINT:
 		memset((char *)&ld, '\0', sizeof(struct linkedit_data_command));
 		size = left < sizeof(struct linkedit_data_command) ?
 		       left : sizeof(struct linkedit_data_command);
@@ -3429,6 +3441,8 @@ uint32_t object_size)
 	    printf("      cmd LC_DATA_IN_CODE\n");
         else if(ld->cmd == LC_DYLIB_CODE_SIGN_DRS)
 	    printf("      cmd LC_DYLIB_CODE_SIGN_DRS\n");
+        else if(ld->cmd == LC_LINKER_OPTIMIZATION_HINT)
+	    printf("      cmd LC_LINKER_OPTIMIZATION_HINT\n");
 	else
 	    printf("      cmd %u (?)\n", ld->cmd);
 	printf("  cmdsize %u", ld->cmdsize);
@@ -7456,6 +7470,86 @@ enum bool verbose)
 	}
 }
 
+static
+uint64_t
+decodeULEB128(
+const uint8_t *p,
+unsigned *n)
+{
+  const uint8_t *orig_p = p;
+  uint64_t Value = 0;
+  unsigned Shift = 0;
+  do {
+    Value += (*p & 0x7f) << Shift;
+    Shift += 7;
+  } while (*p++ >= 128);
+  if (n)
+    *n = (unsigned)(p - orig_p);
+  return Value;
+}
+
+void
+print_link_opt_hints(
+char *loh,
+uint32_t nloh)
+{
+    uint32_t i, j;
+    unsigned n;
+    uint64_t identifier, narguments, value;
+
+	printf("Linker optimiztion hints (%u total bytes)\n", nloh);
+	for(i = 0; i < nloh;){
+	    identifier = decodeULEB128((const uint8_t *)(loh + i), &n);
+	    i += n;
+	    printf("    identifier %llu ", identifier);
+	    if(i >= nloh)
+		return;
+	    switch(identifier){
+	    case 1:
+		printf("AdrpAdrp\n");
+		break;
+	    case 2:
+		printf("AdrpLdr\n");
+		break;
+	    case 3:
+		printf("AdrpAddLdr\n");
+		break;
+	    case 4:
+		printf("AdrpLdrGotLdr\n");
+		break;
+	    case 5:
+		printf("AdrpAddStr\n");
+		break;
+	    case 6:
+		printf("AdrpLdrGotStr\n");
+		break;
+	    case 7:
+		printf("AdrpAdd\n");
+		break;
+	    case 8:
+		printf("AdrpLdrGot\n");
+		break;
+	    default:
+		printf("Unknown identifier value\n");
+		break;
+	    }
+
+	    narguments = decodeULEB128((const uint8_t *)(loh + i), &n);
+	    i += n;
+	    printf("    narguments %llu\n", narguments);
+	    if(i >= nloh)
+		return;
+
+	    for(j = 0; j < narguments; j++){
+		value = decodeULEB128((const uint8_t *)(loh + i), &n);
+		i += n;
+		printf("\tvalue 0x%llx\n", value);
+		if(i >= nloh)
+		    return;
+	    }
+	}
+}
+
 void
 print_dices(
 struct data_in_code_entry *dices,
@@ -8610,8 +8704,9 @@ uint32_t nsorted_symbols)
  * <symbol name>:\n
  *
  * The colon and the newline are printed if colon_and_newline is TRUE.
+ * If it prints a label it returns TRUE else it returns FALSE.
  */
-void
+enum bool
 print_label(
 uint64_t addr,
 enum bool colon_and_newline,
@@ -8628,7 +8723,7 @@ uint32_t nsorted_symbols)
 		printf("%s", sorted_symbols[mid].name);
 		if(colon_and_newline == TRUE)
 		    printf(":\n");
-		return;
+		return(TRUE);
 	    }
 	    if(sorted_symbols[mid].n_value > addr){
 		high = mid - 1;
@@ -8639,4 +8734,5 @@ uint32_t nsorted_symbols)
 		mid = (high + low) / 2;
 	    }
 	}
+	return(FALSE);
 }

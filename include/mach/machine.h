@@ -251,6 +251,7 @@ extern vm_offset_t		interrupt_stack[];
 #define CPU_SUBTYPE_INTEL_MODEL(x)	((x) >> 4)
 #define CPU_SUBTYPE_INTEL_MODEL_ALL	0
 
+#define CPU_SUBTYPE_X86_64_H	((cpu_subtype_t)8) /* Haswell and compatible */
 
 /*
  *	Mips subtypes.
