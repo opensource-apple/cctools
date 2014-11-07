@@ -1639,6 +1639,11 @@ enum bool swapped)
 	if(mhp64->cputype == CPU_TYPE_POWERPC64 ||
 	   mhp64->cputype == CPU_TYPE_X86_64)
 	    return(12);
+	/*
+	 * Special case ARM64 and return 14.  As it has 16k pages.
+	 */
+	if(mhp64->cputype == CPU_TYPE_ARM64)
+	    return(14);
 
 	host_byte_sex = get_host_byte_sex();
 
@@ -1937,6 +1942,18 @@ struct fat_arch *fat_arch)
 		goto print_arch_unknown;
 	    }
 	    break;
+	case CPU_TYPE_ARM64:
+	    switch(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK){
+	    case CPU_SUBTYPE_ARM64_ALL:
+		printf("arm64");
+		break;
+	    case CPU_SUBTYPE_ARM64_V8:
+		printf("arm64v8");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
 	case CPU_TYPE_ANY:
 	    switch(fat_arch->cpusubtype & ~CPU_SUBTYPE_MASK){
 	    case CPU_SUBTYPE_MULTIPLE:
@@ -2221,6 +2238,20 @@ cpu_subtype_t cpusubtype)
 	    case CPU_SUBTYPE_ARM_ALL:
 		printf("    cputype CPU_TYPE_ARM\n"
 		       "    cpusubtype CPU_SUBTYPE_ARM_ALL\n");
+		break;
+	    default:
+		goto print_arch_unknown;
+	    }
+	    break;
+	case CPU_TYPE_ARM64:
+	    switch(cpusubtype & ~CPU_SUBTYPE_MASK){
+	    case CPU_SUBTYPE_ARM64_ALL:
+		printf("    cputype CPU_TYPE_ARM64\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM64_ALL\n");
+		break;
+	    case CPU_SUBTYPE_ARM64_V8:
+		printf("    cputype CPU_TYPE_ARM64\n"
+		       "    cpusubtype CPU_SUBTYPE_ARM64_V8\n");
 		break;
 	    default:
 		goto print_arch_unknown;

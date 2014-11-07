@@ -3233,7 +3233,37 @@ char *output)
 		add_execute_list(cmd_flags.ldflags[j]);
 	    for(j = 0; j < cmd_flags.nLdirs; j++)
 		add_execute_list(cmd_flags.Ldirs[j]);
-	    add_execute_list("-ldylib1.o");
+
+             // Support using libtool on a systems without the SDK in '/'. This
+             // works because the shims that are included in 10.9 and forwards
+             // automatically inject SDKROOT into the environment of the actual
+             // tools. See <rdar://problem/14264125>.
+             const char *sdkroot = getenv("SDKROOT");
+ 
+             // If the SDKROOT environment variable is set and is an absolute
+             // path, then see if we can find dylib1.o inside it and use that if
+             // so.
+             enum bool use_dashl_dylib1o = TRUE;
+             if (sdkroot && sdkroot[0] == '/') {
+               // Construct the path to the object file.
+               char *sdk_dylib1o_path;
+               int res = asprintf(&sdk_dylib1o_path, "%s/usr/lib/dylib1.o",
+                                  sdkroot);
+               if (res > 0 && sdk_dylib1o_path) {
+                 struct stat s;
+                 // Add the full path if it exists.
+                 if (stat(sdk_dylib1o_path, &s) == 0) {
+                   add_execute_list(sdk_dylib1o_path);
+                   use_dashl_dylib1o = FALSE;
+                 }
+                 free(sdk_dylib1o_path);
+               }
+             }
+             // Otherwise, use a -l and let the linker look for it.
+             if (use_dashl_dylib1o == TRUE) {
+               add_execute_list("-ldylib1.o");
+             }
+
 	    filelist = NULL;
 	    for(j = 0; j < cmd_flags.nfiles; j++){
 		if(cmd_flags.filelist[j] == NULL){

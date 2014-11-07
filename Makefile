@@ -4,9 +4,10 @@ DSTROOT = /
 RC_OS = macos
 RC_CFLAGS =
 
+
 INSTALLSRC_SUBDIRS = $(COMMON_SUBDIRS) $(SUBDIRS_32) ar include efitools \
 		     libmacho
-COMMON_SUBDIRS = libstuff as gprof misc RelNotes man cbtlibs otool
+COMMON_SUBDIRS = libstuff as gprof misc man cbtlibs otool
 APPLE_SUBDIRS = ar
 SUBDIRS_32 = ld
 EFITOOLS = efitools
@@ -42,7 +43,7 @@ all clean: $(DSTROOT)
 	    for i in `echo $(SUBDIRS)`;					\
 	      do							\
 		    echo =========== $(MAKE) $@ for $$i =============;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
 			EFITOOLS="$(EFITOOLS)" 				\
@@ -53,6 +54,7 @@ all clean: $(DSTROOT)
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
+ 		| sed 's/-arch arm64//' 				\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -76,7 +78,7 @@ all clean: $(DSTROOT)
 	    for i in `echo $(SUBDIRS)`;					\
 	      do							\
 		    echo =========== $(MAKE) $@ for $$i =============;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			EFITOOLS="$(EFITOOLS)" 				\
 			TRIE="$(TRIE)" LTO="$(LTO)" DSTROOT=$$DSTROOT 	\
@@ -84,6 +86,7 @@ all clean: $(DSTROOT)
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
+ 		| sed 's/-arch arm64//' 				\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -148,7 +151,7 @@ install_tools: installhdrs
 	    for i in `echo $(SUBDIRS)`;					\
 	      do							\
 		    echo ======== $(MAKE) install for $$i ============;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
 			EFITOOLS="$(EFITOOLS)" 				\
@@ -159,6 +162,7 @@ install_tools: installhdrs
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
+ 		| sed 's/-arch arm64//' 				\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -167,7 +171,7 @@ install_tools: installhdrs
 	      for i in `echo $(SUBDIRS_32)`;				\
 	        do							\
 		    echo ======== $(MAKE) install for $$i ============;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS"	\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS $(HIDE)" \
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
 			EFITOOLS="$(EFITOOLS)"				\
@@ -182,7 +186,7 @@ install_tools: installhdrs
 	    for i in `echo $(SUBDIRS)`;					\
 	      do							\
 		    echo ========= $(MAKE) install for $$i ===========;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
 			EFITOOLS="$(EFITOOLS)"				\
@@ -191,6 +195,7 @@ install_tools: installhdrs
 	      done;							\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
  		| sed 's/-arch x86_64//' | sed 's/-arch armv5//'	\
+ 		| sed 's/-arch arm64//' 				\
 		| sed 's/-arch armv6//' | sed 's/-arch armv7[f,k,s]*//g'`; \
 	    EMPTY=`echo "$$SED_RC_CFLAGS" | sed 's/ //g'		\
 		| sed 's/-pipe//'`;					\
@@ -199,7 +204,7 @@ install_tools: installhdrs
 	      for i in `echo $(SUBDIRS_32)`;				\
 	        do							\
 		    echo ========= $(MAKE) install for $$i ===========;	\
-		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS"	\
+		    (cd $$i; $(MAKE) RC_CFLAGS="$$SED_RC_CFLAGS $(HIDE)" \
 			RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
 			VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"	\
 			EFITOOLS="$(EFITOOLS)"				\
@@ -211,7 +216,7 @@ install_tools: installhdrs
 
 ofiles_install:
 	@ export RC_FORCEHDRS=YES;					\
-	$(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
+	$(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"			\
 		RC_ARCHS="$(RC_ARCHS)"					\
 		RC_OS="$(RC_OS)"					\
 		DSTROOT=$$DSTROOT/$(INSTALL_LOCATION)			\
@@ -226,16 +231,17 @@ lib_ofiles lib_ofiles_install: installhdrs
 	then								\
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
+		| sed 's/-arch arm64//'					\
  		| sed 's/-arch x86_64//'`;				\
 	    echo =========== $(MAKE) $@ for libstuff =============;	\
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)/libstuff				\
 		OBJROOT=$(OBJROOT)/libstuff				\
 		SYMROOT=$(SYMROOT)/libstuff $@) || exit 1;		\
 	    echo ====== $(MAKE) lib_static_ofiles for libstuff =======; \
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		OLD_LIBKLD="$(OLD_LIBKLD)" 				\
 		DSTROOT=$$DSTROOT					\
@@ -245,8 +251,9 @@ lib_ofiles lib_ofiles_install: installhdrs
 	    if [ $(BUILD_DYLIBS) = "YES" ];				\
 	    then							\
 	        echo =========== $(MAKE) $@ for libmacho =============;	\
-	        (cd libmacho; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+	        (cd libmacho; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 		    RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
+		    RC_ProjectName="$(RC_ProjectName)"			\
 		    OLD_LIBKLD="$(OLD_LIBKLD)"				\
 		    DSTROOT=$$DSTROOT					\
 		    SRCROOT=$(SRCROOT)/libmacho				\
@@ -254,15 +261,15 @@ lib_ofiles lib_ofiles_install: installhdrs
 		    SYMROOT=$(SYMROOT)/libmacho $@) || exit 1;		\
 	    fi;								\
 	    echo =========== $(MAKE) $@ for ld =============;		\
-	    (cd ld; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"			\
+	    (cd ld; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		OLD_LIBKLD="$(OLD_LIBKLD)"				\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)/ld					\
 		OBJROOT=$(OBJROOT)/ld					\
 		SYMROOT=$(SYMROOT)/ld $@) || exit 1;			\
-	    echo =========== $(MAKE) $@ for misc =============;	\
-	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    echo =========== $(MAKE) $@ for misc =============;		\
+	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		TRIE="$(TRIE)" LTO="$(LTO)"				\
 		DSTROOT=$$DSTROOT					\
@@ -270,7 +277,7 @@ lib_ofiles lib_ofiles_install: installhdrs
 		OBJROOT=$(OBJROOT)/misc					\
 		SYMROOT=$(SYMROOT)/misc $@) || exit 1;			\
 	    echo =========== $(MAKE) $@ for cbtlibs =============;	\
-	    (cd cbtlibs; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd cbtlibs; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)/cbtlibs				\
@@ -279,38 +286,41 @@ lib_ofiles lib_ofiles_install: installhdrs
 	else								\
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    SED_RC_CFLAGS=`echo "$(RC_CFLAGS)" | sed 's/-arch ppc64//'  \
+		| sed 's/-arch arm64//'					\
  		| sed 's/-arch x86_64//'`;				\
 	    echo =========== $(MAKE) $@ for libstuff =============;	\
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
 	    echo ====== $(MAKE) lib_static_ofiles for libstuff =======; \
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT lib_static_ofiles) || exit 1;		\
 	    if [ $(BUILD_DYLIBS) = "YES" ];				\
 	    then							\
 	        echo =========== $(MAKE) $@ for libmacho =============;	\
-	        (cd libmacho; $(MAKE) RC_CFLAGS="$(RC_CFLAGS)"		\
+	        (cd libmacho; $(MAKE) RC_CFLAGS="$(RC_CFLAGS) $(HIDE)"	\
 		    RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"		\
+		    RC_ProjectName="$(RC_ProjectName)"			\
 		    DSTROOT=$$DSTROOT $@) || exit 1;			\
 	    fi;								\
 	    echo =========== $(MAKE) $@ for ld =============;		\
-	    (cd ld; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS"			\
+	    (cd ld; $(MAKE) "RC_CFLAGS=$$SED_RC_CFLAGS $(HIDE)"			\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		OLD_LIBKLD="$(OLD_LIBKLD)"				\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
 	    echo =========== $(MAKE) $@ for misc =============;		\
-	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		TRIE="$(TRIE)" LTO="$(LTO)"				\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
-	    (cd cbtlibs; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd cbtlibs; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
 	fi
 
 install_dev_tools:
+	@ export RC_FORCEHDRS=YES;					\
 	$(MAKE) RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)"					\
 		RC_OS="$(RC_OS)"					\
@@ -327,7 +337,7 @@ install_os_tools: installhdrs
 	then								\
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    echo =========== $(MAKE) all for libstuff =============;	\
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		OLD_LIBKLD="$(OLD_LIBKLD)" 				\
 		DSTROOT=$$DSTROOT					\
@@ -335,7 +345,7 @@ install_os_tools: installhdrs
 		OBJROOT=$(OBJROOT)/libstuff				\
 		SYMROOT=$(SYMROOT)/libstuff all) || exit 1;		\
 	    echo =========== $(MAKE) $@ for misc =============;	\
-	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		TRIE="$(TRIE)" LTO="$(LTO)"				\
 		DSTROOT=$$DSTROOT					\
@@ -343,7 +353,7 @@ install_os_tools: installhdrs
 		OBJROOT=$(OBJROOT)/misc					\
 		SYMROOT=$(SYMROOT)/misc $@) || exit 1;			\
 	    echo =========== $(MAKE) $@ for man =============;	\
-	    (cd man; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    (cd man; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT					\
 		SRCROOT=$(SRCROOT)/man					\
@@ -352,16 +362,16 @@ install_os_tools: installhdrs
 	else								\
 	    CWD=`pwd`; cd "$(DSTROOT)"; DSTROOT=`pwd`; cd "$$CWD";	\
 	    echo =========== $(MAKE) all for libstuff =============;	\
-	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"		\
+	    (cd libstuff; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"	\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT all) || exit 1;			\
 	    echo =========== $(MAKE) $@ for misc =============;		\
-	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    (cd misc; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		TRIE="$(TRIE)" LTO="$(LTO)"				\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
 	    echo =========== $(MAKE) $@ for man =============;		\
-	    (cd man; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS)"			\
+	    (cd man; $(MAKE) "RC_CFLAGS=$(RC_CFLAGS) $(HIDE)"		\
 		RC_ARCHS="$(RC_ARCHS)" RC_OS="$(RC_OS)"			\
 		DSTROOT=$$DSTROOT $@) || exit 1;			\
 	fi
@@ -401,6 +411,7 @@ installhdrs: $(DSTROOT)
 	then								\
 	    projName=`basename $(SRCROOT) | sed 's/-[0-9.]*//'`;	\
 	    if [ "$$projName" = cctools -a $(RC_OS) = macos ] &&	\
+	       [ "$(RC_ProjectName)" != "cctools_ofiles_Sim" ] &&	\
 	       [ "$(RC_FORCEHDRS)" != "YES" ];				\
 	    then							\
 	    	echo === cctools does not install headers for macos ===;\

@@ -45,6 +45,7 @@
 
 #include "coff/base_relocs.h"
 #include "mach-o/x86_64/reloc.h"
+#include "mach-o/arm64/reloc.h"
 
 /* used by error routines as the name of this program */
 char *progname = NULL;
@@ -484,6 +485,7 @@ uint32_t narchs)
 	    fatal("input file: %s must be a Mach-O file", archs->file_name);
 	if(archs->object->mh_cputype != CPU_TYPE_I386 &&
 	   archs->object->mh_cputype != CPU_TYPE_ARM &&
+	   archs->object->mh_cputype != CPU_TYPE_ARM64 &&
 	   archs->object->mh_cputype != CPU_TYPE_X86_64)
 	    fatal("input file: %s must be an i386 or ARM architecture",
 		  archs->file_name);
@@ -1025,6 +1027,21 @@ struct arch *arch)
 			}
 			break;
 #endif /* x86_THREAD_STATE64 */
+#ifdef ARM_THREAD_STATE64
+		    case CPU_TYPE_ARM64:
+			switch(flavor){
+		        arm_thread_state64_t *cpu64;
+			case ARM_THREAD_STATE64:
+			    cpu64 = (arm_thread_state64_t *)state;
+			    entry = cpu64->__pc;
+			    state += sizeof(arm_thread_state64_t);
+			    break;
+			default:
+			    state += count * sizeof(uint32_t);
+			    break;
+			}
+			break;
+#endif /* ARM_THREAD_STATE64 */
 		    }
 		}
 	    }
@@ -1340,6 +1357,8 @@ struct ofile *ofile)
 	else{
 	    if(ofile->mh64->cputype == CPU_TYPE_X86_64)
 		filehdr.f_magic = IMAGE_FILE_MACHINE_AMD64;
+	    else
+		filehdr.f_magic = IMAGE_FILE_MACHINE_ARM64;
 	}
 	filehdr.f_nscns = nscns;
 #ifdef HACK_TO_MATCH_TEST_CASE
@@ -2123,6 +2142,10 @@ struct arch *arch)
 		     * X86_64 relocations are relative to the first writable
 		     * segment.
 		     */
+		    /*
+		     * But arm64 relocations are NOT relative to the first
+		     * writable segment but just the first segment.
+		     */
 		    if((first_addr == 0) &&
 		       ((sg64->initprot & VM_PROT_WRITE) != 0)) {
 		      first_addr = sg64->vmaddr;
@@ -2143,6 +2166,10 @@ struct arch *arch)
 			gather_base_reloc_info(s64[j].addr, relocs,
 			    s64[j].nreloc, CPU_TYPE_X86_64, 3,
 			    X86_64_RELOC_UNSIGNED, IMAGE_REL_BASED_DIR64);
+		    else if(arch->object->mh_cputype == CPU_TYPE_ARM64)
+			gather_base_reloc_info(s64[j].addr, relocs,
+			    s64[j].nreloc, CPU_TYPE_ARM64, 3,
+			    ARM64_RELOC_UNSIGNED, IMAGE_REL_BASED_DIR64);
 		    if((s64[j].flags & SECTION_TYPE) ==
 			S_NON_LAZY_SYMBOL_POINTERS){
 			for(addr = s64[j].addr;
@@ -2171,6 +2198,10 @@ struct arch *arch)
 	    else if(arch->object->mh_cputype == CPU_TYPE_X86_64)
 		gather_base_reloc_info(first_addr, relocs, dyst->nlocrel,
 		    CPU_TYPE_X86_64, 3, X86_64_RELOC_UNSIGNED,
+		    IMAGE_REL_BASED_DIR64);
+	    else if(arch->object->mh_cputype == CPU_TYPE_ARM64)
+		gather_base_reloc_info(first_addr, relocs, dyst->nlocrel,
+		    CPU_TYPE_ARM64, 3, ARM64_RELOC_UNSIGNED,
 		    IMAGE_REL_BASED_DIR64);
 	}
 	/*

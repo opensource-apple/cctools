@@ -219,16 +219,36 @@ char **envp)
            getenv("AS_INTEGRATED_ASSEMBLER") != NULL &&
 	   (arch_flag.cputype == CPU_TYPE_X86_64 ||
 	    arch_flag.cputype == CPU_TYPE_I386 ||
+	    arch_flag.cputype == CPU_TYPE_ARM64 ||
 	    arch_flag.cputype == CPU_TYPE_ARM)){
 	    qflag = TRUE;
 	}
 	if(qflag == TRUE &&
 	   (arch_flag.cputype != CPU_TYPE_X86_64 &&
 	    arch_flag.cputype != CPU_TYPE_I386 &&
+	    arch_flag.cputype != CPU_TYPE_ARM64 &&
 	    arch_flag.cputype != CPU_TYPE_ARM)){
 	    printf("%s: can't specifiy -q with -arch %s\n", progname,
 		   arch_flag.name);
 	    exit(1);
+	}
+
+	/*
+	 * When the target assembler is for arm64, for now:
+	 *   rdar://8913781 ARM64: cctools 'as' driver should invoke clang
+	 *		    for ARM64 assembly files
+	 * use clang.  Later for:
+	 *   rdar://8928193 ARM64: Standalone 'as' driver
+	 * when there is and llvm-mc based standalone 'as' driver and it is
+ 	 * in the usual place as the other target assemblers this use of clang
+	 * will be removed.
+	 */ 
+	if(arch_flag.cputype == CPU_TYPE_ARM64){
+	    if(Qflag == TRUE){
+		printf("%s: can't specifiy -Q with -arch arm64\n", progname);
+		exit(1);
+	    }
+	    run_clang = 1;
 	}
 
 #ifdef notyet
@@ -250,6 +270,7 @@ char **envp)
 	if((run_clang || qflag) && !Qflag &&
 	   (arch_flag.cputype == CPU_TYPE_X86_64 ||
 	    arch_flag.cputype == CPU_TYPE_I386 ||
+	    arch_flag.cputype == CPU_TYPE_ARM64 ||
 	    arch_flag.cputype == CPU_TYPE_ARM)){
 	    as = makestr(prefix, CLANG, NULL);
 	    if(access(as, F_OK) != 0){

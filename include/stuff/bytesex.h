@@ -307,6 +307,10 @@ __private_extern__ void swap_arm_thread_state_t(
     arm_thread_state_t *cpu,
     enum byte_sex target_byte_sex);
 
+__private_extern__ void swap_arm_thread_state64_t(
+    arm_thread_state64_t *cpu,
+    enum byte_sex target_byte_sex);
+
 __private_extern__ void swap_ident_command(
     struct ident_command *id_cmd,
     enum byte_sex target_byte_sex);

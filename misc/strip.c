@@ -2762,6 +2762,7 @@ uint32_t nextrefsyms)
 		 * we keeping all resulting symbols.
 		 */
 		if((object->mh_cputype == CPU_TYPE_X86_64 ||
+                    object->mh_cputype == CPU_TYPE_ARM64 ||
 		    object->mh_cputype == CPU_TYPE_ARM) &&
 		   object->mh_filetype == MH_OBJECT){
 		    if(n_strx != 0)

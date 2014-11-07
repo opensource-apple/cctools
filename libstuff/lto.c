@@ -266,6 +266,10 @@ char *target_triple)
 	    arch_flag->cputype = CPU_TYPE_ARM;
 	    arch_flag->cpusubtype = CPU_SUBTYPE_ARM_V7EM;
 	}
+	else if(strncmp(target_triple, "arm64", n) == 0){
+	    arch_flag->cputype = CPU_TYPE_ARM64;
+	    arch_flag->cpusubtype = CPU_SUBTYPE_ARM64_ALL;
+	}
 	else{
 	    return(0);
 	}

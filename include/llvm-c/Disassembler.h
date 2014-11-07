@@ -95,6 +95,16 @@ struct LLVMOpInfo1 {
 #define LLVMDisassembler_VariantKind_ARM_LO16 2 /* :lower16: */
 
 /**
+ * The ARM64 target VariantKinds.
+ */
+#define LLVMDisassembler_VariantKind_ARM64_PAGE       1 /* @page */
+#define LLVMDisassembler_VariantKind_ARM64_PAGEOFF    2 /* @pageoff */
+#define LLVMDisassembler_VariantKind_ARM64_GOTPAGE    3 /* @gotpage */
+#define LLVMDisassembler_VariantKind_ARM64_GOTPAGEOFF 4 /* @gotpageoff */
+#define LLVMDisassembler_VariantKind_ARM64_TLVP       5 /* @tvlppage */
+#define LLVMDisassembler_VariantKind_ARM64_TLVOFF     6 /* @tvlppageoff */
+
+/**
  * The type for the symbol lookup function.  This may be called by the
  * disassembler for things like adding a comment for a PC plus a constant
  * offset load instruction to use a symbol name instead of a load address value.
@@ -121,6 +131,11 @@ typedef const char *(*LLVMSymbolLookupCallback)(void *DisInfo,
 #define LLVMDisassembler_ReferenceType_In_Branch 1
 /* The input reference is from a PC relative load instruction. */
 #define LLVMDisassembler_ReferenceType_In_PCrel_Load 2
+
+/* The input reference is from an ARM64::ADRP instruction. */
+#define LLVMDisassembler_ReferenceType_In_ARM64_ADRP 0x100000001
+/* The input reference is from an ARM64::ADDXri instruction. */
+#define LLVMDisassembler_ReferenceType_In_ARM64_ADDXri 0x100000002
 
 /* The output reference is to as symbol stub. */
 #define LLVMDisassembler_ReferenceType_Out_SymbolStub 1
@@ -167,8 +182,6 @@ int LLVMSetDisasmOptions(LLVMDisasmContextRef DC, uint64_t Options);
 #define LLVMDisassembler_Option_UseMarkup 1
 /* The option to print immediates as hex. */
 #define LLVMDisassembler_Option_PrintImmHex 2
-/* The option use the other assembler printer variant */
-#define LLVMDisassembler_Option_AsmPrinterVariant 4
 
 /**
  * Dispose of a disassembler context.

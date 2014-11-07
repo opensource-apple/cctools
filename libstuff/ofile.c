@@ -5782,6 +5782,81 @@ check_dylinker_command:
 		    }
 		    break;
 		}
+	    	if(cputype == CPU_TYPE_ARM64){
+		    arm_thread_state64_t *cpu;
+
+		    nflavor = 0;
+		    p = (char *)ut + ut->cmdsize;
+		    while(state < p){
+			if(state +  sizeof(uint32_t) >
+			   (char *)ut + ut->cmdsize){
+			    Mach_O_error(ofile, "malformed object (flavor in "
+				"%s command %u extends past end of command)",
+				ut->cmd == LC_UNIXTHREAD ?  "LC_UNIXTHREAD" :
+				"LC_THREAD", i);
+			    goto return_bad;
+			}
+			flavor = *((uint32_t *)state);
+			if(swapped){
+			    flavor = SWAP_INT(flavor);
+			    *((uint32_t *)state) = flavor;
+			}
+			state += sizeof(uint32_t);
+			if(state +  sizeof(uint32_t) >
+			   (char *)ut + ut->cmdsize){
+			    Mach_O_error(ofile, "malformed object (count in "
+				"%s command %u extends past end of command)",
+				ut->cmd == LC_UNIXTHREAD ?  "LC_UNIXTHREAD" :
+				"LC_THREAD", i);
+			    goto return_bad;
+			}
+			count = *((uint32_t *)state);
+			if(swapped){
+			    count = SWAP_INT(count);
+			    *((uint32_t *)state) = count;
+			}
+			state += sizeof(uint32_t);
+			switch(flavor){
+			case ARM_THREAD_STATE64:
+			    if(count != ARM_THREAD_STATE64_COUNT){
+				Mach_O_error(ofile, "malformed object (count "
+				    "not ARM_THREAD_STATE64_COUNT for "
+				    "flavor number %u which is a ARM_THREAD_"
+				    "STATE64 flavor in %s command %u)",
+				    nflavor, ut->cmd == LC_UNIXTHREAD ? 
+				    "LC_UNIXTHREAD" : "LC_THREAD", i);
+				goto return_bad;
+			    }
+			    cpu = (arm_thread_state64_t *)state;
+			    if(state + sizeof(arm_thread_state64_t) >
+			       (char *)ut + ut->cmdsize){
+				Mach_O_error(ofile, "malformed object ("
+				    "ARM_THREAD_STATE64 in %s command %u "
+				    "extends past end of command)", ut->cmd ==
+				    LC_UNIXTHREAD ?  "LC_UNIXTHREAD" :
+				    "LC_THREAD", i);
+				goto return_bad;
+			    }
+			    if(swapped)
+				swap_arm_thread_state64_t(cpu, host_byte_sex);
+			    state += sizeof(arm_thread_state64_t);
+			    break;
+			default:
+			    if(swapped){
+				Mach_O_error(ofile, "malformed object (unknown "
+				    "flavor for flavor number %u in %s command"
+				    " %u can't byte swap it)", nflavor,
+				    ut->cmd == LC_UNIXTHREAD ? "LC_UNIXTHREAD" :
+				    "LC_THREAD", i);
+				goto return_bad;
+			    }
+			    state += count * sizeof(uint32_t);
+			    break;
+			}
+			nflavor++;
+		    }
+		    break;
+		}
 		if(swapped){
 		    Mach_O_error(ofile, "malformed object (unknown cputype and "
 			"cpusubtype of object and can't byte swap and check %s "

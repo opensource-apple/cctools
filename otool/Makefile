@@ -37,12 +37,14 @@ CFILES = main.c ofile_print.c m68k_disasm.c i860_disasm.c \
 	 m88k_disasm.c i386_disasm.c ppc_disasm.c hppa_disasm.c \
 	 sparc_disasm.c print_objc.c notify.c arm_disasm.c \
 	 print_objc2_64bit.c print_objc2_32bit.c
+	CFILES += arm64_disasm.c
 ifeq "$(EFITOOLS)" "efitools"
 	CFILES += coff_print.c
 endif
 HFILES = otool.h ofile_print.h m68k_disasm.h i860_disasm.h \
 	 sparc_disasm.h m88k_disasm.h i386_disasm.h ppc_disasm.h hppa_disasm.h \
 	 notify.h arm_disasm.h
+	HFILES += arm64_disasm.h
 OBJS = $(CFILES:.c=.o) ofile.o
 INSTALL_FILES = $(CFILES) $(HFILES) Makefile notes
 

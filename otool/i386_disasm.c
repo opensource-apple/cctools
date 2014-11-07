@@ -128,7 +128,7 @@ static void get_operand(
     const enum bool addr16,
     const enum bool sse2,
     const enum bool mmx,
-	const unsigned int rex,
+    const unsigned int rex,
     const char *sect,
     uint32_t sect_addr,
     uint32_t *length,
@@ -136,6 +136,8 @@ static void get_operand(
     const uint32_t addr,
     const struct relocation_info *sorted_relocs,
     const uint32_t nsorted_relocs,
+    const struct relocation_info *ext_relocs,
+    const uint32_t next_relocs,
     const struct nlist *symbols,
     const struct nlist_64 *symbols64,
     const uint32_t nsymbols,
@@ -158,6 +160,8 @@ static void immediate(
     const uint32_t addr,
     const struct relocation_info *sorted_relocs,
     const uint32_t nsorted_relocs,
+    const struct relocation_info *ext_relocs,
+    const uint32_t next_relocs,
     const struct nlist *symbols,
     const struct nlist_64 *symbols64,
     const uint32_t nsymbols,
@@ -176,11 +180,12 @@ static void displacement(
     uint64_t sect_addr,
     uint32_t *length,
     uint32_t *left,
-    const uint32_t filetype,
     const cpu_type_t cputype,
     const uint64_t addr,
     const struct relocation_info *sorted_relocs,
     const uint32_t nsorted_relocs,
+    const struct relocation_info *ext_relocs,
+    const uint32_t next_relocs,
     const struct nlist *symbols,
     const struct nlist_64 *symbols64,
     const uint32_t nsymbols,
@@ -196,9 +201,12 @@ static void get_symbol(
     uint64_t *offset,
     const cpu_type_t cputype,
     const uint32_t sect_offset,
+    const uint32_t seg_offset,
     const uint64_t value,
     const struct relocation_info *relocs,
     const uint32_t nrelocs,
+    const struct relocation_info *ext_relocs,
+    const uint32_t next_relocs,
     const struct nlist *symbols,
     const struct nlist_64 *symbols64,
     const uint32_t nsymbols,
@@ -233,27 +241,30 @@ static void modrm_byte(
 	get_operand((symadd), (symsub), (value), (value_size), (result), \
 		    cputype, mode, r_m, wbit, data16, addr16, sse2, mmx, rex, \
 		    sect, sect_addr, &length, &left, addr, sorted_relocs, \
-		    nsorted_relocs, symbols, symbols64, nsymbols, strings, \
-		    strings_size, sorted_symbols, nsorted_symbols, verbose)
+		    nsorted_relocs, ext_relocs, next_relocs, symbols, \
+		    symbols64, nsymbols, strings, strings_size, \
+		    sorted_symbols, nsorted_symbols, verbose)
 
 #define DISPLACEMENT(symadd, symsub, value, value_size) \
 	displacement((symadd), (symsub), (value), (value_size), sect, \
-		     sect_addr, &length, &left, filetype, cputype, addr, \
-		     sorted_relocs, nsorted_relocs, symbols, symbols64, \
-		     nsymbols, strings, strings_size, sorted_symbols, \
-		     nsorted_symbols, verbose)
+		     sect_addr, &length, &left, cputype, addr, sorted_relocs, \
+		     nsorted_relocs, ext_relocs, next_relocs, symbols, \
+		     symbols64, nsymbols, strings, strings_size, \
+		     sorted_symbols, nsorted_symbols, verbose)
 
 #define IMMEDIATE(symadd, symsub, value, value_size) \
 	immediate((symadd), (symsub), (value), (value_size), sect, sect_addr, \
 		  &length, &left, cputype, addr, sorted_relocs, \
-		  nsorted_relocs, symbols, symbols64, nsymbols, strings, \
-		  strings_size, sorted_symbols, nsorted_symbols, verbose)
+		  nsorted_relocs, ext_relocs, next_relocs, symbols, symbols64, \
+		  nsymbols, strings, strings_size, sorted_symbols, \
+		  nsorted_symbols, verbose)
 
-#define GET_SYMBOL(symadd, symsub, offset, sect_offset, value) \
+#define GET_SYMBOL(symadd, symsub, offset, sect_offset, seg_offset, value) \
 	get_symbol((symadd), (symsub), (offset), cputype, (sect_offset), \
-		   (value), sorted_relocs, nsorted_relocs, symbols, symbols64, \
-		   nsymbols, strings, strings_size, sorted_symbols, \
-		   nsorted_symbols, verbose)
+		   (seg_offset), (value), sorted_relocs, nsorted_relocs, \
+		   ext_relocs, next_relocs, symbols, symbols64, nsymbols, \
+		   strings, strings_size, sorted_symbols, nsorted_symbols, \
+		   verbose)
 
 #define GUESS_SYMBOL(value) \
 	guess_symbol((value), sorted_symbols, nsorted_symbols, verbose)
@@ -1607,6 +1618,10 @@ struct disassemble_info {
   /* Relocation information.  */
   struct relocation_info *sorted_relocs;
   uint32_t nsorted_relocs;
+  struct relocation_info *ext_relocs;
+  uint32_t next_relocs;
+  struct relocation_info *loc_relocs;
+  uint32_t nloc_relocs;
   /* Symbol table.  */
   struct nlist *symbols;
   struct nlist_64 *symbols64;
@@ -1636,7 +1651,6 @@ struct disassemble_info {
   struct inst *inst;
   struct inst *insts;
   uint32_t ninsts;
-  uint32_t filetype;
 } dis_info;
 
 /*
@@ -1651,6 +1665,10 @@ uint64_t sect_addr,
 enum byte_sex object_byte_sex,
 struct relocation_info *sorted_relocs,
 uint32_t nsorted_relocs,
+struct relocation_info *ext_relocs,
+uint32_t next_relocs,
+struct relocation_info *loc_relocs,
+uint32_t nloc_relocs,
 struct nlist *symbols,
 struct nlist_64 *symbols64,
 uint32_t nsymbols,
@@ -1672,8 +1690,7 @@ char *object_addr,
 uint32_t object_size,
 struct inst *inst,
 struct inst *insts,
-uint32_t ninsts,
-uint32_t filetype)
+uint32_t ninsts)
 {
     char mnemonic[MAX_MNEMONIC+2]; /* one extra for suffix */
     const char *seg;
@@ -1715,6 +1732,10 @@ uint32_t filetype)
 	    dis_info.verbose = verbose;
 	    dis_info.sorted_relocs = sorted_relocs;
 	    dis_info.nsorted_relocs = nsorted_relocs;
+	    dis_info.ext_relocs = ext_relocs;
+	    dis_info.next_relocs = next_relocs;
+	    dis_info.loc_relocs = loc_relocs;
+	    dis_info.nloc_relocs = nloc_relocs;
 	    dis_info.symbols = symbols;
 	    dis_info.symbols64 = symbols64;
 	    dis_info.nsymbols = nsymbols;
@@ -1738,7 +1759,6 @@ uint32_t filetype)
 	    dis_info.inst = inst;
 	    dis_info.insts = insts;
 	    dis_info.ninsts = ninsts;
-	    dis_info.filetype = filetype;
 	    if(cputype == CPU_TYPE_I386)
 		dc = i386_dc;
 	    else
@@ -3848,6 +3868,8 @@ uint32_t *left,
 const uint32_t addr,
 const struct relocation_info *sorted_relocs,
 const uint32_t nsorted_relocs,
+const struct relocation_info *ext_relocs,
+const uint32_t next_relocs,
 const struct nlist *symbols,
 const struct nlist_64 *symbols64,
 const uint32_t nsymbols,
@@ -3863,7 +3885,7 @@ const enum bool verbose)
     uint32_t ss;		/* scale-factor from scale-index-byte */
     uint32_t index; 		/* index register number from scale-index-byte*/
     uint32_t base;  		/* base register number from scale-index-byte */
-    uint32_t sect_offset;
+    uint32_t sect_offset, seg_offset;
     uint64_t offset;
 
 	*symadd = NULL;
@@ -3893,9 +3915,10 @@ const enum bool verbose)
 	    *value_size = sizeof(int32_t);
 
 	if(*value_size != 0){
+	    seg_offset = addr + *length;
 	    sect_offset = addr + *length - sect_addr;
 	    *value = get_value(*value_size, sect, length, left);
-	    GET_SYMBOL(symadd, symsub, &offset, sect_offset, *value);
+	    GET_SYMBOL(symadd, symsub, &offset, sect_offset, seg_offset,*value);
 	    if(*symadd != NULL){
 		*value = offset;
 	    }
@@ -4033,6 +4056,8 @@ const cpu_type_t cputype,
 const uint32_t addr,
 const struct relocation_info *sorted_relocs,
 const uint32_t nsorted_relocs,
+const struct relocation_info *ext_relocs,
+const uint32_t next_relocs,
 const struct nlist *symbols,
 const struct nlist_64 *symbols64,
 const uint32_t nsymbols,
@@ -4043,12 +4068,13 @@ const struct symbol *sorted_symbols,
 const uint32_t nsorted_symbols,
 const enum bool verbose)
 {
-    uint32_t sect_offset;
+    uint32_t sect_offset, seg_offset;
 	uint64_t offset;
 
+	seg_offset = addr + *length;
 	sect_offset = addr + *length - sect_addr;
 	*value = get_value(value_size, sect, length, left);
-	GET_SYMBOL(symadd, symsub, &offset, sect_offset, *value);
+	GET_SYMBOL(symadd, symsub, &offset, sect_offset, seg_offset, *value);
 	if(*symadd == NULL){
 	    *symadd = GUESS_SYMBOL(*value);
 	    if(*symadd != NULL)
@@ -4076,11 +4102,12 @@ uint64_t sect_addr,
 uint32_t *length,
 uint32_t *left,
 
-const uint32_t filetype,
 const cpu_type_t cputype,
 const uint64_t addr,
 const struct relocation_info *sorted_relocs,
 const uint32_t nsorted_relocs,
+const struct relocation_info *ext_relocs,
+const uint32_t next_relocs,
 const struct nlist *symbols,
 const struct nlist_64 *symbols64,
 const uint32_t nsymbols,
@@ -4091,13 +4118,12 @@ const struct symbol *sorted_symbols,
 const uint32_t nsorted_symbols,
 const enum bool verbose)
 {
-    uint32_t sect_offset;
-	uint64_t offset;
-	uint64_t guess_addr;
+    uint32_t sect_offset, seg_offset;
+    uint64_t offset;
+    uint64_t guess_addr;
 
-	sect_offset = addr + *length;
-	if(filetype != MH_KEXT_BUNDLE)
-	    sect_offset -= sect_addr;
+	seg_offset = addr + *length;
+	sect_offset = addr + *length - sect_addr;
 	*value = get_value(value_size, sect, length, left);
 	switch(value_size){
 	case 1:
@@ -4116,7 +4142,7 @@ const enum bool verbose)
 	if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64)
 	    *value += addr + *length;
 
-	GET_SYMBOL(symadd, symsub, &offset, sect_offset, *value);
+	GET_SYMBOL(symadd, symsub, &offset, sect_offset, seg_offset, *value);
 	if(*symadd == NULL){
 	    if((cputype & CPU_ARCH_ABI64) != CPU_ARCH_ABI64){
 		*symadd = GUESS_SYMBOL(*value);
@@ -4155,9 +4181,12 @@ uint64_t *offset,
 
 const cpu_type_t cputype,
 const uint32_t sect_offset,
+const uint32_t seg_offset,
 const uint64_t value,
 const struct relocation_info *relocs,
 const uint32_t nrelocs,
+const struct relocation_info *ext_relocs,
+const uint32_t next_relocs,
 const struct nlist *symbols,
 const struct nlist_64 *symbols64,
 const uint32_t nsymbols,
@@ -4280,6 +4309,25 @@ const enum bool verbose)
 		    }
 		    break;
 		}
+	    }
+	}
+
+	for(i = 0; i < next_relocs; i++){
+	    if((uint32_t)ext_relocs[i].r_address == seg_offset){
+		r_symbolnum = ext_relocs[i].r_symbolnum;
+		if(ext_relocs[i].r_extern){
+		    if(r_symbolnum >= nsymbols)
+			return;
+		    if(symbols != NULL)
+			n_strx = symbols[r_symbolnum].n_un.n_strx;
+		    else
+			n_strx = symbols64[r_symbolnum].n_un.n_strx;
+		    if(n_strx <= 0 || n_strx >= strings_size)
+			return;
+		    *symadd = strings + n_strx;
+		    return;
+		}
+		break;
 	    }
 	}
 }
@@ -4415,7 +4463,7 @@ void *TagBuf)
     unsigned int value;
     int32_t reloc_found, offset;
     uint32_t sect_offset, i, r_address, r_symbolnum, r_type, r_extern, r_length,
-	     r_value, r_scattered, pair_r_type, pair_r_value;
+	     r_value, r_scattered, pair_r_type, pair_r_value, seg_offset;
     uint32_t other_half;
     const char *strings, *name, *add, *sub;
     struct relocation_info *relocs, *rp, *pairp;
@@ -4435,9 +4483,8 @@ void *TagBuf)
 	   info->verbose == FALSE)
 	    return(0);
 
-	sect_offset = (Pc + Offset);
-	if(info->filetype != MH_KEXT_BUNDLE)
-	    sect_offset -= info->sect_addr;
+	seg_offset = (Pc + Offset);
+	sect_offset = (Pc + Offset) - info->sect_addr;
 	relocs = info->sorted_relocs;
 	nrelocs = info->nsorted_relocs;
 	symbols = info->symbols;
@@ -4566,6 +4613,28 @@ void *TagBuf)
 	    return(1);
 	}
 
+	relocs = info->ext_relocs;
+	nrelocs = info->next_relocs;
+	for(i = 0; i < nrelocs; i++){
+	    if(relocs[i].r_address == seg_offset){
+		if(symbols != NULL)
+		    n_strx = symbols[relocs[i].r_symbolnum].n_un.n_strx;
+		if(n_strx >= strings_size){
+		    /* Error bad string offset. */
+		    return(0);
+		}
+		name = strings + n_strx;
+		op_info->AddSymbol.Present = 1;
+		op_info->AddSymbol.Name = name;
+		/*
+		 * For i386 extern relocation entries the value in the
+		 * instrucion is the offset from the symbol.
+		 */
+		op_info->Value = value;
+		return(1);
+	    }
+	}
+
 	/* We found no symbolic info so just return zero indicating that. */
 	return(0);
 }
@@ -4599,7 +4668,7 @@ void *TagBuf)
     struct LLVMOpInfo1 *op_info;
     unsigned int value;
     int32_t reloc_found;
-    uint32_t sect_offset, i;
+    uint32_t sect_offset, seg_offset, i;
     const char *strings, *name;
     struct relocation_info *relocs;
     uint32_t nrelocs, strings_size, n_strx;
@@ -4618,9 +4687,8 @@ void *TagBuf)
 	   info->verbose == FALSE)
 	    return(0);
 
-	sect_offset = (Pc + Offset);
-	if(info->filetype != MH_KEXT_BUNDLE)
-	    sect_offset -= info->sect_addr;
+	seg_offset = (Pc + Offset);
+	sect_offset = (Pc + Offset) - info->sect_addr;
 	relocs = info->sorted_relocs;
 	nrelocs = info->nsorted_relocs;
 	symbols = info->symbols64;
@@ -4666,6 +4734,30 @@ void *TagBuf)
 	    op_info->AddSymbol.Present = 1;
 	    op_info->AddSymbol.Name = name;
 	    return(1);
+	}
+
+	relocs = info->ext_relocs;
+	nrelocs = info->next_relocs;
+	for(i = 0; i < nrelocs; i++){
+	    if(relocs[i].r_address == seg_offset){
+		/*
+		 * The Value passed in will be adjusted by the Pc if the
+		 * instruction adds the Pc.  But for x86_64 external relocation
+		 * entries the Value is the offset from the external symbol.
+		 */
+		if(relocs[i].r_pcrel == 1)
+		    op_info->Value -= Pc + Offset + Width;
+		if(symbols != NULL)
+		    n_strx = symbols[relocs[i].r_symbolnum].n_un.n_strx;
+		else
+		    return(0);
+		if(n_strx >= strings_size)
+		    return(0);
+		name = strings + n_strx;
+		op_info->AddSymbol.Present = 1;
+		op_info->AddSymbol.Name = name;
+		return(1);
+	    }
 	}
 
 	/* We found no symbolic info so just return zero indicating that. */

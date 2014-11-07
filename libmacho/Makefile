@@ -10,12 +10,21 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 
-ifeq "cctools_ofiles_Sim" "$(RC_ProjectName)"
-  S = _sim
+ifeq "$(findstring iPhoneOS.platform, $(SDKROOT))" "iPhoneOS.platform"
+  LIBMALLOC = -lsystem_malloc
+else ifeq "$(MACOSX_DEPLOYMENT_TARGET)" "10.9"
+  LIBMALLOC = -lsystem_malloc
 endif
 
-DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
-		 -ldyld -lsystem_malloc -lsystem_c -lsystem_kernel -lcompiler_rt
+ifeq "cctools_ofiles_Sim" "$(RC_ProjectName)"
+  S = _sim
+  DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
+		   -ldyld$S -lsystem$S_c -lcompiler_rt$S -Wl,-upward-lSystem
+else
+  DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
+		   -ldyld $(LIBMALLOC) -lsystem_c -lsystem_kernel \
+		   -lcompiler_rt
+endif
 
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
