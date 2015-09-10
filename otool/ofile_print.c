@@ -1808,6 +1808,10 @@ NS32:
 		printf(" NO_REEXPORTED_DYLIBS");
 		f &= ~MH_NO_REEXPORTED_DYLIBS;
 	    }
+	    if(f & MH_HAS_TLV_DESCRIPTORS){
+		printf(" MH_HAS_TLV_DESCRIPTORS");
+		f &= ~MH_HAS_TLV_DESCRIPTORS;
+	    }
 	    if(f & MH_NO_HEAP_EXECUTION){
 		printf(" MH_NO_HEAP_EXECUTION");
 		f &= ~MH_NO_HEAP_EXECUTION;
@@ -1821,7 +1825,7 @@ NS32:
 	    printf("\n");
 	}
 	else{
-	    printf(" 0x%08x %7d %10d  0x%02x %10u %5u %10u 0x%08x\n",
+	    printf(" 0x%08x %7d %10d  0x%02x  %10u %5u %10u 0x%08x\n",
 		   (unsigned int)magic, cputype, cpusubtype & ~CPU_SUBTYPE_MASK,
 		   (unsigned int)((cpusubtype & CPU_SUBTYPE_MASK) >> 24),
 		   filetype, ncmds, sizeofcmds,
@@ -2638,7 +2642,7 @@ enum bool verbose)
 	    printf("      addr 0x%08x\n", (uint32_t)addr);
 	    printf("      size 0x%08x", (uint32_t)size);
 	}
-	if((flags & S_ZEROFILL) != 0 && offset + size > object_size)
+	if((flags & S_ZEROFILL) != S_ZEROFILL && offset + size > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
@@ -2798,7 +2802,9 @@ uint32_t object_size)
 	else
 	    printf("\n");
 	printf(" strsize %u", st->strsize);
-	if(st->stroff + st->strsize > object_size)
+	big_size = st->stroff;
+	big_size += st->strsize;
+	if(big_size > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
@@ -2842,7 +2848,9 @@ cpu_type_t cputype)
 	else
 	    printf("\n");
 	printf("     nextdefsym %u", dyst->nextdefsym);
-	if(dyst->iextdefsym + dyst->nextdefsym > nsyms)
+	big_size = dyst->iextdefsym;
+	big_size += dyst->nextdefsym;
+	if(big_size > nsyms)
 	    printf(" (past the end of the symbol table)\n");
 	else
 	    printf("\n");
@@ -2923,8 +2931,10 @@ cpu_type_t cputype)
 	else
 	    printf("\n");
 	printf("        nextrel %u", dyst->nextrel);
-	if(dyst->extreloff + dyst->nextrel * sizeof(struct relocation_info) >
-	   object_size)
+	big_size = dyst->nextrel;
+	big_size *= sizeof(struct relocation_info);
+	big_size += dyst->extreloff;
+	if(big_size > object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
@@ -3088,11 +3098,11 @@ struct load_command *lc)
 	    printf("\n");
 	if(sub->umbrella.offset < sub->cmdsize){
 	    p = (char *)lc + sub->umbrella.offset;
-	    printf("         umbrella %s (offset %u)\n",
+	    printf("     umbrella %s (offset %u)\n",
 		   p, sub->umbrella.offset);
 	}
 	else{
-	    printf("         umbrella ?(bad offset %u)\n",
+	    printf("     umbrella ?(bad offset %u)\n",
 		   sub->umbrella.offset);
 	}
 }
@@ -3116,11 +3126,11 @@ struct load_command *lc)
 	    printf("\n");
 	if(usub->sub_umbrella.offset < usub->cmdsize){
 	    p = (char *)lc + usub->sub_umbrella.offset;
-	    printf("         sub_umbrella %s (offset %u)\n",
+	    printf(" sub_umbrella %s (offset %u)\n",
 		   p, usub->sub_umbrella.offset);
 	}
 	else{
-	    printf("         sub_umbrella ?(bad offset %u)\n",
+	    printf(" sub_umbrella ?(bad offset %u)\n",
 		   usub->sub_umbrella.offset);
 	}
 }
@@ -3144,11 +3154,11 @@ struct load_command *lc)
 	    printf("\n");
 	if(lsub->sub_library.offset < lsub->cmdsize){
 	    p = (char *)lc + lsub->sub_library.offset;
-	    printf("         sub_library %s (offset %u)\n",
+	    printf("  sub_library %s (offset %u)\n",
 		   p, lsub->sub_library.offset);
 	}
 	else{
-	    printf("         sub_library ?(bad offset %u)\n",
+	    printf("  sub_library ?(bad offset %u)\n",
 		   lsub->sub_library.offset);
 	}
 }
@@ -3172,11 +3182,11 @@ struct load_command *lc)
 	    printf("\n");
 	if(csub->client.offset < csub->cmdsize){
 	    p = (char *)lc + csub->client.offset;
-	    printf("         client %s (offset %u)\n",
+	    printf("       client %s (offset %u)\n",
 		   p, csub->client.offset);
 	}
 	else{
-	    printf("         client ?(bad offset %u)\n",
+	    printf("       client ?(bad offset %u)\n",
 		   csub->client.offset);
 	}
 }
@@ -3603,7 +3613,7 @@ uint32_t object_size)
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf("    cryptoff  %u", ec->cryptoff);
+	printf("     cryptoff %u", ec->cryptoff);
 	if(ec->cryptoff > object_size)
 	    printf(" (past end of file)\n");
 	else
@@ -3615,7 +3625,7 @@ uint32_t object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf("    cryptid   %u\n", ec->cryptid);
+	printf("      cryptid %u\n", ec->cryptid);
 }
 
 /*
@@ -3635,7 +3645,7 @@ uint32_t object_size)
 	    printf(" Incorrect size\n");
 	else
 	    printf("\n");
-	printf("    cryptoff  %u", ec->cryptoff);
+	printf("     cryptoff %u", ec->cryptoff);
 	if(ec->cryptoff > object_size)
 	    printf(" (past end of file)\n");
 	else
@@ -3647,8 +3657,8 @@ uint32_t object_size)
 	    printf(" (past end of file)\n");
 	else
 	    printf("\n");
-	printf("    cryptid   %u\n", ec->cryptid);
-	printf("        pad   %u\n", ec->pad);
+	printf("      cryptid %u\n", ec->cryptid);
+	printf("          pad %u\n", ec->pad);
 }
 
 /*
@@ -5444,9 +5454,9 @@ print_x86_debug_state64:
 		    else if(fs.fsh.flavor == x86_FLOAT_STATE64){
 			printf("\t    fsh.flavor x86_FLOAT_STATE64 ");
 			if(fs.fsh.count == x86_FLOAT_STATE64_COUNT)
-			    printf("tsh.count x86_FLOAT_STATE64_COUNT\n");
+			    printf("fsh.count x86_FLOAT_STATE64_COUNT\n");
 			else
-			    printf("tsh.count %d (not x86_FLOAT_STATE64_COUNT"
+			    printf("fsh.count %d (not x86_FLOAT_STATE64_COUNT"
 				   "\n", fs.fsh.count);
 			fpu64 = fs.ufs.fs64;
 			goto print_x86_float_state64;
@@ -8614,7 +8624,7 @@ uint64_t addr)
 {
     enum byte_sex host_byte_sex;
     enum bool swapped;
-    uint64_t i, j;
+    uint64_t i, j, k;
     uint32_t long_word;
     unsigned short short_word;
     unsigned char byte_word;
@@ -8661,10 +8671,18 @@ uint64_t addr)
 		for(j = 0;
 		    j < 4 * sizeof(int32_t) && i + j < size;
 		    j += sizeof(int32_t)){
-		    memcpy(&long_word, sect + i + j, sizeof(int32_t));
-		    if(swapped)
-			long_word = SWAP_INT(long_word);
-		    printf("%08x ", (unsigned int)long_word);
+		    if(i + j + sizeof(int32_t) < size){
+			memcpy(&long_word, sect + i + j, sizeof(int32_t));
+			if(swapped)
+			    long_word = SWAP_INT(long_word);
+			printf("%08x ", (unsigned int)long_word);
+		    }
+		    else{
+			for(k = 0; i + j + k < size; k++){
+			    byte_word = *(sect + i + j + k);
+			    printf("%02x ", (unsigned int)byte_word);
+			}
+		    }
 		}
 		printf("\n");
 	    }

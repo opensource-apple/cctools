@@ -329,24 +329,21 @@ const char *segname,
 const char *sectname,
 unsigned long *size)
 {
-    struct segment_command *sgp, *zero;
-    struct section *sp, *find;
+    struct segment_command *sgp;
+    struct section *sp;
     uint32_t i, j;
-
-	zero = 0;
-	find = 0;
+    intptr_t slide;
+    
+	slide = 0;
 	sp = 0;
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
 	for(i = 0; i < mhp->ncmds; i++){
 	    if(sgp->cmd == LC_SEGMENT){
-		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
-		    zero = sgp;
-		    if(find != 0)
-			goto done;
+		if(strcmp(sgp->segname, "__TEXT") == 0){
+		    slide = (uintptr_t)mhp - sgp->vmaddr;
 		}
-		if(find == 0 &&
-		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		if(strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
 		    sp = (struct section *)((char *)sgp +
 			 sizeof(struct segment_command));
 		    for(j = 0; j < sgp->nsects; j++){
@@ -354,9 +351,8 @@ unsigned long *size)
 			   sizeof(sp->sectname)) == 0 &&
 			   strncmp(sp->segname, segname,
 			   sizeof(sp->segname)) == 0){
-			    find = sp;
-			    if(zero != 0)
-				goto done;
+			    *size = sp->size;
+			    return((uint8_t *)(sp->addr) + slide);
 			}
 			sp = (struct section *)((char *)sp +
 			     sizeof(struct section));
@@ -366,9 +362,6 @@ unsigned long *size)
 	    sgp = (struct segment_command *)((char *)sgp + sgp->cmdsize);
 	}
 	return(0);
-done:
-	*size = sp->size;
-	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
 }
 
 uint8_t * 
@@ -377,33 +370,26 @@ const struct mach_header *mhp,
 const char *segname,
 unsigned long *size)
 {
-    struct segment_command *sgp, *zero, *find;
+    struct segment_command *sgp;
+    intptr_t slide;
     uint32_t i;
 
-	zero = 0;
-	find = 0;
+	slide = 0;
 	sgp = (struct segment_command *)
 	      ((char *)mhp + sizeof(struct mach_header));
 	for(i = 0; i < mhp->ncmds; i++){
 	    if(sgp->cmd == LC_SEGMENT){
-		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
-		    zero = sgp;
-		    if(find != 0)
-			goto done;
+		if(strcmp(sgp->segname, "__TEXT") == 0){
+		    slide = (uintptr_t)mhp - sgp->vmaddr;
 		}
-		if(find == 0 &&
-		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
-		    find = sgp;
-		    if(zero != 0)
-			goto done;
+		if(strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		    *size = sgp->vmsize;
+		    return((uint8_t *)(sgp->vmaddr + slide));
 		}
 	    }
 	    sgp = (struct segment_command *)((char *)sgp + sgp->cmdsize);
 	}
 	return(0);
-done:
-	*size = sgp->vmsize;
-	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sgp->vmaddr));
 }
 
 #else /* defined(__LP64__) */
@@ -415,24 +401,21 @@ const char *segname,
 const char *sectname,
 unsigned long *size)
 {
-    struct segment_command_64 *sgp, *zero;
-    struct section_64 *sp, *find;
+    struct segment_command_64 *sgp;
+    struct section_64 *sp;
     uint32_t i, j;
-
-	zero = 0;
-	find = 0;
+    intptr_t slide;
+    
+	slide = 0;
 	sp = 0;
 	sgp = (struct segment_command_64 *)
 	      ((char *)mhp + sizeof(struct mach_header_64));
 	for(i = 0; i < mhp->ncmds; i++){
 	    if(sgp->cmd == LC_SEGMENT_64){
-		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
-		    zero = sgp;
-		    if(find != 0)
-			goto done;
+		if(strcmp(sgp->segname, "__TEXT") == 0){
+		    slide = (uintptr_t)mhp - sgp->vmaddr;
 		}
-		if(find == 0 &&
-		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		if(strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
 		    sp = (struct section_64 *)((char *)sgp +
 			 sizeof(struct segment_command_64));
 		    for(j = 0; j < sgp->nsects; j++){
@@ -440,9 +423,8 @@ unsigned long *size)
 			   sizeof(sp->sectname)) == 0 &&
 			   strncmp(sp->segname, segname,
 			   sizeof(sp->segname)) == 0){
-			    find = sp;
-			    if(zero != 0)
-				goto done;
+			    *size = sp->size;
+			    return((uint8_t *)(sp->addr) + slide);
 			}
 			sp = (struct section_64 *)((char *)sp +
 			     sizeof(struct section_64));
@@ -452,9 +434,6 @@ unsigned long *size)
 	    sgp = (struct segment_command_64 *)((char *)sgp + sgp->cmdsize);
 	}
 	return(0);
-done:
-	*size = sp->size;
-	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sp->addr));
 }
 
 uint8_t * 
@@ -463,33 +442,26 @@ const struct mach_header_64 *mhp,
 const char *segname,
 unsigned long *size)
 {
-    struct segment_command_64 *sgp, *zero, *find;
+    struct segment_command_64 *sgp;
+    intptr_t slide;
     uint32_t i;
 
-	zero = 0;
-	find = 0;
+	slide = 0;
 	sgp = (struct segment_command_64 *)
 	      ((char *)mhp + sizeof(struct mach_header_64));
 	for(i = 0; i < mhp->ncmds; i++){
 	    if(sgp->cmd == LC_SEGMENT_64){
-		if(zero == 0 && sgp->fileoff == 0 && sgp->nsects != 0){
-		    zero = sgp;
-		    if(find != 0)
-			goto done;
+		if(strcmp(sgp->segname, "__TEXT") == 0){
+		    slide = (uintptr_t)mhp - sgp->vmaddr;
 		}
-		if(find == 0 &&
-		   strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
-		    find = sgp;
-		    if(zero != 0)
-			goto done;
+		if(strncmp(sgp->segname, segname, sizeof(sgp->segname)) == 0){
+		    *size = sgp->vmsize;
+		    return((uint8_t *)(sgp->vmaddr + slide));
 		}
 	    }
 	    sgp = (struct segment_command_64 *)((char *)sgp + sgp->cmdsize);
 	}
 	return(0);
-done:
-	*size = sgp->vmsize;
-	return((uint8_t *)((uintptr_t)mhp - zero->vmaddr + sgp->vmaddr));
 }
 
 #endif /* defined(__LP64__) */
@@ -505,7 +477,7 @@ getsectdatafromheader(
 struct mach_header *mhp,
 const char *segname,
 const char *sectname,
-unsigned long *size)
+uint32_t *size)
 {
     const struct section *sp;
 
@@ -529,7 +501,7 @@ getsectdatafromheader_64(
 struct mach_header_64 *mhp,
 const char *segname,
 const char *sectname,
-unsigned long *size)
+uint64_t *size)
 {
     const struct section_64 *sp;
 

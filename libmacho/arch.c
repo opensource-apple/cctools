@@ -266,8 +266,10 @@ cpu_subtype_t cpusubtype)
 	}
 	q->cpusubtype = cpusubtype;
 	q->description = malloc(sizeof("Intel family  model ") + 2 + 8);
-	if(q->description == NULL)
+	if(q->description == NULL){
+	    free(q);
 	    return(NULL);
+	}
 	sprintf((char *)q->description, "Intel family %u model %u", 
 		CPU_SUBTYPE_INTEL_FAMILY(cpusubtype & ~CPU_SUBTYPE_MASK),
 		CPU_SUBTYPE_INTEL_MODEL(cpusubtype & ~CPU_SUBTYPE_MASK));
@@ -283,8 +285,10 @@ cpu_subtype_t cpusubtype)
 	}
 	q->cpusubtype = cpusubtype;
 	q->description = malloc(sizeof("PowerPC cpusubtype ") + 10);
-	if(q->description == NULL)
+	if(q->description == NULL){
+	    free(q);
 	    return(NULL);
+	}
 	sprintf((char *)q->description, "PowerPC cpusubtype %u", cpusubtype);
 	return((const NXArchInfo *)q);
     }

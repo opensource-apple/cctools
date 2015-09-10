@@ -10,21 +10,15 @@ KERN = -fno-builtin -finline -fno-keep-inline-functions -fsigned-bitfields \
        -I$(NEXT_ROOT)/System/Library/Frameworks/Kernel.framework/Headers \
        -DKERNEL -DKERNEL_PRIVATE -DAPPLE -DNeXT -DLIBSA_PRIVATE
 
-ifeq "$(findstring iPhoneOS.platform, $(SDKROOT))" "iPhoneOS.platform"
-  LIBMALLOC = -lsystem_malloc
-else ifeq "$(MACOSX_DEPLOYMENT_TARGET)" "10.9"
-  LIBMALLOC = -lsystem_malloc
+ifeq "cctools_ofiles_Sim" "$(RC_ProjectName)"
+  LIBSYSCALL=-lsystem_sim_kernel
+else
+  LIBSYSCALL=-lsystem_kernel
 endif
 
-ifeq "cctools_ofiles_Sim" "$(RC_ProjectName)"
-  S = _sim
-  DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
-		   -ldyld$S -lsystem$S_c -lcompiler_rt$S -Wl,-upward-lSystem
-else
-  DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
-		   -ldyld $(LIBMALLOC) -lsystem_c -lsystem_kernel \
-		   -lcompiler_rt
-endif
+DEPENDENT_LIBS = -nodefaultlibs -umbrella System -L/usr/lib/system \
+		 -ldyld -lsystem_malloc -lsystem_c $(LIBSYSCALL) \
+		 -lcompiler_rt
 
 ifneq "" "$(SDKROOT)"
   SDK = -isysroot $(SDKROOT)
@@ -116,8 +110,8 @@ profile_ofiles:	$(OBJROOT)/profile_obj $(OBJROOT)/ptmp_obj
 	@if [ $(SRCROOT) = . ];						\
 	then								\
 	    (cd ptmp_obj;						\
-		$(MAKE) -f ../Makefile libmacho_pg.a libmacho$S_profile.dylib \
-		INSTALL_NAME=/usr/lib/system/libmacho$S_profile.dylib	\
+		$(MAKE) -f ../Makefile libmacho_pg.a libmacho_profile.dylib \
+		INSTALL_NAME=/usr/lib/system/libmacho_profile.dylib	\
 		VPATH=.. 						\
 		OFILE_DIR=.						\
 		SRCROOT=..						\
@@ -135,8 +129,8 @@ profile_ofiles:	$(OBJROOT)/profile_obj $(OBJROOT)/ptmp_obj
 	else								\
 	    (cd $(OBJROOT)/ptmp_obj;					\
 		$(MAKE) -f $(SRCROOT)/Makefile libmacho_pg.a		\
-		libmacho$S_profile.dylib				\
-		INSTALL_NAME=/usr/lib/system/libmacho$S_profile.dylib	\
+		libmacho_profile.dylib				\
+		INSTALL_NAME=/usr/lib/system/libmacho_profile.dylib	\
 		VPATH=$(SRCROOT)					\
 		OFILE_DIR=$(OBJROOT)/ptmp_obj				\
 		SRCROOT=$(SRCROOT)					\
@@ -231,8 +225,8 @@ dynamic_ofiles: $(OBJROOT)/dynamic_obj $(OBJROOT)/dtmp_obj
 	@if [ $(SRCROOT) = . ];						\
 	then								\
 	    (cd dtmp_obj;						\
-		$(MAKE) -f ../Makefile libmacho.a libmacho$S.dylib	\
-		INSTALL_NAME=/usr/lib/system/libmacho$S.dylib		\
+		$(MAKE) -f ../Makefile libmacho.a libmacho.dylib	\
+		INSTALL_NAME=/usr/lib/system/libmacho.dylib		\
 		VPATH=.. 						\
 		OFILE_DIR=.						\
 		SRCROOT=..						\
@@ -242,8 +236,8 @@ dynamic_ofiles: $(OBJROOT)/dynamic_obj $(OBJROOT)/dtmp_obj
 		RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)");				\
 	    (cd dtmp_obj;						\
-		$(MAKE) -f ../Makefile libmacho$S_debug.dylib		\
-		INSTALL_NAME=/usr/lib/system/libmacho$S_debug.dylib	\
+		$(MAKE) -f ../Makefile libmacho_debug.dylib		\
+		INSTALL_NAME=/usr/lib/system/libmacho_debug.dylib	\
 		VPATH=.. 						\
 		OFILE_DIR=.						\
 		SRCROOT=..						\
@@ -258,8 +252,8 @@ dynamic_ofiles: $(OBJROOT)/dynamic_obj $(OBJROOT)/dtmp_obj
 	    cp dylib.ofileList dynamic_obj/libmacho.ofileList;		\
 	else								\
 	    (cd $(OBJROOT)/dtmp_obj;					\
-		$(MAKE) -f $(SRCROOT)/Makefile libmacho.a libmacho$S.dylib \
-		INSTALL_NAME=/usr/lib/system/libmacho$S.dylib		\
+		$(MAKE) -f $(SRCROOT)/Makefile libmacho.a libmacho.dylib \
+		INSTALL_NAME=/usr/lib/system/libmacho.dylib		\
 		VPATH=$(SRCROOT)					\
 		OFILE_DIR=$(OBJROOT)/dtmp_obj				\
 		SRCROOT=$(SRCROOT)					\
@@ -270,8 +264,8 @@ dynamic_ofiles: $(OBJROOT)/dynamic_obj $(OBJROOT)/dtmp_obj
 		RC_CFLAGS="$(RC_CFLAGS)"				\
 		RC_ARCHS="$(RC_ARCHS)");				\
 	    (cd $(OBJROOT)/dtmp_obj;					\
-		$(MAKE) -f $(SRCROOT)/Makefile libmacho$S_debug.dylib	\
-		INSTALL_NAME=/usr/lib/system/libmacho$S_debug.dylib	\
+		$(MAKE) -f $(SRCROOT)/Makefile libmacho_debug.dylib	\
+		INSTALL_NAME=/usr/lib/system/libmacho_debug.dylib	\
 		VPATH=$(SRCROOT)					\
 		OFILE_DIR=$(OBJROOT)/dtmp_obj				\
 		SRCROOT=$(SRCROOT)					\
@@ -301,7 +295,7 @@ shlib_clean:
 libmacho.a libmacho_pg.a libmacho_static.a libmacho_kld.a: $(OBJS)
 	$(LIBTOOL) -static -o $(SYMROOT)/$@ $(OBJS)
 
-libmacho$S.dylib libmacho$S_profile.dylib libmacho$S_debug.dylib: $(OBJS)
+libmacho.dylib libmacho_profile.dylib libmacho_debug.dylib: $(OBJS)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -dynamiclib  \
 		-o $(SYMROOT)/$@ $(OBJS) \
 		-install_name $(INSTALL_NAME) \
@@ -327,15 +321,15 @@ lib_ofiles_install: all
 	    install -c -m 444 otmp_obj/libmacho_static.a		\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
 	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;	\
-	    install -c -m 555 dtmp_obj/libmacho$S.dylib			\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
-	    install -c -m 555 dtmp_obj/libmacho$S_profile.dylib		\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S_profile.dylib;	\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S_profile.dylib;	\
-	    install -c -m 555 dtmp_obj/libmacho$S_debug.dylib		\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S_debug.dylib;	\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S_debug.dylib;	\
+	    install -c -m 555 dtmp_obj/libmacho.dylib			\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    install -c -m 555 dtmp_obj/libmacho_profile.dylib		\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    install -c -m 555 dtmp_obj/libmacho_debug.dylib		\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
 	else								\
 	    install -c -m 444 $(SYMROOT)/libmacho.a			\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho.a;		\
@@ -348,16 +342,19 @@ lib_ofiles_install: all
 	    install -c -m 444 $(SYMROOT)/libmacho_static.a		\
 		     $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;		\
 	    $(RANLIB) $(DSTROOT)$(ARCHIVEDIR)/libmacho_static.a;	\
-	    install -c -m 555 $(SYMROOT)/libmacho$S.dylib		\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S.dylib;		\
-	    install -c -m 555 $(SYMROOT)/libmacho$S_profile.dylib	\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S_profile.dylib;	\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S_profile.dylib;	\
-	    install -c -m 555 $(SYMROOT)/libmacho$S_debug.dylib	\
-		     $(DSTROOT)$(DYLIBDIR)/libmacho$S_debug.dylib;	\
-	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho$S_debug.dylib;	\
+	    install -c -m 555 $(SYMROOT)/libmacho.dylib		\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho.dylib;		\
+	    install -c -m 555 $(SYMROOT)/libmacho_profile.dylib	\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_profile.dylib;	\
+	    install -c -m 555 $(SYMROOT)/libmacho_debug.dylib	\
+		     $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
+	    $(STRIP) -S $(DSTROOT)$(DYLIBDIR)/libmacho_debug.dylib;	\
 	fi
+ifeq "cctools_ofiles_Sim" "$(RC_ProjectName)"
+	    ln -s libmacho.dylib $(DSTROOT)$(DYLIBDIR)/libmacho_sim.dylib
+endif
 
 installsrc:
 	$(MKDIRS) $(SRCROOT)
