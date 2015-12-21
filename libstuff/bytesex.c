@@ -204,6 +204,7 @@
 #include <mach-o/nlist.h>
 #include <mach-o/reloc.h>
 #include <mach-o/ranlib.h>
+#include <xar/xar.h>
 #include "stuff/bool.h"
 #include "stuff/bytesex.h"
 
@@ -2903,4 +2904,19 @@ enum byte_sex target_byte_sex)
 	    tocs[i].symbol_index = SWAP_INT(tocs[i].symbol_index);
 	    tocs[i].module_index = SWAP_INT(tocs[i].module_index);
 	}
+}
+
+__private_extern__
+void
+swap_xar_header(
+struct xar_header *xar,
+enum byte_sex target_byte_sex)
+{
+	xar->magic = SWAP_INT(xar->magic);
+	xar->size = SWAP_SHORT(xar->size);
+	xar->version = SWAP_SHORT(xar->version);
+	xar->toc_length_compressed = SWAP_LONG_LONG(xar->toc_length_compressed);
+	xar->toc_length_uncompressed =
+				SWAP_LONG_LONG(xar->toc_length_uncompressed);
+	xar->cksum_alg = SWAP_INT(xar->cksum_alg);
 }

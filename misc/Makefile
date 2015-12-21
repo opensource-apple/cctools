@@ -44,7 +44,7 @@ CFILES2 = lipo.c size.c strings.c nm.c checksyms.c inout.c \
 	 indr.c strip.c segedit.c cmpdylib.c \
 	 pagestuff.c redo_prebinding.c seg_addr_table.c \
 	 check_dylib.c seg_hack.c install_name_tool.c \
-	 codesign_allocate.c ctf_insert.c
+	 codesign_allocate.c ctf_insert.c bitcode_strip.c
 INSTALL_FILES = $(CFILES1) $(CFILES2) Makefile notes Info.plist
 
 OS_PROGS = lipo.NEW strings.NEW
@@ -52,7 +52,8 @@ OS_PROGS = lipo.NEW strings.NEW
 PROGS = $(OS_PROGS) size.NEW nm.NEW libtool.NEW checksyms.NEW \
 	indr.NEW strip.NEW nmedit.NEW segedit.NEW cmpdylib.NEW \
 	pagestuff.NEW redo_prebinding.NEW seg_addr_table.NEW check_dylib.NEW \
-	seg_hack.NEW install_name_tool.NEW codesign_allocate.NEW ctf_insert.NEW
+	seg_hack.NEW install_name_tool.NEW codesign_allocate.NEW \
+	ctf_insert.NEW bitcode_strip.NEW
 
 all:	$(OFILE_DIR) $(SYMROOT) $(PROGS) lib_ofiles
 
@@ -237,6 +238,14 @@ pagestuff.NEW: pagestuff.o
 		$(OFILE_DIR)/pagestuff.private.o
 	$(DSYMUTIL) $(SYMROOT)/pagestuff.NEW
 
+bitcode_strip.NEW: bitcode_strip.o
+	$(CC) $(RC_CFLAGS) -nostdlib -r \
+		-o $(OBJROOT)/bitcode_strip.private.o \
+		$(OFILE_DIR)/bitcode_strip.o $(LIBSTUFF)
+	$(CC) $(RC_CFLAGS) $(SDK) -o $(SYMROOT)/bitcode_strip.NEW \
+		$(OFILE_DIR)/bitcode_strip.private.o
+	$(DSYMUTIL) $(SYMROOT)/bitcode_strip.NEW
+
 
 clean: shlib_clean
 	-rm -f \
@@ -261,7 +270,8 @@ clean: shlib_clean
 	$(SYMROOT)/pagestuff.NEW \
 	$(SYMROOT)/redo_prebinding.NEW \
 	$(SYMROOT)/libredo_prebinding.a \
-	$(SYMROOT)/cmpdylib.NEW
+	$(SYMROOT)/cmpdylib.NEW \
+	$(SYMROOT)/bitcode_strip.NEW
 
 shlib_clean:
 	-rm -f \
@@ -292,6 +302,7 @@ shlib_clean:
 	$(OFILE_DIR)/size.private.o \
 	$(OFILE_DIR)/strings.private.o \
 	$(OFILE_DIR)/nm.private.o \
+	$(OFILE_DIR)/bitcode_strip.o \
 	$(OFILE_DIR)/libtool.private.o \
 	$(OFILE_DIR)/checksyms.private.o \
 	$(OFILE_DIR)/inout.private.o \
@@ -308,6 +319,7 @@ shlib_clean:
 	$(OFILE_DIR)/cmpdylib.private.o \
 	$(OFILE_DIR)/nmedit.private.o \
 	$(OFILE_DIR)/strip.private.o \
+	$(OFILE_DIR)/bitcode_strip.private.o
 	-rm -f make.out
 	-rm -r -f *dSYM
 
@@ -344,6 +356,8 @@ dt_install:
 			  $(DSTROOT)$(USRBINDIR)/codesign_allocate
 	install -c -s -m 555 $(SYMROOT)/ctf_insert.NEW \
 			  $(DSTROOT)$(USRBINDIR)/ctf_insert
+	install -c -s -m 555 $(SYMROOT)/bitcode_strip.NEW \
+			  $(DSTROOT)$(USRBINDIR)/bitcode_strip
 	$(MKDIRS) $(DSTROOT)$(LOCBINDIR)
 	install -c -s -m 555 $(SYMROOT)/checksyms.NEW \
 			  $(DSTROOT)$(LOCBINDIR)/checksyms
